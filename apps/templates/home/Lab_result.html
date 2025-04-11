@@ -1,0 +1,509 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+<style>
+/* Add your CSS styles here */
+/* Define page break */
+    .page-break {
+                page-break-before: always;
+            }
+
+    @page{
+        size: A4, portrait;
+        margin: 1cm;
+    }
+    body {
+
+        font-family:  'Calibri', 'Trebuchet MS', sans-serif;
+    }
+    table {
+        width: 100%;
+        height: auto;
+        padding-top: 1.5px;
+        padding-bottom: 1.5px;
+    
+    }
+    td{
+        vertical-align: center;
+    }
+
+    img {
+    width: 250px;
+    height: auto;
+    object-fit: cover;
+    }
+
+    .noborder{
+    border-top: 0;
+    border-collapse: collapse; 
+    }
+    .gray-background {
+            background-color: gray;
+            padding-top: 2px;
+        }
+    p{
+        text-align: left;
+        padding-left: 3.5px;
+    }
+    th{
+        padding-top: 5px;
+        text-align: center; border: 0;
+        
+    }
+
+      /* Container for the header */
+      .header-container {
+            width: 100%;
+            display: flex; /* Use flexbox for layout */
+            justify-content: space-between; /* Space between the two columns */
+            align-items: center; /* Vertically align items */
+            margin-bottom: 20px; /* Add spacing below the header */
+        }
+        .logoheader {
+            width: 30%; /* Adjust width as needed */
+            text-align: left; /* Align text to the left */
+        }
+        .text p {
+            margin: 0; /* Remove default margins */
+            width: 70%; /* Adjust width as needed */
+            line-height: 1.5; /* Adjust line spacing */
+            text-align: left;
+        }
+</style>
+</head>
+<body>
+    <div class="header-container">
+        <table>
+            <th class="logoheader">
+            
+                {% if logo_path %}
+                <img src="{{ logo_path }}"  style="width: 200px; height: auto;" />
+                {% else %}
+                <p>Logo not available</p>
+                {% endif %}
+            </th>
+            <th class="text">
+                <p>
+                <strong>Research Institute for Tropical Medicine - Department of Health </strong>
+                <br><strong>Antimicrobial Resistance Surveillance Reference Laboratory</strong>
+                <br>9002 Research Drive, Filinvest Corporate City, Alabang, Muntinlupa City 1781 Philippines T: (632) 809-9763 / 807-2628 to 32 loc. 243 | F: (632) 809-9763
+                <br><a href="http://www.ritm.gov.ph/"><strong>www.ritm.gov.ph</strong></a> <strong>| ISO 9001:2008 Certified</strong>
+                </p>
+        </th>
+    </table>
+</div>
+    
+    <table>
+        <tbody>
+        <tr>
+        <th colspan="8" style="height: 30px; font-size: 14px;"><strong>ENHANCED GONOCOCCAL ANTIMICROBIAL SURVEILLANCE PROGRAM</strong></th>
+        </tr>
+        <tr>
+        <td class="gray-background" colspan="8" > <strong style="font-size: 10.5px;"> 1. SURVEILLANCE SITE INFORMATION</strong></td>
+        </tr>
+        <tr>
+        <td style="font-size: medium; text-indent: 1%;" colspan="7"> <strong>1.1 Clinic: </strong> &nbsp;&nbsp; {{isolate.Clinic}}</td>
+        </tr>
+        <tr>
+        <td class="gray-background " colspan="8" ><strong style="font-size: 10.5px;"> 2. DEMOGRAPHIC DATA</strong></td>  
+        </tr>
+        <tr style="text-indent: 1%;">
+        <td ><strong>2.1 Consult Date:</strong></td>
+        <td ><strong>2.2 Consult Type:</strong></td>
+        <td ><strong>2.3 Client Type:</strong></td>
+        <td ><strong>2.4 Clinic Code:</strong></td>
+        <td ><strong>2.5 UIC/Patient ID:</strong></td>
+        <td style="text-align: center;" colspan="3"  rowspan="2"><h1>EGASP ID: {{isolate.Egasp_Id}}</h1></td>
+        </tr>
+        <tr style="text-align: center;" style="border-top: 1px solid gray;" >
+            <td >{{isolate.Consult_Date}}</td>
+            <td >{{isolate.Consult_Type}}</td>
+            <td >{{isolate.Client_Type}}</td>
+            <td >{{isolate.Clinic_Code}}</td>
+            <td >{{isolate.Uic_Ptid}}</td>
+       </tr>
+        <tr style="text-align: center; border-top: 0.8px solid gray;">
+        <td style="text-align: left;"> <strong>Name:</strong></td>
+        <td colspan="2" style="text-decoration: underline; text-align: center;">{{isolate.First_Name}}</td>
+        <td colspan="2" style="text-decoration: underline; text-align: center;">{{isolate.Middle_Name}}</td>
+        <td colspan="2" style="text-decoration: underline; text-align: center;">{{isolate.Last_Name}}</td>
+        <td style="text-decoration: underline; text-align: center;">{{isolate.Suffix}}</td>
+        </tr>
+        <tr style="text-align: center; border-top: transparent; border-collapse: collapse;" >
+            <td></td>
+            <td colspan="2" >First Name</td>
+            <td colspan="2" >Middle Name</td>
+            <td colspan="2" >Last Name</td>
+            <td style="font-style: italic;">Suffix</td>
+            </tr>
+        <tr style="text-indent: 1%; border-top: 1px solid gray;">
+            <td ><strong>2.7 Birthdate:</strong></td>
+            <td ><strong>2.8 Age:</strong></td>
+            <td ><strong>2.9 Sex at Birth:</strong></td>
+            <td colspan="2"><strong>2.10 Gender Identity:</strong></td>
+            <td colspan="3"></td>
+        </tr>
+        <tr style="text-align: center;">
+            <td >{{isolate.Birthdate}}</td>
+            <td >{{isolate.Age}}</td>
+            <td >{{isolate.Sex}}</td>
+            <td >{{isolate.Gender_Identity}}</td>
+            <td colspan="3" style="font-style: italic; "><strong>if other, please specify: </strong>&nbsp;{{isolate.Gender_Identity_Other}}</td>
+        <tr style="border-top: 1px solid gray; ">
+            <td style="text-align: left; font-size: 9px;" ><strong>2.11 Current Add:</strong></td>
+            <td style="text-decoration: underline; text-align: center; font-size: 8.5px;">{{isolate.Current_City}}</td>
+            <td style="text-decoration: underline; text-align: center; " colspan="2">{{isolate.Current_Province}}</td>
+            <td style="text-align: left; font-size: 9px;"><strong>2.12 Permanent Add:</strong></td>
+            <td style="text-decoration: underline; text-align: center; font-size: 8.5px;">{{isolate.Permanent_City}}</td>
+            <td style="text-decoration: underline; text-align: center;" colspan="2">{{isolate.Permanent_Province}}</td>
+        </tr>
+        <tr style="text-align: center;">
+            <td></td>
+            <td style="text-align: center;">City</td>
+            <td style="text-align: center;" colspan="2">Province</td>
+            <td></td>
+            <td style="text-align: center;">City</td>
+            <td style="text-align: center;" colspan="2">Province</td>
+          
+        </tr>
+        <tr style="text-align: center; border-top: 1px solid gray;">
+            <td style="text-align: left"><strong>Nationality</strong></td>
+            <td> <strong><i>if other:</i></strong></td>
+            <td colspan="6" style="text-align: left;"><strong>Travel History:</strong></td>
+        </tr>
+        <tr>
+            <td>{{isolate.Nationality}}</td>
+            <td>{{isolate.Nationality_Other}}</td>
+            <td colspan="2">{{isolate.Travel_History}}</td>
+            <td colspan="4"><strong><i>Please specify place of travel:</i> </strong> &nbsp;{{isolate.Travel_History_Specify}}</td>
+        </tr>
+        <tr>
+            <td class="gray-background " colspan="8" ><strong style="font-size: 10.5px;"> 3. BEHAVIORAL DATA</strong></td>  
+        </tr>
+            <tr>
+                <td colspan="2" style="font-size: medium;"><strong>3.1 History of sex partner:</strong></td>
+                <td colspan="2" style="font-size: 8px;"><strong>3.2 Nationality of most recent sex partner:</strong></td>
+                <td colspan="2"><strong><i>if other, please specify:</i></strong></td>
+                <td colspan="2" style="font-size: 8px;"><strong>3.3 No. of sex partner/s in the past month:</strong></td>
+            </tr>
+        <tr>
+            <td colspan="2">{{isolate.History_Of_Sex_Partner}}</td>
+            <td colspan="2">{{isolate.Nationality_Sex_Partner}}</td>
+            <td colspan="2">{{isolate.Nationality_Sex_Partner_Other}}</td>
+            <td colspan="2">{{isolate.Number_Of_Sex_Partners}}</td>
+        </tr>
+        <tr style="border-top: 1px solid gray;">
+            <td colspan="4"><strong>3.4 Sexual Behavior:</strong> </td>
+            <td colspan="4"><strong>3.5 Presence of other STIs:</strong></td>
+        </tr>
+        <tr>
+            <td><strong>Urethral:</strong>&nbsp;{{isolate.SB_Urethral}}</td>
+            <td ><strong style="font-size: 9px;">Anal Insertive:</strong>&nbsp;{{isolate.SB_Anal_Insertive}}</td>
+            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Oral Receptive:</strong>&nbsp;{{isolate.SB_Oral_Receptive}}</td>
+            <td><strong>None:</strong>&nbsp;{{isolate.Sti_None}}</td>
+            <td><strong>Hepatitis B:</strong>&nbsp;{{isolate.Sti_Hepatitis_B}}</td>
+            <td><strong>Syphilis:</strong>&nbsp;{{isolate.Sti_Syphilis}}</td>
+            <td><strong>Herpes:</strong>&nbsp;{{isolate.Sti_Herpes}}</td>
+        </tr>
+        <tr>
+            <td><strong>Vaginal:</strong>&nbsp;{{isolate.SB_Vaginal}}</td>
+            <td><strong style="font-size: 9px;">Anal Receptive:</strong>&nbsp;{{isolate.SB_Anal_Receptive}}</td>
+            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Oral Insertive:</strong>&nbsp;{{isolate.SB_Oral_Insertive}}</td>
+            <td><strong>HIV:</strong>&nbsp;{{isolate.Sti_Hiv}}</td>
+            <td><strong>Hepatitis C:</strong>&nbsp;{{isolate.Sti_Hepatitis_C}}</td>
+            <td><strong>NGI:</strong>&nbsp;{{isolate.Sti_NGI}}</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td colspan="4"><strong>Other:</strong>&nbsp;{{isolate.SB_Others}}</td>
+            <td colspan="4"><strong>Other:</strong>&nbsp;{{isolate.Sti_Other}}</td>
+        </tr>
+        <tr style="border-top: 1px solid gray;">
+            <td colspan="4"><strong>3.6 History of Illicit Drug Use:</strong>&nbsp; {{isolate.Illicit_Drug_Use}}</td>
+            <td colspan="4"><strong><i>Please specify:</i></strong>&nbsp;{{isolate.Illicit_Drug_Specify}}</td>
+        </tr>
+        <tr style="border-top: 1px solid gray;">
+            <td colspan="8"><strong>3.7 Specify antibiotic used in the past two weeks</strong></td>
+        </tr>
+        <tr>
+            <td colspan="2"><strong>Prescribed:</strong>&nbsp;{{isolate.Abx_Use_Prescribed}}</td>
+            <td colspan="2"><strong>Please specify:</strong>&nbsp;{{isolate.Abx_Use_Prescribed_Specify}}</td>
+            <td colspan="2"><strong>Self-medicated:</strong>&nbsp;{{isolate.Abx_Use_Self_Medicated}}</td>
+            <td colspan="2"><strong><i>Please specify:</i></strong>&nbsp;{{isolate.Abx_Use_Self_Medicated_Specify}}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><strong>Other:</strong>&nbsp;{{isolate.Abx_Use_Other}}</td>
+            <td colspan="2"><strong><i>Please specify:</i></strong>&nbsp;{{isolate.Abx_Use_Other_Specify}}</td>
+            <td colspan="2"><strong>None:</strong>&nbsp;{{isolate.Abx_Use_None}}</td>
+        </tr>
+        <tr style="border-top: 1px solid gray;">
+            <td colspan="4"><strong>3.8 Client/Risk Group</strong>&nbsp;&nbsp;{{isolate.Client_Group}}</td>
+            <td colspan="4"><strong><i>if other, specify:</i></strong>&nbsp;&nbsp;{{isolate.Client_Group_Other}}</td>
+        </tr>
+        <tr>
+            <td class="gray-background " colspan="8" ><strong style="font-size: 10.5px;">4. MEDICAL HISTORY</strong></td>  
+        </tr>
+        <tr style="border-top: 1px solid gray;">
+            <td colspan="8"><strong>4.1 Were symptoms of gonorrhea present upon arrival to clinic:</strong>&nbsp;&nbsp;{{isolate.Symp_With_Discharge}}</td>
+        </tr>
+        <tr style="border-top: 1px solid gray;">
+            <td><strong>4.2 Symptoms:</strong></td>
+        </tr>
+        <tr>
+            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong>No symptoms:</strong>&nbsp;{{isolate.Symp_No}}</td>
+            <td colspan="2"><strong>Discharge from vagina:</strong>&nbsp;{{isolate.Symp_Discharge_Vagina}}</td>
+            <td colspan="2"><strong>Oral/pharyngeal discharge:</strong>&nbsp;{{isolate.Symp_Discharge_Oropharyngeal}}</td>
+            <td colspan="2"><strong>Tenderness in testicles:</strong>&nbsp;{{isolate.Symp_Tender_Testicles}}</td>
+        </tr>
+        <tr>
+            
+            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Discharge from urethra:</strong>&nbsp;{{isolate.Symp_Discharge_Urethra}}</td>
+            <td colspan="2"><strong>Discharge from anus:</strong>&nbsp;{{isolate.Symp_Discharge_Anus}}</td>
+            <td colspan="2"><strong>Lower abdomen pain:</strong>&nbsp;{{isolate.Symp_Pain_Lower_Abdomen}}</td>
+            <td colspan="2"><strong>Painful urination:</strong>&nbsp;{{isolate.Symp_Painful_Urination}}</td>
+        </tr>
+        <tr>
+            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Other:</strong>&nbsp;{{isolate.Other}}</td>
+        </tr>
+        <tr>
+            <td class="gray-background " colspan="8" ><strong style="font-size: 10.5px;">5. TREATMENT INFORMATION</strong></td>  
+        </tr>
+        <tr>
+            <td colspan="4"><strong>5.1 Gonnorhea Treatment:</strong></td>
+            <td colspan="4"><strong>5.2 Treatment Outcome:</strong></td>
+        </tr>
+        <tr>
+            <td colspan="4">{{isolate.Gonorrhea_Treatment}}</td>
+            <td colspan="4">{{isolate.Treatment_Outcome}}</td>
+        </tr>
+        <tr style="border-top: 1px solid gray;">
+            <td colspan="2"><strong>5.3 Primary antibiotic prescribed:</strong></td>
+            <td colspan="2"><strong><i>if other, specify:</i></strong></td>
+            <td colspan="2"><strong>5.4 Secondary antibiotic prescribed:</strong></td>
+            <td colspan="2"><strong><i>if other, specify:</i></strong></td>
+        </tr>
+        <tr>
+            <td colspan="2">{{isolate.Primary_Antibiotic}}</td>
+            <td colspan="2">{{isolate.Primary_Abx_Other}}</td>
+            <td colspan="2">{{isolate.Secondary_Antibiotic}}</td>
+            <td colspan="2">{{isolate.Secondary_Abx_Other}}</td>  
+        </tr>
+        <tr>
+            <td class="gray-background " colspan="8" ><strong style="font-size: 10.5px;">6. CLINIC PERSONNEL PROVIDING INFORMATION</strong></td>  
+        </tr>
+        <tr>
+            <td colspan="2"><strong>6.1 Clinic Staff Name:</strong></td>
+            <td colspan="2">{{isolate.Clinic_Staff}}</td>
+            <td colspan="2"><strong>6.5 Requesting Physician:</strong></td>
+            <td colspan="2">{{isolate.Requesting_Physician}}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><strong>6.2 Telephone/Cellphone No.:</strong></td>
+            <td colspan="2">{{isolate.Telephone_Number}}</td>
+            <td colspan="2"><strong>6.6. Date Requested:</strong></td>
+            <td colspan="2">{{isolate.Date_Requested_Clinic}}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><strong>6.3 Email Address:</strong></td>
+            <td colspan="2">{{isolate.Email_Address}}</td>
+            <td colspan="2"><strong>6.7 Notes:</strong></td>
+            <td colspan="2">{{isolate.Notes}}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><strong>6.4 Date Accomplished</strong></td>
+            <td colspan="2">{{isolated.Date_Accomplished}}</td>
+        </tr>
+        </tbody>
+        </table>
+        <div class="page-break"></div>
+        <div class="header-container">
+            <table>
+                <th class="logoheader">
+                
+                    {% if logo_path %}
+                    <img src="{{ logo_path }}"  style="width: 200px; height: auto;" />
+                    {% else %}
+                    <p>Logo not available</p>
+                    {% endif %}
+                </th>
+                <th class="text">
+                    <p>
+                    <strong>Research Institute for Tropical Medicine - Department of Health </strong>
+                    <br><strong>Antimicrobial Resistance Surveillance Reference Laboratory</strong>
+                    <br>9002 Research Drive, Filinvest Corporate City, Alabang, Muntinlupa City 1781 Philippines T: (632) 809-9763 / 807-2628 to 32 loc. 243 | F: (632) 809-9763
+                    <br><a href="http://www.ritm.gov.ph/"><strong>www.ritm.gov.ph</strong></a> <strong>| ISO 9001:2008 Certified</strong>
+                    </p>
+            </th>
+        </table>
+    </div>
+        
+        <table>
+            <tbody>
+                <tr>
+                    <th colspan="8" style="height: 30px; font-size: 14px;"><strong>ENHANCED GONOCOCCAL ANTIMICROBIAL SURVEILLANCE PROGRAM</strong></th>
+                </tr>
+                <tr>
+                    <td class="gray-background" colspan="5" style="font-size: 10.5px; border-top: 1px solid gray;"><strong >7. SPECIMEN INFORMATION</strong></td>
+                    <td style="text-align: center; border-top: 1px solid gray;" colspan="3" rowspan="3"><h1 style="font-size: 17px">EGASP ID: {{isolate.Egasp_Id}}</h1></td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>7.1 Date of Specimen Collection:</strong></td>
+                    <td><strong>Specimen Code:</strong></td>
+                    <td><strong style="font-size: 9px;">7.2 Specimen Type:</strong></td>
+                    <td><strong style="font-size: 8px;">7.3 Specimen Quality:</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="2">{{isolate.Date_Specimen_Collection}}</td>
+                    <td>{{isolate.Specimen_Code}}</td>
+                    <td>{{isolate.Specimen_Type}}</td>
+                    <td>{{isolate.Specimen_Quality}}</td>
+                </tr>
+                <tr>
+                    <td class="gray-background" colspan="8"><strong style="font-size: 10.5px;">8. GRAM STAIN</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>8.1 Date of Test:</strong>&nbsp;{{isolate.Date_Of_Gram_Stain}}</td>
+                    <td colspan="2"><strong>Date Received in Lab:</strong>&nbsp;{{isolate.Date_Received_in_lab}}</td>
+                    <td colspan="4"><strong>8.2 Diagnosis at this visit:</strong>&nbsp;{{isolate.Diagnosis_At_This_Visit}}</td>
+                </tr>
+                <tr style="border-top: 1px solid gray;">
+                    <td colspan="4" style="border-right: 1px solid gray;"><strong>Gram Stain Result:</strong></td>
+                    <td colspan="4"><strong>&nbsp;8.3 Gram Stain Result for EB (Automatically generated from released Gram Stain Result):</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="text-align: right;"><strong>Pus Cells:</strong></td>
+                    <td colspan="2" style="border-right: 1px solid gray;">{{isolate.GS_Pus_Cells}}</td>
+                    <td colspan="2" style="text-align: right;"><strong>Presence of Pus Cells:</strong></td>
+                    <td colspan="2" >{{isolate.Gs_Presence_Of_Pus_Cells}}</td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="text-align: right;"><strong>Epithelial Cells:</strong></td>
+                    <td colspan="2" style="border-right: 1px solid gray;">{{isolate.Epithelial_Cells}}</td>
+                    <td colspan="2" style="text-align: right;"><strong>Negative:</strong></td>
+                    <td colspan="2">{{isolate.GS_Negative}}</td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="font-size: 8px; text-align: right;"><strong>Gram Negative Intracellular Diplococci:</strong></td>
+                    <td colspan="2" style="border-right: 1px solid gray;">{{isolate.Gram_Neg_Intracellular}}</td>
+                    <td colspan="2" style="font-size: 8px; text-align: right;"><strong>Presence of gram neg intracellular diplococci:</strong></td>
+                    <td colspan="2">{{isolate.Presence_GN_Intracellular}}</td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="font-size: 8px; text-align: right;"><strong>Gram Negative Extracellular Diplococci:</strong></td>
+                    <td colspan="2" style="border-right: 1px solid gray;">{{isolate.Gram_Neg_Extracellular}}</td>
+                    <td colspan="2" style="font-size: 8px; text-align: right;"><strong>Presence of gram neg extracellular diplococci:</strong></td>
+                    <td colspan="2">{{isolate.Presence_GN_Extracellular}}</td>
+                </tr>
+                <tr>
+                    <td colspan="4" style="border-right: 1px solid gray;"><strong>Others:</strong></td>
+                    <td colspan="4"></td>
+                </tr>
+                <tr>
+                    <td colspan="4" style="border-right: 1px solid gray;">{{isolate.GS_Others}}</td>
+                    <td colspan="4"></td>
+                </tr>
+                <tr>
+                    <td colspan="4" style="border-right: 1px solid gray;"><strong>Date Released:</strong>&nbsp;&nbsp;{{isolate.GS_Date_Released}}</td>
+                    <td colspan="4"></td>
+                </tr>
+                <tr>
+                    <td class="gray-background" colspan="8"><strong style="font-size: 10.5px;">9. MICROBIOLOGY CULTURE AND SUSCEPTIBILITY TESTING</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>9.1 Date of positive culture:</strong></td>
+                    <td colspan="3"><strong>9.2 Microbiology culture result:</strong></td>
+                    <td colspan="3"><strong>9.3 Species Identification</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="2">{{isolate.Positive_Culture_Date}}</td>
+                    <td colspan="3">{{isolate.Culture_Result}}</td>
+                    <td colspan="3">{{isolate.Species_Identification}}</td>
+                </tr>
+                <tr>
+                    <td class="gray-background" colspan="4"><strong style="font-size: 10.5px;">10. INITIAL ANTIMICROBIAL SUSCEPTIBILITY TESTING</strong></td>
+                    <td class="gray-background" colspan="4"><strong style="font-size: 10.5px;">11. RETESTED ANTIMICROBIAL SUSCEPTIBILITY TESTING</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="4" style="border-right: 1px solid gray;"><strong>10.1 Specimen Quality:</strong>&nbsp;&nbsp;{{isolate.Specimen_Quality}}</td>
+                    <td colspan="4"><strong>11.1 Retested AST</strong>&nbsp;&nbsp;{{isolate.Retested_Mic}}</td>
+                </tr>
+                <tr style="border-top: 1px solid gray;">
+                    <td colspan="4" style="border-right: 1px solid gray;"><strong>10.2 Date of Susceptibility Testing</strong>&nbsp;&nbsp;{{isolate.Susceptibility_Testing_Date}}</td>
+                    <td colspan="4"><strong>11.2 Date of Confirmation AST:</strong>&nbsp;&nbsp;{{isolate.Confirmation_Ast_Date}}</td>
+                </tr>
+                <tr>
+                    
+                    <td class="gray-background" colspan="4" style="text-align: center; border-top: 1px solid gray;"><strong>INTIAL AST</strong></td>
+                    <td class="gray-background" colspan="4" style="text-align: center; border-top: 1px solid gray;"><strong>RETEST AST</strong></td>
+                </tr>
+                       
+                {% for entry in antibiotic_entries %}
+                    {% if entry.ab_Disk_value or entry.ab_MIC_value or entry.ab_Retest_MICValue %}
+                        <tr>
+                           
+                            <!-- Disk Column -->
+                            {% if entry.ab_Disk_value %}
+                                <td colspan="4" style="text-align: center; "><strong>{{ entry.ab_Abx }}:</strong>&nbsp;DISK:&nbsp; {{ entry.ab_Disk_value}} {{ entry.ab_Disk_RIS}}</td>
+                            {% else %}
+                                
+                            {% endif %}
+
+                            <!-- MIC Column -->
+                            {% if entry.ab_MIC_value %}
+                            
+                                <td colspan="4" style="text-align: center;"><strong>{{ entry.ab_Abx }}:</strong> &nbsp;MIC:&nbsp;{{entry.ab_MIC_operand}} {{ entry.ab_MIC_value }} {{ entry.ab_MIC_RIS }}</td>
+                            {% else %}
+                                
+                            {% endif %}
+                            <td colspan="4"></td>
+                            <!-- MIC Retest Column -->
+                            {% if entry.ab_Retest_MICValue %}
+                                <td colspan="4" style="text-align: center;"><strong>{{ entry.ab_Retest_Abx }}:</strong> &nbsp;MIC:&nbsp;{{entry.ab_Retest_MIC_operand}} {{ entry.ab_Retest_MICValue }} {{ entry.ab_Retest_MIC_RIS }}</td>
+                            {% else %}
+                             
+                            {% endif %}
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+
+                <tr>
+                    <td colspan="4"></td>
+                    <td colspan="4" style="border-top: 1px solid gray;"><strong>Other Information (lab use only):</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="4"></td>
+                    <td><strong>BL:</strong>&nbsp; {{isolate.Beta_Lactamase}}</td>
+                    <td><strong>PPNG:</strong>&nbsp;{{isolate.PPng}}</td>
+                    <td colspan="2"><strong>TRNG:</strong>&nbsp;{{isolate.TRng}}</td>
+                </tr>
+                <tr>
+                    <td colspan="4"></td>
+                    <td colspan="4"><strong>Date Released:</strong>&nbsp;&nbsp;{{isolate.Date_Released}}</td>
+                </tr>
+                <tr>
+                    <td class="gray-background" colspan="8" style="font-size: 10.5px; text-align: center;"><strong >12. LABORATORY PERSONNEL PROVIDING INFORMATION</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>12.1 Laboratory Personel:</strong></td>
+                    <td colspan="2">{{isolate.Laboratory_Staff}}</td>
+                    <td colspan="2"><strong>12.2 Email Address:</strong></td>
+                    <td colspan="2">{{isolate.ars_email}}</td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>12.3 Contact No.:</strong></td>
+                    <td colspan="2">{{isolate.ars_contact}}</td>
+                    <td colspan="2"><strong>12.4 Date Accomplished:</strong></td>
+                    <td colspan="2">{{isolate.Date_Accomplished_ARSP}}</td>
+                </tr>
+                <tr>
+                    <td><strong>Notes:</strong></td>
+                    <td colspan="7">{{isolate.ars_notes}}</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="page-break"></div>
+</body>
+
+</html>

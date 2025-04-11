@@ -1,0 +1,118 @@
+
+
+{% load static %} 
+{% load widget_tweaks %}
+
+
+{% block title %} Add New Hospital {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+{% endblock stylesheets %}
+
+{% block content %}
+
+    <!-- Header -->
+    <!-- Page content -->
+  
+
+<body>
+
+  <div class="container">
+    
+    <div class="col-lg-12">
+   
+    <!-- Table -->
+            <div class="text-center text-muted mb-4">
+              
+              <h2>Add Test Result</h2>
+            </div>
+            <form method="POST" action="{% url 'test_result' %}" autocomplete="on" id="tstform">
+              {% csrf_token %}
+              <div class="form-group">
+                <div class="row">
+                  <div class="col-lg-12">
+                    <div class="row">
+                      <!-- copies the egasp id -->
+                      <div class="col-lg-3">
+                        <div class="form-group">                    
+                          <label class="form-control-label" for="Egasp_Id_entry" >Egasp ID </label> 
+                          {{form.Egasp_Id_entry| append_attr:"class: form-control"}}
+                        </div>
+                        
+                      </div>
+                      <!-- combination of pt id code and egasp id -->
+                      <div class="col-lg-3">
+                        <div class="form-group">
+                          <label class="form-control-label" for="ab_Abx_code" >Antibiotic Code</label> 
+                          {{form.ab_Abx_code| append_attr:"class: form-control"}} 
+                        </div>
+                      </div>
+                    
+                    </div>
+                    <div class="row">
+                     <div class="table-responsive">
+                      <table class="table align-items-center table-flush" style="border-collapse: collapse; margin: 0%; padding: 0%;">
+                            <thead class="thead-light">
+                              <tr>
+                                <th scope="col">Antibiotic</th>
+                                <th scope="col">DISK</th>
+                                <th scope="col">MIC</th>
+                                <th scope="col">Zone Diameter</th>
+                                <th scope="col">Interpretation</th>
+                              </tr>
+                            </thead>
+                            <tbody class="list">
+                              <tr>
+                                <td>
+                                  {% for test_result in test_results %}
+                                  <div class="form-group">
+                                    <label class="form-control-label" for="ab_Abx_code" >Antibiotic Code</label> 
+                                    {{test_result.ab_Abx_code| append_attr:"class: form-control"}}
+                                  </div>
+                                  {% endfor %}
+                                </td>
+                                <td>
+                                  <div class="form-group">
+                                    <label class="form-control-label" for="ab_Zone_value" >Zone Diameter</label> 
+                                    {{form.ab_Zone_value| append_attr:"class: form-control"}}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div class="form-group">
+                                    <label class="form-control-label" for="ab_Interpretation" >Interpretation</label> 
+                                    {{form.ab_Interpretation| append_attr:"class: form-control"}}
+                                  </div>
+                                </td>
+                            </tbody>
+                      </table>
+                     </div>
+                    </div>
+                  </div>
+                </div>
+            </form>
+           
+              <div class="text-center">
+              <button type="submit" class="btn btn-primary mt-4" >Submit</button>
+              <a href="{% url 'crf_data' %}" class="btn btn-secondary mt-4">Back</a>
+              <button type="button" class="btn btn-success mt-4" onclick="refresh()">Clear</button>
+              
+          </div>
+        </div>
+      </div>
+
+
+  <script>
+    function refresh() {
+      document.getElementById("tstform").reset();
+    }
+  </script>
+  
+ 
+ 
+
+
+</body>
+{% endblock content %}
+
+

@@ -1,0 +1,120 @@
+{% extends 'layouts/base.html' %}
+{% load custom_filters %}
+{% block title %} View All Antibiotic Entries {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="header bg-primary pb-6">
+  <div class="container-fluid">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">EGASP Online</h6>
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+              <li class="breadcrumb-item"><a href="{% url 'crf_data' %}">CRF Form</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Antibiotic Results</li>
+            </ol>
+          </nav>
+        </div>
+        <div class="col-lg-6 col-5 text-right">
+          <a class="btn btn-sm btn-neutral" href="{% url 'show_data' %}">View All</a>
+          <a href="{% url 'export_Antibioticentry' %}" class="btn btn-neutral btn-sm" style="height: fit-content">
+              Export/Download
+          </a>  
+        </div>
+        </div>
+    </div>
+  </div>
+</div>
+
+<!-- Page content -->
+<div class="container-fluid mt--6">
+  <div class="row">
+    <div class="col">
+      <div class="card">
+        <!-- Card header -->
+        <div class="card-header border-0">
+          <div class="row">
+            <div class="col-md-6">
+              <h3 class="mb-0"></h3>
+            </div>
+            <div class="col-md-6 d-flex justify-content-end">
+              <form class="navbar-search navbar-search-light form-inline mr-sm-3" id="navbar-search-main">
+                <div class="form-group mb-0">
+                  <div class="input-group input-group-alternative input-group-merge">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    </div>
+                    <input id="search-input" class="form-control" placeholder="Search" type="text" onkeyup="searchTable()">
+                  </div>
+                </div>
+                <button type="button" class="close" data-action="search-close" data-target="#navbar-search-main" aria-label="Close">
+                  <span aria-hidden="true">x</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <!-- Light table -->
+        <div class="table-responsive">
+          <table class="table align-items-center table-flush" style="border-collapse: collapse; margin: 0%; padding: 0%;">
+            <thead>
+              <tr>
+                <th scope="col">EGASP ID</th>
+                {% for abx_code in abx_codes %}
+                  <th scope="col">{{ abx_code }}</th>
+                  <th scope="col">{{ abx_code }}_RIS</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody class="list">
+              {% for egasp_id, values in abx_data.items %}
+                <tr>
+                  <td>{{ egasp_id }}</td>
+                  {% for abx_code in abx_codes %}
+                    {% with values|dict_lookup:abx_code as abx_info %}
+                      {% if abx_info %}
+                        <td style="text-align: center;">{{abx_info.Operand|default:''}}{{ abx_info.value|default:'' }}</td>
+                        <td style="text-align: center;">{{ abx_info.RIS|default:'' }}</td>
+                      {% else %}
+                        <td></td>
+                        <td></td>
+                      {% endif %}
+                    {% endwith %}
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+  function searchTable() {
+    var input = document.getElementById("search-input"); // Get the search input
+    var filter = input.value.toLowerCase();  // Convert input to lowercase
+    var rows = document.querySelectorAll("tbody tr");  // Get all table rows inside tbody
+
+    rows.forEach(row => {
+      var text = row.innerText.toLowerCase();  // Get text content of the entire row
+      row.style.display = text.includes(filter) ? "" : "none";  // Show or hide row
+    });
+  }
+</script>
+{% endblock javascripts %}
+
+
+
+
+

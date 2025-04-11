@@ -1,0 +1,1506 @@
+{% extends 'layouts/base.html' %}
+
+{% load widget_tweaks %}
+{% load custom_filters %}
+
+
+{% block title %} Demographic Profile {% endblock title %}
+
+{% block content %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+
+<!-- style for back to top button -->
+<style>
+#myBtn {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 30px;
+  z-index: 99;
+  font-size: 12px;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 4px;
+  height: 50px;
+  
+}
+
+#myform{
+  font-size: small;
+}
+
+label.form-control-label{
+  font-size: small;
+}
+
+.fontsize{
+  font-size: large;
+  color: blue;
+  font-weight: bold;
+}
+
+.fontlarge{
+  font-size: large;
+}
+</style>
+{% endblock stylesheets %}
+
+
+
+<div class="header pb-6 d-flex align-items-center" 
+     style="min-height: 200px; background-size: auto; background-image: url(/static/assets/img/theme/arsp-doh.png); background-size: cover; background-position: center top;">
+  <!-- Mask -->
+  <span class="mask bg-gradient-default opacity-8"></span>
+  <!-- Header container -->
+  <div class="container-fluid d-flex flex-column align-items-right">
+    <div class="row">
+      <div class="col-lg-10 col-md-4">
+        <!-- <h6 class="display-2 text-white align=text-right"> 
+          Hello {{ request.user.username }}
+        </h6>
+        <p class="text-white mt-0 mb-5"></p> --> 
+        <!-- <a href="#" class="btn btn-neutral">Filter</a> -->
+        <!-- <div class="row">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }}" style="background: rgba(0, 0, 0, 0); color: white; border: none;">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div> -->
+        
+        <br><br>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Page content -->
+<div class="container-fluid mt--6">
+  <div class="row">
+    <!-- <div class="col-xl-4 order-xl-2">
+      <div class="card card-profile">
+        <img src="/static/assets/img/theme/img-1-1000x600.jpg" alt="Image placeholder" class="card-img-top">
+        <div class="row justify-content-center">
+          <div class="col-lg-3 order-lg-2">
+            <div class="card-profile-image">
+              <a href="#">
+                <img src="/static/assets/img/theme/arsp.png" class="rounded-circle">
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="card-header text-center border-0 pt-8 pt-md-4 pb-0 pb-md-4">
+          <div class="d-flex justify-content-between">
+            <a href="#" class="btn btn-sm btn-info  mr-4 ">Connect</a>
+            <a href="#" class="btn btn-sm btn-default float-right">Message</a>
+          </div>
+        </div>
+        <div class="card-body pt-0">
+          <div class="row">
+            <div class="col">
+              <div class="card-profile-stats d-flex justify-content-center">
+                <div>
+                  <span class="heading">22</span>
+                  <span class="description">Friends</span>
+                </div>
+                <div>
+                  <span class="heading">10</span>
+                  <span class="description">Photos</span>
+                </div>
+                <div>
+                  <span class="heading">89</span>
+                  <span class="description">Comments</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="text-center">
+            <h5 class="h3">
+              {{ request.user.username }}
+            </h5>
+            <div class="h5 font-weight-300">
+              {{ request.user.email }}
+            </div>
+            <div class="h5 mt-4">
+              <i class="ni business_briefcase-24 mr-2"></i>Edit 1
+            </div>
+            <div>
+              <i class="ni education_hat mr-2"></i>Edit 2
+            </div>
+          </div>
+        </div>
+      </div>
+    </div> -->
+
+<!-- DEMOGRAPHIC DATA -->
+
+    <div class="col-xl-12 order-xl-1">
+      <form method="POST" action="{% url 'crf_data' %}" autocomplete="on" id="myform">
+        {% csrf_token %}
+      <div class="card" >
+        <div class="card-header" id="mytop">
+          <div class="row align-items-center">
+            <!-- <div class="col-8">
+               <h3 class="mb-0">SURVEILLANCE SITE INFORMATION </h3> 
+            </div> -->
+            <div class="col-12">
+              <div class="row">
+                <div class="col-lg-2">
+                  <div class="form-group" >
+                      <label class="form-control-label" for="PTIDCode">EGASP CODE</label>
+                      <div class="d-flex align-items-center">
+                      {{ form.PTIDCode| append_attr:"class: form-control "}} 
+                      <span><a href="{% url 'add_dropdown' %}" class="col-4 shortcut-item" style="padding: 0;">
+                      <span class="ni ni-settings" style="margin-left: 10px; line-height: 0; vertical-align: text-bottom;"></span>
+                      </a></span>
+                      </div>
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group" >
+                  <label class="form-control-label" for="ID_Number">ID NUMBER</label>
+                  {{form.ID_Number| append_attr:"class: form-control " }}
+                  </div>
+                </div>
+         
+                <div class="col-lg-2">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Clinic_Code'></label>
+                    {{form.Clinic_Code| append_attr:"class: form-control"}}
+              
+                  </div>
+                </div>
+              <div class="col-5 text-right">
+                <a href="{% url 'crf_data' %}" class="btn btn-sm btn-primary">Add New</a>
+                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                <a href="{% url 'show_data' %}" class="btn btn-sm btn-primary">View / Print</a>  
+                <a href="{% url 'add_breakpoints' %}" class="btn btn-warning btn-sm">Breakpoints</a>
+              </div>
+              </div>
+           
+<br>
+              
+            <div class="row">
+       
+              <div class="col-lg-2">
+                <div class="form-group" >
+                <label class="form-control-label" for="Egasp_Id">EGASP ID</label>
+                {{form.Egasp_Id| append_attr:"class: form-control fontsize"  }}
+              </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='ClinicCodeGen'>CLINIC CODE</label>
+                  {{form.ClinicCodeGen| append_attr:"class: form-control fontsize"}}
+            
+                </div>
+              </div>
+          
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class="form-control-label" for="Clinic">CLINIC</label>
+                  {{form.Clinic| append_attr:"class: form-control fontlarge"}} 
+              </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class="form-control-label" for="Laboratory">REFERENCE LABORATORY</label>
+                  {{form.Laboratory| append_attr:"class: form-control fontlarge"}}
+                </div>
+              </div>
+          </div>
+       
+        </div>
+    
+      </div> <!--mother tab content-->
+      <ul class="nav nav-tabs card-header-tabs" role="tablist"> 
+        <li class="nav-item">
+          <button class="nav-link active" href="#tabcontent1"  id="tab1" data-toggle="tab" role="tab">PATIENT DATA</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" href="#tabcontent2" id="tab2"  data-toggle="tab" role="tab" >LABORATORY RESULTS</button>
+        </li>
+    </ul>
+        <div class="card-body">
+ 
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="tabcontent1" role="tabpanel" aria-labelledby="tab1">
+           <br>
+           
+           <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">DEMOGRAPHIC DATA</h6>
+           <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+
+              <div class="row">
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Consult Date">Consult Date</label>
+                    {{form.Consult_Date| append_attr:"class: form-control"}}
+                 
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Consult Type">Consult Type</label>
+                    {{form.Consult_Type|append_attr:"class: form-control"}}
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Client_Type">Client Type</label>
+                    {{form.Client_Type| append_attr:"class: form-control"}}
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Uic_Ptid'>Uic Ptid</label> 
+                   {{form.Uic_Ptid|append_attr:"class: form-control"}}
+                  </div>
+                </div>
+              </div>
+          
+            <div class="row">
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class='form-control-label' for='First_Name'>First Name</label>
+                  {{form.First_Name| append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-3">
+                <div class="form-group">
+                  <label class='form-control-label' for='Middle_Name'>Middle Name</label>
+                  {{form.Middle_Name| append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-3">
+                <div class="form-group">
+                  <label class='form-control-label' for='Last_Name'>Last Name</label>
+                  {{form.Last_Name| append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Suffix'>Suffix</label>
+                 {{form.Suffix| append_attr:"class: form-control"}}
+                </div>
+              </div>
+            </div>
+          <div class="row">
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Birthdate'>Birthdate:</label>
+                  {{form.Birthdate| append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Age'>Age:</label> {{form.Age| append_attr:"class: form-control"}}
+                </div>
+              </div>
+                <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Sex'>Sex at birth:</label> {{form.Sex| append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Gender_Identity'>Gender Identity</label> {{form.Gender_Identity| append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class='form-control-label' for='Gender_Identity_Other'>Other Gender: (Please specify)</label> {{form.Gender_Identity_Other | append_attr:"class: form-control" }}
+                </div>
+              </div>
+        </div>
+          <div class="row">
+            <div class="col-lg-2">
+              <div class="form-group">
+                <label class='form-control-label' for='Occupation'>Occupation:</label> {{form.Occupation| append_attr:"class: form-control" }}
+              </div>
+            </div>
+            <div class="col-lg-2">
+              <div class="form-group">
+                <label class='form-control-label' for='Civil_Status'>Civil Status:</label> {{form.Civil_Status| append_attr:"class: form-control" }}
+              </div>
+            </div>
+            <div class="col-lg-2">
+              <div class="form-group">
+                <label class='form-control-label' for='Civil_Status_Other'>Other Civil Status (Please specify):</label> {{form.Civil_Status_Other| append_attr:"class: form-control" }}
+              </div>
+            </div>
+            <div class="col-lg-2">
+              <div class="form-group">
+                <label class='form-control-label' for='Nationality'>Nationality:</label> {{form.Nationality| append_attr:"class: form-control" }}
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="form-group">
+                <label class='form-control-label' for='Nationality_Other'>Other Nationality: (Please specify)</label> {{form.Nationality_Other| append_attr:"class: form-control" }}
+              </div>
+            </div>
+          </div>
+
+            <div class="row">
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label'>Current Address:</label> 
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class="form-control-label" for="Current_Country">Country</label>
+                  {{form.Current_Country|append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class='form-control-label' for='Current_City'>City</label> {{form.Current_City | append_attr:"class: form-control" }}
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class='form-control-label' for='Current_Province'>Province</label> {{form.Current_Province| append_attr:"class: form-control" }}
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-lg-2">
+                
+                <div class="form-group">
+                  <label class='form-control-label'>Permanent Address:</label> 
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class="form-control-label" for="Permanent_Country">Country</label>
+                  {{form.Permanent_Country|append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class='form-control-label' for='Permanent_City'>City</label> {{form.Permanent_City| append_attr:"class: form-control" }}
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class='form-control-label' for='Permanent_Province'>Province</label> {{form.Permanent_Province| append_attr:"class: form-control" }}
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class='form-control-label' for='Travel_History'>Travel History</label> {{form.Travel_History | append_attr:"class: form-control" }}
+                </div>
+              </div>
+              <div class="col-lg-8">
+                <div class="form-group">
+                  <label class='form-control-label' for='Travel_History_Specify'>Specify Place of Travel</label> {{form.Travel_History_Specify | append_attr:"class: form-control" }}
+                </div>
+              </div>
+            </div>
+
+<!-- BEHAVIORAL DATA -->
+          
+            <!-- Address -->
+            <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">BEHAVIORAL DATA AND SEXUAL HISTORY DATA</h6>
+            <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+
+            <div class="pl-lg-12">
+              <!-- <div class="row">
+                <div class="col-md-12">
+                  <div class="form-group">
+                    <label class="form-control-label" for="input-address">Address</label>
+                    <input id="input-address" class="form-control" placeholder="Home Address" value="Bld Mihail Kogalniceanu, nr. 8 Bl 1, Sc 1, Ap 09" type="text">
+                  </div>
+                </div>
+              </div> -->
+              <div class="row">
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Client_Group'>Client/Risk Group</label> {{form.Client_Group | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Client_Group_Other'>Other Client/Risk Group: (Please specify) </label> {{form.Client_Group_Other | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class='form-control-label' for='History_Of_Sex_Partner'>History of sex partner</label> {{form.History_Of_Sex_Partner | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Number_Of_Sex_Partners'>Number of sex partner/s in the past month</label> {{form.Number_Of_Sex_Partners | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+             
+              </div>
+              <div class="row">
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Nationality_Sex_Partner'>Nationality of most recent sex partner</label> {{form.Nationality_Sex_Partner | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-4">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Nationality_Sex_Partner_Other'>Other Nationality of most recent sex partner (Please specify)</label> {{form.Nationality_Sex_Partner_Other  | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-2">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Date_of_Last_Sex'>Date of Last Sex</label> {{form.Date_of_Last_Sex | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Relationship_to_Partners'>Relationship to Partner/s</label> {{form.Relationship_to_Partners| append_attr:"class: form-control" }}
+                  </div>
+                </div>
+              </div>
+            </div>
+        
+            <!-- Sexual Behavior-->
+          <div class="pl-lg-12">
+           
+            <div class="row">
+            <div class="col-lg-6"> 
+           
+          <h6 class="heading-small text-muted mb-4">Sexual Behavior</h6>
+          <div class="card border-info mb-3">
+            <div class="card-body  text-info">
+                <div class="row">
+                
+                  <div class="col-lg-6">
+                    <div class="form-group">
+                    <label class='form-control-label' for='SB_Urethral'>Urethral</label> {{form.SB_Urethral | append_attr:"class: form-control" }}
+                  </div>
+                  </div>
+                  <div class="col-lg-6">
+                    <div class="form-group">
+                    <label class='form-control-label' for='SB_Vaginal'>Vaginal</label> {{form.SB_Vaginal | append_attr:"class: form-control" }}
+                  </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-lg-6">
+                    <div class="form-group">
+                  <label class='form-control-label' for='SB_Anal_Insertive'>Anal Insertive</label> {{form.SB_Anal_Insertive | append_attr:"class: form-control" }}
+                  </div> </div>
+                  <div class="col-lg-6">
+                    <div class="form-group">
+                  <label class='form-control-label' for='SB_Anal_Receptive'>Anal Receptive</label> {{form.SB_Anal_Receptive | append_attr:"class: form-control" }}
+                </div> </div>
+                </div>
+                <div class="row">
+                  <div class="col-lg-6">
+                    <div class="form-group">
+                  <label class='form-control-label' for='SB_Oral_Insertive'>Oral Insertive</label> {{form.SB_Oral_Insertive | append_attr:"class: form-control" }}
+                  </div> </div>
+                  <div class="col-lg-6">
+                    <div class="form-group">
+                  <label class='form-control-label' for='SB_Oral_Receptive'>Oral Receptive</label> {{form.SB_Oral_Receptive | append_attr:"class: form-control" }}
+                  </div> </div>
+                </div>
+                <div class="row" >
+                    <div class="col-lg-12">
+                       <div class="row">
+                      <div class="col-lg-4">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Sharing_of_Sex_Toys'>Sharing of Sex Toys</label> {{form.Sharing_of_Sex_Toys | append_attr:"class: form-control" }}
+                        </div> 
+                        </div>
+                      <div class="col-lg-8">
+                      <div class="form-group">
+                        <label class='form-control-label' for='SB_Others'>Other/s</label> {{form.SB_Others | append_attr:"class: form-control" }}
+                      </div> 
+                    </div>
+                      </div>
+                  </div> 
+              </div>
+            </div>
+            </div>
+            </div>
+            
+            <div class="col-lg-6">
+              <h6 class="heading-small text-muted mb-4">Presence of other STI</h6>
+              <div class="card border-info mb-3">
+              <div class="card-body text-info">
+              
+                <div class="row">
+                  <div class="col-lg-4">
+                    <div class="form-group">
+                    <label class='form-control-label' for='Sti_None'>None</label> {{form.Sti_None | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                  <div class="col-lg-4">
+                    <div class="form-group">
+                    <label class='form-control-label' for='Sti_Hiv'>HIV</label> {{form.Sti_Hiv | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                  <div class="col-lg-4">
+                    <div class="form-group">
+                    <label class='form-control-label' for='Sti_Hepatitis_B'>Hepatitis B</label> {{form.Sti_Hepatitis_B | append_attr:"class: form-control" }}
+                    </div>
+                  </div>
+                </div>
+                  <div class="row">
+                    <div class="col-lg-4">
+                      <div class="form-group">
+                      <label class='form-control-label' for='Sti_Hepatitis_C'>Hepatitis C</label> {{form.Sti_Hepatitis_C | append_attr:"class: form-control" }}
+                    </div>
+                    </div>
+                    <div class="col-lg-4">
+                      <div class="form-group">
+                      <label class='form-control-label' for='Sti_Syphilis'>Syphilis</label> {{form.Sti_Syphilis | append_attr:"class: form-control" }}
+                    </div>
+                  </div>
+                    <div class="col-lg-4">
+                      <div class="form-group">
+                      <label class='form-control-label' for='Sti_NGI'>NGI</label> {{form.Sti_NGI| append_attr:"class: form-control" }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-lg-4">
+                      <div class="form-group">
+                      <label class='form-control-label' for='Sti_Anogenital_Warts'>Anogenital Warts</label> {{form.Sti_Anogenital_Warts | append_attr:"class: form-control" }}
+                    </div>
+                    </div>
+                    <div class="col-lg-4">
+                      <div class="form-group">
+                      <label class='form-control-label' for='Sti_Genital_Ulcer'>Genital Ulcer</label> {{form.Sti_Genital_Ulcer | append_attr:"class: form-control" }}
+                    </div>
+                    </div>
+                    <div class="col-lg-4">
+                      <div class="form-group">
+                      <label class='form-control-label' for='Sti_Herpes'>Genital Herpes Simplex Virus</label> {{form.Sti_Herpes| append_attr:"class: form-control" }}
+                    </div>
+                    </div>
+              
+                  </div>
+                  <div class="row">
+                    <div class="col-lg-12">
+                      <div class="form-group">
+                      <label class='form-control-label' for='Sti_Other'>Other/s</label> {{form.Sti_Other | append_attr:"class: form-control" }}
+                    </div>
+                  </div>
+                  </div>
+            </div>
+          </div>
+          </div>
+          </div> <!-- parent row-->
+          <div class="row">
+            <div class="col-lg-6">
+            <div class="form-group">
+            <label class='form-control-label' for='Illicit_Drug_Use'>History of Illicit Drug Use</label> {{form.Illicit_Drug_Use | append_attr:"class: form-control" }}
+            </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="form-group">
+              <label class='form-control-label' for='Illicit_Drug_Specify'>Specify Illicit Drug</label> {{form.Illicit_Drug_Specify | append_attr:"class: form-control" }}
+              </div>
+              </div>
+          </div>
+            <div class="pl-lg-12">
+                <div class="row">
+                    <div class="col-lg-6">
+                      <h6 class="heading-small text-muted mb-4">Specify Antibiotics used in the past two weeks</h6>
+                      <div class="card border-info mb-3">
+                        <div class="card-body text-info">
+                          <div class="row">
+                            <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='Abx_Use_Prescribed'>Prescribed</label> {{form.Abx_Use_Prescribed | append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-9">
+                                <div class="form-group">
+                                <label class='form-control-label' for='Abx_Use_Prescribed_Specify'>Specify Prescribed Antibiotic</label> {{form.Abx_Use_Prescribed_Specify | append_attr:"class: form-control" }}
+                                </div>
+                            </div>
+                          </div>
+                          <div class="row">
+                              <div class="col-lg-3">
+                                <div class="form-group">
+                                  <label class='form-control-label' for='Abx_Use_Self_Medicated'>Self Medicated</label> {{form.Abx_Use_Self_Medicated | append_attr:"class: form-control" }}
+                                  </div>
+                                </div>
+                                <div class="col-lg-9">
+                                  <div class="form-group">
+                                  <label class='form-control-label' for='Abx_Use_Self_Medicated_Specify'>Specify Self Medicated Antibiotic</label> {{form.Abx_Use_Self_Medicated_Specify | append_attr:"class: form-control" }}
+                                  </div>
+                                  </div>
+                            </div>
+    
+                              <div class="row">
+                                  <div class="col-lg-3">
+                                    <div class="form-group">
+                                    <label class='form-control-label' for='Abx_Use_Other'>Other Antibiotic Used</label> {{form.Abx_Use_Other | append_attr:"class: form-control" }}
+                                    </div>
+                                    </div>
+                                      <div class="col-lg-6">
+                                        <div class="form-group">
+                                          <label class='form-control-label' for='Abx_Use_Other_Specify'>Specify other Antibiotic</label> {{form.Abx_Use_Other_Specify | append_attr:"class: form-control" }}
+                                        </div>
+                                      </div>
+                                      <div class="col-lg-3">
+                                        <div class="form-group">
+                                        <label class='form-control-label' for='Abx_Use_None'>None</label> {{form.Abx_Use_None | append_attr:"class: form-control" }}
+                                        </div>
+                                        </div>
+                                    </div>
+                                  </div>    
+                                </div>
+                         </div>
+                         <div class="col-lg-6">
+                          <h6 class="heading-small text-muted mb-4">Route of Administration</h6>
+                          <div class="card border-info mb-3">
+                            <div class="card-body text-info">
+                              <div class="row">
+                              <div class="col-lg-6">
+                                <div class="form-group">
+                                <label class='form-control-label' for='Route_Oral'>Oral</label> {{form.Route_Oral | append_attr:"class: form-control" }}
+                                </div>
+                              </div>
+                              <div class="col-lg-6">
+                                <div class="form-group">
+                                <label class='form-control-label' for='Route_Injectable_IV'>Injectable (IV/IM)</label> {{form.Route_Injectable_IV | append_attr:"class: form-control" }}
+                                </div>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="col-lg-6">
+                                <div class="form-group">
+                                <label class='form-control-label' for='Route_Dermal'>Dermal</label> {{form.Route_Dermal | append_attr:"class: form-control" }}
+                                </div>
+                              </div>
+                              <div class="col-lg-6">
+                                <div class="form-group">
+                                <label class='form-control-label' for='Route_Suppository'>None</label> {{form.Route_Suppository | append_attr:"class: form-control" }}
+                                </div>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="col-lg-12">
+                                <div class="form-group">
+                                <label class='form-control-label' for='Route_Other'>Other (please specify)</label> {{form.Route_Other | append_attr:"class: form-control" }}
+                              </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                  </div>
+                </div>
+          </div> <!-- parent div for stis and sexual behavior-->
+
+      
+        <!--MEDICAL HISTORY-->
+        <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">MEDICAL HISTORY</h6>
+        <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+            <div class="pl-lg-12">
+              <div class="row">
+                <div class="col-lg-6">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Symp_With_Discharge'>Were symptoms of gonorrhea present upon arrival to clinic</label> {{form.Symp_With_Discharge | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+              </div>
+
+                <div class="row">
+                <div class="col-lg-12">
+                  <h6 class="heading-small text-muted mb-4">Please specify all that may apply</h6>
+                  <div class="card border-info mb-3">
+                    <div class="card-body text-info">
+                  <div class="row">
+                    <div class="col-lg-3">
+                      <div class="form-group">
+                      <label class='form-control-label' for='Symp_No'>No symptoms</label> {{form.Symp_No | append_attr:"class: form-control" }}
+                      </div>
+                      </div>
+                      <div class="col-lg-3">
+                      <div class="form-group">
+                        <label class='form-control-label' for='Symp_Discharge_Urethra'>Discharge from Urethra</label> {{form.Symp_Discharge_Urethra | append_attr:"class: form-control" }}  
+                      </div>
+                      </div>
+                      <div class="col-lg-3">
+                      <div class="form-group">
+                        <label class='form-control-label' for='Symp_Discharge_Vagina'>Discharge from Vagina</label> {{form.Symp_Discharge_Vagina | append_attr:"class: form-control" }}
+                      </div>
+                    </div>
+                    <div class="col-lg-3">
+                      <div class="form-group">
+                        <label class='form-control-label' for='Symp_Discharge_Anus'>Discharge from Anus</label> {{form.Symp_Discharge_Anus | append_attr:"class: form-control" }}
+                      </div>
+                    </div>
+                    </div>
+                    <div class="row">
+                    <div class="col-lg-3">
+                      <div class="form-group">
+                        <label class='form-control-label' for='Symp_Discharge_Oropharyngeal'>Oral/pharyngeal discharge</label> {{form.Symp_Discharge_Oropharyngeal| append_attr:"class: form-control" }}
+                      </div>
+                    </div>
+                    <div class="col-lg-3">
+                      <div class="form-group">
+                        <label class='form-control-label' for='Symp_Pain_Lower_Abdomen'>Lower abdomen pain</label> {{form.Symp_Pain_Lower_Abdomen| append_attr:"class: form-control" }}
+                      </div>
+                    </div>
+                    <div class="col-lg-3">
+                      <div class="form-group">
+                        <label class='form-control-label' for='Symp_Tender_Testicles'>Tenderness in testicles</label> {{form.Symp_Tender_Testicles| append_attr:"class: form-control" }}
+                      </div>
+                    </div>
+                    <div class="col-lg-3">
+                      <div class="form-group">
+                        <label class='form-control-label' for='Symp_Painful_Urination'>Painful urination</label> {{form.Symp_Painful_Urination| append_attr:"class: form-control" }}
+                      </div>
+                    </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-3">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Symp_Rectal_Pain'>Rectal Pain</label> {{form.Symp_Rectal_Pain| append_attr:"class: form-control" }}
+                        </div>
+                        </div>
+                      <div class="col-lg-3">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Symp_Painful_Intercourse'>Painful Intercourse</label> {{form.Symp_Painful_Intercourse| append_attr:"class: form-control" }}
+                        </div>
+                        </div>
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                            <label class='form-control-label' for='Symp_Other'>Other Symptoms</label> {{form.Symp_Other| append_attr:"class: form-control" }}
+                          </div>
+                        </div>
+                      </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-lg-4">
+                    <div class="form-group">
+                      <label class='form-control-label' for='Outcome_Of_Follow_Up_Visit'>Outcome of follow-up visit</label> {{form.Outcome_Of_Follow_Up_Visit| append_attr:"class: form-control" }}
+                    </div>
+                  </div>
+                  <div class="col-lg-4">
+                    <div class="form-group">  
+                    <label class='form-control-label' for='Prev_Test_Pos'>Previously tested positive</label> {{form.Prev_Test_Pos| append_attr:"class: form-control" }}
+                    </div>
+                  </div>
+                  <div class="col-lg-4">
+                    <div class="form-group">  
+                    <label class='form-control-label' for='Prev_Test_Pos_Date'>Date of previously tested positive </label> {{form.Prev_Test_Pos_Date | append_attr:"class: form-control" }}
+                    </div>
+                  </div> 
+                  </div>   
+                  <div class="row">
+                    <div class="col-lg-6">
+                      <div class="form-group">
+                          <label class='form-control-label' for='Result_Test_Cure_Initial'>Result of Initial Test of cure (Culture Test)</label> {{form.Result_Test_Cure_Initial| append_attr:"class: form-control" }}
+                          </div>
+                      </div>
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                              <label class='form-control-label' for='Result_Test_Cure_Followup'>Result of Follow-up Test of cure (Culture Test)</label> {{form.Result_Test_Cure_Followup| append_attr:"class: form-control" }}
+                              </div>
+                          </div>
+                       
+                  </div>
+                  <div class="row">
+                    <div class="col-lg-4">
+                      <div class="form-group">
+                          <label class='form-control-label' for='NoTOC_Other_Test'>If Culture test not done, specify type of Test performed</label> {{form.NoTOC_Other_Test| append_attr:"class: form-control" }}
+                          </div>
+                      </div>
+                      <div class="col-lg-3">
+                        <div class="form-group">
+                            <label class='form-control-label' for='NoTOC_DatePerformed'>Date Performed</label> {{form.NoTOC_DatePerformed| append_attr:"class: form-control" }}
+                            </div>
+                        </div>
+                        <div class="col-lg-5">
+                          <div class="form-group">
+                              <label class='form-control-label' for='NoTOC_Result_of_Test'>Result</label> {{form.NoTOC_Result_of_Test| append_attr:"class: form-control" }}
+                              </div>
+                          </div>
+                  </div>
+                    <div class="row">
+                      <div class="col-lg-3">
+                        <div class="form-group">
+                            <label class='form-control-label' for='Patient_Compliance_Antibiotics'>Patient Compliance to Antibiotic Treatment Prescribed</label> {{form.Patient_Compliance_Antibiotics| append_attr:"class: form-control" }}
+                            </div>
+                        </div>
+                      <div class="col-lg-3">
+                        <div class="form-group">
+                            <label class='form-control-label' for='OtherDrugs_Specify'>Drug (specify)</label> {{form.OtherDrugs_Specify| append_attr:"class: form-control" }}
+                            </div>
+                        </div>
+                        <div class="col-lg-2">
+                          <div class="form-group">
+                              <label class='form-control-label' for='OtherDrugs_Dosage'>Dosage (specify) </label> {{form.OtherDrugs_Dosage| append_attr:"class: form-control" }}
+                              </div>
+                          </div>
+                          <div class="col-lg-2">
+                            <div class="form-group">
+                                <label class='form-control-label' for='OtherDrugs_Route'>Route</label> {{form.OtherDrugs_Route| append_attr:"class: form-control" }}
+                                </div>
+                            </div>
+                            <div class="col-lg-2">
+                              <div class="form-group">
+                                  <label class='form-control-label' for='OtherDrugs_Duration'>Duration of Treatment</label> {{form.OtherDrugs_Duration| append_attr:"class: form-control" }}
+                                  </div>
+                              </div>
+                  </div>
+              </div> 
+                 
+             
+              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">TREATMENT INFORMATION</h6>
+              <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+                  <div class="pl-lg-12">
+                    <div class="row">
+                      <div class="col-lg-6">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Gonorrhea_Treatment'>Gonorrhea Treatment</label> {{form.Gonorrhea_Treatment| append_attr:"class: form-control" }}
+                          </div>
+                        </div>
+                      <div class="col-lg-6">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Treatment_Outcome'>Treatment Outcome</label> {{form.Treatment_Outcome| append_attr:"class: form-control" }}
+                          </div>
+                        </div>
+                      </div>
+                       
+                      <div class="row">
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                          <label class='form-control-label' for='Primary_Antibiotic'>Primary Antibiotic</label> {{form.Primary_Antibiotic| append_attr:"class: form-control" }}
+                          </div>
+                        </div>
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                          <label class='form-control-label' for='Primary_Abx_Other'>Specify Other Primary Antibiotic</label> {{form.Primary_Abx_Other| append_attr:"class: form-control" }}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                          <label class='form-control-label' for='Secondary_Antibiotic'>Secondary Antibiotic</label> {{form.Secondary_Antibiotic | append_attr:"class: form-control" }}
+                          </div>
+                        </div>
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                          <label class='form-control-label' for='Secondary_Abx_Other'>Specify Other Secondary Antibiotic</label> {{form.Secondary_Abx_Other| append_attr:"class: form-control" }}
+                        </div>
+                      </div>
+                      
+                    </div>
+                    </div>
+
+                <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">CLINIC PERSONNEL PROVIDING INFORMATION</h6>
+                  <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+                  <div class="pl-lg-12">
+                    <div class="row">
+                      <div class="col-lg-3">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Clinic_Staff'>Clinic Staff</label> 
+                          <div class="d-flex align-items-center">{{form.Clinic_Staff| append_attr:"class: form-control" }}
+                        
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-lg-3">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Telephone_Number'>Telephone Number</label> {{form.Telephone_Number| append_attr:"class: form-control" }}
+                        </div>
+                      </div>
+                      <div class="col-lg-3">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Email_Address'>Email Address</label> {{form.Email_Address| append_attr:"class: form-control" }}
+                        </div>
+                      </div>
+                      <div class="col-lg-3">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Date_Accomplished_Clinic'>Date Accomplished</label> {{form.Date_Accomplished_Clinic| append_attr:"class: form-control" }}
+                        </div>
+                      </div>
+                  
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-12">
+                        <div class="row">
+                          <div class="col-lg-3">
+                            <div class="form-group">
+                              <label class='form-control-label' for='Requesting_Physician'>Requesting Physician</label> {{form.Requesting_Physician| append_attr:"class: form-control" }}
+                            </div>
+                          </div>
+                          <div class="col-lg-3"> 
+                            <div class="form-group">
+                              <label class='form-control-label' for='Date_Requested_Clinic'>Date Requested</label> {{form.Date_Requested_Clinic| append_attr:"class: form-control" }}
+                            </div>
+                          </div>
+                          <div class="col-lg-6">
+                            <div class="form-group">
+                              <label class='form-control-label' for='Notes'>Notes</label>{{form.Notes| append_attr:"class: form-control" }}
+                            </div>
+                          </div>
+                        </div>
+                    
+   
+                      </div>
+                    </div>
+                  </div>
+
+                </div> 
+                <!-- end of first tab -->
+ 
+        
+   <!--LABORATORY RESULTS-->
+                <div class="tab-pane fade" id="tabcontent2" role="tabpanel" aria-labelledby="tab2" >
+                  <br>
+                  <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">SPECIMEN INFORMATION</h6>
+                  <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+                  <div class="pl-lg-12">
+                          <div class="row">
+                            
+                            <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='Date_Specimen_Collection'>Date of Specimen Collection</label> {{form.Date_Specimen_Collection| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class="form-control-label" for="Specimen_Code">Specimen Code</label> {{form.Specimen_Code| append_attr:"class: form-control"}}
+                                <div class="d-flex align-items-left">
+                                <span><a href="{% url 'add_specimen' %}" class="col-4 shortcut-item" style="padding: 0;">
+                                  <span class="ni ni-settings" style="margin-left: 10px; line-height: 0; vertical-align: text-bottom;"></span>
+                                  </a></span>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='Specimen_Type'>Specimen Type</label> {{form.Specimen_Type| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='Specimen_Quality'>Specimen Quality</label> {{form.Specimen_Quality| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                          </div>
+           
+             
+                    <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">GRAM STAIN</h6>
+                        <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+                        <div class="row">
+                          <div class="col-lg-12">
+                            <div class="row">
+                            <div class="col lg-6">
+                              <div class="form-group">
+                                <label class='form-control-label' for='Date_Of_Gram_Stain'>Date of Gram Stain</label> {{form.Date_Of_Gram_Stain| append_attr:"class: form-control" }}
+                              </div>
+                              </div>
+                              <div class="col-lg-6">
+                              <div class="form-group">
+                                <label class='form-control-label' for='Diagnosis_At_This_Visit'>Diagnosis at this visit</label> {{form.Diagnosis_At_This_Visit| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                  
+                
+                  
+                  <div class="col-lg-12">
+                    <div class="row">
+                      <div class="col-lg-6">
+                        <h6 class="heading-small text-muted mb-4">Gram Stain Result</h6>
+                        <div class="card border-info mb-3">
+                          <div class="card-body  text-info">
+                        <div class="row">
+                      <div class="col-lg-6">
+                        <div class="form-group">
+                          <label class='form-control-label' for='GS_Pus_Cells'>Pus Cells</label> {{form.GS_Pus_Cells| append_attr:"class: form-control" }}
+                      </div>
+                    </div>
+                      <div class="col-lg-6">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Epithelial_Cells'>Epithelial Cells</label> {{form.Epithelial_Cells| append_attr:"class: form-control" }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-6">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Gram_Neg_Intracellular'>Gram-Neg Intracellular</label> {{form.Gram_Neg_Intracellular| append_attr:"class: form-control" }}
+                        </div>
+                      </div>
+                      <div class="col-lg-6">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Gram_Neg_Extracellular'>Gram-Neg Extracellular</label> {{form.Gram_Neg_Extracellular| append_attr:"class: form-control" }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-12">
+                        <label class='form-control-label' for='GS_Others'>Others</label> {{form.GS_Others| append_attr:"class: form-control"}}
+                      </div>
+                    </div>
+                    <br>
+                    <div class="row">
+                      <div class="col-lg-8">
+                        <label class='form-control-label' for='GS_Date_Released'>Date Released</label> {{form.GS_Date_Released| append_attr:"class: form-control" }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+             
+                    <div class="col-lg-6">
+                      <h6 class="heading-small text-muted mb-4">Reporting to EB</h6>
+                      <div class="card border-info mb-3">
+                      <div class="card-body  text-info">
+                      <div class="row">
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                            <label class='form-control-label' for='GS_Negative'>Negative</label> {{form.GS_Negative| append_attr:"class: form-control" }}
+                          </div>
+                        </div>
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                            <label class='form-control-label' for='Gs_Presence_Of_Pus_Cells'>Presence of Pus Cells</label> {{form.Gs_Presence_Of_Pus_Cells| append_attr:"class: form-control" }}
+                        </div>
+                        </div>
+                      </div>
+                      <div class="row">
+                       
+                          <div class="col-lg-6">
+                            <div class="form-group">
+                            <label class='form-control-label' for='Presence_GN_Intracellular'>Presence of Gram-Neg Intracellular</label> {{form.Presence_GN_Intracellular| append_attr:"class: form-control" }}
+                          </div>
+                        </div>
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                          <label class='form-control-label' for='Presence_GN_Extracellular'>Presence of Gram-Neg Extracellular</label> {{form.Presence_GN_Extracellular| append_attr:"class: form-control" }}
+                          </div>
+                        </div>
+                      </div>
+                      </div>
+                    </div>
+                     
+                    </div>
+                  </div>
+                </div> 
+     
+           
+
+               <div class="pl-lg-12">
+              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">MICROBIOLOGY CULTURE AND SUSCEPTIBILITY TESTING</h6>
+              <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+                <div class="row">
+                  <div class="col-lg-4">
+                      <div class="form-group">
+                        <label class='form-control-label' for='Date_Received_in_lab'>Date received in Lab</label> {{form.Date_Received_in_lab| append_attr:"class: form-control" }}
+                      </div>
+                  </div>
+                  <div class="col-lg-4">
+                    <label class='form-control-label' for='Positive_Culture_Date'>Positive_Culture_Date</label> {{form.Positive_Culture_Date| append_attr:"class: form-control" }}
+                  </div>
+                  <div class="col-lg-4">
+                    <label class='form-control-label' for='Culture_Result'>Culture_Result</label> {{form.Culture_Result| append_attr:"class: form-control" }}
+                  </div>
+                </div>
+              </div>
+                <div class="row">
+                  <hr class="my-4" />
+                  <div class="col-lg-12">
+                    <h6 class="heading-small text-muted mb-4">ORGANISM IDENTIFICATION</h6>
+                    <div class="row">
+                      <div class="col-lg-6">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Species_Identification'>Species Identification</label> {{form.Species_Identification| append_attr:"class: form-control" }}
+                        </div>
+                      </div>
+                      <div class="col-lg-6">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Other_species_ID'>Other species ID</label> {{form.Other_species_ID| append_attr:"class: form-control" }}
+                        </div>
+                      </div>
+                    </div>
+                </div>
+               </div>
+               <div class="col-lg-12">
+               <div class="row">
+                
+                <div class="col-lg-6">
+                  <h6 class="heading-small text-muted mb-4">INITIAL AST RESULTS</h6>
+                  <div class="card border-info mb-3">
+                    <div class="card-body  text-info">
+                  <div class="row">
+                    <div class="col-lg-12">
+                      <div class="row">
+                      <div class="col-lg-6">
+                      <div class="form-group">
+                          <label class='form-control-label' for='Specimen_Quality_Cs'>Specimen Quality</label> {{form.Specimen_Quality_Cs| append_attr:"class: form-control" }}
+                      </div>
+                      </div>
+                      <div class="col-lg-6">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Susceptibility_Testing_Date'>Date of Susceptibility Testing</label> {{form.Susceptibility_Testing_Date| append_attr:"class: form-control" }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-12">
+                        <div class="row">
+                         
+                         
+                          <div class="col-lg-12">
+                            <table class="table align-items-center text-center table-sm table-responsive" style="padding: 1em; border-width: 0; border-collapse: collapse; height: auto; width: 100%;">
+                              <thead class="thead-light" style="text-align: center; width: 100%;">
+                                <tr style="line-height: 15px;">
+                                  <th scope="col" style="width: 90px">ANTIBIOTIC</th>
+                                  <th scope="col" style="width: 90px">TEST METHOD</th>
+                                  <th scope="col" style="width: 90px">WHONET CODE</th>
+                                  <th scope="col" style="width: 90px">Operand</th>
+                                  <th scope="col" style="text-align: end; width: 98px;">TEST RESULT</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {% if whonet_abx_data %}
+                                {% for entry in whonet_abx_data|dictsort:"Whonet_Abx" %}
+                                <tr>
+                                 
+                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Antibiotic }}</td>
+                                  {% if entry.Disk_Abx %}
+                                  <td>Disk</td>
+                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Whonet_Abx }}</td>
+                                  <td></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="disk_{{entry.id}}" value="{{ab_Disk_value |default:'' }}" type="number" style="width: 50px;" min="0"/></td>
+                                  {% else %}
+                                  <td>MIC</td>
+                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Whonet_Abx }}</td>
+                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="mic_operand_{{entry.id}}" type="text" value="{{ab_MIC_operand|default:'' }}"style="width: 50px;" /></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="mic_{{entry.id}}" value="{{ab_MIC_value|default:'' }}" type="number" style="width: 50px;" min="0" step="0.001"/></td>
+                                  {% endif %}
+                                  </tr>
+                                {% endfor %}
+                                {% endif %}
+                              </tbody>
+                            </table>
+                                </div> 
+
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                </div>
+              </div>
+                      <div class="col-lg-6">
+                        <h6 class="heading-small text-muted mb-4">RETESTED AST RESULTS</h6>
+                        <div class="card border-info mb-3">
+                          <div class="card-body  text-info">
+                        <div class="row">
+                          <div class="col-lg-6">
+                            <div class="form-group">
+                              <label class='form-control-label' for='Retested_Mic'>Retested Mic</label> {{form.Retested_Mic| append_attr:"class: form-control" }}
+                          </div></div>
+                          <div class="col-lg-6">
+                            <div class="form-group">
+                              <label class='form-control-label' for='Confirmation_Ast_Date'>Date of Confirmation AST</label> {{form.Confirmation_Ast_Date| append_attr:"class: form-control" }}
+                          </div></div>
+                        </div>
+                        <div class="row">
+                          <div class="col-lg-12">
+                            <div class="row">
+                              <div class="col-lg-12">
+                          <table class="table align-items-center text-center table-sm" style="padding: 1em; font-size: 10px; border-width: 0; border-collapse: collapse; table-layout: fixed; ">
+                            <thead class="thead-light">
+                              <tr>
+                                <th scope="col" >ANTIBIOTIC</th>
+                                <th scope="col">Test Method</th>
+                                <th scope="col" >WHONET CODE</th>
+                                <th scope="col" >Operator</th>
+                                <th scope="col">Retest Result</th>
+                              
+                               
+                                <th></th>
+                              </tr>
+                            </thead>
+                              <tbody style="text-align: center;">
+                                {% if whonet_retest_data %}
+                                {% for retest in whonet_retest_data|dictsort:"Whonet_Abx" %}
+                                <tr>
+                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Antibiotic }}</td>
+                                  {% if retest.Disk_Abx %}
+                                  <td>Disk</td>
+                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Whonet_Abx }}</td>
+                                  <td></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="retest_disk_{{retest.id}}" value="{{retest.ab_Retest_DiskValue |default:'' }}" type="number" style="width: 50px;" min="0"/></td>
+                                  {% else %}
+                                  <td>MIC</td>
+                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Whonet_Abx }}</td>
+                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="retest_mic_operand_{{retest.id}}" value="{{retest.ab_Retest_MIC_operand_|default:'' }}" type="text" style="width: 50px;"/></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="retest_mic_{{retest.id}}" value="{{retest.ab_Retest_MICValue|default:'' }}" type="number" style="width: 50px;" min="0" step="0.001"/></td>
+                                  {% endif %}
+                               
+                                </tr>
+                          
+                              {% endfor %}
+                              {% endif %}
+                              </tbody>
+                            </table>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="row">
+                      <div class="col-lg-12">
+                        <h6 class="heading-small text-muted mb-4">OTHER ISOLATE INFORMATION(LAB USE ONLY)</h6>
+                        <div class="card border-info mb-3">
+                          <div class="card-body  text-info">
+                      <div class="row">
+                        <div class="col-lg-12">
+                        <div class="row">
+                        <div class="col-lg-4">
+                          <div class="form-group">
+                            <label class='form-control-label' for='Beta_Lactamase'>Beta Lactamase</label> {{form.Beta_Lactamase| append_attr:"class: form-control"}}
+                          </div>
+                        </div>
+                        <div class="col-lg-4">
+                          <div class="form-group">
+                          <label class='form-control-label' for='PPng'>PPng</label> {{form.PPng| append_attr:"class: form-control"}}
+                        </div> </div>
+                        <div class="col-lg-4">
+                          <div class="form-group">
+                          <label class='form-control-label' for='TRng'>TRng</label> {{form.TRng| append_attr:"class: form-control"}}
+                        </div></div>
+                      </div>
+                      <div class="row">
+                        <div class="col-sm-6">
+                          <div class="form-group">
+                          <label class='form-control-label' for='Date_Released'>Date Released</label> {{form.Date_Released| append_attr:"class: form-control"}}
+                        </div> </div>
+                        <div class="col-sm-6">
+                          <div class="form-group">
+                            <label class='form-control-label' for='For_possible_WGS'>For possible WGS</label> {{form.For_possible_WGS| append_attr:"class: form-control"}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                            <label class='form-control-label' for='Date_stocked'>Date stocked</label> {{form.Date_stocked| append_attr:"class: form-control"}}
+                          </div>
+                        </div>
+                        <div class="col-lg-6">
+                          <div class="form-group">
+                            <label class='form-control-label' for='Location'>Location</label> {{form.Location| append_attr:"class: form-control"}}
+                          </div>
+                        </div>
+                      </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                </div>                       
+              </div>
+            </div>
+          </div>
+
+            <div class="row">
+              <div class="col-lg-12">
+                <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">LABORATORY PERSONNEL PROVIDING INFORMATION</h6>
+              <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+                <div class="card border-info mb-3">
+                  <div class="card-body  text-info">
+                    <div class="col-lg-12">
+                      <div class="row">
+                        <div class="col-lg-4">
+                          <div class="form-group">                    
+                            <label class='form-control-label' for='Laboratory_Staff'>Laboratory_Staff</label>
+                            <div class="d-flex align-items-center">
+                              {{ form.Laboratory_Staff| append_attr:"class: form-control "}} 
+                              <span><a href="{% url 'add_contact' %}" class="col-4 shortcut-item" style="padding: 0;">
+                              <span class="ni ni-settings" style="margin-left: 10px; line-height: 0; vertical-align: text-bottom;"></span>
+                              </a></span>
+                              </div>
+                          </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                              <label class='form-control-label' for='Date_Accomplished_ARSP'>Date_Accomplished</label> {{form.Date_Accomplished_ARSP| append_attr:"class: form-control"}}
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                              <label class='form-control-label' for='ars_contact'>Contact Number</label> {{ form.ars_contact| append_attr:"class: form-control "}} 
+                          </div>
+                         
+                        </div>
+                     </div>
+                        <div class="row">
+                          <div class="col-lg-4">
+                            <div class="form-group">
+                              <label class='form-control-label' for='ars_email'>Email Address</label> {{form.ars_email| append_attr:"class: form-control"}}
+                              
+                            </div>
+                          </div>
+                          <div class="col-lg-8">
+                            <div class="form-group">
+                              <label class='form-control-label' for='ars_notes'>Notes</label> {{form.ars_notes| append_attr:"class: form-control"}}
+                        </div> 
+                      </div> 
+                    </div> 
+                  </div> 
+                     </div> 
+                    </div> 
+                </div>  
+              </div>
+            </div>
+         
+
+
+
+
+              </div> 
+               <!--tabcontent 2-->
+            </div> <!--card body-->
+        
+        </form> <!---end of form with post method-->  
+      </div> <!--card-->
+        <div class="col-12 text-left">
+          <div class="col-6">
+          <!-- <button class="btn btn-sm btn-primary" onclick="topFunction()" id="myBtn" title="Go to top">Go to Top</button> -->
+           <!-- <a href="#mytop" class="btn btn-sm btn-primary">Back to top</a> -->
+           <button type="button" onclick="topFunction()" id="myBtn" title="gototop" class="btn btn-sm btn-primary"> Back to top</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    {% include "includes/footer.html" %}
+  </div>
+ 
+{% endblock content %}
+
+<!-- Specific JS goes HERE --> 
+{% block javascripts %}
+
+<script>
+  // Get the button (back to top button)
+  let mybutton = document.getElementById("myBtn");
+  
+  // When the user scrolls down 50px from the top of the document, show the button
+  window.onscroll = function() {scrollFunction()};
+  
+  function scrollFunction() {
+    if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
+      mybutton.style.display = "block";
+    } else {
+      mybutton.style.display = "none";
+    }
+  }
+  
+  // When the user clicks on the button, scroll to the top of the document
+  function topFunction() {
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  }
+  
+</script>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+<script>
+  // This will generate the Clinic Code, Clinic Name, Egasp ID, and cliniccodegen
+  $(document).ready(function() {
+    $('#id_PTIDCode').change(function() {
+      const ptidCode = $(this).val();
+      const idNumber = $('#id_ID_Number').val(); // Assuming the ID number input has this ID
+      if (ptidCode) {
+        $.ajax({
+          url: "{% url 'get_clinic_code' %}",  // Define this URL in your urls.py
+          data: {'ptid_code': ptidCode},
+          dataType: 'json',
+          success: function(data) {
+            $('#id_Clinic_Code').val(data.clinic_code);  // Update the Clinic_Code field
+            $('#id_Clinic').val(data.clinic_name);  // Update the Clinic field with the correct key
+            generateEgaspId(ptidCode, idNumber); // Generate Egasp ID & clinic code with current values
+            generateClinicCodeGen(data.clinic_code, idNumber); // Generate cliniccodegen
+          }
+        });
+      } else {
+        $('#id_Clinic_Code').val('');  // Clear Clinic_Code if no PTIDCode is selected
+        $('#id_Clinic').val('');  // Clear Clinic if no PTIDCode is selected
+        $('#id_Egasp_Id').val(''); // Clear Egasp ID if no PTIDCode is selected
+        $('#id_cliniccodegen').val(''); // Clear cliniccodegen if no PTIDCode is selected
+      }
+    });
+  
+    // Listen for changes in the ID number field to update Egasp ID
+    $('#id_ID_Number').on('input', function() {
+      const idNumber = $(this).val();
+      const ptidCode = $('#id_PTIDCode').val(); // Get the currently selected PTIDCode
+      const clinicCode = $('#id_Clinic_Code').val(); // Get the currently selected Clinic_Code
+      generateEgaspId(ptidCode, idNumber); // Pass the ptidCode and idNumber
+      generateClinicCodeGen(clinicCode, idNumber); // Generate cliniccodegen
+    });
+  
+    function generateEgaspId(ptidCode, idNumber) {
+      if (ptidCode && idNumber) {
+        $('#id_Egasp_Id').val(ptidCode + idNumber); // Generate Egasp ID in the format PTIDCode-IDNumber
+      } else {
+        $('#id_Egasp_Id').val(''); // Clear Egasp ID if either value is missing
+      }
+    }
+  
+    function generateClinicCodeGen(clinicCode, idNumber) {
+      if (clinicCode && idNumber) {
+        $('#id_ClinicCodeGen').val(clinicCode + '-' + idNumber); // Set cliniccodegen in the format ClinicCode-IDNumber
+      } else {
+        $('#id_ClinicCodeGen').val(''); // Clear cliniccodegen if either value is missing
+      }
+    }
+  
+    // Update ars_contact and ars_email when Clinic_Staff is selected
+    $('#id_Laboratory_Staff').change(function() {
+      const labStaffId = $(this).val();
+      if (labStaffId) {
+        $.ajax({
+          url: "{% url 'get_clinic_staff_details' %}",  // Define this URL in your urls.py
+          data: {'lab_staff_id': labStaffId},
+          dataType: 'json',
+          success: function(data) {
+            $('#id_ars_contact').val(data.ClinStaff_Telnum);  // Update the ars_contact field
+            $('#id_ars_email').val(data.ClinStaff_EmailAdd);  // Update the ars_email field
+          }
+        });
+      } else {
+        $('#id_ars_contact').val('');  // Clear ars_contact if no Clinic_Staff is selected
+        $('#id_ars_email').val('');  // Clear ars_email if no Clinic_Staff is selected
+      }
+    });
+  });
+  </script>
+
+
+
+
+{% endblock javascripts %}
+

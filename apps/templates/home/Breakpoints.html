@@ -1,0 +1,202 @@
+
+{% extends 'layouts/base.html' %}
+{% load static %} 
+{% load widget_tweaks %}
+
+
+{% block title %} Add / Update Breakpoints {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+    <!-- Header -->
+    <!-- Page content -->
+  
+
+<body>
+
+  <div class="container">
+    <div class="col-lg-12">
+        <div class="text-right">
+            <a href="{% url 'breakpoints_view' %}" class="btn btn-secondary mt-4">View all</a>
+        </div>
+        
+        <div class="text-center text-muted mb-4">
+          <h2>{% if editing %}Edit{% else %}Add{% endif %} Breakpoint</h2>
+        </div>
+        {% if form %}
+        
+        <form method="POST" action="{% if editing %}{% url 'edit_breakpoints' pk=form.instance.pk %}{% else %}{% url 'add_breakpoints' %}{% endif %}" id="breakpointsform">
+            {% csrf_token %}
+            
+            <button type="button" class="btn btn-primary btn-sm mb-3" data-toggle="modal" data-target="#UploadModal">
+                ++ Upload Breakpoints
+            </button>
+         
+            <div class="row" style="text-align: center;" >
+                <div class="col-md-2">
+                  <div class="form-group">
+                  <label class="form-control-label" for="Show">Show</label>
+                  <input id="Show" type="checkbox" name="Show" {% if form.Show.value %}checked{% endif %} />
+                </div></div>
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Retest">Retest</label>
+                    <input id="Retest" type="checkbox" name="Retest" {% if form.Retest.value %}checked{% endif %} />
+                 </div>
+                </div>
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Disk_Abx">Disk Diffussion?</label>
+                    <input id="Disk_Abx" type="checkbox" name="Disk_Abx" {% if form.Disk_Abx.value %}checked{% endif %} />
+                 </div>
+                </div>
+
+
+              </div>
+            </div>
+          
+            <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Guidelines">Guidelines</label>
+                    <select name="Guidelines" class="form-control">
+                        <option value="" disabled selected>Select Guidelines</option>
+                        {% for value, label in form.fields.Guidelines.choices %}
+                        <option value="{{ value }}" {% if breakpoint.Guidelines == value %}selected{% endif %}>
+                          {{ label }}
+                      </option>
+                        {% endfor %}
+                    </select>
+                </div></div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Test_Method">Test Method</label>
+                    <select name="Test_Method" class="form-control">
+                        <option value="" disabled selected>Select Test Method</option>
+                        {% for value, label in form.fields.Test_Method.choices %}
+                        <option value="{{ value }}" {% if form.Test_Method.value == value %}selected{% endif %}>
+                          {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div></div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Potency">Potency</label>
+                    <input id="Potency" class="form-control " value="{{breakpoint.Potency}}"   type="text" name="Potency"/>
+                </div></div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Abx_code" >Abx Code (e.g. CFM) </label>
+                    <input id="Abx_code" class="form-control " value="{{breakpoint.Abx_code}}"   type="text" name="Abx_code"/>
+                </div></div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Tier">Tier</label>
+                    <input id="Tier" class="form-control " value="{{breakpoint.Tier}}"   type="text" name="Tier"/>
+                </div></div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Antibiotic (e.g. Cefuroxime)" >Antibiotic</label>
+                    <input id="Antibiotic" class="form-control " value="{{breakpoint.Antibiotic}}"   type="text" name="Antibiotic"/>
+                </div></div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Whonet_Abx" >Whonet Abx</label>
+                    <input id="Whonet_Abx" class="form-control " value="{{breakpoint.Whonet_Abx}}"   type="text" name="Whonet_Abx"/>
+                </div></div>
+            </div>
+            
+            <h4 class="mt-4">Breakpoints</h4>
+            <div class="row" style="text-align: center;">
+                <div class="col-md-3">
+                    <label class="form-control-label" for="R_val">R (<=)</label>
+                    <input id="R_val" class="form-control " value="{{breakpoint.R_val}}"   type="text" name="R_val"/>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-control-label" for="I_val">I</label>
+                    <input id="I_val" class="form-control " value="{{breakpoint.I_val}}"   type="text" name="I_val"/>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-control-label" for="SDD_val">SDD</label>
+                    <input id="SDD_val" class="form-control " value="{{breakpoint.SDD_val}}"   type="text" name="SDD_val"/>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-control-label" for="S_val">S (>=)</label>
+                    <input id="S_val" class="form-control " value="{{breakpoint.S_val}}"   type="text" name="S_val"/>
+                </div>
+            </div>
+        
+         
+            <div class="text-center mt-4">
+                <!-- <button type="submit" class="btn btn-primary">Submit</button> -->
+                <button type="submit" class="btn btn-primary">
+                  {% if editing %}Update{% else %}Add{% endif %}
+                </button>
+                <button class="btn btn-secondary" onclick="history.back()">Back </button>
+                <button type="button" class="btn btn-success" onclick="refresh()">Clear</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="UploadModal" tabindex="-1" role="dialog" aria-labelledby="UploadModalLabel" aria-hidden="true">
+  <!-- Form with upload attributes -->
+  <form method="POST" action="{% url 'upload_breakpoints' %}" autocomplete="on" enctype="multipart/form-data" onsubmit="return confirmOverwrite();" id="uploadbreakpointform">
+    {% csrf_token %}  <!-- CSRF token for form security -->
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 class="modal-title" id="UploadModalLabel">Upload Breakpoints</h6>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+
+        <div class="modal-body" id="UploadModalLabel">
+          <div class="form-group">
+            <label for="File_uploadBP">Upload CSV/Excel File</label>
+            {{ upload_form.File_uploadBP }} <!-- Render upload field here -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Upload File</button>
+         
+        </div>
+        
+      </div>
+    </div>
+  </form>
+  {% endif %}
+</div>
+<!-- end of modal -->
+  <script>
+    function refresh() {
+      document.getElementById("breakpointsform").reset();
+    }
+  </script>
+  
+  <script>
+    function confirmOverwrite() {
+        return confirm("WARNING: Uploading will replace all existing breakpoints. Are you sure you want to proceed?");
+    }
+    </script>
+
+</body>
+{% endblock content %}
+
+
