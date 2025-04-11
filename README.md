@@ -1,2 +1,2 @@
 # egasp_project
-Egasp Online Database
+Egasp Django db
