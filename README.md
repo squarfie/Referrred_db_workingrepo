@@ -34,8 +34,7 @@ This will install all the Python modules required for the project.
 
 5. Set Up the Database (if applicable)
 If the project uses an SQLite database or any other type of database, follow these steps to set it up.
-Open pgAdmin:
-Create a new database
+Create a new postgresql database
 
 # use the details below:
 for testing: test_db 
