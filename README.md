@@ -41,8 +41,8 @@ Create a new postgresql database
 default (for testing): test_db 
 
 for deployment: Egasp_db  
-# you may need to change the DB_NAME in .env 
-# uncomment DB_NAME: Egasp_db, comment-out DB_NAME: test_db
+-you may need to change the DB_NAME in .env 
+-uncomment DB_NAME: Egasp_db, comment-out DB_NAME: test_db
 
 
 # run migrations
