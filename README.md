@@ -34,11 +34,15 @@ This will install all the Python modules required for the project.
 
 5. Set Up the Database (if applicable)
 If the project uses an SQLite database or any other type of database, follow these steps to set it up.
+
 Create a new postgresql database
 
 # use the details below:
-for testing: test_db 
-for deployment: Egasp_db  # you may need to change the DB_NAME in .env (uncomment Egasp_db, comment test_db) 
+default (for testing): test_db 
+
+for deployment: Egasp_db  
+# you may need to change the DB_NAME in .env 
+# uncomment DB_NAME: Egasp_db, comment-out DB_NAME: test_db
 
 
 # run migrations
@@ -48,7 +52,7 @@ python manage.py migrate
 # Start the application (development mode)
 $ python manage.py runserver # default port 8000
 
-6. Set up your codes, breakpoints, antibiotics and locations
+6. Set up your codes, breakpoints, antibiotics and locations using the "Utilities" Menu options
 
 
 
