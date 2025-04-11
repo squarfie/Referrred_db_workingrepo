@@ -14,7 +14,8 @@ Once the repository is cloned, navigate to the project directory and create a Py
 cd egasp_project
 python -m venv egasp #or customize the name of your venv
 
-3. Activate the Virtual Environment
+3. Activate the Virtual Environment:
+   
 Activate the virtual environment. The activation command depends on your operating system.
 
 Windows:
