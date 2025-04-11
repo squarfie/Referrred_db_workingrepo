@@ -1,7 +1,7 @@
 EGASP Project
 This project is the EGASP Database, a comprehensive system for storing and analyzing data related to various health assessments. Below is the guide to set up the project on your local machine.
 
-Getting Started
+# Getting Started
 1. Clone the Repository
 Start by cloning the repository from GitHub:
  git clone https://github.com/squarfie/EGASP_project.git
@@ -41,8 +41,10 @@ Create a new postgresql database
 default (for testing): test_db 
 
 for deployment: Egasp_db  
--you may need to change the DB_NAME in .env 
--uncomment DB_NAME: Egasp_db, comment-out DB_NAME: test_db
+
+----> you may need to change the DB_NAME in .env 
+
+----> uncomment DB_NAME: Egasp_db, comment-out DB_NAME: test_db
 
 
 # run migrations
