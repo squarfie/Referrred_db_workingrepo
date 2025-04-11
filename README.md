@@ -1,5 +1,5 @@
-EGASP Project
-This project is the EGASP Database, a comprehensive system for storing and analyzing data related to various health assessments. Below is the guide to set up the project on your local machine.
+# EGASP Project
+This project is the EGASP Database. Below is the guide to set up the project on your local machine.
 
 # Getting Started
 1. Clone the Repository
