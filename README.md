@@ -3,15 +3,18 @@ This project is the EGASP Database, a comprehensive system for storing and analy
 
 # Getting Started
 1. Clone the Repository
+
 Start by cloning the repository from GitHub:
  git clone https://github.com/squarfie/EGASP_project.git
 
 
 2. Create a Virtual Environment
+
 Once the repository is cloned, navigate to the project directory and create a Python virtual environment. This will isolate the dependencies for this project.
 
 
 cd egasp_project
+
 python -m venv egasp #or customize the name of your venv
 
 3. Activate the Virtual Environment:
@@ -19,13 +22,17 @@ python -m venv egasp #or customize the name of your venv
 Activate the virtual environment. The activation command depends on your operating system.
 
 Windows:
+
 egasp\Scripts\activate
 
 Mac/Linux:
+
 source egasp/bin/activate
+
 You should now see (egasp) before your command prompt, indicating that the virtual environment is active.
 
 4. Install the Required Modules
+
 Now, install all the necessary dependencies listed in the requirements.txt file.
 
  pip3 install -r requirements.txt
@@ -33,6 +40,7 @@ Now, install all the necessary dependencies listed in the requirements.txt file.
 This will install all the Python modules required for the project.
 
 5. Set Up the Database (if applicable)
+
 If the project uses an SQLite database or any other type of database, follow these steps to set it up.
 
 Create a new postgresql database
@@ -48,7 +56,9 @@ for deployment: Egasp_db
 
 
 # run migrations
+
 python manage.py makemigrations
+
 python manage.py migrate
 
 # Start the application (development mode)
