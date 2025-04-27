@@ -98,7 +98,8 @@ Click on "Add Cities" under the Utilities menu, and upload the file named "Citie
 You now have the EGASP Database running on your local machine!
 
 
-# RUNNING IN PRODUCTION MODE
+# Running in production mode:
+This includes instructions when running in production mode
 
 # Prerequisites
 Before proceeding, ensure that you have the following:
