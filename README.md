@@ -116,7 +116,9 @@ Your project files, including configurations for Gunicorn, Nginx, and Docker.
 In the root of your project, make sure you have created a .env file containing the following environment variables for PostgreSQL:
 
 DB_NAME=your_db_name
+
 DB_USER=your_db_user
+
 DB_PASSWORD=your_db_password
 
 Replace your_db_name, your_db_user, and your_db_password with your actual PostgreSQL database credentials.
