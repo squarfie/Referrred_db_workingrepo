@@ -1,5 +1,5 @@
-# Use the official Python image
-FROM python:3.11-slim
+# Use the official Python image for Python 3.12.2
+FROM python:3.12.2-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -22,6 +22,9 @@ RUN pip install -r requirements.txt
 # Copy project files
 COPY . .
 
+# Create the necessary directories (in case they don't exist)
+RUN mkdir -p /app/staticfiles /app/media
+
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
@@ -31,5 +34,5 @@ RUN python manage.py migrate
 # Expose port
 EXPOSE 8000
 
-# Command to run the app
+# Command to run the app with Gunicorn
 CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000"]

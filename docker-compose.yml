@@ -4,11 +4,11 @@ services:
   db:
     image: postgres:13
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}          # Define this in your .env file
+      POSTGRES_USER: ${DB_USER}        # Define this in your .env file
+      POSTGRES_PASSWORD: ${DB_PASSWORD}  # Define this in your .env file
     ports:
-      - "5433:5432"
+      - "5433:5432"  # Map the database to a different port on the host if desired
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: always
@@ -17,25 +17,25 @@ services:
     build: .
     command: gunicorn core.wsgi:application --bind 0.0.0.0:8000
     volumes:
-      - .:/code
+      - .:/app
     expose:
-      - "8000"
+      - "8000"  # Expose port 8000 to other containers in the network (for Nginx)
     env_file:
       - .env
     depends_on:
-      - db
+      - db  # Ensure the database is up and running before the web service starts
     restart: always
 
   nginx:
     image: nginx:latest
     ports:
-      - "80:80"
+      - "80:80"  # Expose Nginx to port 80 on the host machine
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - static_volume:/code/staticfiles
-      - media_volume:/code/media
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf  # Nginx configuration file
+      - static_volume:/code/staticfiles  # Serve static files from this volume
+      - media_volume:/code/media  # Serve media files from this volume
     depends_on:
-      - web
+      - web  # Nginx depends on the web container (Django + Gunicorn)
     restart: always
 
 volumes:
