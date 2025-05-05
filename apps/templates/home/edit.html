@@ -357,12 +357,13 @@ label.form-control-label{
               </div>
             </div>
             <div class="row">
-              <div class="col-lg-2">
-                
-                <div class="form-group">
-                  <label class='form-control-label'>Permanent Address:</label> 
+                <div class="col-lg-2">           
+                  <div class="form-group">
+                    <label class='form-control-label'>Permanent Address:</label> 
+                    <label for="PermAdd_same_CurrAdd">Same as current address:</label>
+                    <input type="checkbox" id="id_PermAdd_same_CurrAdd" name="PermAdd_same_CurrAdd">
+                  </div>
                 </div>
-              </div>
               <div class="col-lg-2">
                 <div class="form-group">
                   <label class="form-control-label" for="Permanent_Country">Country</label>
@@ -1498,6 +1499,68 @@ label.form-control-label{
     });
   });
   </script>
+
+<script>
+  document.getElementById('id_PermAdd_same_CurrAdd').addEventListener('change', function () {
+      const isChecked = this.checked;
+
+      const currentProvince = document.getElementById('id_Current_Province').value;
+      const currentCity = document.getElementById('id_Current_City').value;
+
+      const permanentProvinceField = document.getElementById('id_Permanent_Province');
+      const permanentCityField = document.getElementById('id_Permanent_City');
+
+      if (isChecked) {
+          permanentProvinceField.value = currentProvince;
+          permanentCityField.value = currentCity;
+      } else {
+          permanentProvinceField.value = '';
+          permanentCityField.value = '';
+      }
+  });
+</script>
+<script>
+  function calculateAge() {
+      const birthInput = document.getElementById('id_Birthdate').value;
+      const consultInput = document.getElementById('id_Consult_Date').value;
+
+      const ageField = document.getElementById('id_Age');
+
+      // Ensure both fields are filled
+      if (!birthInput || !consultInput) {
+          ageField.value = '';
+          return;
+      }
+
+      // Parse the input dates explicitly
+      const birthdate = new Date(birthInput);
+      const consultDate = new Date(consultInput);
+
+      // Validate the parsed dates
+      if (isNaN(birthdate.getTime()) || isNaN(consultDate.getTime())) {
+          ageField.value = '';
+          return;
+      }
+
+      if (consultDate < birthdate) {
+          ageField.value = 'Invalid Dates';
+          return;
+      }
+
+      // Calculate the age
+      let age = consultDate.getFullYear() - birthdate.getFullYear();
+      const m = consultDate.getMonth() - birthdate.getMonth();
+      if (m < 0 || (m === 0 && consultDate.getDate() < birthdate.getDate())) {
+          age--;
+      }
+
+      ageField.value = age;
+  }
+
+  // Attach event listeners to the date fields
+  document.getElementById('id_Birthdate').addEventListener('change', calculateAge);
+  document.getElementById('id_Consult_Date').addEventListener('change', calculateAge);
+</script>
 
 {% endblock javascripts %}
 

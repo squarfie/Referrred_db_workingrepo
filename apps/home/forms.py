@@ -70,7 +70,6 @@ class egasp_Form(forms.ModelForm):
         class Meta:
             model = Egasp_Data
             fields ='__all__'
-            exclude = ['Age_Verify_Ymd']       ##delete this if finalized
             widgets = {
             'Consult_Date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
             'Birthdate': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),

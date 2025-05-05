@@ -18,7 +18,8 @@ class City(models.Model):
     province = models.ForeignKey(Province, on_delete=models.CASCADE, related_name="cities")
 
     def __str__(self):
-        return f"{self.cityname} ({self.province.provincename})"
+        # return f"{self.cityname} ({self.province.provincename})"
+        return f"{self.cityname}"
 
 # Model for Province File Upload
 class LocationUpload(models.Model):
@@ -220,7 +221,7 @@ class Egasp_Data(models.Model):
     ID_Number = models.CharField(max_length=100, blank=True,)
     Egasp_Id = models.CharField(max_length=25,blank=True,  )
     PTIDCode = models.CharField(max_length=100, blank=True)
-    Laboratory = models.CharField(max_length=100,blank=True,)
+    Laboratory = models.CharField(max_length=100,blank=True,default='Research Institute for Tropical Medicine')
     Clinic = models.CharField(max_length=100,blank=True,)
     Consult_Date = models.DateField(blank=True, null=True)
     Consult_Type = models.CharField(max_length=100,blank=True, choices=ConsultTypeChoices)
@@ -233,8 +234,8 @@ class Egasp_Data(models.Model):
     Last_Name = models.CharField(max_length=100,blank=True,)
     Suffix = models.CharField(max_length=100,blank=True,)
     Birthdate = models.DateField(null=True, blank=True)
-    Age = models.CharField(max_length=100,blank=True,)
-    Sex = models.CharField(max_length=100,blank=True,choices=SexatbirthChoice)
+    Age = models.CharField(max_length=20,blank=True,)
+    Sex = models.CharField(max_length=10,blank=True,choices=SexatbirthChoice)
     Gender_Identity = models.CharField(max_length=100,blank=True, choices=GenderChoice)
     Gender_Identity_Other = models.CharField(max_length=100,blank=True,)
     Occupation = models.CharField(max_length=100, blank=True)
@@ -243,6 +244,7 @@ class Egasp_Data(models.Model):
     Current_Province = models.CharField(max_length=100, blank=True, null=True)
     Current_City = models.CharField(max_length=100, blank=True, null=True)
     Current_Country =models.CharField(max_length=100, blank=True, choices=Country_Choice, default='Philippines')
+    PermAdd_same_CurrAdd = models.BooleanField(default=False)
     Permanent_Province = models.CharField(max_length=100, blank=True, null=True)
     Permanent_City = models.CharField(max_length=100, blank=True, null=True)
     Permanent_Country = models.CharField(max_length=100, blank=True, choices=Country_Choice, default='Philippines')
