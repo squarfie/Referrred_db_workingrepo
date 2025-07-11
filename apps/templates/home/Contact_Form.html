@@ -23,22 +23,22 @@
                         <div class="row">
                             <div class="col-lg-6">
                                 <div class="form-group">
-                                    <label class="form-control-label" for="ClinStaff_Name">Name of Clinic Staff:</label>
-                                    {{ form.ClinStaff_Name|append_attr:"class:form-control" }}
+                                    <label class="form-control-label" for="LabStaff_Name">Name of Lab Staff:</label>
+                                    {{ form.LabStaff_Name|append_attr:"class:form-control" }}
                                 </div>
                             </div>
                             <div class="col-lg-6">
                                 <div class="form-group">
-                                    <label class="form-control-label" for="ClinStaff_Telnum">Telephone Number:</label>
-                                    {{ form.ClinStaff_Telnum|append_attr:"class:form-control" }}
+                                    <label class="form-control-label" for="LabStaff_Telnum">Telephone Number:</label>
+                                    {{ form.LabStaff_Telnum|append_attr:"class:form-control" }}
                                 </div>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-lg-12">
                                 <div class="form-group">
-                                    <label class="form-control-label" for="ClinStaff_EmailAdd">Email Address:</label>
-                                    {{ form.ClinStaff_EmailAdd|append_attr:"class:form-control" }}
+                                    <label class="form-control-label" for="LabStaff_EmailAdd">Email Address:</label>
+                                    {{ form.LabStaff_EmailAdd|append_attr:"class:form-control" }}
                                 </div>
                             </div>
                         </div>
@@ -47,7 +47,7 @@
             </div>
             <div class="text-center">
                 <button type="submit" class="btn btn-primary mt-4">Submit</button>
-                <a href="{% url 'crf_data' %}" class="btn btn-secondary mt-4">Back</a>
+                <a href="{% url 'raw_data' %}" class="btn btn-secondary mt-4">Back</a>
                 <button type="button" class="btn btn-success mt-4" onclick="refresh()">Clear</button>
             </div>
         </form>

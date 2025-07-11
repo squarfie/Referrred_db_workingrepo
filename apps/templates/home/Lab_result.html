@@ -11,7 +11,7 @@
             }
 
     @page{
-        size: A4, portrait;
+        size: Legal, landscape;
         margin: 1cm;
     }
     body {
@@ -21,8 +21,8 @@
     table {
         width: 100%;
         height: auto;
-        padding-top: 1.5px;
-        padding-bottom: 1.5px;
+        padding-top: 1.2px;
+        padding-bottom: 1.2px;
     
     }
     td{
@@ -98,10 +98,10 @@
     <table>
         <tbody>
         <tr>
-        <th colspan="8" style="height: 30px; font-size: 14px;"><strong>ENHANCED GONOCOCCAL ANTIMICROBIAL SURVEILLANCE PROGRAM</strong></th>
+        <th colspan="12" style="height: 30px; font-size: 14px;"><strong>CONFIRMATORY TEST RESULT: {{isolate.f_Site_Name}}</strong></th>
         </tr>
         <tr>
-        <td class="gray-background" colspan="8" > <strong style="font-size: 10.5px;"> 1. SURVEILLANCE SITE INFORMATION</strong></td>
+        <td class="gray-background" colspan="8" > <strong style="font-size: 10.5px;"> Patient's Information</strong></td>
         </tr>
         <tr>
         <td style="font-size: medium; text-indent: 1%;" colspan="7"> <strong>1.1 Clinic: </strong> &nbsp;&nbsp; {{isolate.Clinic}}</td>
@@ -150,12 +150,22 @@
             <td >{{isolate.Age}}</td>
             <td >{{isolate.Sex}}</td>
             <td >{{isolate.Gender_Identity}}</td>
-            <td colspan="3" style="font-style: italic; "><strong>if other, please specify: </strong>&nbsp;{{isolate.Gender_Identity_Other}}</td>
+            <td colspan="3" style="font-style: italic; "><strong>if other, please specify: </strong>&nbsp;{{isolate.Gender_Identity_Other}}</td> </tr>
+        <tr style="text-indent: 1%; border-top: 1px solid gray;">
+                <td colspan="2"><strong>2.11 Occupation:</strong></td>
+                <td colspan="2"><strong>2.12 Civil Status:</strong></td>
+                <td colspan="4"></td>
+        </tr>
+        <tr style="text-align: left;">
+            <td colspan="2">{{isolate.Occupation}}</td>
+            <td colspan="2">{{isolate.Civil_Status}}</td>
+            <td colspan="4" style="font-style: italic;"><strong>if other, please specify: </strong>&nbsp;{{isolate.Civil_Status_Other}}</td></td>
+        </tr>
         <tr style="border-top: 1px solid gray; ">
-            <td style="text-align: left; font-size: 9px;" ><strong>2.11 Current Add:</strong></td>
+            <td style="text-align: left; font-size: 9px;" ><strong>2.13 Current Add:</strong></td>
             <td style="text-decoration: underline; text-align: center; font-size: 8.5px;">{{isolate.Current_City}}</td>
             <td style="text-decoration: underline; text-align: center; " colspan="2">{{isolate.Current_Province}}</td>
-            <td style="text-align: left; font-size: 9px;"><strong>2.12 Permanent Add:</strong></td>
+            <td style="text-align: left; font-size: 9px;"><strong>2.14 Permanent Add:</strong></td>
             <td style="text-decoration: underline; text-align: center; font-size: 8.5px;">{{isolate.Permanent_City}}</td>
             <td style="text-decoration: underline; text-align: center;" colspan="2">{{isolate.Permanent_Province}}</td>
         </tr>
@@ -199,26 +209,32 @@
             <td colspan="4"><strong>3.5 Presence of other STIs:</strong></td>
         </tr>
         <tr>
-            <td><strong>Urethral:</strong>&nbsp;{{isolate.SB_Urethral}}</td>
-            <td ><strong style="font-size: 9px;">Anal Insertive:</strong>&nbsp;{{isolate.SB_Anal_Insertive}}</td>
-            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Oral Receptive:</strong>&nbsp;{{isolate.SB_Oral_Receptive}}</td>
-            <td><strong>None:</strong>&nbsp;{{isolate.Sti_None}}</td>
-            <td><strong>Hepatitis B:</strong>&nbsp;{{isolate.Sti_Hepatitis_B}}</td>
-            <td><strong>Syphilis:</strong>&nbsp;{{isolate.Sti_Syphilis}}</td>
-            <td><strong>Herpes:</strong>&nbsp;{{isolate.Sti_Herpes}}</td>
+            <td colspan="2"><strong style="font-size: 8px;">Urethral:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.SB_Urethral}}</span></td>
+            <td colspan="2"><strong style="font-size: 8px;">Oral Receptive:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.SB_Oral_Receptive}}</span></td>
+            <td><strong style="font-size: 8px;">None:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sti_None}}</span></td>
+            <td><strong style="font-size: 8px;">Hepa B:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sti_Hepatitis_B}}</span></td>
+            <td><strong style="font-size: 8px;">Syphilis:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sti_Syphilis}}</span></td>
+            <td><strong style="font-size: 8px;">Herpes:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sti_Herpes}}</span></td>
         </tr>
         <tr>
-            <td><strong>Vaginal:</strong>&nbsp;{{isolate.SB_Vaginal}}</td>
-            <td><strong style="font-size: 9px;">Anal Receptive:</strong>&nbsp;{{isolate.SB_Anal_Receptive}}</td>
-            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Oral Insertive:</strong>&nbsp;{{isolate.SB_Oral_Insertive}}</td>
-            <td><strong>HIV:</strong>&nbsp;{{isolate.Sti_Hiv}}</td>
-            <td><strong>Hepatitis C:</strong>&nbsp;{{isolate.Sti_Hepatitis_C}}</td>
-            <td><strong>NGI:</strong>&nbsp;{{isolate.Sti_NGI}}</td>
-            <td></td>
+            <td colspan="2"><strong style="font-size: 8px;">Vaginal:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.SB_Vaginal}}</span></td>
+            <td colspan="2"><strong style="font-size: 8px;">Oral Insertive:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.SB_Oral_Insertive}}</span></td>
+            <td><strong style="font-size: 8px;">HIV:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sti_Hiv}}</span></td>
+            <td><strong style="font-size: 8px;">Hepa C:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sti_Hepatitis_C}}</span></td>
+            <td><strong style="font-size: 8px;">NGI:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sti_NGI}}</span></td>
+            <td><strong style="font-size: 8px;">Chlamydia:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sti_Chlamydia}}</span></td>
         </tr>
         <tr>
-            <td colspan="4"><strong>Other:</strong>&nbsp;{{isolate.SB_Others}}</td>
-            <td colspan="4"><strong>Other:</strong>&nbsp;{{isolate.Sti_Other}}</td>
+            <td colspan="2"><strong style="font-size: 8px;">Anal Insertive:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.SB_Anal_Insertive}}</span></td>
+            <td colspan="2"><strong style="font-size: 8px;">Anal Receptive:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.SB_Anal_Receptive}}</span></td>
+            <td colspan="2"><strong style="font-size: 8px;">Trichomoniasis:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sti_Trichomoniasis}}</span></td>
+            <td colspan="2"> <strong style="font-size: 8px;">Mycoplasma:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Mycoplasma_genitalium}}</span></td>
+        </tr>
+        <tr>
+            <td colspan="2"><strong style="font-size: 8px;">Sharing of sex toys:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sharing_of_Sex_Toys}}</span></td>
+            <td colspan="2"><strong style="font-size: 8px;">Other:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.SB_Others}}</span></td>
+            <td colspan="2"><strong style="font-size: 8px;">Lymphogranuloma:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Lymphogranuloma_venereum}}</span></td>
+            <td colspan="2"><strong style="font-size: 8px;">Other:</strong>&nbsp;<span style="font-size: 8px;">{{isolate.Sti_Other}}</span></td>
         </tr>
         <tr style="border-top: 1px solid gray;">
             <td colspan="4"><strong>3.6 History of Illicit Drug Use:</strong>&nbsp; {{isolate.Illicit_Drug_Use}}</td>
@@ -252,17 +268,17 @@
             <td><strong>4.2 Symptoms:</strong></td>
         </tr>
         <tr>
-            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong>No symptoms:</strong>&nbsp;{{isolate.Symp_No}}</td>
-            <td colspan="2"><strong>Discharge from vagina:</strong>&nbsp;{{isolate.Symp_Discharge_Vagina}}</td>
-            <td colspan="2"><strong>Oral/pharyngeal discharge:</strong>&nbsp;{{isolate.Symp_Discharge_Oropharyngeal}}</td>
-            <td colspan="2"><strong>Tenderness in testicles:</strong>&nbsp;{{isolate.Symp_Tender_Testicles}}</td>
+            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong style="font-size: 8px;">No symptoms:</strong>&nbsp;{{isolate.Symp_No}}</td>
+            <td colspan="2"><strong style="font-size: 8px;">Discharge from vagina:</strong>&nbsp;{{isolate.Symp_Discharge_Vagina}}</td>
+            <td colspan="2"><strong style="font-size: 8px;">Oral/pharyngeal discharge:</strong>&nbsp;{{isolate.Symp_Discharge_Oropharyngeal}}</td>
+            <td colspan="2"><strong style="font-size: 8px;">Tenderness in testicles:</strong>&nbsp;{{isolate.Symp_Tender_Testicles}}</td>
         </tr>
         <tr>
             
-            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Discharge from urethra:</strong>&nbsp;{{isolate.Symp_Discharge_Urethra}}</td>
-            <td colspan="2"><strong>Discharge from anus:</strong>&nbsp;{{isolate.Symp_Discharge_Anus}}</td>
-            <td colspan="2"><strong>Lower abdomen pain:</strong>&nbsp;{{isolate.Symp_Pain_Lower_Abdomen}}</td>
-            <td colspan="2"><strong>Painful urination:</strong>&nbsp;{{isolate.Symp_Painful_Urination}}</td>
+            <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong style="font-size: 8px;">Discharge from urethra:</strong>&nbsp;{{isolate.Symp_Discharge_Urethra}}</td>
+            <td colspan="2"><strong style="font-size: 8px;">Discharge from anus:</strong>&nbsp;{{isolate.Symp_Discharge_Anus}}</td>
+            <td colspan="2"><strong style="font-size: 8px;">Lower abdomen pain:</strong>&nbsp;{{isolate.Symp_Pain_Lower_Abdomen}}</td>
+            <td colspan="2"><strong style="font-size: 8px;">Painful urination:</strong>&nbsp;{{isolate.Symp_Painful_Urination}}</td>
         </tr>
         <tr>
             <td colspan="2">&nbsp;&nbsp;&nbsp;&nbsp;<strong>Other:</strong>&nbsp;{{isolate.Other}}</td>
@@ -426,7 +442,7 @@
                     <td class="gray-background" colspan="4"><strong style="font-size: 10.5px;">11. RETESTED ANTIMICROBIAL SUSCEPTIBILITY TESTING</strong></td>
                 </tr>
                 <tr>
-                    <td colspan="4" style="border-right: 1px solid gray;"><strong>10.1 Specimen Quality:</strong>&nbsp;&nbsp;{{isolate.Specimen_Quality}}</td>
+                    <td colspan="4"><strong>10.1 Specimen Quality:</strong>&nbsp;&nbsp;{{isolate.Specimen_Quality}}</td>
                     <td colspan="4"><strong>11.1 Retested AST</strong>&nbsp;&nbsp;{{isolate.Retested_Mic}}</td>
                 </tr>
                 <tr style="border-top: 1px solid gray;">
@@ -435,36 +451,54 @@
                 </tr>
                 <tr>
                     
-                    <td class="gray-background" colspan="4" style="text-align: center; border-top: 1px solid gray;"><strong>INTIAL AST</strong></td>
-                    <td class="gray-background" colspan="4" style="text-align: center; border-top: 1px solid gray;"><strong>RETEST AST</strong></td>
+                    <td class="gray-background" colspan="2" style="text-align: center; border-top: 1px solid gray;"><strong>INTIAL AST</strong></td>
+                    <td class="gray-background" colspan="2" style="text-align: center; border-top: 1px solid gray;"><strong>Alert MIC Value</strong></td>
+                    <td class="gray-background" colspan="2" style="text-align: center; border-top: 1px solid gray;"><strong>RETEST AST</strong></td>
+                    <td class="gray-background" colspan="2" style="text-align: center; border-top: 1px solid gray;"><strong>Alert MIC Value</strong></td>
                 </tr>
                        
                 {% for entry in antibiotic_entries %}
                     {% if entry.ab_Disk_value or entry.ab_MIC_value or entry.ab_Retest_MICValue %}
-                        <tr>
-                           
-                            <!-- Disk Column -->
-                            {% if entry.ab_Disk_value %}
-                                <td colspan="4" style="text-align: center; "><strong>{{ entry.ab_Abx }}:</strong>&nbsp;DISK:&nbsp; {{ entry.ab_Disk_value}} {{ entry.ab_Disk_RIS}}</td>
-                            {% else %}
-                                
-                            {% endif %}
-
-                            <!-- MIC Column -->
+                    <tr>
+                        <!-- INITIAL AST -->
+                        <td colspan="2" style="text-align: center; ">
                             {% if entry.ab_MIC_value %}
-                            
-                                <td colspan="4" style="text-align: center;"><strong>{{ entry.ab_Abx }}:</strong> &nbsp;MIC:&nbsp;{{entry.ab_MIC_operand}} {{ entry.ab_MIC_value }} {{ entry.ab_MIC_RIS }}</td>
+                                <strong>{{ entry.ab_Abx }}:</strong> MIC: {{ entry.ab_MIC_operand }} {{ entry.ab_MIC_value }} {{ entry.ab_MIC_RIS }}
+                            {% elif entry.ab_Disk_value %}
+                                <strong>{{ entry.ab_Abx }}:</strong> DISK: {{ entry.ab_Disk_value }} {{ entry.ab_Disk_RIS }}
                             {% else %}
-                                
+                                &nbsp;
                             {% endif %}
-                            <td colspan="4"></td>
-                            <!-- MIC Retest Column -->
+                        </td>
+                    
+                        <!-- INITIAL Alert MIC -->
+                        <td colspan="2" style="text-align: center;">
+                            {% if entry.ab_Alert_val %}
+                                <strong>{{ entry.ab_Alert_val }}</strong>
+                            {% else %}
+                                &nbsp;
+                            {% endif %}
+                        </td>
+                    
+                        <!-- RETEST AST -->
+                        <td colspan="2" style="text-align: center;">
                             {% if entry.ab_Retest_MICValue %}
-                                <td colspan="4" style="text-align: center;"><strong>{{ entry.ab_Retest_Abx }}:</strong> &nbsp;MIC:&nbsp;{{entry.ab_Retest_MIC_operand}} {{ entry.ab_Retest_MICValue }} {{ entry.ab_Retest_MIC_RIS }}</td>
+                                <strong>{{ entry.ab_Retest_Abx }}:</strong> MIC: {{ entry.ab_Retest_MIC_operand }} {{ entry.ab_Retest_MICValue }} {{ entry.ab_Retest_MIC_RIS }}
                             {% else %}
-                             
+                                &nbsp;
                             {% endif %}
-                        </tr>
+                        </td>
+                    
+                        <!-- RETEST Alert MIC -->
+                        <td colspan="2" style="text-align: center;">
+                            {% if entry.ab_Retest_Alert_val %}
+                                <strong>{{ entry.ab_Retest_Alert_val }}</strong>
+                            {% else %}
+                                &nbsp;
+                            {% endif %}
+                        </td>
+                    </tr>
+                    
                     {% endif %}
                 {% endfor %}
 

@@ -41,6 +41,10 @@ def get_existing_value(existing_entries, entry_id, value_type):
             return entry.ab_MIC_operand or ''
         elif value_type == 'retest_mic_operand':
             return entry.ab_Retest_MIC_operand or ''
+        elif value_type == 'alert_mic':
+            return entry.ab_AlertMIC
+        elif value_type == 'retest_alert_mic':
+            return entry.ab_Retest_AlertMIC
     return ''
 
 @register.filter

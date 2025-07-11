@@ -16,7 +16,7 @@
             <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
               <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
                 <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
-                <li class="breadcrumb-item"><a href="{% url 'crf_data' %}">CRF Form</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'raw_data' %}">CRF Form</a></li>
                 <li class="breadcrumb-item"><a href="{% url 'add_breakpoints'%}">Breakpoints</a></li>
                 <li class="breadcrumb-item active" aria-current="page">View All</li>
               </ol>
@@ -61,11 +61,14 @@
                 </form>
               </div>
             </div>
-           
+            <p style="text-align: center; font-weight: bold; color: #2a7ae2;">
+              Note: <span style="font-weight: normal; color: #000; font-size: medium;">For MIC antibiotics, the Susceptible (S) breakpoint should be interpreted as "≤" the indicated value.</span>
+            </p>
           </div>
           <!-- Light table -->
            
           <div class="table-responsive">
+            
             <table class="table">
               <thead class="thead-light">
                 <tr>
@@ -80,6 +83,7 @@
                   <th scope="col">Abx Code</th>
                   <th scope="col">Tier</th>
                   <th scope="col">Antibiotic</th>
+                  <th scope="col">Alert Value</th>
                   <th scope="col">Whonet Abx</th>
                   <th scope="col">R (<=) </th>
                   <th scope="col">I </th>
@@ -105,6 +109,7 @@
                       <td>{{breakpoint.Abx_code}}</td>
                       <td>{{breakpoint.Tier|default_if_none:""}}</td>
                       <td>{{breakpoint.Antibiotic}}</td>
+                      <td>{{breakpoint.Alert_val}}</td>
                       <td>{{breakpoint.Whonet_Abx}}</td>
                       <td>{{breakpoint.R_val|default_if_none:""}}</td>
                       <td>{{breakpoint.I_val|default_if_none:""}}</td>

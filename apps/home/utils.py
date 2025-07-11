@@ -7,7 +7,7 @@ import pandas as pd
 #creating a connection to postgresql
 try:
     # Create SQLAlchemy engine
-    engine = create_engine('postgresql+psycopg2://postgres:admin123@localhost:5433/test_db')
+    engine = create_engine('postgresql+psycopg2://postgres:admin123@localhost:5432/test_db')
 
     # SQL query to fetch data
     breakpoints_query = "SELECT * FROM home_breakpointstable"

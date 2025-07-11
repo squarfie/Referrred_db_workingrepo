@@ -12,11 +12,11 @@
     <div class="header-body">
       <div class="row align-items-center py-4">
         <div class="col-lg-6 col-7">
-          <h6 class="h2 text-white d-inline-block mb-0">EGASP Online</h6>
+          <h6 class="h2 text-white d-inline-block mb-0">Referred Database</h6>
           <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
             <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
               <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
-              <li class="breadcrumb-item"><a href="{% url 'crf_data' %}">CRF Form</a></li>
+              <li class="breadcrumb-item"><a href="{% url 'raw_data' %}">CRF Form</a></li>
               <li class="breadcrumb-item active" aria-current="page">Antibiotic Results</li>
             </ol>
           </nav>
@@ -65,7 +65,7 @@
           <table class="table align-items-center table-flush" style="border-collapse: collapse; margin: 0%; padding: 0%;">
             <thead>
               <tr>
-                <th scope="col">EGASP ID</th>
+                <th scope="col">Accession No.</th>
                 {% for abx_code in abx_codes %}
                   <th scope="col">{{ abx_code }}</th>
                   <th scope="col">{{ abx_code }}_RIS</th>
@@ -73,9 +73,9 @@
               </tr>
             </thead>
             <tbody class="list">
-              {% for egasp_id, values in abx_data.items %}
+              {% for accession_no, values in abx_data.items %}
                 <tr>
-                  <td>{{ egasp_id }}</td>
+                  <td>{{ accession_no }}</td>
                   {% for abx_code in abx_codes %}
                     {% with values|dict_lookup:abx_code as abx_info %}
                       {% if abx_info %}

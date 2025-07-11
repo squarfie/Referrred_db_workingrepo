@@ -16,14 +16,14 @@
             <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
               <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
                 <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
-                <li class="breadcrumb-item"><a href="{% url 'crf_data' %}">CRF Form</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'add_dropdown' %}">Dropdown Form</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'raw_data' %}">Referral Form</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'add_dropdown' %}">Add Dropdown</a></li>
                 <li class="breadcrumb-item active" aria-current="page">View All</li>
               </ol>
             </nav>
           </div>
           <div class="col-lg-6 col-5 text-right">
-            <a class="btn btn-sm btn-neutral" href="{% url 'add_dropdown' %}">Add New</a>
+            <a class="btn btn-sm btn-neutral" href="{% url 'add_dropdown' %}">Add Dropdown</a>
             <a href="#" class="btn btn-sm btn-neutral">Filters</a>
           </div>
         </div>
@@ -64,23 +64,21 @@
               <thead class="thead-light">
                 <tr>
                   <th scope="col" ></th>
-                  <th scope="col" class="sort" data-sort="PTIDCode">ID Code</th>
-                  <th scope="col" class="sort" data-sort="ClinicCode">Clinic Code</th>
-                  <th scope="col" class="sort" data-sort="ClinicName">Clinic</th>
+                  <th scope="col" class="sort" data-sort="SiteCode">Site Code</th>
+                  <th scope="col" class="sort" data-sort="SiteName">Hospital Name</th>
                  
                 </tr>
               </thead>
               <tbody class="list">
-                {% for clinic_item in clinic_items %}
+                {% for site_item in site_items %}
                <tr>
                 
                     
-                    <td><a href="#" class="text-danger delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'delete_dropdown' clinic_item.id %}">
+                    <td><a href="#" class="text-danger delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'delete_dropdown' site_item.id %}">
                       <i class="fa fa-trash" aria-hidden="true"></i> &nbspDelete</a></td>
           
-                <td>{{clinic_item.PTIDCode}}</td>
-                <td>{{clinic_item.ClinicCode}}</td>
-                <td>{{clinic_item.ClinicName}}</td>
+                <td>{{site_item.SiteCode}}</td>
+                <td>{{site_item.SiteName}}</td>
                 
         
               </tr>

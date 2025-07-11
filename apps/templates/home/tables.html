@@ -16,14 +16,14 @@
             <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
               <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
                 <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
-                <li class="breadcrumb-item"><a href="{% url 'crf_data' %}">CRF Form</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'raw_data' %}">Referral Form</a></li>
                 <li class="breadcrumb-item active" aria-current="page">View All</li>
               </ol>
             </nav>
           </div>
      
           <div class="col-lg-6 col-5 text-right">
-            <a class="btn btn-sm btn-neutral" href="{% url 'crf_data' %}">Add New</a>
+            <a class="btn btn-sm btn-neutral" href="{% url 'raw_data' %}">Add New</a>
             <a class="btn btn-sm btn-neutral" href="{% url 'abxentry_view' %}">Antibiotic Results</a>
           </div>
       
@@ -61,7 +61,7 @@
           <!-- Light table -->
           <div class="table-responsive">
             <table class="table align-items-center table-flush" style="border-collapse: collapse; margin: 0%; padding: 0%;">
-              <thead class="thead-light">
+              <thead class="thead-light" style="text-align: center;">
                 <tr>
                   <th scope="col"> EDIT</th>
                   
@@ -76,26 +76,28 @@
               <tbody class="list">
                 {% for isolate in page_obj %}
                <tr>
-                  <td>
+                  <td >
                   <a href="{%url 'edit_data' isolate.id %}" class="text-success"> <i class="fa fa-pencil-alt" aria-hidden="true"></i> &nbspEdit</a> <span style="display: block; line-height: 8px;"><br></span>
                   <a href="#" class="text-danger delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'delete_data' isolate.id %}">
                         <i class="fa fa-trash" aria-hidden="true"></i> &nbspDelete</a> <span style="display: block; line-height: 8px;"><br></span>
                   
                   </td>
                   <td colspan="2">
-                      EGASP ID: &nbsp; <strong>{{isolate.Egasp_Id}}</strong><br> 
-                      UIC PTID: &nbsp;<strong>  {{isolate.Uic_Ptid}}</strong> <br>
-                      Clinic: &nbsp; <strong> {{isolate.Clinic}}</strong>  
+                      Accession No: &nbsp; <strong>{{isolate.AccessionNo}}</strong><br> 
+                      Referral Date: &nbsp;<strong>  {{isolate.Referral_Date}}</strong> <br>
+                      Site: &nbsp; <strong> {{isolate.SiteCode}}</strong>  
                   </td>
                   <td colspan="2">Patient Name: &nbsp; <strong>{{isolate.First_Name}}</strong>&nbsp; <strong>{{isolate.Last_Name}} </strong><br>
+                      Patient ID: &nbsp; <strong>{{isolate.Patient_ID}}</strong> <br>
                       Age: &nbsp; <strong>{{isolate.Age}}</strong> <br>
-                      Sex: &nbsp; <strong>{{isolate.Sex}}</strong>
+                      Sex: &nbsp; <strong>{{isolate.Sex}}</strong> <br>
                   </td>
-                  <td colspan="2">Specimen Date: &nbsp; <strong>{{isolate.Date_Specimen_Collection}}</strong><br>
-                      Specimen Type: &nbsp; <strong>{{isolate.Specimen_Type}}</strong><br>
-                      Specimen Quality: &nbsp; <strong>{{isolate.Specimen_Quality}}</strong>
+                  <td colspan="2">Specimen Date: &nbsp; <strong>{{isolate.Spec_Date}}</strong><br>
+                      Date of Admission: &nbsp; <strong>{{isolate.Date_Admis}}</strong> <br>
+                      Specimen Num: &nbsp; <strong>{{isolate.Spec_Num}}</strong><br>
+                      Specimen Type: &nbsp; <strong>{{isolate.Spec_Type}}</strong><br>
                   </td>
-                  <td>{{isolate.Date_of_Entry|date:"F, d, Y" }}</td>
+                  <td style="text-align: center;">{{isolate.Date_of_Entry|date:"F, d, Y" }}</td>
                   
                   <td>
                     {% for antibiotic_entry in isolate.antibiotic_entries.all %}
@@ -109,9 +111,13 @@
                             {% if antibiotic_entry.ab_MIC_value %}
                                 <strong>{{ antibiotic_entry.ab_Antibiotic }}</strong>  
                                 (MIC: <strong>&nbsp; {{antibiotic_entry.ab_MIC_operand}} {{ antibiotic_entry.ab_MIC_value }}</strong> 
-                                <strong>{{ antibiotic_entry.ab_MIC_RIS }}</strong>)
+                                <strong>{{ antibiotic_entry.ab_MIC_RIS }}</strong>)&nbsp;
+                                {% if antibiotic_entry.ab_AlertMIC %}
+                                 <strong style="color: red;">Alert:</strong>&nbsp; {{ antibiotic_entry.ab_Alert_val }}
+                                {% endif %}
                                 <br>
                             {% endif %}
+                           
                             {% empty %}
                             No Antibiotic Data
                              {% endfor %}
@@ -125,9 +131,13 @@
                             {% if retest_entry.ab_Retest_MICValue %}
                                 <strong>{{ retest_entry.ab_Retest_Antibiotic}}</strong>  
                                 (Retest MIC: <strong>&nbsp; {{retest_entry.ab_Retest_MIC_operand}} {{ retest_entry.ab_Retest_MICValue }}</strong> 
-                                <strong>{{retest_entry.ab_Retest_MIC_RIS }}</strong>)
+                                <strong>{{retest_entry.ab_Retest_MIC_RIS }}</strong>)&nbsp;
+                                {% if retest_entry.ab_Retest_AlertMIC %}
+                                <strong style="color: red;">Alert:</strong> &nbsp; {{retest_entry.ab_Retest_Alert_val}}
+                                {% endif %}
                                 <br>
                             {% endif %}
+                            
                             {% empty %}
                             No Retest Done
                             {% endfor %}

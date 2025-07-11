@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from .models import AntibioticEntry, Egasp_Data
+from .models import AntibioticEntry, Referred_Data
 import re
 
 def determine_ris(value, r_breakpoint, i_breakpoint, s_breakpoint, sdd_breakpoint, is_disk=False):
@@ -44,36 +44,54 @@ def determine_ris(value, r_breakpoint, i_breakpoint, s_breakpoint, sdd_breakpoin
                 s_breakpoint = int(s_breakpoint) if is_disk and s_breakpoint and s_breakpoint.strip().isdigit() else float(s_breakpoint) if s_breakpoint else None
             except ValueError:
                 return None  # Handle cases where the breakpoints cannot be converted
-            if value <= r_breakpoint:
-                return "R"  
-            elif value >= s_breakpoint:
-                return "S" 
+            if is_disk:
+                if value <= r_breakpoint:
+                    return "R"  
+                elif value >= s_breakpoint:
+                    return "S" 
+                else:
+                    return "I"  # Intermediate if value is between the two breakpoints
             else:
-                return "I"  # Intermediate if value is between the two breakpoints
-
+                if value >= r_breakpoint: # if MIC antibiotic
+                    return "R"
+                elif value <= s_breakpoint:
+                    return "S"
+                else:
+                    return "I"
+            
         # If only s_breakpoint is provided, use it for comparison
         if s_breakpoint is not None:
             try:
                  s_breakpoint = int(s_breakpoint) if is_disk and s_breakpoint and s_breakpoint.strip().isdigit() else float(s_breakpoint) if s_breakpoint else None
             except ValueError:
                 return None  # Handle cases where the breakpoint cannot be converted
-            if value >= s_breakpoint:
-                return "S"  
+            if is_disk:
+                if value >= s_breakpoint:
+                    return "S"  
+                else:
+                    return "R"
             else:
-                return "R"
-
+                if value <= s_breakpoint: #if MIC antibiotic
+                    return "S"
+                else:
+                    return "R"
         # If only r_breakpoint is provided, use it for comparison
         if r_breakpoint is not None:
             try:
                  r_breakpoint = int(r_breakpoint) if is_disk and r_breakpoint and r_breakpoint.strip().isdigit() else float(r_breakpoint) if r_breakpoint else None
             except ValueError:
                 return None  # Handle cases where the breakpoint cannot be converted
-            if value <= r_breakpoint:
-                return "R"  
+            if is_disk:
+                if value <= r_breakpoint:
+                    return "R"  
+                else:
+                    return "S"
             else:
-                return "S"
-
-    return None  # Return None if no valid interpretation can be made
+                if value >= r_breakpoint: #if MIC antibiotic
+                    return "R"
+                else:
+                    return "S"
+        return None  # Return None if no valid interpretation can be made
 
 
 @receiver(post_save, sender=AntibioticEntry)
