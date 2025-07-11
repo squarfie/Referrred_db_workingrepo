@@ -92,20 +92,20 @@ def pages(request):
         return redirect('home')  # Redirect to the home view or any other view
 
 # Adding Data view
-@login_required(login_url="/login/")
-def referred_data(request):
+# @login_required(login_url="/login/")
+# def referred_data(request):
     
-    if request.method == "POST":
-        form = Referred_Form(request.POST)
+#     if request.method == "POST":
+#         form = Referred_Form(request.POST)
         
-        if form.is_valid():
-            form.save()
-            return redirect('/show/')
-        else:
-            print(form.errors)
-    else:
-        form = Referred_Form()
-    return render(request,'home/Referred_Form.html', {'form': form})
+#         if form.is_valid():
+#             form.save()
+#             return redirect('/show/')
+#         else:
+#             print(form.errors)
+#     else:
+#         form = Referred_Form()
+#     return render(request,'home/Referred_Form.html', {'form': form})
 
 
 @login_required(login_url="/login/")

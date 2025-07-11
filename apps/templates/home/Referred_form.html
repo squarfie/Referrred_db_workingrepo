@@ -793,7 +793,7 @@ label.form-control-label{
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
-<script>
+<!-- <script>
   // This will generate the Clinic Code, Clinic Name, Egasp ID, and cliniccodegen
   $(document).ready(function() {
     $('#id_PTIDCode').change(function() {
@@ -863,7 +863,85 @@ label.form-control-label{
       }
     });
   });
-  </script>
+  </script> -->
+
+
+  
+  <script>
+    // This will generate the Accession number
+  $(document).ready(function() {
+    $('#id_SiteCode').change(function() {
+      const siteCode = $(this).val();
+      const refDate = $('#Referral_Date').val();
+      const batchNum = $('#BatchNo').val();
+      const refnum = $('#RefNo').val();
+
+      if (siteCode) {
+        $.ajax({
+          url: "{% url 'get_clinic_code' %}",
+          data: { site_code: siteCode },
+          dataType: 'json',
+          success: function(data) {
+            $('#id_SiteName').val(data.site_name);
+            generateAccessionNo(data.siteCode, refDate, batchNum, refnum);
+          },
+          error: function(xhr, status, error) {
+            console.error("Clinic code fetch error:", status, error);
+          }
+        });
+      } else {
+        $('#id_SiteName').val('');
+        $('#id_AccessionNo').val('');
+      }
+    });
+
+    $('#id_RefNo').on('input', function() {
+      const refnum = $(this).val();
+      const siteCode = $('#id_SiteCode').val();
+      const refDate = $('#Referral_Date').val();
+      const batchNum = $('#BatchNo').val();
+
+      generateAccessionNo(siteCode, refDate, batchNum, refnum);
+    });
+
+    function generateAccessionNo(siteCode, refDate, batchNum, refnum) {
+      if (siteCode && refDate && batchNum && refnum) {
+        const dateClean = refDate.replaceAll('-', '');
+        $('#id_AccessionNo').val(siteCode + dateClean + batchNum + refnum);
+      } else {
+        $('#id_AccessionNo').val('');
+      }
+    }
+
+    $('#id_Laboratory_Staff').change(function() {
+      const labStaffId = $(this).val();
+      if (labStaffId) {
+        $.ajax({
+          url: "{% url 'get_Lab_Staff_Details' %}",
+          data: { lab_staff_id: labStaffId },
+          dataType: 'json',
+          success: function(data) {
+            $('#id_ars_contact').val(data.LabStaff_Telnum);
+            $('#id_ars_email').val(data.LabStaff_EmailAdd);
+          },
+          error: function(xhr, status, error) {
+            console.error("Lab staff fetch error:", status, error);
+          }
+        });
+      } else {
+        $('#id_ars_contact').val('');
+        $('#id_ars_email').val('');
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+
 
 <!-- <script>
   document.getElementById('id_PermAdd_same_CurrAdd').addEventListener('change', function () {

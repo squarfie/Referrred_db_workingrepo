@@ -203,7 +203,7 @@ class Final_Data(models.Model):
    
     # Batch Data
     f_Hide=models.BooleanField(default=False)
-    f_Batch_Name=models.CharField(max_length=255, blank=True,)
+    f_Batch_Code=models.CharField(max_length=255, blank=True,)
     f_Date_of_Entry =models.DateTimeField(auto_now_add=True)
     f_RefNo=models.IntegerField(null=True, blank=True) #
     f_BatchNo=models.CharField(max_length=255, blank=True,)
@@ -216,7 +216,7 @@ class Final_Data(models.Model):
     #Patient Information
     f_Patient_ID=models.CharField(max_length=255, blank=True,)
     f_First_Name=models.CharField(max_length=255, blank=True,)
-    Mid_Name=models.CharField(max_length=255, blank=True,)
+    f_Mid_Name=models.CharField(max_length=255, blank=True,)
     f_Last_Name = models.CharField(max_length=255, blank=True)
     f_Date_Birth = models.DateField(null=True, blank=True)
     f_Age = models.CharField(max_length=255, blank=True)
@@ -398,7 +398,7 @@ class AntibioticEntry(models.Model):
     ab_Disk_value = models.IntegerField(blank=True, null=True)
     ab_Disk_RIS = models.CharField(max_length=4, blank=True)
     ab_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
-    ab_MIC_value = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+    ab_MIC_value = models.DecimalField(max_digits=5, decimal_places=3, blank=True, null=True)
     ab_MIC_RIS = models.CharField(max_length=4, blank=True)
     ab_AlertMIC = models.BooleanField(default=False)
     ab_Alert_val = models.CharField(max_length=30, blank=True, null=True, default='')
@@ -415,7 +415,7 @@ class AntibioticEntry(models.Model):
     ab_Retest_DiskValue = models.IntegerField(blank=True, null=True)
     ab_Retest_Disk_RIS = models.CharField(max_length=4, blank=True)
     ab_Retest_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
-    ab_Retest_MICValue = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+    ab_Retest_MICValue = models.DecimalField(max_digits=5, decimal_places=3, blank=True, null=True)
     ab_Retest_MIC_RIS = models.CharField(max_length=4, blank=True)
     ab_Retest_AlertMIC = models.BooleanField(default=False)
     ab_Retest_Alert_val = models.CharField(max_length=30, blank=True, null=True, default='')
@@ -424,6 +424,7 @@ class AntibioticEntry(models.Model):
     ab_Ret_SDD_breakpoint = models.CharField(max_length=10, blank=True, null=True)
     ab_Ret_S_breakpoint = models.CharField(max_length=10, blank=True, null=True)    
 
+    ab_MICJoined = models.CharField(max_length=7, blank=True, null=True)
     def __str__(self):
         return ", ".join([abx.Whonet_Abx for abx in self.ab_breakpoints_id.all()]) 
 

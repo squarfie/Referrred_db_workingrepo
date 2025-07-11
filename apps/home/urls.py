@@ -13,7 +13,7 @@ urlpatterns = [
     # The home page
     path('', views.index, name='home'),
     #the forms
-    path('add/', views.referred_data,name='referred_data'),
+    # path('add/', views.referred_data,name='referred_data'),
     path('raw/', views.raw_data,name='raw_data'),
     path('show/', views.show_data,name='show_data'),
     path('edit/<int:id>/',views.edit_data,name='edit_data'),
