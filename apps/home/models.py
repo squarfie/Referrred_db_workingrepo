@@ -48,8 +48,9 @@ class Referred_Data(models.Model):
     Hide=models.BooleanField(default=False)
     Copy_data=models.BooleanField(default=False)
     Batch_Name=models.CharField(max_length=255, blank=True,)
+    Batch_Code=models.CharField(max_length=255, blank=True,)
     Date_of_Entry =models.DateTimeField(auto_now_add=True)
-    RefNo=models.IntegerField(null=True, blank=True) #
+    RefNo = models.CharField(max_length=20, blank=True, null=True)
     BatchNo=models.CharField(max_length=255, blank=True,)
     AccessionNo=models.CharField(max_length=255, blank=True,)
     AccessionNoGen=models.CharField(max_length=100, blank=True)

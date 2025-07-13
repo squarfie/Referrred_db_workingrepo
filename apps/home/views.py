@@ -29,6 +29,8 @@ from django.utils import timezone
 from django.db.models import Q
 from django.utils.timezone import now
 import csv
+from django.utils.dateparse import parse_date
+from datetime import datetime
 
 # @login_required(login_url="/login/")
 def index(request):
@@ -66,6 +68,8 @@ def index(request):
     return render(request, 'home/index.html', context)
 
 
+
+
 @login_required(login_url="/login/")
 def pages(request):
     context = {}
@@ -91,31 +95,131 @@ def pages(request):
         # Redirect to a different view or render a different template
         return redirect('home')  # Redirect to the home view or any other view
 
-# Adding Data view
-# @login_required(login_url="/login/")
-# def referred_data(request):
-    
-#     if request.method == "POST":
-#         form = Referred_Form(request.POST)
-        
-#         if form.is_valid():
-#             form.save()
-#             return redirect('/show/')
-#         else:
-#             print(form.errors)
-#     else:
-#         form = Referred_Form()
-#     return render(request,'home/Referred_Form.html', {'form': form})
+# Generate Accession Number
 
 
-@login_required(login_url="/login/")
-def raw_data(request):
-    # Fetch only antibiotics where 'Show' is True
-    whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
-    # Fetch only retest-related antibiotics
-    whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
+def accession_data(request):
+    generated_accessions = []  # Store multiple accessions in batch if needed later
+
     if request.method == "POST":
         form = Referred_Form(request.POST)
+
+        if form.is_valid():
+            raw_instance = form.save(commit=False)
+
+            # Build accession number
+            site_code = raw_instance.SiteCode.SiteCode if raw_instance.SiteCode else ''
+            referral_date = raw_instance.Referral_Date.strftime('%m%d%Y') if raw_instance.Referral_Date else ''
+            ref_no = raw_instance.RefNo.zfill(4) if raw_instance.RefNo else ''
+
+            accession_no = f"{site_code}{referral_date}{ref_no}"
+            raw_instance.AccessionNo = accession_no
+
+            # Save only if needed — you may skip raw_instance.save() if this is preview-only
+            raw_instance.save()
+
+            messages.success(request, "Accession number generated.")
+            generated_accessions.append(accession_no)
+
+        else:
+            messages.error(request, "Invalid data. Please check the form.")
+    else:
+        form = Referred_Form()
+
+    return render(
+        request,
+        'home/Batchname_Form.html',
+        {
+            'form': form,
+            'batch_accession_numbers': generated_accessions,  # Match your template
+        }
+    )
+
+
+
+
+def generate_accession(request):
+    site_code = request.GET.get('site_code', '')
+    referral_date = request.GET.get('referral_date', '')
+    ref_no = request.GET.get('ref_no', '')
+
+    # Validate input
+    if not site_code or not referral_date or not ref_no:
+        return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+    # Format referral_date from YYYY-MM-DD to MMDDYYYY
+    try:
+        parts = referral_date.split('-')
+        if len(parts) == 3:
+            formatted_date = f"{parts[1]}{parts[2]}{parts[0]}"
+        else:
+            formatted_date = ''
+    except Exception:
+        formatted_date = ''
+
+    accession_numbers = []
+
+    # Support range in ref_no (e.g., 0001-0002)
+    if '-' in ref_no:
+        try:
+            start, end = ref_no.split('-')
+            start_num = int(start)
+            end_num = int(end)
+            for num in range(start_num, end_num + 1):
+                ref_no_padded = str(num).zfill(4)
+                accession_number = f"{site_code}{formatted_date}{ref_no_padded}"
+                accession_numbers.append(accession_number)
+        except Exception:
+            # If parsing fails, fallback to single accession number
+            ref_no_padded = ref_no.zfill(4)
+            accession_numbers.append(f"{site_code}{formatted_date}{ref_no_padded}")
+    else:
+        ref_no_padded = ref_no.zfill(4)
+        accession_numbers.append(f"{site_code}{formatted_date}{ref_no_padded}")
+
+    return JsonResponse({'accession_numbers': accession_numbers})
+
+
+
+def raw_data(request):
+    whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
+    whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
+
+    accession = request.GET.get('accession')
+    batch_name = request.GET.get('Batch_Name')
+    initial_data = {}
+    for field in ['SiteCode', 'Referral_Date', 'BatchNo', 'RefNo', 'Site_Name', 'Batch_Name', 'AccessionNo']:
+        value = request.GET.get(field)
+        if value:
+            initial_data[field] = value
+    if accession:
+        initial_data['AccessionNo'] = accession
+
+    # Only show navigation for records in the same batch
+    if batch_name:
+        batch_accessions = list(
+            Referred_Data.objects.filter(Batch_Name=batch_name).order_by('AccessionNo').values_list('AccessionNo', flat=True)
+        )
+    else:
+        batch_accessions = []
+
+    prev_accession = next_accession = None
+    if accession and accession in batch_accessions:
+        idx = batch_accessions.index(accession)
+        if idx > 0:
+            prev_accession = batch_accessions[idx - 1]
+        if idx < len(batch_accessions) - 1:
+            next_accession = batch_accessions[idx + 1]
+
+    instance = None
+    if accession:
+        try:
+            instance = Referred_Data.objects.get(AccessionNo=accession)
+        except Referred_Data.DoesNotExist:
+            instance = None
+
+    if request.method == "POST":
+        form = Referred_Form(request.POST, instance=instance)
         if form.is_valid():
             # Save the main form first
             raw_instance = form.save(commit=False)
@@ -127,48 +231,44 @@ def raw_data(request):
             
             # Loop through `whonet_abx_data` to save the related antibiotics
             for entry in whonet_abx_data:
-                abx_code = entry.Whonet_Abx  # `Abx_code` from`BreakpointsTable`
+                abx_code = entry.Whonet_Abx
                 
                 # Get user input values for disk & MIC
                 if entry.Disk_Abx:
-                        disk_value = request.POST.get(f'disk_{entry.id}')
-                        mic_value = ''
-                        mic_operand = ''
-                        alert_mic = False
-
+                    disk_value = request.POST.get(f'disk_{entry.id}')
+                    mic_value = ''
+                    mic_operand = ''
+                    alert_mic = False
                 else:
-                        mic_value = request.POST.get(f'mic_{entry.id}')
-                        mic_operand = request.POST.get(f'mic_operand_{entry.id}')
-                        alert_mic = f'alert_mic_{entry.id}' in request.POST
-                        disk_value = ''
+                    mic_value = request.POST.get(f'mic_{entry.id}')
+                    mic_operand = request.POST.get(f'mic_operand_{entry.id}')
+                    alert_mic = f'alert_mic_{entry.id}' in request.POST
+                    disk_value = ''
 
                 mic_operand = mic_operand if mic_operand else ""
-        # Create the AntibioticEntry object **without** retest values yet
+
                 antibiotic_entry = AntibioticEntry.objects.create(
                     ab_idNum_referred=raw_instance,
                     ab_AccessionNo=raw_instance.AccessionNo,
-                    ab_Antibiotic = entry.Antibiotic,
-                    ab_Abx = entry.Abx_code,
-                    ab_Abx_code=abx_code,  
-                    ab_Disk_value = int(disk_value) if disk_value and disk_value.strip().isdigit() else None,
+                    ab_Antibiotic=entry.Antibiotic,
+                    ab_Abx=entry.Abx_code,
+                    ab_Abx_code=abx_code,
+                    ab_Disk_value=int(disk_value) if disk_value and disk_value.strip().isdigit() else None,
                     ab_MIC_value=mic_value or None,
                     ab_MIC_operand=mic_operand or '',
                     ab_R_breakpoint=entry.R_val or None,
                     ab_I_breakpoint=entry.I_val or None,
                     ab_SDD_breakpoint=entry.SDD_val or None,
                     ab_S_breakpoint=entry.S_val or None,
-                    ab_AlertMIC = alert_mic,
-                    ab_Alert_val = entry.Alert_val if alert_mic else '',
+                    ab_AlertMIC=alert_mic,
+                    ab_Alert_val=entry.Alert_val if alert_mic else '',
                 )
-                # Link to BreakpointsTable
                 antibiotic_entry.ab_breakpoints_id.set([entry])
 
-            # Separate loop for **retest** data so it’s handled correctly
-            # used in asrsl ast results
+            # Handle Retest Data
             for retest in whonet_retest_data:
-                retest_abx_code = retest.Whonet_Abx  # Use retest-specific Abx_code
+                retest_abx_code = retest.Whonet_Abx
 
-                # Get retest values
                 if retest.Disk_Abx:
                     retest_disk_value = request.POST.get(f'retest_disk_{retest.id}')
                     retest_mic_value = ''
@@ -179,44 +279,50 @@ def raw_data(request):
                     retest_mic_operand = request.POST.get(f'retest_mic_operand_{retest.id}')
                     retest_alert_mic = f'retest_alert_mic_{retest.id}' in request.POST
                     retest_disk_value = ''
-                
+
                 retest_mic_operand = retest_mic_operand if retest_mic_operand else ""
-                # Create a new AntibioticEntry **only if values exist**
+
                 if retest_disk_value or retest_mic_value:
                     retest_entry = AntibioticEntry.objects.create(
                         ab_idNum_referred=raw_instance,
-                        ab_Retest_Abx_code=retest_abx_code,  
+                        ab_Retest_Abx_code=retest_abx_code,
                         ab_Retest_DiskValue=int(retest_disk_value) if retest_disk_value and retest_disk_value.strip().isdigit() else None,
                         ab_Retest_MICValue=retest_mic_value or None,
                         ab_Retest_MIC_operand=retest_mic_operand or '',
                         ab_Retest_Antibiotic=retest.Antibiotic,
                         ab_Retest_Abx=retest.Abx_code,
-                        ab_Ret_R_breakpoint = retest.R_val or None,
-                        ab_Ret_I_breakpoint = retest.I_val or None,
-                        ab_Ret_SDD_breakpoint = retest.SDD_val or None,
-                        ab_Ret_S_breakpoint = retest.S_val or None,
-                        ab_Retest_AlertMIC = retest_alert_mic,
-                        ab_Retest_Alert_val = retest.Alert_val if retest_alert_mic else '',
+                        ab_Ret_R_breakpoint=retest.R_val or None,
+                        ab_Ret_I_breakpoint=retest.I_val or None,
+                        ab_Ret_SDD_breakpoint=retest.SDD_val or None,
+                        ab_Ret_S_breakpoint=retest.S_val or None,
+                        ab_Retest_AlertMIC=retest_alert_mic,
+                        ab_Retest_Alert_val=retest.Alert_val if retest_alert_mic else '',
                     )
                     retest_entry.ab_breakpoints_id.set([retest])
 
             messages.success(request, 'Added Successfully')
             return redirect('show_data')
-
         else:
             messages.error(request, 'Error / Adding Unsuccessful')
             print(form.errors)
-
     else:
-        form = Referred_Form()
+        if instance:
+            form = Referred_Form(instance=instance)
+        elif initial_data:
+            form = Referred_Form(initial=initial_data)
+        else:
+            form = Referred_Form()
 
     return render(request, 'home/Referred_form.html', {
         'form': form,
         'whonet_abx_data': whonet_abx_data,
-        'whonet_retest_data': whonet_retest_data
+        'whonet_retest_data': whonet_retest_data,
+        'current_accession': accession,
+        'prev_accession': prev_accession,
+        'next_accession': next_accession,
+        'batch_name': batch_name,
+        # ...existing context...
     })
-
-
 
 
 
@@ -373,11 +479,9 @@ def edit_data(request, id):
 
             messages.success(request, 'Data updated successfully')
             return redirect('/show/')
-
         else:
             messages.error(request, 'There was an error with your form')
             print(form.errors)
-
     else:
         form = Referred_Form(instance=isolates)
 
@@ -740,8 +844,6 @@ def export_breakpoints(request):
     # Return the file as a response
     return FileResponse(open(file_path, "rb"), as_attachment=True, filename="Breakpoints_egasp.xlsx")
 
-
-
 @login_required(login_url="/login/")
 def delete_all_breakpoints(request):
     BreakpointsTable.objects.all().delete()
@@ -1009,6 +1111,110 @@ def delete_cities(request):
 
 @login_required(login_url="/login/")
 def delete_city(request, id):
+    city_items = get_object_or_404(City, pk=id)
+    city_items.delete()
+    return redirect('view_locations')
+
+@login_required(login_url="/login/")
+#download combined table
+def download_combined_table(request):
+    # Fetch all Egasp_Data entries
+    referred_data_entries = Referred_Data.objects.all()
+
+    # Fetch all unique antibiotic codes (both initial and retest), excluding None values
+    unique_antibiotics_raw = (
+        AntibioticEntry.objects
+        .values_list('ab_Abx_code', 'ab_Edit_Abx_code')
+        .distinct()
+    )
+
+    # Flatten and clean the list (avoid duplicates)
+    antibiotic_set = set()
+    for abx_code, retest_code in unique_antibiotics_raw:
+        if abx_code:
+            antibiotic_set.add(abx_code)
+        if retest_code:
+            antibiotic_set.add(retest_code)
+
+    # Sort the antibiotics alphabetically
+    sorted_antibiotics = sorted(antibiotic_set)
+
+    # Create the HTTP response for CSV download
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="combined_table.csv"'
+
+    # Create a CSV writer
+    writer = csv.writer(response)
+
+    # Write the header row
+    header = [
+        'Date_of_Entry','ID_Number','Egasp_Id','PTIDCode','Laboratory','Clinic','Consult_Date','Consult_Type','Client_Type','Uic_Ptid','Clinic_Code','ClinicCodeGen','First_Name','Middle_Name','Last_Name','Suffix','Birthdate','Age','Sex','Gender_Identity','Gender_Identity_Other','Occupation','Civil_Status','Civil_Status_Other','Current_Province','Current_City','Current_Country','Permanent_Province','Permanent_City','Permanent_Country','Nationality','Nationality_Other','Travel_History','Travel_History_Specify','Client_Group','Client_Group_Other','History_Of_Sex_Partner','Nationality_Sex_Partner','Date_of_Last_Sex','Nationality_Sex_Partner_Other','Number_Of_Sex_Partners','Relationship_to_Partners','SB_Urethral','SB_Vaginal','SB_Anal_Insertive','SB_Anal_Receptive','SB_Oral_Insertive','SB_Oral_Receptive','Sharing_of_Sex_Toys','SB_Others','Sti_None','Sti_Hiv','Sti_Hepatitis_B','Sti_Hepatitis_C','Sti_NGI','Sti_Syphilis','Sti_Chlamydia','Sti_Anogenital_Warts','Sti_Genital_Ulcer','Sti_Herpes','Sti_Other','Illicit_Drug_Use','Illicit_Drug_Specify','Abx_Use_Prescribed','Abx_Use_Prescribed_Specify','Abx_Use_Self_Medicated','Abx_Use_Self_Medicated_Specify','Abx_Use_None','Abx_Use_Other','Abx_Use_Other_Specify','Route_Oral','Route_Injectable_IV','Route_Dermal','Route_Suppository','Route_Other','Symp_With_Discharge','Symp_No','Symp_Discharge_Urethra','Symp_Discharge_Vagina','Symp_Discharge_Anus','Symp_Discharge_Oropharyngeal','Symp_Pain_Lower_Abdomen','Symp_Tender_Testicles','Symp_Painful_Urination','Symp_Painful_Intercourse','Symp_Rectal_Pain','Symp_Other','Outcome_Of_Follow_Up_Visit','Prev_Test_Pos','Prev_Test_Pos_Date','Result_Test_Cure_Initial','Result_Test_Cure_Followup','NoTOC_Other_Test','NoTOC_DatePerformed','NoTOC_Result_of_Test','Patient_Compliance_Antibiotics','OtherDrugs_Specify','OtherDrugs_Dosage','OtherDrugs_Route','OtherDrugs_Duration','Gonorrhea_Treatment','Treatment_Outcome','Primary_Antibiotic','Primary_Abx_Other','Secondary_Antibiotic','Secondary_Abx_Other','Notes','Clinic_Staff','Requesting_Physician','Telephone_Number','Email_Address','Date_Accomplished_Clinic','Date_Requested_Clinic','Date_Specimen_Collection','Specimen_Code','Specimen_Type','Specimen_Quality','Date_Of_Gram_Stain','Diagnosis_At_This_Visit','Gram_Neg_Intracellular','Gram_Neg_Extracellular','Gs_Presence_Of_Pus_Cells','Presence_GN_Intracellular','Presence_GN_Extracellular','GS_Pus_Cells','Epithelial_Cells','GS_Date_Released','GS_Others','GS_Negative','Date_Received_in_lab','Positive_Culture_Date','Culture_Result','Species_Identification','Other_species_ID','Specimen_Quality_Cs','Susceptibility_Testing_Date','Retested_Mic','Confirmation_Ast_Date','Beta_Lactamase','PPng','TRng','Date_Released','For_possible_WGS','Date_stocked','Location','abx_code','Laboratory_Staff','Date_Accomplished_ARSP','ars_notes','ars_contact','ars_email',
+
+    ]
+
+    # Add antibiotic-related headers
+    for abx in sorted_antibiotics:
+        is_disk_abx = BreakpointsTable.objects.filter(Whonet_Abx=abx, Disk_Abx=True).exists()
+        if not is_disk_abx:  # Add _Op fields only for MIC antibiotics
+            header.append(f'{abx}_Op')
+        header.append(f'{abx}_Val')
+        header.append(f'{abx}_RIS')
+        if not is_disk_abx:  # Add RT_Op fields only for MIC antibiotics
+            header.append(f'{abx}_RT_Op')
+        header.append(f'{abx}_RT_Val')
+        header.append(f'{abx}_RT_RIS')
+
+    writer.writerow(header)
+
+    # Now write each data row
+    for egasp_entry in referred_data_entries:
+        row = [
+            egasp_entry.Date_of_Entry,egasp_entry.ID_Number,egasp_entry.Egasp_Id,egasp_entry.PTIDCode,egasp_entry.Laboratory,egasp_entry.Clinic,egasp_entry.Consult_Date,egasp_entry.Consult_Type,egasp_entry.Client_Type,egasp_entry.Uic_Ptid,egasp_entry.Clinic_Code,egasp_entry.ClinicCodeGen,egasp_entry.First_Name,egasp_entry.Middle_Name,egasp_entry.Last_Name,egasp_entry.Suffix,egasp_entry.Birthdate,egasp_entry.Age,egasp_entry.Sex,egasp_entry.Gender_Identity,egasp_entry.Gender_Identity_Other,egasp_entry.Occupation,egasp_entry.Civil_Status,egasp_entry.Civil_Status_Other,egasp_entry.Current_Province,egasp_entry.Current_City,egasp_entry.Current_Country,egasp_entry.Permanent_Province,egasp_entry.Permanent_City,egasp_entry.Permanent_Country,egasp_entry.Nationality,egasp_entry.Nationality_Other,egasp_entry.Travel_History,egasp_entry.Travel_History_Specify,egasp_entry.Client_Group,egasp_entry.Client_Group_Other,egasp_entry.History_Of_Sex_Partner,egasp_entry.Nationality_Sex_Partner,egasp_entry.Date_of_Last_Sex,egasp_entry.Nationality_Sex_Partner_Other,egasp_entry.Number_Of_Sex_Partners,egasp_entry.Relationship_to_Partners,egasp_entry.SB_Urethral,egasp_entry.SB_Vaginal,egasp_entry.SB_Anal_Insertive,egasp_entry.SB_Anal_Receptive,egasp_entry.SB_Oral_Insertive,egasp_entry.SB_Oral_Receptive,egasp_entry.Sharing_of_Sex_Toys,egasp_entry.SB_Others,egasp_entry.Sti_None,egasp_entry.Sti_Hiv,egasp_entry.Sti_Hepatitis_B,egasp_entry.Sti_Hepatitis_C,egasp_entry.Sti_NGI,egasp_entry.Sti_Syphilis,egasp_entry.Sti_Chlamydia,egasp_entry.Sti_Anogenital_Warts,egasp_entry.Sti_Genital_Ulcer,egasp_entry.Sti_Herpes,egasp_entry.Sti_Other,egasp_entry.Illicit_Drug_Use,egasp_entry.Illicit_Drug_Specify,egasp_entry.Abx_Use_Prescribed,egasp_entry.Abx_Use_Prescribed_Specify,egasp_entry.Abx_Use_Self_Medicated,egasp_entry.Abx_Use_Self_Medicated_Specify,egasp_entry.Abx_Use_None,egasp_entry.Abx_Use_Other,egasp_entry.Abx_Use_Other_Specify,egasp_entry.Route_Oral,egasp_entry.Route_Injectable_IV,egasp_entry.Route_Dermal,egasp_entry.Route_Suppository,egasp_entry.Route_Other,egasp_entry.Symp_With_Discharge,egasp_entry.Symp_No,egasp_entry.Symp_Discharge_Urethra,egasp_entry.Symp_Discharge_Vagina,egasp_entry.Symp_Discharge_Anus,egasp_entry.Symp_Discharge_Oropharyngeal,egasp_entry.Symp_Pain_Lower_Abdomen,egasp_entry.Symp_Tender_Testicles,egasp_entry.Symp_Painful_Urination,egasp_entry.Symp_Painful_Intercourse,egasp_entry.Symp_Rectal_Pain,egasp_entry.Symp_Other,egasp_entry.Outcome_Of_Follow_Up_Visit,egasp_entry.Prev_Test_Pos,egasp_entry.Prev_Test_Pos_Date,egasp_entry.Result_Test_Cure_Initial,egasp_entry.Result_Test_Cure_Followup,egasp_entry.NoTOC_Other_Test,egasp_entry.NoTOC_DatePerformed,egasp_entry.NoTOC_Result_of_Test,egasp_entry.Patient_Compliance_Antibiotics,egasp_entry.OtherDrugs_Specify,egasp_entry.OtherDrugs_Dosage,egasp_entry.OtherDrugs_Route,egasp_entry.OtherDrugs_Duration,egasp_entry.Gonorrhea_Treatment,egasp_entry.Treatment_Outcome,egasp_entry.Primary_Antibiotic,egasp_entry.Primary_Abx_Other,egasp_entry.Secondary_Antibiotic,egasp_entry.Secondary_Abx_Other,egasp_entry.Notes,egasp_entry.Clinic_Staff,egasp_entry.Requesting_Physician,egasp_entry.Telephone_Number,egasp_entry.Email_Address,egasp_entry.Date_Accomplished_Clinic,egasp_entry.Date_Requested_Clinic,egasp_entry.Date_Specimen_Collection,egasp_entry.Specimen_Code,egasp_entry.Specimen_Type,egasp_entry.Specimen_Quality,egasp_entry.Date_Of_Gram_Stain,egasp_entry.Diagnosis_At_This_Visit,egasp_entry.Gram_Neg_Intracellular,egasp_entry.Gram_Neg_Extracellular,egasp_entry.Gs_Presence_Of_Pus_Cells,egasp_entry.Presence_GN_Intracellular,egasp_entry.Presence_GN_Extracellular,egasp_entry.GS_Pus_Cells,egasp_entry.Epithelial_Cells,egasp_entry.GS_Date_Released,egasp_entry.GS_Others,egasp_entry.GS_Negative,egasp_entry.Date_Received_in_lab,egasp_entry.Positive_Culture_Date,egasp_entry.Culture_Result,egasp_entry.Species_Identification,egasp_entry.Other_species_ID,egasp_entry.Specimen_Quality_Cs,egasp_entry.Susceptibility_Testing_Date,egasp_entry.Retested_Mic,egasp_entry.Confirmation_Ast_Date,egasp_entry.Beta_Lactamase,egasp_entry.PPng,egasp_entry.TRng,egasp_entry.Date_Released,egasp_entry.For_possible_WGS,egasp_entry.Date_stocked,egasp_entry.Location,egasp_entry.abx_code,egasp_entry.Laboratory_Staff,egasp_entry.Date_Accomplished_ARSP,egasp_entry.ars_notes,egasp_entry.ars_contact,egasp_entry.ars_email,
+        ]
+
+        # Fetch related antibiotics for this Egasp entry, sorted
+        antibiotics = AntibioticEntry.objects.filter(ab_idNumber_egasp=egasp_entry).order_by('ab_Abx_code')
+
+        # Create a mapping for quick lookup
+        abx_data = {}
+        for antibiotic in antibiotics:
+            if antibiotic.ab_Abx_code:
+                abx_data[antibiotic.ab_Abx_code] = {
+                    '_Val': antibiotic.ab_Disk_value or antibiotic.ab_MIC_value,
+                    '_RIS': antibiotic.ab_Disk_RIS or antibiotic.ab_MIC_RIS,
+                    '_Op': antibiotic.ab_MIC_operand or '',
+                }
+            if antibiotic.ab_Retest_Abx_code:
+                abx_data[antibiotic.ab_Retest_Abx_code] = {
+                    'RT_Val': antibiotic.ab_Retest_DiskValue or antibiotic.ab_Retest_MICValue,
+                    'RT_RIS': antibiotic.ab_Retest_Disk_RIS or antibiotic.ab_Retest_MIC_RIS,
+                    'RT_Op': antibiotic.ab_Retest_MIC_operand or '',
+                }
+
+        # Now add antibiotic fields in the sorted order
+        for abx in sorted_antibiotics:
+            is_disk_abx = BreakpointsTable.objects.filter(Whonet_Abx=abx, Disk_Abx=True).exists()
+            if abx in abx_data:
+                if not is_disk_abx:  # Add _Op field only for MIC antibiotics
+                    row.append(abx_data[abx].get('_Op', ''))
+                row.append(abx_data[abx].get('_Val', ''))
+                row.append(abx_data[abx].get('_RIS', ''))
+                if not is_disk_abx:  # Add RT_Op field only for MIC antibiotics
+                    row.append(abx_data[abx].get('RT_Op', ''))
+                row.append(abx_data[abx].get('RT_Val', ''))
+                row.append(abx_data[abx].get('RT_RIS', ''))
+            else:
+                # If no data for this antibiotic, add empty columns
+                if not is_disk_abx:
+                    row.append('')  # Empty _Op field
+                row.extend(['', ''])  # Empty _Val and _RIS fields
+                if not is_disk_abx:
+                    row.append('')  # Empty RT_Op field
+                row.extend(['', ''])  # Empty RT_Val and RT_RIS fields
+
+        writer.writerow(row)
+
+    return response
     city_items = get_object_or_404(City, pk=id)
     city_items.delete()
     return redirect('view_locations')

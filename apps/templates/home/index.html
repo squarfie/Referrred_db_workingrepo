@@ -1,5 +1,5 @@
 {% extends 'layouts/base.html' %}
-
+{% load widget_tweaks %}
 
 {% block title %} Dashboard {% endblock title %}
 
@@ -188,7 +188,8 @@
           </div>
         </div>
       </div> -->
-      
+   
+
       <div class="row">
         <div class="col-xl-12">
           <div class="card">
@@ -233,6 +234,7 @@
                     <th scope="col" style="color: white; text-align: center;">Specimen type</th>
                     <th scope="col" style="color: white; text-align: center;">Organism</th>
                     <th></th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody class="list">
@@ -254,6 +256,10 @@
   
                      
                       <td><a href="{%url 'generate_pdf' isolate.id %}" class="text-danger"> <i class="fa fa-print" aria-hidden="true"></i> View/Print </a></td>
+                      <td style="text-align: center;">
+                        <a href="{% url 'edit_data' isolate.id %}" class="btn btn-sm btn-primary">Add Data</a>
+                    </td>
+
   
   
                 </tr>

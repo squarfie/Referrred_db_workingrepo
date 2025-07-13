@@ -150,16 +150,9 @@ label.form-control-label{
               </div>
               </div>
               <div class="col-lg-3">
-                <div class="form-group">
-                  <label class='form-control-label' for='AccessionNoGen'></label>
-                  {{form.AccessionNoGen| append_attr:"class: form-control fontsize"}}
-            
-                </div>
+                <!-- Navigation buttons removed -->
               </div>
-          
-           
-          
-          </div>
+            </div>
        
         </div>
     
@@ -271,7 +264,7 @@ label.form-control-label{
               </div>
               <div class="col-lg-2">
                 <div class="form-group">
-                  <label class='form-control-label' for='Spec_Date'>Specimen Date</label> {{form.Spec_Date| append_attr:"class: form-control" }}
+                  <label class='form-control-label' for='Spec_Date'>Specimen Date</label> {{form.Spec_Date|append_attr:"class: form-control" }}
                 </div>
               </div>
                   <div class="col-lg-2">
@@ -422,7 +415,7 @@ label.form-control-label{
                                   <th scope="col"  >ANTIBIOTIC</th>
                                   <th scope="col" >TEST METHOD</th>
                                   <th scope="col" >WHONET CODE</th>
-                                  <th scope="col" style="text-align: center; width: 98px;">TEST RESULT</th>
+                                  <th scope="col" style="text-align: center; width:98px">TEST RESULT</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -766,7 +759,7 @@ label.form-control-label{
 
 <!-- Specific JS goes HERE --> 
 {% block javascripts %}
-
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script>
   // Get the button (back to top button)
   let mybutton = document.getElementById("myBtn");
@@ -791,140 +784,23 @@ label.form-control-label{
 </script>
 
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-
-<!-- <script>
-  // This will generate the Clinic Code, Clinic Name, Egasp ID, and cliniccodegen
-  $(document).ready(function() {
-    $('#id_PTIDCode').change(function() {
-      const ptidCode = $(this).val();
-      const idNumber = $('#id_ID_Number').val(); // Assuming the ID number input has this ID
-      if (ptidCode) {
-        $.ajax({
-          url: "{% url 'get_clinic_code' %}",  // Define this URL in your urls.py
-          data: {'ptid_code': ptidCode},
-          dataType: 'json',
-          success: function(data) {
-            $('#id_Clinic_Code').val(data.clinic_code);  // Update the Clinic_Code field
-            $('#id_Clinic').val(data.clinic_name);  // Update the Clinic field with the correct key
-            generateEgaspId(ptidCode, idNumber); // Generate Egasp ID & clinic code with current values
-            generateClinicCodeGen(data.clinic_code, idNumber); // Generate cliniccodegen
-          }
-        });
-      } else {
-        $('#id_Clinic_Code').val('');  // Clear Clinic_Code if no PTIDCode is selected
-        $('#id_Clinic').val('');  // Clear Clinic if no PTIDCode is selected
-        $('#id_Egasp_Id').val(''); // Clear Egasp ID if no PTIDCode is selected
-        $('#id_cliniccodegen').val(''); // Clear cliniccodegen if no PTIDCode is selected
-      }
-    });
-  
-    // Listen for changes in the ID number field to update Egasp ID
-    $('#id_ID_Number').on('input', function() {
-      const idNumber = $(this).val();
-      const ptidCode = $('#id_PTIDCode').val(); // Get the currently selected PTIDCode
-      const clinicCode = $('#id_Clinic_Code').val(); // Get the currently selected Clinic_Code
-      generateEgaspId(ptidCode, idNumber); // Pass the ptidCode and idNumber
-      generateClinicCodeGen(clinicCode, idNumber); // Generate cliniccodegen
-    });
-  
-    function generateEgaspId(ptidCode, idNumber) {
-      if (ptidCode && idNumber) {
-        $('#id_Egasp_Id').val(ptidCode + idNumber); // Generate Egasp ID in the format PTIDCode-IDNumber
-      } else {
-        $('#id_Egasp_Id').val(''); // Clear Egasp ID if either value is missing
-      }
-    }
-  
-    function generateClinicCodeGen(clinicCode, idNumber) {
-      if (clinicCode && idNumber) {
-        $('#id_ClinicCodeGen').val(clinicCode + '-' + idNumber); // Set cliniccodegen in the format ClinicCode-IDNumber
-      } else {
-        $('#id_ClinicCodeGen').val(''); // Clear cliniccodegen if either value is missing
-      }
-    }
-  
-    // Update ars_contact and ars_email when Clinic_Staff is selected
-    $('#id_Laboratory_Staff').change(function() {
-      const labStaffId = $(this).val();
-      if (labStaffId) {
-        $.ajax({
-          url: "{% url 'get_Lab_Staff_Details' %}",  // Define this URL in your urls.py
-          data: {'lab_staff_id': labStaffId},
-          dataType: 'json',
-          success: function(data) {
-            $('#id_ars_contact').val(data.LabStaff_Telnum);  // Update the ars_contact field
-            $('#id_ars_email').val(data.LabStaff_EmailAdd);  // Update the ars_email field
-          }
-        });
-      } else {
-        $('#id_ars_contact').val('');  // Clear ars_contact if no Clinic_Staff is selected
-        $('#id_ars_email').val('');  // Clear ars_email if no Clinic_Staff is selected
-      }
-    });
-  });
-  </script> -->
 
 
-  
-  <script>
-    // This will generate the Accession number
-  $(document).ready(function() {
-    $('#id_SiteCode').change(function() {
-      const siteCode = $(this).val();
-      const refDate = $('#Referral_Date').val();
-      const batchNum = $('#BatchNo').val();
-      const refnum = $('#RefNo').val();
-
-      if (siteCode) {
-        $.ajax({
-          url: "{% url 'get_clinic_code' %}",
-          data: { site_code: siteCode },
-          dataType: 'json',
-          success: function(data) {
-            $('#id_SiteName').val(data.site_name);
-            generateAccessionNo(data.siteCode, refDate, batchNum, refnum);
-          },
-          error: function(xhr, status, error) {
-            console.error("Clinic code fetch error:", status, error);
-          }
-        });
-      } else {
-        $('#id_SiteName').val('');
-        $('#id_AccessionNo').val('');
-      }
-    });
-
-    $('#id_RefNo').on('input', function() {
-      const refnum = $(this).val();
-      const siteCode = $('#id_SiteCode').val();
-      const refDate = $('#Referral_Date').val();
-      const batchNum = $('#BatchNo').val();
-
-      generateAccessionNo(siteCode, refDate, batchNum, refnum);
-    });
-
-    function generateAccessionNo(siteCode, refDate, batchNum, refnum) {
-      if (siteCode && refDate && batchNum && refnum) {
-        const dateClean = refDate.replaceAll('-', '');
-        $('#id_AccessionNo').val(siteCode + dateClean + batchNum + refnum);
-      } else {
-        $('#id_AccessionNo').val('');
-      }
-    }
-
-    $('#id_Laboratory_Staff').change(function() {
+<script>
+  $(document).ready(function () {
+    // ✅ Keep: Update lab staff contact info based on dropdown
+    $('#id_Laboratory_Staff').change(function () {
       const labStaffId = $(this).val();
       if (labStaffId) {
         $.ajax({
           url: "{% url 'get_Lab_Staff_Details' %}",
           data: { lab_staff_id: labStaffId },
           dataType: 'json',
-          success: function(data) {
+          success: function (data) {
             $('#id_ars_contact').val(data.LabStaff_Telnum);
             $('#id_ars_email').val(data.LabStaff_EmailAdd);
           },
-          error: function(xhr, status, error) {
+          error: function (xhr, status, error) {
             console.error("Lab staff fetch error:", status, error);
           }
         });
@@ -933,12 +809,58 @@ label.form-control-label{
         $('#id_ars_email').val('');
       }
     });
+
+    // ❌ Commented out: Auto-generation of accession number in Referred Form
+    /*
+    $('#id_SiteCode').change(function () {
+      const siteCode = $(this).val();
+      const refDate = $('#id_Referral_Date').val();
+      const batchNum = $('#id_BatchNo').val();
+      const refnum = $('#id_RefNo').val();
+
+      if (siteCode) {
+        $.ajax({
+          url: "{% url 'get_clinic_code' %}",
+          data: { site_code: siteCode },
+          dataType: 'json',
+          success: function (data) {
+            $('#id_Site_Name').val(data.site_name);
+            generateAccessionNo(siteCode, refDate, batchNum, refnum);
+          },
+          error: function (xhr, status, error) {
+            console.error("Clinic code fetch error:", status, error);
+          }
+        });
+      } else {
+        $('#id_Site_Name').val('');
+        $('#id_AccessionNo').val('');
+      }
+    });
+
+    $('#id_RefNo, #id_Referral_Date, #id_BatchNo').on('input change', function () {
+      const refnum = $('#id_RefNo').val();
+      const siteCode = $('#id_SiteCode').val();
+      const refDate = $('#id_Referral_Date').val();
+      const batchNum = $('#id_BatchNo').val();
+
+      generateAccessionNo(siteCode, refDate, batchNum, refnum);
+    });
+
+    function generateAccessionNo(siteCode, refDate, batchNum, refnum) {
+      if (siteCode && refDate && batchNum && refnum) {
+        const parts = refDate.split('-');
+        let dateClean = '';
+        if (parts.length === 3) {
+          dateClean = parts[1] + parts[2] + parts[0]; // MMDDYYYY
+        }
+        $('#id_Batch_Name').val(siteCode + dateClean + batchNum + refnum);
+      } else {
+        $('#id_Batch_Name').val('');
+      }
+    }
+    */
   });
 </script>
-
-
-
-
 
 
 
@@ -1005,8 +927,6 @@ label.form-control-label{
   document.getElementById('id_Birthdate').addEventListener('change', calculateAge);
   document.getElementById('id_Consult_Date').addEventListener('change', calculateAge);
 </script>
-
-
 
 
   

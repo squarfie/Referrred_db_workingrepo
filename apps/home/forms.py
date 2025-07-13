@@ -46,9 +46,11 @@ class Referred_Form(forms.ModelForm):
             
         def __init__(self, *args, **kwargs):
             super(Referred_Form, self).__init__(*args, **kwargs)
-            self.fields['Site_Name'].widget.attrs['readonly'] = True  # Make Clinic read-only
-            self.fields['AccessionNo'].widget.attrs['readonly'] = True  # Make Clinic read-only
+            self.fields['Site_Name'].widget.attrs['readonly'] = True  # Site_Name read-only
+            self.fields['AccessionNo'].widget.attrs['readonly'] = True  # AccessionNo read-only
+            self.fields['Batch_Name'].widget.attrs['readonly'] = True  # Batch_Name read-only
             self.fields['AccessionNoGen'].widget = forms.HiddenInput()
+            self.fields['Batch_Code'].widget = forms.HiddenInput()
             
 
 def __init__(self, *args, **kwargs):

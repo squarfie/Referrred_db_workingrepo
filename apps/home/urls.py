@@ -13,8 +13,10 @@ urlpatterns = [
     # The home page
     path('', views.index, name='home'),
     #the forms
-    # path('add/', views.referred_data,name='referred_data'),
-    path('raw/', views.raw_data,name='raw_data'),
+    path('add/', views.accession_data,name='accession_data'),
+    path('raw/', views.raw_data,name='raw_data'),  ## for batch code
+    path('generate-accession/', views.generate_accession, name='generate_accession'),
+    path('raw/<str:accession>/', views.raw_data, name='raw_data'),
     path('show/', views.show_data,name='show_data'),
     path('edit/<int:id>/',views.edit_data,name='edit_data'),
     path('delete/<int:id>/',views.delete_data,name='delete_data'),
