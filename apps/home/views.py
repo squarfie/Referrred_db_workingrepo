@@ -139,7 +139,7 @@ def accession_data(request):
 
 
 def generate_accession(request):
-    site_code = request.GET.get('site_code', '')
+    site_code = request.GET.get('site_code', '').upper()
     referral_date = request.GET.get('referral_date', '')
     ref_no = request.GET.get('ref_no', '')
 
@@ -147,15 +147,11 @@ def generate_accession(request):
     if not site_code or not referral_date or not ref_no:
         return JsonResponse({'error': 'Missing required fields'}, status=400)
 
-    # Format referral_date from YYYY-MM-DD to MMDDYYYY
+    # Format year from referral_date (YY format)
     try:
-        parts = referral_date.split('-')
-        if len(parts) == 3:
-            formatted_date = f"{parts[1]}{parts[2]}{parts[0]}"
-        else:
-            formatted_date = ''
-    except Exception:
-        formatted_date = ''
+        year_short = datetime.strptime(referral_date, '%Y-%m-%d').strftime('%y')
+    except ValueError:
+        return JsonResponse({'error': 'Invalid referral date format. Expected YYYY-MM-DD.'}, status=400)
 
     accession_numbers = []
 
@@ -167,17 +163,20 @@ def generate_accession(request):
             end_num = int(end)
             for num in range(start_num, end_num + 1):
                 ref_no_padded = str(num).zfill(4)
-                accession_number = f"{site_code}{formatted_date}{ref_no_padded}"
+                accession_number = f"{year_short}ARS_{site_code}{ref_no_padded}"
                 accession_numbers.append(accession_number)
         except Exception:
-            # If parsing fails, fallback to single accession number
             ref_no_padded = ref_no.zfill(4)
-            accession_numbers.append(f"{site_code}{formatted_date}{ref_no_padded}")
+            accession_numbers.append(f"{year_short}ARS_{site_code}{ref_no_padded}")
     else:
         ref_no_padded = ref_no.zfill(4)
-        accession_numbers.append(f"{site_code}{formatted_date}{ref_no_padded}")
+        accession_numbers.append(f"{year_short}ARS_{site_code}{ref_no_padded}")
 
     return JsonResponse({'accession_numbers': accession_numbers})
+
+
+
+
 
 
 
@@ -186,7 +185,6 @@ def raw_data(request):
     whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
 
     accession = request.GET.get('accession')
-    batch_name = request.GET.get('Batch_Name')
     initial_data = {}
     for field in ['SiteCode', 'Referral_Date', 'BatchNo', 'RefNo', 'Site_Name', 'Batch_Name', 'AccessionNo']:
         value = request.GET.get(field)
@@ -194,22 +192,6 @@ def raw_data(request):
             initial_data[field] = value
     if accession:
         initial_data['AccessionNo'] = accession
-
-    # Only show navigation for records in the same batch
-    if batch_name:
-        batch_accessions = list(
-            Referred_Data.objects.filter(Batch_Name=batch_name).order_by('AccessionNo').values_list('AccessionNo', flat=True)
-        )
-    else:
-        batch_accessions = []
-
-    prev_accession = next_accession = None
-    if accession and accession in batch_accessions:
-        idx = batch_accessions.index(accession)
-        if idx > 0:
-            prev_accession = batch_accessions[idx - 1]
-        if idx < len(batch_accessions) - 1:
-            next_accession = batch_accessions[idx + 1]
 
     instance = None
     if accession:
@@ -221,19 +203,15 @@ def raw_data(request):
     if request.method == "POST":
         form = Referred_Form(request.POST, instance=instance)
         if form.is_valid():
-            # Save the main form first
             raw_instance = form.save(commit=False)
             lab_staff = form.cleaned_data.get('Laboratory_Staff')
             if lab_staff:
                 raw_instance.ars_contact = lab_staff.LabStaff_Telnum
                 raw_instance.ars_email = lab_staff.LabStaff_EmailAdd
             raw_instance.save()
-            
-            # Loop through `whonet_abx_data` to save the related antibiotics
+
             for entry in whonet_abx_data:
                 abx_code = entry.Whonet_Abx
-                
-                # Get user input values for disk & MIC
                 if entry.Disk_Abx:
                     disk_value = request.POST.get(f'disk_{entry.id}')
                     mic_value = ''
@@ -265,10 +243,8 @@ def raw_data(request):
                 )
                 antibiotic_entry.ab_breakpoints_id.set([entry])
 
-            # Handle Retest Data
             for retest in whonet_retest_data:
                 retest_abx_code = retest.Whonet_Abx
-
                 if retest.Disk_Abx:
                     retest_disk_value = request.POST.get(f'retest_disk_{retest.id}')
                     retest_mic_value = ''
@@ -318,11 +294,8 @@ def raw_data(request):
         'whonet_abx_data': whonet_abx_data,
         'whonet_retest_data': whonet_retest_data,
         'current_accession': accession,
-        'prev_accession': prev_accession,
-        'next_accession': next_accession,
-        'batch_name': batch_name,
-        # ...existing context...
     })
+
 
 
 

@@ -225,7 +225,7 @@ label.form-control-label{
           <td>{{ forloop.counter }}</td>
           <td>{{ acc }}</td>
           <td>
-            <a href="{% url 'raw_data' %}?accession={{ acc }}" class="btn btn-sm btn-info" style="display:inline-block;">Go to Referred Form</a>
+            <a href="{% url 'raw_data' %}?accession={{ acc }}" class="btn btn-sm btn-info" style="display:inline-block;">Add Data</a>
           </td>
         </tr>
       {% endfor %}
@@ -332,7 +332,7 @@ label.form-control-label{
         if (parts.length === 3) {
           dateClean = parts[1] + parts[2] + parts[0]; // MMDDYYYY
         }
-        $('#id_Batch_Name').val(siteCode + dateClean + batchNum + refnum);
+        $('#id_Batch_Name').val(siteCode + '_' + dateClean + '_' + batchNum + '_' + refnum);
       } else {
         $('#id_Batch_Name').val('');
       }
