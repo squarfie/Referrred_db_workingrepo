@@ -109,15 +109,19 @@ label.form-control-label{
     <div class="col-xl-12 order-xl-1">
       <form method="POST" action="{% url 'accession_data' %}" id="accession-form">
         {% csrf_token %}
-      <div class="card" >
-        <div class="card-header" id="mytop">
-          <div class="row align-items-center">
+        <div class="row">
+        
+        
+          <div class="col-lg-8">
+          <div class="card" >
+            <div class="card-header" id="mytop">
+              <div class="row align-items-center">
             <!-- <div class="col-8">
                <h3 class="mb-0">SURVEILLANCE SITE INFORMATION </h3> 
             </div> -->
-            <div class="col-12">
-              <div class="row">
-                <div class="col-lg-3">
+            <div class="col-lg-12">
+                <div class="row">
+                <div class="col-lg-6">
                   <div class="form-group" >
                       <label class="form-control-label" for="SiteCode">SITE CODE</label>
                       <div class="d-flex align-items-center">
@@ -128,117 +132,114 @@ label.form-control-label{
                       </div>
                   </div>
                 </div>
-                <div class="col-lg-3">
+                <div class="col-lg-6">
                   <div class="form-group" >
                   <label class="form-control-label" for=" Referral_Date">Referral Date</label>
                   {{form.Referral_Date| append_attr:"class: form-control " }}
                   </div>
                 </div>
-               <div class="col-lg-3">
+              </div>
+              <div class="row">
+                  <div class="col-lg-6">
                   <div class="form-group" >
                   <label class="form-control-label" for="BatchNo">Batch No</label>
                   {{form.BatchNo| append_attr:"class: form-control " }}
                   </div>
                 </div>
-                <div class="col-lg-3">
+                <div class="col-lg-6">
                   <div class="form-group" >
                   <label class="form-control-label" for="RefNo">Reference No</label>
                   {{form.RefNo| append_attr:"class: form-control " }}
                   </div>
                 </div>
-              </div>
-             
-           
-<br>
-                   
-            <div class="row">
-                  <div class="col-lg-4">
-                  <div class="form-group">
-                    <label class='form-control-label' for='Site_Name'>Site Name</label>
-                    {{form.Site_Name| append_attr:"class: form-control fontsize"}}
-                  </div>
-                  </div>
-
-               <div class="col-lg-4">
+              </div>   
+<br>          
+              <div class="row">
+                    <div class="col-lg-6">
                       <div class="form-group">
-                        <label class='form-control-label' for='Batch_Name'>Batch Name</label>
-                        {{form.Batch_Name| append_attr:"class: form-control fontsize"}}
+                        <label class='form-control-label' for='Site_Name'>Site Name</label>
+                        {{form.Site_Name| append_attr:"class: form-control fontsize"}}
                       </div>
                     </div>
-                <div class="col-lg-4">
+                      <div class="col-lg-6">
+                        <div class="form-group">
+                          <label class='form-control-label' for='Batch_Name'>Batch Name</label>
+                          {{form.Batch_Name| append_attr:"class: form-control fontsize"}}
+                        </div>
+                      </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+          <div class="col-lg-4">
+          <div class="card" >
+        <div class="card-header" id="mytop">
+          <div class="row align-items-center">
+            <!-- <div class="col-8">
+               <h3 class="mb-0">SURVEILLANCE SITE INFORMATION </h3> 
+            </div> -->
+            <div class="col-12">
+          <div class="row">
+                <div class="col-lg-12">
                   <div class="form-group">
                   <div class="mt-4">
                   <button type="button" class="btn btn-info" id="generate-accession-btn">Generate Accession</button>
                 </div>
+                </div>  
                 <!-- Add this block for displaying accession number result -->
-                <div id="accession-result" style="display:none;">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Accession No</th>
-                      </tr>
-                    </thead>
-                    <tbody id="accession-table-body">
-                      <!-- JS will fill this -->
-                    </tbody>
-                  </table>
+                 <div class="row">
+                      <div id="accession-result" style="display:none;">
+                            <table class="table">
+                              <thead>
+                                <tr>
+                                  <th>#</th>
+                                  <th>Accession No</th>
+                                  <th>Action</th>
+                                </tr>
+                              </thead>
+                              <tbody id="accession-table-body">
+                                <!-- JS fills this -->
+                              </tbody>
+                            </table>
+                          </div>
+                  {% if batch_accession_numbers %}
+                    <div class="mt-12">
+                      <table class="table">
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>Accession No</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                        {% for acc in batch_accession_numbers %}
+                          <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ acc }}</td>
+                            <td>
+                              <a href="{% url 'raw_data' %}?accession={{ acc }}" class="btn btn-sm btn-info" style="display:inline-block;">Add Data</a>
+                            </td>
+                          </tr>
+                        {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  {% endif %}
+                  </div>
+                  </div>
+                  </div> 
                 </div>
-                
-            </div>
-
-            </div>  
-         
-            </div>
-
+              </div>
+              </div>
+              </div>
+            </div> <!--card-->
+          </div>
+        </div>
         </form> <!---end of form with post method-->  
-
-<div id="accession-result" style="display:none;">
-  <table class="table">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Accession No</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="accession-table-body">
-      <!-- JS fills this -->
-    </tbody>
-  </table>
-</div>
-
-
-{% if batch_accession_numbers %}
-  <div class="mt-4">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Accession No</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for acc in batch_accession_numbers %}
-        <tr>
-          <td>{{ forloop.counter }}</td>
-          <td>{{ acc }}</td>
-          <td>
-            <a href="{% url 'raw_data' %}?accession={{ acc }}" class="btn btn-sm btn-info" style="display:inline-block;">Add Data</a>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-{% endif %}
-
-      </div> <!--card-->
-        
-      
-      
-      
       <div class="col-12 text-left">
           <div class="col-6">
           <!-- <button class="btn btn-sm btn-primary" onclick="topFunction()" id="myBtn" title="Go to top">Go to Top</button> -->
@@ -246,6 +247,12 @@ label.form-control-label{
            <button type="button" onclick="topFunction()" id="myBtn" title="gototop" class="btn btn-sm btn-primary"> Back to top</button>
           </div>
         </div>
+
+
+
+
+
+
       </div>
     </div>
 
@@ -400,7 +407,7 @@ label.form-control-label{
                   <td>${acc}</td>
                   <td>
                     <a href="${rawDataUrl}?${params}" class="btn btn-sm btn-info">
-                      Go to Referred Form
+                      Add Details
                     </a>
                   </td>
                 </tr>
