@@ -1,3 +1,5 @@
 # REFERRED DB
 
-This project is based on the EGASP project structure and logic.
+This project follows the structure and logic of the EGASP project.
+
+# Please note: This system is still in development and not yet ready for use. !!!!

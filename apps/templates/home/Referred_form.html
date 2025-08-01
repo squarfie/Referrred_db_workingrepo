@@ -126,11 +126,12 @@ label.form-control-label{
                   </div>
                 </div>
               <div class="col-4 text-right">
-                <a href="{% url 'raw_data' %}" class="btn btn-sm btn-primary">Add New</a>
+                <button class="btn btn-sm btn-success" onclick="history.back()">Back </button>
+                <a href="{% url 'accession_data' %}" class="btn btn-sm btn-primary">New Batch</a>
                 <button type="submit" class="btn btn-sm btn-primary">Save</button>
                 <a href="{% url 'show_data' %}" class="btn btn-sm btn-primary">View / Print</a>  
                 <a href="{% url 'add_breakpoints' %}" class="btn btn-warning btn-sm">Breakpoints</a>
-                <button class="btn btn-sm btn-success" onclick="history.back()">Back </button>
+                
               </div>
               </div>
              

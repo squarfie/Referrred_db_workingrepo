@@ -52,7 +52,7 @@ class Referred_Data(models.Model):
     Date_of_Entry =models.DateTimeField(auto_now_add=True)
     RefNo = models.CharField(max_length=20, blank=True, null=True)
     BatchNo=models.CharField(max_length=255, blank=True,)
-    AccessionNo=models.CharField(max_length=255, blank=True,)
+    AccessionNo=models.CharField(max_length=255, blank=True, unique=True)
     AccessionNoGen=models.CharField(max_length=100, blank=True)
     Default_Year=models.DateField(null=True, blank=True)
     SiteCode=models.CharField(max_length=255, blank=True,) #
