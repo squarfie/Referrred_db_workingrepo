@@ -50,7 +50,7 @@ class Referred_Form(forms.ModelForm):
             self.fields['AccessionNo'].widget.attrs['readonly'] = True  # AccessionNo read-only
             self.fields['Batch_Name'].widget.attrs['readonly'] = True  # Batch_Name read-only
             self.fields['AccessionNoGen'].widget = forms.HiddenInput()
-            self.fields['Batch_Code'].widget = forms.HiddenInput()
+            # self.fields['Batch_Code'].widget = forms.HiddenInput()
             
 
 def __init__(self, *args, **kwargs):
@@ -168,3 +168,4 @@ class ContactForm(forms.ModelForm):
 #         widgets = {
 #             'file': forms.FileInput(attrs={'class': 'form-control'})
 #         }
+

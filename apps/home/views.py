@@ -97,8 +97,6 @@ def pages(request):
         return redirect('home')  # Redirect to the home view or any other view
 
 # Generate Accession Number
-
-
 def accession_data(request):
     generated_accessions = []  # Store multiple accessions in batch if needed later
 
@@ -107,14 +105,21 @@ def accession_data(request):
 
         if form.is_valid():
             raw_instance = form.save(commit=False)
+           
 
             # Build accession number
             site_code = raw_instance.SiteCode.SiteCode if raw_instance.SiteCode else ''
             referral_date = raw_instance.Referral_Date.strftime('%m%d%Y') if raw_instance.Referral_Date else ''
             ref_no = raw_instance.RefNo.zfill(4) if raw_instance.RefNo else ''
-
+            batch_no = raw_instance.BatchNo if raw_instance.BatchNo else ''
+            site_name = raw_instance.Site_NameGen
+            
             accession_no = f"{site_code}{referral_date}{ref_no}"
+            batch_code = f"{site_code}_{referral_date}_{batch_no}_{ref_no}"
+            
             raw_instance.AccessionNo = accession_no
+            raw_instance.Batch_Code = batch_code
+            raw_instance.Site_Name = site_name
 
             # Save only if needed — you may skip raw_instance.save() if this is preview-only
             raw_instance.save()
@@ -122,6 +127,7 @@ def accession_data(request):
             messages.success(request, "Accession number generated.")
             generated_accessions.append(accession_no)
 
+            
         else:
             messages.error(request, "Invalid data. Please check the form.")
     else:
@@ -133,9 +139,9 @@ def accession_data(request):
         {
             'form': form,
             'batch_accession_numbers': generated_accessions,  # Match your template
+           
         }
     )
-
 
 
 
@@ -177,17 +183,22 @@ def accession_data(request):
 
 
 
-#automatically save the generated accession number in the database
+#automatically save the generated accession number in the database 
 def generate_accession(request):
     site_code = request.GET.get('site_code', '').upper()
     referral_date = request.GET.get('referral_date', '')
     ref_no = request.GET.get('ref_no', '')
+    batch_no = request.GET.get('batch_no','')
+    site_name = request.GET.get('site_name','')
 
     if not site_code or not referral_date or not ref_no:
         return JsonResponse({'error': 'Missing required fields'}, status=400)
 
     try:
-        year_short = datetime.strptime(referral_date, '%Y-%m-%d').strftime('%y')
+        referral_date_obj = datetime.strptime(referral_date, '%Y-%m-%d')  # Convert string to datetime
+        year_short = referral_date_obj.strftime('%y')       # e.g., '25'
+        year_long = referral_date_obj.strftime('%m%d%Y')   
+
     except ValueError:
         return JsonResponse({'error': 'Invalid referral date format. Expected YYYY-MM-DD.'}, status=400)
 
@@ -207,15 +218,20 @@ def generate_accession(request):
     for num in ref_numbers:
         ref_no_padded = str(num).zfill(4)
         accession_number = f"{year_short}ARS_{site_code}{ref_no_padded}"
+        batch_codegen = f"{site_code}_{year_long}{batch_no}_{ref_no}"
+        
 
         # Try to create and save the instance
         if not Referred_Data.objects.filter(AccessionNo=accession_number).exists():
+            
             try:
                 Referred_Data.objects.create(
                     AccessionNo=accession_number,
                     SiteCode=site_code,
                     Referral_Date=referral_date,
-                    RefNo=ref_no_padded
+                    RefNo=ref_no_padded,
+                    Batch_Code=batch_codegen,
+                    Site_Name = site_name
                     # You can also set other default fields here
                 )
                 accession_numbers.append(accession_number)
@@ -370,8 +386,9 @@ def raw_data(request):
     whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
 
     accession = request.GET.get('accession')
+
     initial_data = {}
-    for field in ['SiteCode', 'Referral_Date', 'BatchNo', 'RefNo', 'Site_Name', 'Batch_Name', 'AccessionNo']:
+    for field in ['SiteCode', 'Referral_Date', 'BatchNo', 'RefNo', 'Site_NameGen', 'Batch_Name', 'AccessionNo']:
         value = request.GET.get(field)
         if value:
             initial_data[field] = value
@@ -402,6 +419,7 @@ def raw_data(request):
         if form.is_valid():
             raw_instance = form.save(commit=False)
             lab_staff = form.cleaned_data.get('Laboratory_Staff')
+
             if lab_staff:
                 raw_instance.ars_contact = lab_staff.LabStaff_Telnum
                 raw_instance.ars_email = lab_staff.LabStaff_EmailAdd

@@ -139,7 +139,7 @@ label.form-control-label{
 <br>
                    
             <div class="row">
-                  <div class="col-lg-5">
+                  <div class="col-lg-4">
                   <div class="form-group">
                     <label class='form-control-label' for='Site_Name'>Site Name</label>
                     {{form.Site_Name| append_attr:"class: form-control fontsize"}}
@@ -151,8 +151,11 @@ label.form-control-label{
                   {{form.AccessionNo| append_attr:"class: form-control fontlarge"}} 
               </div>
               </div>
-              <div class="col-lg-3">
-                <!-- Navigation buttons removed -->
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class="form-control-label" for="Batch_Name">Batch Name</label>
+                  {{form.Batch_Code| append_attr:"class: form-control fontlarge"}} 
+              </div>
               </div>
             </div>
        

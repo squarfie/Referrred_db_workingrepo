@@ -57,6 +57,7 @@ class Referred_Data(models.Model):
     Default_Year=models.DateField(null=True, blank=True)
     SiteCode=models.CharField(max_length=255, blank=True,) #
     Site_Name=models.CharField(max_length=255, blank=True,) #
+    Site_NameGen = models.CharField(max_length=255, blank=True,) #
     Referral_Date=models.DateField(null=True, blank=True)
     #Patient Information
     Patient_ID=models.CharField(max_length=255, blank=True,)
