@@ -112,14 +112,14 @@ def accession_data(request):
             referral_date = raw_instance.Referral_Date.strftime('%m%d%Y') if raw_instance.Referral_Date else ''
             ref_no = raw_instance.RefNo.zfill(4) if raw_instance.RefNo else ''
             batch_no = raw_instance.BatchNo if raw_instance.BatchNo else ''
-            site_name = raw_instance.Site_NameGen
+            site_name = raw_instance.Site_NameGen  ## to check this part 
             
             accession_no = f"{site_code}{referral_date}{ref_no}"
             batch_code = f"{site_code}_{referral_date}_{batch_no}_{ref_no}"
             
             raw_instance.AccessionNo = accession_no
             raw_instance.Batch_Code = batch_code
-            raw_instance.Site_Name = site_name
+            raw_instance.Site_Name = site_name  ### not working yet
 
             # Save only if needed — you may skip raw_instance.save() if this is preview-only
             raw_instance.save()
@@ -189,7 +189,7 @@ def generate_accession(request):
     referral_date = request.GET.get('referral_date', '')
     ref_no = request.GET.get('ref_no', '')
     batch_no = request.GET.get('batch_no','')
-    site_name = request.GET.get('site_name','')
+    site_name = request.GET.get('site_name','')  ## not working
 
     if not site_code or not referral_date or not ref_no:
         return JsonResponse({'error': 'Missing required fields'}, status=400)
@@ -231,7 +231,8 @@ def generate_accession(request):
                     Referral_Date=referral_date,
                     RefNo=ref_no_padded,
                     Batch_Code=batch_codegen,
-                    Site_Name = site_name
+                    Site_Name = site_name   ## not working yet
+                    
                     # You can also set other default fields here
                 )
                 accession_numbers.append(accession_number)
