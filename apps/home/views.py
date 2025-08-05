@@ -111,7 +111,7 @@ def accession_data(request):
             site_code = raw_instance.SiteCode.SiteCode if raw_instance.SiteCode else ''
             referral_date = raw_instance.Referral_Date.strftime('%m%d%Y') if raw_instance.Referral_Date else ''
             ref_no = raw_instance.RefNo.zfill(4) if raw_instance.RefNo else ''
-            batch_no = raw_instance.BatchNo if raw_instance.BatchNo else ''
+            batch_no = raw_instance.BatchNo   ## not working
             site_name = raw_instance.Site_NameGen  ## to check this part 
             
             accession_no = f"{site_code}{referral_date}{ref_no}"
@@ -188,7 +188,7 @@ def generate_accession(request):
     site_code = request.GET.get('site_code', '').upper()
     referral_date = request.GET.get('referral_date', '')
     ref_no = request.GET.get('ref_no', '')
-    batch_no = request.GET.get('batch_no','')
+    batch_no = request.GET.get('batch_no','')  ## not working
     site_name = request.GET.get('site_name','')  ## not working
 
     if not site_code or not referral_date or not ref_no:
@@ -218,7 +218,7 @@ def generate_accession(request):
     for num in ref_numbers:
         ref_no_padded = str(num).zfill(4)
         accession_number = f"{year_short}ARS_{site_code}{ref_no_padded}"
-        batch_codegen = f"{site_code}_{year_long}{batch_no}_{ref_no}"
+        batch_codegen = f"{site_code}_{year_long}_{batch_no}_{ref_no}"  #batchno has a problem
         
 
         # Try to create and save the instance
@@ -232,7 +232,7 @@ def generate_accession(request):
                     RefNo=ref_no_padded,
                     Batch_Code=batch_codegen,
                     Site_Name = site_name   ## not working yet
-                    
+
                     # You can also set other default fields here
                 )
                 accession_numbers.append(accession_number)
