@@ -370,7 +370,7 @@ label.form-control-label{
   });
 </script>
 
-<script>
+<!-- <script>
   document.getElementById("generate-accession-btn").addEventListener("click", function () {
     const siteCode = document.getElementById("id_SiteCode").value;
     const referralDate = document.getElementById("id_Referral_Date").value;
@@ -430,6 +430,78 @@ label.form-control-label{
       alert("Please fill in Site Code, Referral Date, and Reference No.");
     }
   });
+</script> -->
+
+
+<script>
+document.getElementById("generate-accession-btn").addEventListener("click", function (event) {
+  event.preventDefault();
+  const siteCode = document.getElementById("id_SiteCode").value;
+  const referralDate = document.getElementById("id_Referral_Date").value;
+  const batchNo = document.getElementById("id_BatchNo").value;
+  const refNo = document.getElementById("id_RefNo").value;
+  const siteName = document.getElementById("id_Site_NameGen").value;
+  const batchName = document.getElementById("id_Batch_Name").value;
+
+  // also store into hidden inputs so form submits them if you submit the form later
+  document.getElementById("id_Site_NameGen").value = siteName;
+  const batchNoHidden = document.getElementById("id_BatchNo_hidden");
+  if (batchNoHidden) batchNoHidden.value = batchNo;
+
+  if (!siteCode || !referralDate || !refNo) {
+    alert("Please fill in Site Code, Referral Date, and Reference No.");
+    return;
+  }
+
+  const params = new URLSearchParams({
+    site_code: siteCode,
+    referral_date: referralDate,
+    ref_no: refNo,
+    batch_no: batchNo,
+    site_name: siteName,
+    batch_name: batchName
+  });
+
+  fetch(`/generate-accession/?${params.toString()}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.accession_numbers && Array.isArray(data.accession_numbers)) {
+        const tbody = document.getElementById("accession-table-body");
+        tbody.innerHTML = "";
+
+        data.accession_numbers.forEach((acc, idx) => {
+          const params2 = new URLSearchParams({
+            accession: acc,
+            SiteCode: siteCode,
+            Referral_Date: referralDate,
+            BatchNo: batchNo,
+            RefNo: refNo,
+            Site_Name: siteName,
+            Batch_Name: batchName
+          }).toString();
+
+          tbody.innerHTML += `
+            <tr>
+              <td>${idx + 1}</td>
+              <td>${acc}</td>
+              <td>${siteName}</td>
+              <td>
+                <a href="/raw-data/?${params2}" class="btn btn-sm btn-info">Add Details</a>
+              </td>
+            </tr>
+          `;
+        });
+
+        document.getElementById("accession-result").style.display = "block";
+      } else {
+        alert(data.error || "Error generating accession number.");
+      }
+    })
+    .catch(error => {
+      console.error("Error:", error);
+      alert("An unexpected error occurred.");
+    });
+});
 </script>
 
 

@@ -97,6 +97,7 @@ def pages(request):
         return redirect('home')  # Redirect to the home view or any other view
 
 # Generate Accession Number
+@login_required(login_url="/login/")
 def accession_data(request):
     generated_accessions = []  # Store multiple accessions in batch if needed later
 
@@ -105,24 +106,18 @@ def accession_data(request):
 
         if form.is_valid():
             raw_instance = form.save(commit=False)
-           
-
-            # Build accession number
             site_code = raw_instance.SiteCode.SiteCode if raw_instance.SiteCode else ''
             referral_date = raw_instance.Referral_Date.strftime('%m%d%Y') if raw_instance.Referral_Date else ''
             ref_no = raw_instance.RefNo.zfill(4) if raw_instance.RefNo else ''
-            batch_no = raw_instance.BatchNo   ## not working
-            site_name = raw_instance.Site_NameGen  ## to check this part 
-            
+            batch_no = raw_instance.BatchNo or ''
+            site_name = raw_instance.Site_NameGen or ''  
             accession_no = f"{site_code}{referral_date}{ref_no}"
             batch_code = f"{site_code}_{referral_date}_{batch_no}_{ref_no}"
-            
             raw_instance.AccessionNo = accession_no
             raw_instance.Batch_Code = batch_code
-            raw_instance.Site_Name = site_name  ### not working yet
-
-            # Save only if needed — you may skip raw_instance.save() if this is preview-only
+            raw_instance.Site_Name = site_name
             raw_instance.save()
+
 
             messages.success(request, "Accession number generated.")
             generated_accessions.append(accession_no)
@@ -143,67 +138,46 @@ def accession_data(request):
         }
     )
 
+# show all accession numbers with the same batch names
+@login_required(login_url="/login/")
+def show_accessions(request):
+    # Prefetch related objects to optimize database queries
+    accessions = Referred_Data.objects.prefetch_related(
+        'antibiotic_entries'
+    ).order_by('-Date_of_Entry')
 
 
-# def generate_accession(request):
-#     site_code = request.GET.get('site_code', '').upper()
-#     referral_date = request.GET.get('referral_date', '')
-#     ref_no = request.GET.get('ref_no', '')
+    # Paginate the queryset to display 20 records per page
+    paginator = Paginator(accessions, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
-#     # Validate input
-#     if not site_code or not referral_date or not ref_no:
-#         return JsonResponse({'error': 'Missing required fields'}, status=400)
-
-#     # Format year from referral_date (YY format)
-#     try:
-#         year_short = datetime.strptime(referral_date, '%Y-%m-%d').strftime('%y')
-#     except ValueError:
-#         return JsonResponse({'error': 'Invalid referral date format. Expected YYYY-MM-DD.'}, status=400)
-
-#     accession_numbers = []
-
-#     # Support range in ref_no (e.g., 0001-0002)
-#     if '-' in ref_no:
-#         try:
-#             start, end = ref_no.split('-')
-#             start_num = int(start)
-#             end_num = int(end)
-#             for num in range(start_num, end_num + 1):
-#                 ref_no_padded = str(num).zfill(4)
-#                 accession_number = f"{year_short}ARS_{site_code}{ref_no_padded}"
-#                 accession_numbers.append(accession_number)
-#         except Exception:
-#             ref_no_padded = ref_no.zfill(4)
-#             accession_numbers.append(f"{year_short}ARS_{site_code}{ref_no_padded}")
-#     else:
-#         ref_no_padded = ref_no.zfill(4)
-#         accession_numbers.append(f"{year_short}ARS_{site_code}{ref_no_padded}")
-
-#     return JsonResponse({'accession_numbers': accession_numbers})
+    # Render the template with paginated data
+    return render(request, 'home/Batchname_form.html', {'page_obj': page_obj})
 
 
-
-#automatically save the generated accession number in the database 
+#automatically save the generated accession number in the database and carry-over values in the referred_form
+@login_required(login_url="/login/")
 def generate_accession(request):
     site_code = request.GET.get('site_code', '').upper()
     referral_date = request.GET.get('referral_date', '')
     ref_no = request.GET.get('ref_no', '')
-    batch_no = request.GET.get('batch_no','')  ## not working
-    site_name = request.GET.get('site_name','')  ## not working
+    batch_no = request.GET.get('batch_no', '')
+    site_name = request.GET.get('site_name', '')
+    batch_name = request.GET.get('batch_name', '')
 
     if not site_code or not referral_date or not ref_no:
         return JsonResponse({'error': 'Missing required fields'}, status=400)
 
     try:
-        referral_date_obj = datetime.strptime(referral_date, '%Y-%m-%d')  # Convert string to datetime
-        year_short = referral_date_obj.strftime('%y')       # e.g., '25'
-        year_long = referral_date_obj.strftime('%m%d%Y')   
-
+        referral_date_obj = datetime.strptime(referral_date, '%Y-%m-%d')
+        year_short = referral_date_obj.strftime('%y')
+        year_long = referral_date_obj.strftime('%m%d%Y')  # e.g. 08252025
     except ValueError:
         return JsonResponse({'error': 'Invalid referral date format. Expected YYYY-MM-DD.'}, status=400)
 
-    accession_numbers = []
-
+    # Build list of numbers: support ranges "0001-0003"
+    ref_numbers = []
     if '-' in ref_no:
         try:
             start, end = ref_no.split('-')
@@ -215,32 +189,43 @@ def generate_accession(request):
     else:
         ref_numbers = [int(ref_no)]
 
+    accession_numbers = []
+    # If SiteCode is a FK, get object; otherwise leave as string (adjust as model)
+    site_obj = None
+    try:
+        # Example: SiteModel has field 'SiteCode' (string). Change to your actual model name.
+        site_obj = SiteData.objects.filter(SiteCode__iexact=site_code).first()
+    except Exception:
+        site_obj = None
+
     for num in ref_numbers:
         ref_no_padded = str(num).zfill(4)
         accession_number = f"{year_short}ARS_{site_code}{ref_no_padded}"
-        batch_codegen = f"{site_code}_{year_long}_{batch_no}_{ref_no}"  #batchno has a problem
-        
+        batch_codegen = f"{site_code}_{year_long}_{batch_no}_{ref_no_padded}"
 
-        # Try to create and save the instance
-        if not Referred_Data.objects.filter(AccessionNo=accession_number).exists():
-            
-            try:
-                Referred_Data.objects.create(
-                    AccessionNo=accession_number,
-                    SiteCode=site_code,
-                    Referral_Date=referral_date,
-                    RefNo=ref_no_padded,
-                    Batch_Code=batch_codegen,
-                    Site_Name = site_name   ## not working yet
+        if Referred_Data.objects.filter(AccessionNo=accession_number).exists():
+            continue
 
-                    # You can also set other default fields here
-                )
-                accession_numbers.append(accession_number)
-            except IntegrityError:
-                # Skip if duplicate slipped through
-                continue
+        # Create object (if SiteCode is FK use site_obj else pass string)
+        create_kwargs = {
+            'AccessionNo': accession_number,
+            'Referral_Date': referral_date,  # store as string or convert to date field if model expects date
+            'RefNo': ref_no_padded,
+            'Batch_Code': batch_codegen,
+            'Site_Name': site_name,
+            'BatchNo': batch_no,
+            'Batch_Name': batch_name,
+        }
+        if site_obj:
+            create_kwargs['SiteCode'] = site_obj
         else:
-            # Optionally include duplicates in a warning list
+            # if your model expects a string for SiteCode, use this
+            create_kwargs['SiteCode'] = site_code
+
+        try:
+            Referred_Data.objects.create(**create_kwargs)
+            accession_numbers.append(accession_number)
+        except IntegrityError:
             continue
 
     if not accession_numbers:
@@ -250,138 +235,7 @@ def generate_accession(request):
 
 
 
-# def raw_data(request):
-#     whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
-#     whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
-
-#     accession = request.GET.get('accession')
-#     initial_data = {}
-#     for field in ['SiteCode', 'Referral_Date', 'BatchNo', 'RefNo', 'Site_Name', 'Batch_Name', 'AccessionNo']:
-#         value = request.GET.get(field)
-#         if value:
-#             initial_data[field] = value
-#     if accession:
-#         initial_data['AccessionNo'] = accession
-
-#     instance = None
-#     if accession:
-#         try:
-#             instance = Referred_Data.objects.get(AccessionNo=accession)
-#         except Referred_Data.DoesNotExist:
-#             instance = None
-
-#     if request.method == "POST":
-#         form = Referred_Form(request.POST, instance=instance)
-       
-#        #added to prevent duplicated accession number
-#         if accession:
-#             existing = Referred_Data.objects.filter(AccessionNo=accession)
-#             if existing.exists() and instance is None:
-#                 messages.error(request, f"The accession number {accession} already exists.")
-#                 form = Referred_Form(initial=initial_data)
-#                 return render(request, 'home/Referred_form.html', {
-#                     'form': form,
-#                     'whonet_abx_data': whonet_abx_data,
-#                     'whonet_retest_data': whonet_retest_data,
-#                     'current_accession': accession,
-#                 })
-        
-
-#         if form.is_valid():
-#             raw_instance = form.save(commit=False)
-#             lab_staff = form.cleaned_data.get('Laboratory_Staff')
-#             if lab_staff:
-#                 raw_instance.ars_contact = lab_staff.LabStaff_Telnum
-#                 raw_instance.ars_email = lab_staff.LabStaff_EmailAdd
-#             raw_instance.save()
-
-#             for entry in whonet_abx_data:
-#                 abx_code = entry.Whonet_Abx
-#                 if entry.Disk_Abx:
-#                     disk_value = request.POST.get(f'disk_{entry.id}')
-#                     mic_value = ''
-#                     mic_operand = ''
-#                     alert_mic = False
-#                 else:
-#                     mic_value = request.POST.get(f'mic_{entry.id}')
-#                     mic_operand = request.POST.get(f'mic_operand_{entry.id}')
-#                     alert_mic = f'alert_mic_{entry.id}' in request.POST
-#                     disk_value = ''
-
-#                 mic_operand = mic_operand if mic_operand else ""
-
-#                 antibiotic_entry = AntibioticEntry.objects.create(
-#                     ab_idNum_referred=raw_instance,
-#                     ab_AccessionNo=raw_instance.AccessionNo,
-#                     ab_Antibiotic=entry.Antibiotic,
-#                     ab_Abx=entry.Abx_code,
-#                     ab_Abx_code=abx_code,
-#                     ab_Disk_value=int(disk_value) if disk_value and disk_value.strip().isdigit() else None,
-#                     ab_MIC_value=mic_value or None,
-#                     ab_MIC_operand=mic_operand or '',
-#                     ab_R_breakpoint=entry.R_val or None,
-#                     ab_I_breakpoint=entry.I_val or None,
-#                     ab_SDD_breakpoint=entry.SDD_val or None,
-#                     ab_S_breakpoint=entry.S_val or None,
-#                     ab_AlertMIC=alert_mic,
-#                     ab_Alert_val=entry.Alert_val if alert_mic else '',
-#                 )
-#                 antibiotic_entry.ab_breakpoints_id.set([entry])
-
-#             for retest in whonet_retest_data:
-#                 retest_abx_code = retest.Whonet_Abx
-#                 if retest.Disk_Abx:
-#                     retest_disk_value = request.POST.get(f'retest_disk_{retest.id}')
-#                     retest_mic_value = ''
-#                     retest_mic_operand = ''
-#                     retest_alert_mic = False
-#                 else:
-#                     retest_mic_value = request.POST.get(f'retest_mic_{retest.id}')
-#                     retest_mic_operand = request.POST.get(f'retest_mic_operand_{retest.id}')
-#                     retest_alert_mic = f'retest_alert_mic_{retest.id}' in request.POST
-#                     retest_disk_value = ''
-
-#                 retest_mic_operand = retest_mic_operand if retest_mic_operand else ""
-
-#                 if retest_disk_value or retest_mic_value:
-#                     retest_entry = AntibioticEntry.objects.create(
-#                         ab_idNum_referred=raw_instance,
-#                         ab_Retest_Abx_code=retest_abx_code,
-#                         ab_Retest_DiskValue=int(retest_disk_value) if retest_disk_value and retest_disk_value.strip().isdigit() else None,
-#                         ab_Retest_MICValue=retest_mic_value or None,
-#                         ab_Retest_MIC_operand=retest_mic_operand or '',
-#                         ab_Retest_Antibiotic=retest.Antibiotic,
-#                         ab_Retest_Abx=retest.Abx_code,
-#                         ab_Ret_R_breakpoint=retest.R_val or None,
-#                         ab_Ret_I_breakpoint=retest.I_val or None,
-#                         ab_Ret_SDD_breakpoint=retest.SDD_val or None,
-#                         ab_Ret_S_breakpoint=retest.S_val or None,
-#                         ab_Retest_AlertMIC=retest_alert_mic,
-#                         ab_Retest_Alert_val=retest.Alert_val if retest_alert_mic else '',
-#                     )
-#                     retest_entry.ab_breakpoints_id.set([retest])
-
-#             messages.success(request, 'Added Successfully')
-#             return redirect('show_data')
-#         else:
-#             messages.error(request, 'Error / Adding Unsuccessful')
-#             print(form.errors)
-#     else:
-#         if instance:
-#             form = Referred_Form(instance=instance)
-#         elif initial_data:
-#             form = Referred_Form(initial=initial_data)
-#         else:
-#             form = Referred_Form()
-
-#     return render(request, 'home/Referred_form.html', {
-#         'form': form,
-#         'whonet_abx_data': whonet_abx_data,
-#         'whonet_retest_data': whonet_retest_data,
-#         'current_accession': accession,
-#     })
-
-
+@login_required(login_url="/login/")
 def raw_data(request):
     whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
     whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
