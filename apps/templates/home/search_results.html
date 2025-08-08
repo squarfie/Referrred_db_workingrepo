@@ -16,17 +16,21 @@
           <thead class="thead-light">
             <tr class="text-center text-white fw-light">
               <th>Accession No</th>
-              <th>Clinic</th>
-              <th>UIC PTID</th>
+              <th>Site</th>
+              <th>Patient ID</th>
+              <th>Organism</th>
+              <th>Specimen Type</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for item in items %}
             <tr class="text-center">
-              <td>{{ item.Egasp_Id }}</td>
-              <td>{{ item.Clinic }}</td>
-              <td>{{ item.Uic_Ptid }}</td>
+              <td>{{ item.AccessionNo }}</td>
+              <td>{{ item.SiteCode }}</td>
+              <td>{{ item.Patient_ID}}</td>
+              <td>{{ item.OrganismCode}}</td>
+              <td>{{ item.Spec_Type}}</td>
               <td class="d-flex flex-column gap-2">
                 <a href="{% url 'edit_data' item.id %}" class="btn btn-sm btn-outline-primary w-100" style="padding: 5px; margin-bottom: 2px;">
                   <i class="fas fa-edit"></i> Edit
