@@ -108,11 +108,12 @@ def accession_data(request):
             raw_instance = form.save(commit=False)
             site_code = raw_instance.SiteCode.SiteCode if raw_instance.SiteCode else ''
             referral_date = raw_instance.Referral_Date.strftime('%m%d%Y') if raw_instance.Referral_Date else ''
+            ref_no_raw = raw_instance.RefNo or ''
             ref_no = raw_instance.RefNo.zfill(4) if raw_instance.RefNo else ''
             batch_no = raw_instance.BatchNo or ''
             site_name = raw_instance.Site_NameGen or ''  
             accession_no = f"{site_code}{referral_date}{ref_no}"
-            batch_code = f"{site_code}_{referral_date}_{batch_no}_{ref_no}"
+            batch_code = f"{site_code}_{referral_date}_{batch_no}_{ref_no_raw}"
             raw_instance.AccessionNo = accession_no
             raw_instance.Batch_Code = batch_code
             raw_instance.Site_Name = site_name
@@ -121,8 +122,9 @@ def accession_data(request):
 
             messages.success(request, "Accession number generated.")
             generated_accessions.append(accession_no)
-
-            
+   
+            return redirect('index')
+        
         else:
             messages.error(request, "Invalid data. Please check the form.")
     else:
@@ -130,7 +132,7 @@ def accession_data(request):
 
     return render(
         request,
-        'home/Batchname_Form.html',
+        'home/Batchname_form.html',
         {
             'form': form,
             'batch_accession_numbers': generated_accessions,  # Match your template
@@ -141,19 +143,30 @@ def accession_data(request):
 # show all accession numbers with the same batch names
 @login_required(login_url="/login/")
 def show_accessions(request):
-    # Prefetch related objects to optimize database queries
-    accessions = Referred_Data.objects.prefetch_related(
-        'antibiotic_entries'
-    ).order_by('-Date_of_Entry')
+    # If batch_name is already in session, use it
+    batch_name = request.session.get('Batch_Code')
 
+    # If not in session, find the latest one and store it
+    if not batch_name:
+        latest_record = Referred_Data.objects.order_by('-Date_of_Entry').first()
+        if latest_record:
+            batch_name = latest_record.batch_name
+            request.session['Batch_Code'] = batch_name
 
-    # Paginate the queryset to display 20 records per page
+    # Query only that batch_name
+    accessions = Referred_Data.objects.filter(batch_name=batch_name) \
+        .prefetch_related('antibiotic_entries') \
+        .order_by('-AccessionNo')
+
+    # Pagination
     paginator = Paginator(accessions, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Render the template with paginated data
-    return render(request, 'home/Batchname_form.html', {'page_obj': page_obj})
+    return render(request, 'home/Batchname_form.html', {
+        'page_obj': page_obj,
+        'batch_name': batch_name
+    })
 
 
 #automatically save the generated accession number in the database and carry-over values in the referred_form
@@ -201,7 +214,7 @@ def generate_accession(request):
     for num in ref_numbers:
         ref_no_padded = str(num).zfill(4)
         accession_number = f"{year_short}ARS_{site_code}{ref_no_padded}"
-        batch_codegen = f"{site_code}_{year_long}_{batch_no}_{ref_no_padded}"
+        batch_codegen = f"{site_code}_{year_long}_{batch_no}_{ref_no}"
 
         if Referred_Data.objects.filter(AccessionNo=accession_number).exists():
             continue
