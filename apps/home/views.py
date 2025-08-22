@@ -32,6 +32,7 @@ import csv
 from django.utils.dateparse import parse_date
 from datetime import datetime
 from django.db import IntegrityError
+from collections import defaultdict
 
 # @login_required(login_url="/login/")
 def index(request):
@@ -140,33 +141,6 @@ def accession_data(request):
         }
     )
 
-# show all accession numbers with the same batch names
-@login_required(login_url="/login/")
-def show_accessions(request):
-    # If batch_name is already in session, use it
-    batch_name = request.session.get('Batch_Code')
-
-    # If not in session, find the latest one and store it
-    if not batch_name:
-        latest_record = Referred_Data.objects.order_by('-Date_of_Entry').first()
-        if latest_record:
-            batch_name = latest_record.batch_name
-            request.session['Batch_Code'] = batch_name
-
-    # Query only that batch_name
-    accessions = Referred_Data.objects.filter(batch_name=batch_name) \
-        .prefetch_related('antibiotic_entries') \
-        .order_by('-AccessionNo')
-
-    # Pagination
-    paginator = Paginator(accessions, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    return render(request, 'home/Batchname_form.html', {
-        'page_obj': page_obj,
-        'batch_name': batch_name
-    })
 
 
 #automatically save the generated accession number in the database and carry-over values in the referred_form
@@ -245,6 +219,21 @@ def generate_accession(request):
         return JsonResponse({'error': 'All accession numbers already exist.'}, status=409)
 
     return JsonResponse({'accession_numbers': accession_numbers})
+
+
+
+@login_required(login_url="/login/")
+def show_accession(request):
+        # Get all isolates ordered by batch and entry date
+    isolates = Referred_Data.objects.all().order_by('-Date_of_Entry')
+
+        # Paginate the grouped batches (not individual isolates)
+    paginator = Paginator(isolates, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'home/Batchname_form.html', {'page_obj': page_obj})
+
 
 
 
@@ -1154,6 +1143,28 @@ def add_location(request, id=None):
         form = CityForm()
 
     return render(request, "home/Add_location.html", {"form": form, "provinces": provinces, "upload_form": upload_form})
+
+
+
+def TAT_process(request, id=None):
+    process = TATprocess.objects.all()  # Renamed 'province' to 'provinces' for clarity
+    upload_form = TATUploadForm()  
+    if request.method == "POST":
+        form = TAT_form(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Location added successfully!")
+            return redirect("TAT_process")  # Use the correct URL name
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = TAT_form()
+
+    return render(request, "home/Add_TAT.html", {"form": form, "process": process, "upload_form": upload_form})
+
+
+
+
 
 
 

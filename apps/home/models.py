@@ -149,12 +149,25 @@ class Referred_Data(models.Model):
     Concordance_by_Initials=models.CharField(max_length=255, blank=True,)
     abx_code=models.CharField(max_length=25, blank=True, default="")
     
-    #laboratory personnel
+    #laboratory personnel delete this once finalized
     Laboratory_Staff = models.CharField(max_length=100,blank=True, default='', null=True)
     Date_Accomplished_ARSP=models.DateField(blank=True, null=True)
     ars_notes = models.TextField(blank=True, null=True)
     ars_contact = PhoneNumberField(blank=True, null=True)
     ars_email = models.EmailField(blank=True, null=True, validators=[EmailValidator()])
+    #########
+
+    arsp_Encoder = models.CharField(max_length=255, blank=True, default='')
+    arsp_Enc_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
+    arsp_Checker = models.CharField(max_length=255, blank=True,) 
+    arsp_Chec_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
+    arsp_Verifier = models.CharField(max_length=255, blank=True,)
+    arsp_Ver_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
+    arsp_LabManager = models.CharField(max_length=255, blank=True,)
+    arsp_Lab_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
+    arsp_Head = models.CharField(max_length=255, blank=True,)
+    arsp_Head_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
+
 
     def __str__(self):
         return self.AccessionNo
@@ -308,13 +321,6 @@ class Final_Data(models.Model):
     f_Concordance_by_Initials = models.CharField(max_length=255, blank=True)
     f_abx_code = models.CharField(max_length=25, blank=True, default="")
 
-    # Laboratory Personnel
-    f_Laboratory_Staff = models.CharField(max_length=100, blank=True, default='', null=True)
-    f_Date_Accomplished_ARSP = models.DateField(blank=True, null=True)
-    f_ars_notes = models.TextField(blank=True, null=True)
-    f_ars_contact = PhoneNumberField(blank=True, null=True)
-    f_ars_email = models.EmailField(blank=True, null=True, validators=[EmailValidator()])
-
 
     def __str__(self):
         return self.f_AccessionNo
@@ -322,6 +328,45 @@ class Final_Data(models.Model):
     
 class Meta:
     db_table ="Final_Data"
+
+
+
+
+class TATform(models.Model):
+     #Running TAT form
+    Batch_Isolates = models.ForeignKey(Referred_Data, on_delete=models.CASCADE, null=True, related_name='tat_entries')
+    Unit_DateRec = models.DateField(blank=True, null=True)
+    Target_Days = models.CharField(max_length=3, blank=True,)
+    Days_Count = models.CharField(max_length=3, blank=True,)
+    Running_TAT = models.CharField(max_length=3, blank=True,)
+    Num_Isolate = models.CharField(max_length=3, blank=True,)
+    Total_Batch = models.CharField(max_length=3, blank=True,)
+    ars_Encoder = models.CharField(max_length=255, blank=True,)
+    ars_Checker = models.CharField(max_length=255, blank=True,) 
+    ars_Verifier = models.CharField(max_length=255, blank=True,)
+    ars_LabManager = models.CharField(max_length=255, blank=True,)
+    ars_Head = models.CharField(max_length=255, blank=True,)
+
+class Meta:
+    db_table ="TATform"
+
+
+class TATprocess(models.Model):
+    #Running_TAT upload form
+    TAT_Process = models.CharField(max_length=255, blank=True,)
+    Unit_code = models.CharField(max_length=3, blank=True,)
+
+class Meta:
+    db_Table ="TATprocess"
+
+
+class TATUpload(models.Model):
+    file = models.FileField(upload_to='uploads/TAT/', null=True, blank=True)
+
+    class Meta:
+        db_table = "TATUpload"
+
+
 
 # for specific indexing use this
     # indexes = [
@@ -454,6 +499,7 @@ class Lab_Staff_Details(models.Model):
     LabStaff_Designation= models.CharField(max_length=100, blank=True, null=True)
     LabStaff_Telnum= PhoneNumberField(blank=True, region="PH", null=True)
     LabStaff_EmailAdd = models.EmailField(max_length=100, blank=True, null=True)
+    LabStaff_License = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         return self.LabStaff_Name if self.LabStaff_Name else "Unnamed Staff"

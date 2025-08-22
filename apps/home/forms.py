@@ -161,11 +161,17 @@ class ContactForm(forms.ModelForm):
 #             "province": forms.Select(attrs={"class": "form-control"}),
 #         }
 
-# class LocationUploadForm(forms.ModelForm):
-#     class Meta:
-#         model = LocationUpload
-#         fields = ['file']
-#         widgets = {
-#             'file': forms.FileInput(attrs={'class': 'form-control'})
-#         }
 
+#for tat monitoring
+class TATUploadForm(forms.ModelForm):
+    class Meta:
+        model = TATUpload
+        fields = ['file']
+        widgets = {
+            'file': forms.FileInput(attrs={'class': 'form-control'})
+        }
+
+class TAT_form(forms.ModelForm):
+     class Meta:
+        model = TATform  # Ensure the model is specified
+        fields = '__all__'  # Include the fields you want in the form
