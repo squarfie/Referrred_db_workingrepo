@@ -167,7 +167,7 @@ class Referred_Data(models.Model):
     arsp_Lab_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
     arsp_Head = models.CharField(max_length=255, blank=True,)
     arsp_Head_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
-
+    
 
     def __str__(self):
         return self.AccessionNo
