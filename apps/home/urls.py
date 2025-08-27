@@ -57,7 +57,7 @@ urlpatterns = [
     path('delete_city/<int:id>/', views.delete_city, name='delete_city'),
     path('download_combined_table/', views.download_combined_table, name='download_combined_table'),
     path('generate-pdf/<int:id>/', views.generate_pdf, name='generate_pdf'),
-    path('batch/', views.show_accession, name="show_accession"),
+    # path('batch/', views.show_accession, name="show_accession"),
    
      
     # Matches any html file

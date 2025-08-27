@@ -52,6 +52,7 @@ class Referred_Data(models.Model):
     Date_of_Entry =models.DateTimeField(auto_now_add=True)
     RefNo = models.CharField(max_length=20, blank=True, null=True)
     BatchNo=models.CharField(max_length=255, blank=True,)
+    Total_batch=models.CharField(max_length=100, blank=True,)
     AccessionNo=models.CharField(max_length=255, blank=True, unique=True)
     AccessionNoGen=models.CharField(max_length=100, blank=True)
     Default_Year=models.DateField(null=True, blank=True)
@@ -222,6 +223,7 @@ class Final_Data(models.Model):
     f_Date_of_Entry =models.DateTimeField(auto_now_add=True)
     f_RefNo=models.IntegerField(null=True, blank=True) #
     f_BatchNo=models.CharField(max_length=255, blank=True,)
+    f_Total_batch=models.CharField(max_length=100, blank=True,)
     f_AccessionNo=models.CharField(max_length=255, blank=True,)
     f_AccessionNoGen=models.CharField(max_length=100, blank=True)
     f_Default_Year=models.DateField(null=True, blank=True)

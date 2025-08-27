@@ -112,9 +112,10 @@ def accession_data(request):
             ref_no_raw = raw_instance.RefNo or ''
             ref_no = raw_instance.RefNo.zfill(4) if raw_instance.RefNo else ''
             batch_no = raw_instance.BatchNo or ''
+            total_batch = raw_instance.Total_batch or ''
             site_name = raw_instance.Site_NameGen or ''  
             accession_no = f"{site_code}{referral_date}{ref_no}"
-            batch_code = f"{site_code}_{referral_date}_{batch_no}_{ref_no_raw}"
+            batch_code = f"{site_code}_{referral_date}_{batch_no}.{total_batch}_{ref_no_raw}"
             raw_instance.AccessionNo = accession_no
             raw_instance.Batch_Code = batch_code
             raw_instance.Site_Name = site_name
@@ -150,9 +151,10 @@ def generate_accession(request):
     referral_date = request.GET.get('referral_date', '')
     ref_no = request.GET.get('ref_no', '')
     batch_no = request.GET.get('batch_no', '')
+    total_bat = request.GET.get('total_batch','')
     site_name = request.GET.get('site_name', '')
     batch_name = request.GET.get('batch_name', '')
-
+    
     if not site_code or not referral_date or not ref_no:
         return JsonResponse({'error': 'Missing required fields'}, status=400)
 
@@ -188,7 +190,7 @@ def generate_accession(request):
     for num in ref_numbers:
         ref_no_padded = str(num).zfill(4)
         accession_number = f"{year_short}ARS_{site_code}{ref_no_padded}"
-        batch_codegen = f"{site_code}_{year_long}_{batch_no}_{ref_no}"
+        batch_codegen = f"{site_code}_{year_long}_{batch_no}.{total_bat}_{ref_no}"
 
         if Referred_Data.objects.filter(AccessionNo=accession_number).exists():
             continue
@@ -201,6 +203,7 @@ def generate_accession(request):
             'Batch_Code': batch_codegen,
             'Site_Name': site_name,
             'BatchNo': batch_no,
+            'Total_batch': total_bat,
             'Batch_Name': batch_name,
         }
         if site_obj:
@@ -222,17 +225,6 @@ def generate_accession(request):
 
 
 
-@login_required(login_url="/login/")
-def show_accession(request):
-        # Get all isolates ordered by batch and entry date
-    isolates = Referred_Data.objects.all().order_by('-Date_of_Entry')
-
-        # Paginate the grouped batches (not individual isolates)
-    paginator = Paginator(isolates, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    return render(request, 'home/Batchname_form.html', {'page_obj': page_obj})
 
 
 
@@ -245,7 +237,7 @@ def raw_data(request):
     accession = request.GET.get('accession')
 
     initial_data = {}
-    for field in ['SiteCode', 'Referral_Date', 'BatchNo', 'RefNo', 'Site_NameGen', 'Batch_Name', 'AccessionNo']:
+    for field in ['SiteCode', 'Referral_Date', 'BatchNo', 'Total_batch', 'RefNo', 'Site_NameGen', 'Batch_Name', 'AccessionNo']:
         value = request.GET.get(field)
         if value:
             initial_data[field] = value
