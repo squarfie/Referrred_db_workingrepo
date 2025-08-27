@@ -46,6 +46,10 @@ label.form-control-label{
 .fontlarge{
   font-size: large;
 }
+
+td, th {
+            text-align: center;
+        }
 </style>
 {% endblock stylesheets %}
 
@@ -188,14 +192,14 @@ label.form-control-label{
                               <div class="col-lg-12">
                               <div class="row"> 
                                     <div id="accession-result" style="display:none;">
-                                      <div style="display: flex; justify-content: center;">
-                                          <table class="table" style="text-align: center;">
+                                      <div style="display: flex; text-align: center;">
+                                          <table class="table" >
                                             <thead>
                                               <tr>
-                                                <th >#</th>
-                                                <th >Accession No</th>
-                                                <th >Site Name</th>
-                                                <th ></th>
+                                                <th colspan="3">#</th>
+                                                <th colspan="3">Accession No</th>
+                                                <th colspan="3">Site Name</th>
+                                                <th colspan="3"></th>
                                               </tr>
                                             </thead>
                                             <tbody id="accession-table-body">
@@ -205,24 +209,42 @@ label.form-control-label{
                                         </div>
                                 {% if batch_accession_numbers %}
                                   <div class="mt-12">
-                                    <table class="table" style="float: center;">
+                                    <table style="`">
                                       <thead>
                                         <tr>
-                                          <th >#</th>
-                                          <th >Accession No</th>
-                                          <th >Site Name</th>
+                                          <th colspan="3">#</th>
+                                          <th></th>
+                                          <th></th>
+                                          <th colspan="3">Accession No</th>
+                                          <th></th>
+                                          <th></th>
+                                          <th colspan="3">Site Name</th>
+                                          <th></th>
                                           <th ></th>
+                                          <th colspan="3"></th>
+                                          <th></th>
+                                          <th></th>
                                         </tr>
                                       </thead>
                                       <tbody>
                                       {% for acc in batch_accession_numbers %}
                                         <tr>
-                                          <td >{{ forloop.counter }}</td>
-                                          <td >{{ acc }}</td>
-                                          <td >{{ siteName }}</td>
-                                          <td >
+                                          <td colspan="3">{{ forloop.counter }}</td>
+                                          <td></td>
+                                          <td></td>
+                                          <td colspan="3">{{ acc }}</td>
+                                          <td></td>
+                                          <td></td>
+                                       
+                                          <td colspan="3">{{ siteName }}</td>
+                                          <td></td>
+                                          <td></td>
+                                    
+                                          <td colspan="3">
                                               <a href="{% url 'raw_data' %}?accession={{ acc }}" class="btn btn-sm btn-info" style="display:inline-block;">Add Data</a>
                                           </td>
+                                          <td></td>
+                                          <td></td>
                                         </tr>
                                       {% endfor %}
                                       </tbody>
@@ -518,11 +540,19 @@ function renderAccessions(data, siteCode, referralDate, batchNo, refNo, siteName
     tbody.innerHTML += `
       <tr>
         <td>${idx + 1}</td>
+        <td></td>
+        <td></td>
         <td>${acc}</td>
+        <td></td>
+        <td></td>
         <td>${siteName}</td>
+        <td></td>
+        <td></td>
         <td>
-          <a href="/raw-data/?${params2}" class="btn btn-sm btn-info">Add Details</a>
+          <a href="/raw_data/?${params2}" class="btn btn-sm btn-info">Add Details</a>
         </td>
+        <td></td>
+        <td></td>
       </tr>
     `;
   });
