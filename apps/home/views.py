@@ -267,11 +267,11 @@ def raw_data(request):
 
         if form.is_valid():
             raw_instance = form.save(commit=False)
-            lab_staff = form.cleaned_data.get('Laboratory_Staff')
+            ars_staff = form.cleaned_data.get('Laboratory_Staff')
 
-            if lab_staff:
-                raw_instance.ars_contact = lab_staff.LabStaff_Telnum
-                raw_instance.ars_email = lab_staff.LabStaff_EmailAdd
+            if ars_staff:
+                raw_instance.ars_contact = ars_staff.Staff_Telnum
+                raw_instance.ars_email = ars_staff.Staff_EmailAdd
 
             try:
                 raw_instance.save()
@@ -414,10 +414,10 @@ def edit_data(request, id):
         form = Referred_Form(request.POST, instance=isolates)
         if form.is_valid():
             raw_instance = form.save(commit=False)
-            lab_staff = form.cleaned_data.get('Laboratory_Staff')
-            if lab_staff:
-                raw_instance.ars_contact = lab_staff.LabStaff_Telnum
-                raw_instance.ars_email = lab_staff.LabStaff_EmailAdd
+            ars_staff = form.cleaned_data.get('Laboratory_Staff')
+            if ars_staff:
+                raw_instance.ars_contact = ars_staff.Staff_Telnum
+                raw_instance.ars_email = ars_staff.Staff_EmailAdd
             raw_instance.save()
 
             # Update or Create Antibiotic Entries (whonet_abx_data)
@@ -1031,33 +1031,33 @@ def add_contact(request):
         form = ContactForm()  # Show an empty form for GET request
 
     # Fetch clinic data from the database for dropdown options
-    contacts = Lab_Staff_Details.objects.all()
+    contacts = arsStaff_Details.objects.all()
     
     return render(request, 'home/Contact_Form.html', {'form': form, 'contacts': contacts})
 
 
 @login_required(login_url="/login/")
 def delete_contact(request, id):
-    contact_items = get_object_or_404(Lab_Staff_Details, pk=id)
+    contact_items = get_object_or_404(arsStaff_Details, pk=id)
     contact_items.delete()
     return redirect('contact_view')
 
 
 @login_required(login_url="/login/")
 def contact_view(request):
-    contact_items = Lab_Staff_Details.objects.all()  # Fetch all contact data
+    contact_items = arsStaff_Details.objects.all()  # Fetch all contact data
     return render(request, 'home/Contact_View.html', {'contact_items': contact_items})
 
 
 @login_required(login_url="/login/")
-def get_Lab_Staff_Details(request):
-    lab_staff_name = request.GET.get('lab_staff_id')  # Actually contains a name, not an ID
-    lab_staff = Lab_Staff_Details.objects.filter(LabStaff_Name=lab_staff_name).first()
+def get_arsStaff_Details(request):
+    ars_staff_name = request.GET.get('ars_staff_id')  # Actually contains a name, not an ID
+    ars_staff = arsStaff_Details.objects.filter(Staff_Name=ars_staff_name).first()
 
-    if lab_staff:
+    if ars_staff:
         return JsonResponse({
-            'LabStaff_Telnum': str(lab_staff.LabStaff_Telnum),  # Convert PhoneNumber to string
-            'LabStaff_EmailAdd': lab_staff.LabStaff_EmailAdd
+            'LabStaff_Telnum': str(ars_staff.Staff_Telnum),  # Convert PhoneNumber to string
+            'LabStaff_EmailAdd': ars_staff.Staff_EmailAdd
         })
     else:
         return JsonResponse({'error': 'Staff not found'}, status=404)

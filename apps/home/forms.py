@@ -26,8 +26,29 @@ class Referred_Form(forms.ModelForm):
             
         )
 
+        arsp_Checker = forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
 
+        arsp_Verifier = forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
 
+        arsp_LabManager = forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
         class Meta:
             model = Referred_Data
             fields ='__all__'
@@ -139,12 +160,12 @@ class SpecimenTypeForm(forms.ModelForm):
 
 class ContactForm(forms.ModelForm):
     class Meta:
-        model = Lab_Staff_Details
+        model = arsStaff_Details
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
         super(ContactForm, self).__init__(*args, **kwargs)
-        self.fields['LabStaff_Telnum'].widget = forms.TextInput(attrs={
+        self.fields['Staff_Telnum'].widget = forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': '09171234567',  # Philippine phone number format
             'readonly': False  # Ensure it's not blocking JavaScript updates

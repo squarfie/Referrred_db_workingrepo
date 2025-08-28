@@ -42,7 +42,16 @@ class Referred_Data(models.Model):
         ('Others','o')
     )
 
- 
+    Status_Choice = (
+        ('n/a',''),
+        ('Encoding','Encoding'),
+        ('First Draft', '1st Draft'),
+        ('Second Draft', '2nd Draft'),
+        ('Third Draft', '3rd Draft'),
+        ('Verification','Verification'),
+        ('Other','Other'),
+
+    )
    
     # Batch Data
     Hide=models.BooleanField(default=False)
@@ -124,6 +133,7 @@ class Referred_Data(models.Model):
     
     #Batch Table Data
     SiteName=models.CharField(max_length=255, blank=True,)
+    Status = models.CharField(max_length=100, choices=Status_Choice, default="")
     Month_Date=models.DateField(null=True, blank=True)
     Day_Date=models.DateField(null=True, blank=True)
     Year_Date=models.DateField(null=True, blank=True)
@@ -337,6 +347,7 @@ class Meta:
 class TATform(models.Model):
      #Running TAT form
     Batch_Isolates = models.ForeignKey(Referred_Data, on_delete=models.CASCADE, null=True, related_name='tat_entries')
+    AccessionNum = models.CharField(max_length=255, blank=True,)
     Unit_DateRec = models.DateField(blank=True, null=True)
     Target_Days = models.CharField(max_length=3, blank=True,)
     Days_Count = models.CharField(max_length=3, blank=True,)
@@ -496,15 +507,15 @@ class Meta:
 
 
 #Address Book
-class Lab_Staff_Details(models.Model):
-    LabStaff_Name = models.CharField(max_length=100, blank=True, null=True)
-    LabStaff_Designation= models.CharField(max_length=100, blank=True, null=True)
-    LabStaff_Telnum= PhoneNumberField(blank=True, region="PH", null=True)
-    LabStaff_EmailAdd = models.EmailField(max_length=100, blank=True, null=True)
-    LabStaff_License = models.CharField(max_length=100, blank=True, null=True)
+class arsStaff_Details(models.Model):
+    Staff_Name = models.CharField(max_length=100, blank=True, null=True)
+    Staff_Designation= models.CharField(max_length=100, blank=True, null=True)
+    Staff_Telnum= PhoneNumberField(blank=True, region="PH", null=True)
+    Staff_EmailAdd = models.EmailField(max_length=100, blank=True, null=True)
+    Staff_License = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
-        return self.LabStaff_Name if self.LabStaff_Name else "Unnamed Staff"
+        return self.Staff_Name if self.Staff_Name else "Unnamed Staff"
 
 class Recommendation(models.Model):
     Reco_Code = models.CharField(max_length=100, blank=True, null=True)

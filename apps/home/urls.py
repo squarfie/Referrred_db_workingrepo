@@ -17,7 +17,7 @@ urlpatterns = [
     path('raw/', views.raw_data,name='raw_data'),  ## for batch code
     path('generate-accession/', views.generate_accession, name='generate_accession'),
 
-    path('raw/<str:accession>/', views.raw_data, name='raw_data'),
+    path('raw_acc/<str:accession>/', views.raw_data, name='raw_data'),
     path('show/', views.show_data,name='show_data'),
     path('edit/<int:id>/',views.edit_data,name='edit_data'),
     path('delete/<int:id>/',views.delete_data,name='delete_data'),
@@ -49,7 +49,7 @@ urlpatterns = [
     path('add_contact/', views.add_contact, name='add_contact'),
     path('delete_contact/<int:id>/', views.delete_contact, name='delete_contact'),
     path('contact_view/', views.contact_view, name='contact_view'),
-    path('get_Lab_Staff_Details/', views.get_Lab_Staff_Details, name='get_Lab_Staff_Details'),
+    path('staff/', views.get_arsStaff_Details, name='get_arsStaff_Details'),
     path("add-location/", views.add_location, name="add_location"),
     path('upload-location/', views.upload_locations, name='upload_locations'),
     path('view-location/', views.view_locations, name='view_locations'),

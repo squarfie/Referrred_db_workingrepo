@@ -47,9 +47,10 @@ label.form-control-label{
   font-size: large;
 }
 
-td, th {
-            text-align: center;
-        }
+table{
+  justify-content: center;
+  vertical-align: middle;
+}
 </style>
 {% endblock stylesheets %}
 
@@ -88,8 +89,8 @@ td, th {
   <div class="row">
  
 <!-- DEMOGRAPHIC DATA -->
-    <div class="col-xl-2"></div>
-    <div class="col-xl-8 order-xl-1">
+ 
+    <div class="col-xl-12 order-xl-1">
       <form method="POST" action="{% url 'accession_data' %}" id="accession-form">
         {% csrf_token %}
       
@@ -106,9 +107,9 @@ td, th {
             <div class="col-lg-12">
              
                 <div class="row">
-                <div class="col-lg-6">
+                <div class="col-lg-3">
                   <div class="form-group" >
-                      <label class="form-control-label" for="SiteCode">SITE CODE</label>
+                      <label class="form-control-label" for="SiteCode">Site Code</label>
                       <div class="d-flex align-items-center">
                       {{ form.SiteCode| append_attr:"class: form-control "}} 
                       <span><a href="{% url 'add_dropdown' %}" class="col-4 shortcut-item" style="padding: 0;">
@@ -117,22 +118,19 @@ td, th {
                       </div>
                   </div>
                 </div>
-                <div class="col-lg-6">
+                <div class="col-lg-3">
                   <div class="form-group" >
                   <label class="form-control-label" for=" Referral_Date">Referral Date</label>
                   {{form.Referral_Date| append_attr:"class: form-control " }}
                   </div>
                 </div>
-              
-              </div>
-              <div class="row">
-                  <div class="col-lg-6">
+                <div class="col-lg-3">
                   <div class="form-group" >
                   <label class="form-control-label" for="BatchNo">Batch No</label>
                   {{form.BatchNo| append_attr:"class: form-control " }}
                   </div>
                 </div>
-                <div class="col-lg-6">
+                <div class="col-lg-3">
                   <div class="form-group" >
                   <label class="form-control-label" for="Total_batch">Total Batch</label>
                   {{form.Total_batch| append_attr:"class: form-control " }}
@@ -140,33 +138,99 @@ td, th {
                 </div>
               </div>
               <div class="row">
-                <div class="col-lg-6">
+                <div class="col-lg-2">
                   <div class="form-group" >
                   <label class="form-control-label" for="RefNo">Reference No</label>
                   {{form.RefNo| append_attr:"class: form-control " }}
                   </div>
                 </div>
-                    <div class="col-lg-6">
+                    <div class="col-lg-5">
                       <div class="form-group">
                         <label class='form-control-label' for='Site_NameGen'>Site Name</label>
                         {{form.Site_NameGen| append_attr:"class: form-control fontsize"}}
                       </div>
                     </div>
-                    
-                </div>
-                <div class="row">
-                    <div class="col-lg-6">
+                     <div class="col-lg-5">
                         <div class="form-group">
                           <label class='form-control-label' for='Batch_Name'>Batch Name</label>
                           {{form.Batch_Name| append_attr:"class: form-control fontsize"}}
                         </div>
                       </div>
-                <div class="col-lg-3">
+                </div>
+              <div class="row">
+                <div class="col-lg-12">
+                  <div class="row">
+                  <div class="col-lg-6">
+                      <h6 class="heading-small text-muted mb-4">ARSRL LABORATORY</h6>
+                      <div class="card border-info mb-3">
+                        <div class="card-body  text-info">
+                          <div class="row">
+                          <div class="col-lg-6">
+                            <div class="form-group">
+                              <label class='form-control-label' for='arsp_Checker'>Checked by</label>
+                                 {{form.arsp_Checker| append_attr:"class: form-control"}}
+                            </div>
+                          </div>
+                           <div class="col-lg-6">
+                            <div class="form-group">
+                              <label class='form-control-label' for='arsp_Chec_Lic'>License No.</label>
+                                 {{form.arsp_Chec_Lic | append_attr:"class: form-control"}}
+                            </div>
+                          </div>
+                          </div>
+                          <div class="row">
+                            <div class="col-lg-6">
+                            <div class="form-group">
+                              <label class='form-control-label' for='arsp_Verifier'>Senior MT</label>
+                                 {{form.arsp_Verifier| append_attr:"class: form-control"}}
+                            </div>
+                          </div>
+                           <div class="col-lg-6">
+                            <div class="form-group">
+                              <label class='form-control-label' for='arsp_Ver_Lic'>License No.</label>
+                                 {{form.arsp_Ver_Lic| append_attr:"class: form-control"}}
+                            </div>
+                          </div>
+                          </div>
+                          <div class="row">
+                             <div class="col-lg-6">
+                            <div class="form-group">
+                              <label class='form-control-label' for='arsp_Verifier'>Lab Manager</label>
+                                 {{form.arsp_Verifier| append_attr:"class: form-control"}}
+                            </div>
+                          </div>
+                           <div class="col-lg-6">
+                            <div class="form-group">
+                              <label class='form-control-label' for='arsp_Lab_Lic'>License No.</label>
+                                 {{form.arsp_Lab_Lic| append_attr:"class: form-control"}}
+                            </div>
+                          </div>
+                          </div>
+                          </div>
+                        </div>
+                        </div>
+                     
+                      <div class="col-lg-6">
+                      <h6 class="heading-small text-muted mb-4">DATA MANAGEMENT UNIT</h6>
+                      <div class="card border-info mb-3">
+                        <div class="card-body  text-info">
+                        </div>
+                        </div>
+                      </div>
+                  </div>
+              </div>
+              </div>
+              
+
+
+
+                <div class="row">
+                <div class="col-lg-6">
                   <div class="form-group text-left mt-4">
                   <button type="button" class="btn btn-info btn-block" id="generate-accession-btn" sty>Generate Accession</button>
                    </div>
                 </div> 
-                <div class="col-lg-3">
+                <div class="col-lg-6">
                   <div class="form-group text-left mt-4">
                   <button type="button" class="btn btn-success btn-block" onclick="refresh()">Refresh</button>
                    </div>
@@ -178,89 +242,37 @@ td, th {
           </div>
         </div>
       </div>
-
-        
-              </div>
+    </div>
                 <div class="row">
                     <div class="col-lg-12">
-                        <div class="card" >
-                     
+                      <div class="card" >
+                        <div class="container-fluid">
                         <div class="row align-items-center">
-                        
-                          <div class="col-12">
-                          <div class="row">
                               <div class="col-lg-12">
                               <div class="row"> 
-                                    <div id="accession-result" style="display:none;">
-                                      <div style="display: flex; text-align: center;">
-                                          <table class="table" >
-                                            <thead>
+                                    <div id="accession-result">
+                                          <table id="accession-table" class="table">
+                                            
+                                            <thead >
                                               <tr>
                                                 <th colspan="3">#</th>
                                                 <th colspan="3">Accession No</th>
                                                 <th colspan="3">Site Name</th>
-                                                <th colspan="3"></th>
+                                                <th colspan="3">Add Details</th>
                                               </tr>
                                             </thead>
                                             <tbody id="accession-table-body">
-                                          
+                                          <!-- JS WILL FILL THIS -->
                                             </tbody>
-                                          </table>
-                                        </div>
-                                {% if batch_accession_numbers %}
-                                  <div class="mt-12">
-                                    <table style="`">
-                                      <thead>
-                                        <tr>
-                                          <th colspan="3">#</th>
-                                          <th></th>
-                                          <th></th>
-                                          <th colspan="3">Accession No</th>
-                                          <th></th>
-                                          <th></th>
-                                          <th colspan="3">Site Name</th>
-                                          <th></th>
-                                          <th ></th>
-                                          <th colspan="3"></th>
-                                          <th></th>
-                                          <th></th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                      {% for acc in batch_accession_numbers %}
-                                        <tr>
-                                          <td colspan="3">{{ forloop.counter }}</td>
-                                          <td></td>
-                                          <td></td>
-                                          <td colspan="3">{{ acc }}</td>
-                                          <td></td>
-                                          <td></td>
-                                       
-                                          <td colspan="3">{{ siteName }}</td>
-                                          <td></td>
-                                          <td></td>
-                                    
-                                          <td colspan="3">
-                                              <a href="{% url 'raw_data' %}?accession={{ acc }}" class="btn btn-sm btn-info" style="display:inline-block;">Add Data</a>
-                                          </td>
-                                          <td></td>
-                                          <td></td>
-                                        </tr>
-                                      {% endfor %}
-                                      </tbody>
-                                    </table>
+                                            
+                                      </div>
                                   </div>
-                                {% endif %}
-                              
-                                </div>
-                                </div>
-                                </div>
-                                </div> 
                               </div>
                          </div>
+                         </div>
+                    </div>
+                  </div> 
               </div>
-            </div> 
-          </div>
        </form> 
       </div>
     </div>
@@ -369,16 +381,16 @@ td, th {
       }
     }
 
-    $('#id_Laboratory_Staff').change(function() {
+    $('#id_Checked_by').change(function() {
       const labStaffId = $(this).val();
       if (labStaffId) {
         $.ajax({
-          url: "{% url 'get_Lab_Staff_Details' %}",
+          url: "{% url 'get_arsStaff_Details' %}",
           data: { lab_staff_id: labStaffId },
           dataType: 'json',
           success: function(data) {
-            $('#id_ars_contact').val(data.LabStaff_Telnum);
-            $('#id_ars_email').val(data.LabStaff_EmailAdd);
+            $('#id_ars_contact').val(data.Staff_Telnum);
+            $('#id_ars_email').val(data.Staff_EmailAdd);
           },
           error: function(xhr, status, error) {
             console.error("Lab staff fetch error:", status, error);
@@ -393,136 +405,10 @@ td, th {
 </script>
 
 
-<!-- <script>
-document.getElementById("generate-accession-btn").addEventListener("click", function (event) {
-  event.preventDefault();
-  const siteCode = document.getElementById("id_SiteCode").value;
-  const referralDate = document.getElementById("id_Referral_Date").value;
-  const batchNo = document.getElementById("id_BatchNo").value;
-  const totalBatch = document.getElementById("id_Total_batch").value;
-  const refNo = document.getElementById("id_RefNo").value;
-  const siteName = document.getElementById("id_Site_NameGen").value;
-  const batchName = document.getElementById("id_Batch_Name").value;
-
-  // also store into hidden inputs so form submits them if you submit the form later
-  document.getElementById("id_Site_NameGen").value = siteName;
-  const batchNoHidden = document.getElementById("id_BatchNo_hidden");
-  if (batchNoHidden) batchNoHidden.value = batchNo;
-
-  if (!siteCode || !referralDate || !refNo) {
-    alert("Please fill in Site Code, Referral Date, and Reference No.");
-    return;
-  }
-
-  const params = new URLSearchParams({
-    site_code: siteCode,
-    referral_date: referralDate,
-    ref_no: refNo,
-    batch_no: batchNo,
-    site_name: siteName,
-    batch_name: batchName,
-    total_batch: totalBatch
-  });
-
-  fetch(`/generate-accession/?${params.toString()}`)
-    .then(response => response.json())
-    .then(data => {
-      if (data.accession_numbers && Array.isArray(data.accession_numbers)) {
-        const tbody = document.getElementById("accession-table-body");
-        tbody.innerHTML = "";
-
-        data.accession_numbers.forEach((acc, idx) => {
-          const params2 = new URLSearchParams({
-            accession: acc,
-            SiteCode: siteCode,
-            Referral_Date: referralDate,
-            BatchNo: batchNo,
-            RefNo: refNo,
-            Site_Name: siteName,
-            Batch_Name: batchName,
-            Total_batch: totalBatch
-          }).toString();
-
-          tbody.innerHTML += `
-            <tr>
-              <td>${idx + 1}</td>
-              <td>${acc}</td>
-              <td>${siteName}</td>
-              <td>
-                <a href="/raw-data/?${params2}" class="btn btn-sm btn-info">Add Details</a>
-              </td>
-            </tr>
-          `;
-        });
-
-        document.getElementById("accession-result").style.display = "block";
-      } else {
-        alert(data.error || "Error generating accession number.");
-      }
-    })
-    .catch(error => {
-      console.error("Error:", error);
-      alert("An unexpected error occurred.");
-    });
-});
-</script> -->
-
-
-
-<!-- <script>
-document.getElementById("generate-accession-btn").addEventListener("click", function (event) {
-  event.preventDefault();
-
-  const siteCode = document.getElementById("id_SiteCode").value;
-  const referralDate = document.getElementById("id_Referral_Date").value;
-  const batchNo = document.getElementById("id_BatchNo").value;
-  const totalBatch = document.getElementById("id_Total_batch").value;
-  const refNo = document.getElementById("id_RefNo").value;
-  const siteName = document.getElementById("id_Site_NameGen").value;
-  const batchName = document.getElementById("id_Batch_Name").value;
-
-  // also store into hidden inputs
-  const batchNoHidden = document.getElementById("id_BatchNo_hidden");
-  if (batchNoHidden) batchNoHidden.value = batchNo;
-
-  if (!siteCode || !referralDate || !refNo) {
-    alert("Please fill in Site Code, Referral Date, and Reference No.");
-    return;
-  }
-
-  const params = new URLSearchParams({
-    site_code: siteCode,
-    referral_date: referralDate,
-    ref_no: refNo,
-    batch_no: batchNo,
-    site_name: siteName,
-    batch_name: batchName,
-    total_batch: totalBatch
-  });
-
-  fetch(`/generate-accession/?${params.toString()}`)
-    .then(response => response.json())
-    .then(data => {
-      if (data.accession_numbers && Array.isArray(data.accession_numbers)) {
-        // ✅ Successfully got accession numbers
-        console.log("Generated accession numbers:", data.accession_numbers);
-        alert("Accession numbers generated successfully!");
-      } else {
-        alert(data.error || "Error generating accession number.");
-      }
-    })
-    .catch(error => {
-      console.error("Error:", error);
-      alert("An unexpected error occurred.");
-    });
-});
-</script> -->
-
-
-
 <script>
 function renderAccessions(data, siteCode, referralDate, batchNo, refNo, siteName, batchName, totalBatch) {
   const tbody = document.getElementById("accession-table-body");
+  const table = document.getElementById("accession-table"); // your existing table
   tbody.innerHTML = "";
 
   data.accession_numbers.forEach((acc, idx) => {
@@ -536,30 +422,41 @@ function renderAccessions(data, siteCode, referralDate, batchNo, refNo, siteName
       Batch_Name: batchName,
       Total_batch: totalBatch
     }).toString();
-
+    
     tbody.innerHTML += `
+    
       <tr>
+       
+        <td></td> 
         <td>${idx + 1}</td>
-        <td></td>
-        <td></td>
+        <td></td> 
+        <td></td> 
         <td>${acc}</td>
-        <td></td>
-        <td></td>
+        <td></td> 
+        <td></td> 
         <td>${siteName}</td>
-        <td></td>
-        <td></td>
+        <td></td> 
+        <td></td> 
         <td>
-          <a href="/raw_data/?${params2}" class="btn btn-sm btn-info">Add Details</a>
+          <a href="/raw-data/?${params2}" class="btn btn-sm btn-info">Add Details</a>
         </td>
-        <td></td>
-        <td></td>
+        <td></td> 
       </tr>
     `;
   });
+ 
+  // Center the table
+  table.style.textAlign = "center";
+  table.style.marginLeft = "35px";  
 
+
+  // block makes the table visible only when generated
   document.getElementById("accession-result").style.display = "block";
 }
 
+
+
+// Generated accessions are retained until generate accession button is clicked
 document.getElementById("generate-accession-btn").addEventListener("click", function (event) {
   event.preventDefault();
   const siteCode = document.getElementById("id_SiteCode").value;
@@ -618,16 +515,23 @@ window.addEventListener("DOMContentLoaded", () => {
 </script>
 
 
-  <script>
-    function refresh() {
-      document.getElementById('#id_SiteCode').value = '';
-      document.getElementById('#id_Referral_Date').value = '';
-      document.getElementById('#id_BatchNo').value = '';
-      document.getElementById('#id_Total_batch').innerHTML = '';
-      document.getElementById('#id_RefNo').value = '';
- 
+<!-- refresh button -->
+
+<script>
+  function refresh() {
+    document.getElementById('id_SiteCode').value = '';
+    document.getElementById('id_Referral_Date').value = '';
+    document.getElementById('id_BatchNo').value = '';
+    document.getElementById('id_Total_batch').value = '';
+    document.getElementById('id_RefNo').value = '';
   }
-  </script>
+</script>
+
+
+
+
+
+
 
 
 {% endblock javascripts %}

@@ -9,11 +9,17 @@
 {% block content %}
 <div class="container">
     <div class="col-lg-12">
+         <br>
+            <br>
+        <div class="card">
+           
+        <div class="card-body">
         <div class="text-right">
             <a href="{% url 'contact_view' %}" class="btn btn-secondary mt-4">View all</a>
         </div>
         <div class="text-center text-muted mb-4">
-            <h2>Add New Contact</h2>
+            <h2>ARSRL STAFF</h2>
+              <hr>
         </div>
         <form method="POST" action="{% url 'add_contact' %}" autocomplete="on" id="contactform">
             {% csrf_token %}
@@ -23,22 +29,41 @@
                         <div class="row">
                             <div class="col-lg-6">
                                 <div class="form-group">
-                                    <label class="form-control-label" for="LabStaff_Name">Name of Lab Staff:</label>
-                                    {{ form.LabStaff_Name|append_attr:"class:form-control" }}
+                                    <label class="form-control-label" for="Staff_Name">Name of ARSRL Staff:</label>
+                                    {{ form.Staff_Name|append_attr:"class:form-control" }}
                                 </div>
                             </div>
                             <div class="col-lg-6">
                                 <div class="form-group">
-                                    <label class="form-control-label" for="LabStaff_Telnum">Telephone Number:</label>
-                                    {{ form.LabStaff_Telnum|append_attr:"class:form-control" }}
+                                    <label class="form-control-label" for="Staff_License">License Number:</label>
+                                    {{ form.Staff_Name|append_attr:"class:form-control" }}
+                                </div>
+                            </div>
+                           
+                        </div>
+                        <div class="row">
+
+                            <div class="col-lg-12">
+                                
+                                <div class="form-group">
+                                    <label class="form-control-label" for="Staff_Designation">Designation:</label>
+                                    {{ form.Staff_License|append_attr:"class:form-control" }}
                                 </div>
                             </div>
                         </div>
+                      
                         <div class="row">
-                            <div class="col-lg-12">
+                            
+                             <div class="col-lg-6">
                                 <div class="form-group">
-                                    <label class="form-control-label" for="LabStaff_EmailAdd">Email Address:</label>
-                                    {{ form.LabStaff_EmailAdd|append_attr:"class:form-control" }}
+                                    <label class="form-control-label" for="Staff_Telnum">Telephone Number:</label>
+                                    {{ form.Staff_Telnum|append_attr:"class:form-control" }}
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <label class="form-control-label" for="Staff_EmailAdd">Email Address:</label>
+                                    {{ form.Staff_EmailAdd|append_attr:"class:form-control" }}
                                 </div>
                             </div>
                         </div>
@@ -52,6 +77,8 @@
             </div>
         </form>
     </div>
+    </div>
+</div>
 </div>
 
 <script>
