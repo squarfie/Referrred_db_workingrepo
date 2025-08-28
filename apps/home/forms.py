@@ -49,6 +49,24 @@ class Referred_Form(forms.ModelForm):
             empty_label="Select Staff",
             required=False,
         )
+
+        arsp_Encoder= forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+        arsp_Head= forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+
         class Meta:
             model = Referred_Data
             fields ='__all__'
