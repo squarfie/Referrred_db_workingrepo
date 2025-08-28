@@ -798,12 +798,12 @@ label.form-control-label{
       const labStaffId = $(this).val();
       if (labStaffId) {
         $.ajax({
-          url: "{% url 'get_Lab_Staff_Details' %}",
+          url: "{% url 'get_arsStaff_Details' %}",
           data: { lab_staff_id: labStaffId },
           dataType: 'json',
           success: function (data) {
-            $('#id_ars_contact').val(data.LabStaff_Telnum);
-            $('#id_ars_email').val(data.LabStaff_EmailAdd);
+            $('#id_ars_contact').val(data.Staff_Telnum);
+            $('#id_ars_email').val(data.Staff_EmailAdd);
           },
           error: function (xhr, status, error) {
             console.error("Lab staff fetch error:", status, error);
