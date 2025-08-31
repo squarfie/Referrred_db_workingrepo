@@ -457,9 +457,11 @@ class AntibioticEntry(models.Model):
     #sentinel site results
     ab_Disk_value = models.IntegerField(blank=True, null=True)
     ab_Disk_RIS = models.CharField(max_length=4, blank=True)
+    ab_Disk_enRIS = models.CharField(max_length=4, blank=True)
     ab_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
     ab_MIC_value = models.DecimalField(max_digits=5, decimal_places=3, blank=True, null=True)
     ab_MIC_RIS = models.CharField(max_length=4, blank=True)
+    ab_MIC_enRIS = models.CharField(max_length=4, blank=True)
     ab_AlertMIC = models.BooleanField(default=False)
     ab_Alert_val = models.CharField(max_length=30, blank=True, null=True, default='')
 
@@ -474,9 +476,11 @@ class AntibioticEntry(models.Model):
     ab_Retest_Abx = models.CharField(max_length=100, blank=True, null=True)
     ab_Retest_DiskValue = models.IntegerField(blank=True, null=True)
     ab_Retest_Disk_RIS = models.CharField(max_length=4, blank=True)
+    ab_Retest_Dis_enRIS = models.CharField(max_length=4, blank=True)
     ab_Retest_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
     ab_Retest_MICValue = models.DecimalField(max_digits=5, decimal_places=3, blank=True, null=True)
     ab_Retest_MIC_RIS = models.CharField(max_length=4, blank=True)
+    ab_Retest_MIC_enRIS = models.CharField(max_length=4, blank=True)    
     ab_Retest_AlertMIC = models.BooleanField(default=False)
     ab_Retest_Alert_val = models.CharField(max_length=30, blank=True, null=True, default='')
     ab_Ret_R_breakpoint = models.CharField(max_length=10, blank=True, null=True)
