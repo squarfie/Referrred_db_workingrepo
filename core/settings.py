@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'phonenumber_field',
     'phonenumbers',
+    "apps.wgs_app",
 ]
 
 MIDDLEWARE = [
@@ -53,14 +54,18 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 
-LOGIN_REDIRECT_URL = "home"   # after login
-LOGOUT_REDIRECT_URL = "home"  # after logout
+LOGIN_URL = '/auth/login/'
+LOGIN_REDIRECT_URL = 'home'      # this sends users to the home app (dashboard)
+LOGOUT_REDIRECT_URL = 'home'
+
+
 
 TEMPLATE_DIR = os.path.join(CORE_DIR, "apps/templates")
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [TEMPLATE_DIR],
+        # 'DIRS': [TEMPLATE_DIR],
+        'DIRS': [os.path.join(CORE_DIR, "apps/templates")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

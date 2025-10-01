@@ -6,15 +6,15 @@ from django import forms
     
 class Referred_Form(forms.ModelForm):
 
-        #using modelchoicefield for dynamic rendering
-        SiteCode = forms.ModelChoiceField(
-            queryset=SiteData.objects.all(),
-            to_field_name='SiteCode',  # Specify the field you want as the value
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-            empty_label="Select Site Code",
-            required=False
+        # #using modelchoicefield for dynamic rendering
+        # SiteCode = forms.ModelChoiceField(
+        #     queryset=SiteData.objects.all(),
+        #     to_field_name='SiteCode',  # Specify the field you want as the value
+        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+        #     empty_label="Select Site Code",
+        #     required=False
             
-        )
+        # )
 
 
         Spec_Type = forms.ModelChoiceField(
@@ -79,26 +79,139 @@ class Referred_Form(forms.ModelForm):
             'BatchNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1.1'}),
             'Growth_others' :forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ex. after 24 hrs of incubation'}),
             'Comments': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '3'}),
+            'ars_reco': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '3'}),
             
             # Add more fields as needed
             }
             
-        def __init__(self, *args, **kwargs):
-            super(Referred_Form, self).__init__(*args, **kwargs)
-            self.fields['Site_Name'].widget.attrs['readonly'] = True  # Site_Name read-only
-            self.fields['AccessionNo'].widget.attrs['readonly'] = True  # AccessionNo read-only
-            self.fields['Batch_Name'].widget.attrs['readonly'] = True  # Batch_Name read-only
-            self.fields['AccessionNoGen'].widget = forms.HiddenInput()
-            # self.fields['Batch_Code'].widget = forms.HiddenInput()
+       
             
 
-def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.fields['SiteCode'].queryset = SiteData.objects.all() # Always load the latest ClinicData instances into the PTIDCode field
-               # Set default queryset for country
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            # self.fields['SiteCode'].queryset = SiteData.objects.all() # Always load the latest Site Code
+            self.fields['SiteCode'].widget.attrs['readonly'] = True
+            self.fields['Batch_Code'].widget.attrs['readonly'] = True
+            self.fields['AccessionNo'].widget.attrs['readonly'] = True
+            self.fields['Status'].required=False
+            self.fields['Batch_id'].required=False
+            self.fields['RefNo'].widget.attrs['readonly'] = True
+            self.fields['Referral_Date'].widget.attrs['readonly'] = True
+            self.fields['BatchNo'].widget.attrs['readonly'] = True
+            self.fields['Site_Name'].widget.attrs['readonly'] = True
+            self.fields['arsp_Encoder'].required=False
+            self.fields['arsp_Checker'].required=False
+            self.fields['arsp_Verifier'].required=False
+            self.fields['arsp_LabManager'].required=False
+            self.fields['arsp_Head'].required=False
+            self.fields['arsp_Enc_Lic'].widget.attrs['readonly'] = True  
+            self.fields['arsp_Chec_Lic'].widget.attrs['readonly'] = True  
+            self.fields['arsp_Ver_Lic'].widget.attrs['readonly'] = True  
+            self.fields['arsp_Lab_Lic'].widget.attrs['readonly'] = True  
+            self.fields['arsp_Head_Lic'].widget.attrs['readonly'] = True
+                    # Set default queryset for country
 
-    
 
+#for batch table
+class BatchTable_form(forms.ModelForm):
+        bat_SiteCode = forms.ModelChoiceField(
+            queryset=SiteData.objects.all(),
+            to_field_name='SiteCode',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Site Code",
+            required=False
+            
+        )
+
+        bat_Checker = forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+        bat_Verifier = forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+        bat_LabManager = forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+        bat_Encoder= forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+        bat_Head= forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+        class Meta:
+            model = Batch_Table
+            fields = '__all__'
+            widgets = {
+            'bat_Referral_Date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
+            'bat_RefNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 0001-0002'}),
+            'bat_BatchNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1'}),
+            'bat_Total_batch' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1'}),
+            
+            # Add more fields as needed
+            }
+
+        def __init__(self, *args, **kwargs):
+            super(BatchTable_form, self).__init__(*args, **kwargs)
+            self.fields['bat_SiteCode'].queryset = SiteData.objects.all() # Always load the latest Site Code instances
+            self.fields['bat_AccessionNo'].widget.attrs['readonly'] = True  # AccessionNo read-only
+            self.fields['bat_Batch_Name'].widget.attrs['readonly'] = True  # Batch_Name read-only
+            self.fields['bat_AccessionNoGen'].widget = forms.HiddenInput()
+            self.fields['bat_Enc_Lic'].widget.attrs['readonly'] = True  
+            self.fields['bat_Chec_Lic'].widget.attrs['readonly'] = True  
+            self.fields['bat_Ver_Lic'].widget.attrs['readonly'] = True  
+            self.fields['bat_Lab_Lic'].widget.attrs['readonly'] = True  
+            self.fields['bat_Head_Lic'].widget.attrs['readonly'] = True
+            self.fields['bat_Status'].required=False
+            # self.fields['Batch_Code'].widget = forms.HiddenInput()
+
+
+         # --- Custom cleaning methods to save Staff_Name as string ---
+        def clean_bat_Encoder(self):
+            encoder = self.cleaned_data.get("bat_Encoder")
+            return encoder.Staff_Name if encoder else ""
+
+        def clean_bat_Checker(self):
+            checker = self.cleaned_data.get("bat_Checker")
+            return checker.Staff_Name if checker else ""
+
+        def clean_bat_Verifier(self):
+            verifier = self.cleaned_data.get("bat_Verifier")
+            return verifier.Staff_Name if verifier else ""
+
+        def clean_bat_LabManager(self):
+            manager = self.cleaned_data.get("bat_LabManager")
+            return manager.Staff_Name if manager else ""
+
+        def clean_bat_Head(self):
+            head = self.cleaned_data.get("bat_Head")
+            return head.Staff_Name if head else ""
+        
+#for adding of site code
 class SiteCode_Form(forms.ModelForm):
     class Meta:
         model = SiteData
@@ -214,3 +327,5 @@ class TAT_form(forms.ModelForm):
      class Meta:
         model = TATform  # Ensure the model is specified
         fields = '__all__'  # Include the fields you want in the form
+
+

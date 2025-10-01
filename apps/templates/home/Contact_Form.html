@@ -36,7 +36,7 @@
                             <div class="col-lg-6">
                                 <div class="form-group">
                                     <label class="form-control-label" for="Staff_License">License Number:</label>
-                                    {{ form.Staff_Name|append_attr:"class:form-control" }}
+                                    {{ form.Staff_License|append_attr:"class:form-control" }}
                                 </div>
                             </div>
                            
@@ -47,7 +47,7 @@
                                 
                                 <div class="form-group">
                                     <label class="form-control-label" for="Staff_Designation">Designation:</label>
-                                    {{ form.Staff_License|append_attr:"class:form-control" }}
+                                    {{ form.Staff_Designation|append_attr:"class:form-control" }}
                                 </div>
                             </div>
                         </div>
@@ -72,7 +72,9 @@
             </div>
             <div class="text-center">
                 <button type="submit" class="btn btn-primary mt-4">Submit</button>
-                <a href="{% url 'raw_data' %}" class="btn btn-secondary mt-4">Back</a>
+                <button type="button" class="btn btn-secondary mt-4" onclick="history.back()">
+                <i class="ni ni-bold-left mr-2"></i> Back
+                </button>
                 <button type="button" class="btn btn-success mt-4" onclick="refresh()">Clear</button>
             </div>
         </form>

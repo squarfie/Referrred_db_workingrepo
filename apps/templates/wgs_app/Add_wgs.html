@@ -1,0 +1,253 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %} Upload Data {% endblock title %}
+
+{% block content %}
+
+
+<div class="header bg-primary pb-6" style="min-height: 200px; background-size: auto; background-image: url(/static/assets/img/theme/viruses.jpg); background-size: cover; background-position: center center;">
+  <span class="mask bg-gradient-default opacity-6" ></span>
+    <div class="container-fluid">
+      <div class="header-body">
+        <div class="row align-items-center py-4">
+          <div class="col-lg-6 col-7">
+            <h6 class="h2 text-white d-inline-block mb-0">Referred Isolates Database</h6>
+            <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+              <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+                <li class="breadcrumb-item"><a href="{% url 'batch_create_view' %}">New Batch</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Data Upload</li>
+              </ol>
+            </nav>
+          </div>
+          <div class="col-lg-6 col-5 text-right">
+            <a class="btn btn-sm btn-neutral" href="{% url 'batch_create_view' %}">New Batch</a>
+            <a class="btn btn-sm btn-neutral" href="{% url 'show_wgs_projects' %}">Related WGS</a>
+            <button class="btn btn-sm btn-neutral" onclick="history.back()">Back</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+
+<div class="container-fluid mt--6">
+<div class="card" style="padding: 2.5rem;">
+
+
+<div class="card-body">
+  
+    
+    <div class="text-center text-muted mb-4">
+      <h2>Upload Data Form</h2>
+      <hr>
+    </div>
+    <div class="row">
+    <!-- Upload Button -->
+      <div class="col-lg-12">
+        <div class="text-center">
+
+        <div class="row">
+
+        <div class="col-lg-4">
+         <label class="form-control-label" for="" >FastQ Data</label><br>
+          <button type="button" class="btn btn-success" data-toggle="modal" data-target="#UploadModal" style="width: 200px;">
+          <i class="ni ni-cloud-upload-96"></i> Upload FastQ
+          </button>
+          <a href="{% url 'show_fastq'%}" class="btn btn-primary" style="width: 200px;">View FastQ</a>
+        </div>
+
+          <div class="col-lg-4">
+          <label class="form-control-label" for="">Gambit Data</label> <br>
+          <button type="button" class="btn btn-success" data-toggle="modal" data-target="#GambitModal" style="width: 200px;">
+          <i class="ni ni-cloud-upload-96"></i> Upload Gambit
+          </button>
+          <a href="{% url 'show_gambit'%}" class="btn btn-primary" style="width: 200px;">View Gambit</a>
+        </div>
+
+        <div class="col-lg-4">
+          <label class="form-control-label" for="">Mlst Data</label> <br>
+          <button type="button" class="btn btn-success" data-toggle="modal" data-target="#MlstModal" style="width: 200px;">
+          <i class="ni ni-cloud-upload-96"></i> Upload Mlst
+          </button>
+          <a href="{% url 'show_mlst'%}" class="btn btn-primary" style="width: 200px;">View Mlst</a>
+        </div>
+
+       
+
+        </div>
+        <br>
+        <br>
+        <div class="row">
+           <div class="col-lg-4">
+          <label class="form-control-label" for="">Checkm2 Data</label> <br>
+          <button type="button" class="btn btn-success" data-toggle="modal" data-target="#Checkm2Modal" style="width: 200px;">
+          <i class="ni ni-cloud-upload-96"></i> Upload Checkm2
+          </button>
+          <a href="{% url 'show_checkm2'%}" class="btn btn-primary" style="width: 200px;">View Checkm2</a>
+        </div>
+
+          <div class="col-lg-4">
+          <label class="form-control-label" for="">AssemblyScan Data</label> <br>
+          <button type="button" class="btn btn-success" data-toggle="modal" data-target="#AssemblyModal" style="width: 200px;">
+          <i class="ni ni-cloud-upload-96"></i> Upload Assembly 
+          </button>
+          <a href="{% url 'show_assembly'%}" class="btn btn-primary" style="width: 200px;">View Assembly</a>
+        </div>
+        </div>
+
+      </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+    <!-- Page title -->
+<!-- FastQ Modal -->
+<div class="modal fade" id="UploadModal" tabindex="-1" role="dialog" aria-labelledby="UploadModalLabel" aria-hidden="true">
+  <form method="POST" action="{% url 'upload_fastq' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="UploadModalLabel">Upload Fastq Summary</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="fastqfile">Choose CSV/Excel File</label>
+            {{ fastq_form.fastqfile|add_class:"form-control" }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Upload FastQ</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+
+<!-- Gambit Modal -->
+<div class="modal fade" id="GambitModal" tabindex="-1" role="dialog" aria-labelledby="GambitModalLabel" aria-hidden="true">
+  <form method="POST" action="{% url 'upload_gambit' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="GambitModalLabel">Upload Gambit Summary</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="GambitFile">Choose CSV/Excel File</label>
+            {{ gambit_form.GambitFile|add_class:"form-control" }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Upload Gambit</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Mlst Modal -->
+<div class="modal fade" id="MlstModal" tabindex="-1" role="dialog" aria-labelledby="MlstModalLabel" aria-hidden="true">
+  <form method="POST" action="{% url 'upload_mlst' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="MlstModalLabel">Upload MLST Summary</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="Gambitfile">Choose CSV/Excel File</label>
+            {{ mlst_form.Mlstfile|add_class:"form-control" }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Upload Mlst</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Checkm2 Modal -->
+<div class="modal fade" id="Checkm2Modal" tabindex="-1" role="dialog" aria-labelledby="Checkm2ModalLabel" aria-hidden="true">
+  <form method="POST" action="{% url 'upload_checkm2' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="Checkm2ModalLabel">Upload MLST Summary</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="Checkm2file">Choose CSV/Excel File</label>
+            {{ checkm2_form.Checkm2file|add_class:"form-control" }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Upload Checkm2</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- AsemblyScan Modal -->
+<div class="modal fade" id="AssemblyModal" tabindex="-1" role="dialog" aria-labelledby="AssemblyModalLabel" aria-hidden="true">
+  <form method="POST" action="{% url 'upload_assembly' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="AssemblyModalLabel">Upload Assembly</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="Assemblyfile">Choose CSV/Excel File</label>
+            {{ assembly_form.Assemblyfile|add_class:"form-control" }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Upload Assembly</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+</div>
+
+<!-- JS -->
+<script>
+function confirmOverwrite() {
+  return confirm("WARNING: Uploading will overwrite existing Data. Are you sure?");
+}
+</script>
+
+{% endblock content %}

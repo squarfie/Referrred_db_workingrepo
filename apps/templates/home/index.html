@@ -1,6 +1,6 @@
 {% extends 'layouts/base.html' %}
 {% load widget_tweaks %}
-
+{% load static %}
 {% block title %} Dashboard {% endblock title %}
 
 <!-- Specific CSS goes HERE -->
@@ -9,9 +9,9 @@
 {% endblock stylesheets %}
 
 {% block content %}
-
     <!-- Header -->
-    <div class="header bg-primary pb-6">
+    <div class="header bg-primary pb-6 g-gradient-default align-items-center"  style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/viruses.jpg); background-position: center top;">
+      <span class="mask bg-gradient-default opacity-6"></span>
       <div class="container-fluid">
         <div class="header-body">
           <div class="row align-items-center py-4">
@@ -191,7 +191,7 @@
    
 
       <div class="row">
-        <div class="col-xl-12">
+        <div class="col-xl-12 ">
           <div class="card">
             <div class="card-header border-0">
               <div class="row align-items-center">
@@ -217,7 +217,7 @@
                 </div> </div>
               </div>
             </div>
-            <div class="table-responsive">
+            <div class="table-responsive" style="background: linear-gradient(135deg, #e3f0ff 0%, #f9f9f9 100%); box-shadow: 0 8px 24px rgba(0,0,0,0.08);">
               <!-- Projects table -->
               <table class="table align-items-center table-flush table-hover">
                 <thead class="thead-dark" >

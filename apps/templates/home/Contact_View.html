@@ -57,9 +57,12 @@
                         <thead class="thead-light">
                             <tr>
                                 <th scope="col"></th>
-                                <th scope="col" class="sort" data-sort="ClinStaff_Name">Name</th>
-                                <th scope="col" class="sort" data-sort="ClinStaff_Telnum">Telephone Number</th>
-                                <th scope="col" class="sort" data-sort="ClinStaff_EmailAdd">Email Address</th>
+                                <th scope="col" class="sort" data-sort="Staff_Name">Name</th>
+                                <th scope="col" class="sort" data-sort="Staff_Designation">Designation</th>
+                                <th scope="col" class="sort" data-sort="Staff_License">PRC License</th>
+                                <th scope="col" class="sort" data-sort="Staff_Telnum">Telephone Number</th>
+                                <th scope="col" class="sort" data-sort="Staff_EmailAdd">Email Address</th>
+                                
                             </tr>
                         </thead>
                         <tbody class="list">
@@ -67,9 +70,12 @@
                             <tr>
                                 <td><a href="#" class="text-danger delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'delete_contact' contact_item.id %}">
                                     <i class="fa fa-trash" aria-hidden="true"></i> &nbspDelete</a></td>
-                                <td>{{ contact_item.ClinStaff_Name }}</td>
-                                <td>{{ contact_item.ClinStaff_Telnum }}</td>
-                                <td>{{ contact_item.ClinStaff_EmailAdd }}</td>
+                                <td>{{ contact_item.Staff_Name }}</td>
+                                <td>{{ contact_item.Staff_Designation }}</td>
+                                <td>{{ contact_item.Staff_License }}</td>
+                                <td>{{ contact_item.Staff_Telnum }}</td>
+                                <td>{{ contact_item.Staff_EmailAdd }}</td>
+                                
                             </tr>
                             {% endfor %}
                         </tbody>

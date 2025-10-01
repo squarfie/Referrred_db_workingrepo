@@ -48,37 +48,19 @@
             </a>
           </li> -->
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'accession_data' %}">
+            <a class="nav-link" href="{% url 'batch_create_view' %}">
               <i class="ni ni-folder-17 text-primary"></i>
               <span class="nav-link-text">New Batch</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'raw_data' %}">
-              <i class="ni ni-folder-17 text-primary"></i>
-              <span class="nav-link-text">Referral Form</span>
-            </a>
-          </li>
-          <li class="nav-item">
             <a class="nav-link {% if 'tables' in segment %} active {% endif %}" href="{% url 'show_data' %}">
               <i class="ni ni-bullet-list-67 text-primary"></i>
-              <span class="nav-link-text">View Details</span>
+              <span class="nav-link-text">View Records</span>
             </a>
           </li>
          
-          <li class="nav-item">
-            <a class="nav-link" href="/register.html">
-              <i class="ni ni-circle-08 text-primary"></i>
-              <span class="nav-link-text">Register</span>
-            </a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'logout' %}">
-              <i class="ni ni-curved-next text-primary"></i>
-              <span class="nav-link-text">Logout</span>
-            </a>
-          </li>            
+             
         </ul>
         <!-- Divider -->
         <hr class="my-3">
@@ -176,7 +158,7 @@
           <!-- end of modal -->
            <li class="nav-item">
             <a class="nav-link" 
-               href="">
+               href="{% url 'upload_fastq' %}">
               <i class="ni ni-cloud-upload-96 text-warning"></i>
               <span class="nav-link-text ">Upload Data</span>
             </a>
@@ -214,19 +196,19 @@
             <a class="nav-link" 
                href="{% url 'add_contact' %}">
               <i class="ni ni-single-02 text-info"></i>
-              <span class="nav-link-text ">ARSP Lab Staff</span>
+              <span class="nav-link-text ">ARSP Staff</span>
             </a>
           </li>
-          <li class="nav-item">
+          <!-- <li class="nav-item">
             <a class="nav-link" 
                href="{% url 'add_location' %}">
               <i class="ni ni-square-pin text-info"></i>
               <span class="nav-link-text ">Add Cities</span>
             </a>
-          </li>
+          </li> -->
           <li class="nav-item">
             <a class="nav-link" 
-               href="{% url 'add_location' %}">
+               href="#">
               <i class="ni ni-square-pin text-info"></i>
               <span class="nav-link-text ">TAT Process</span>
             </a>

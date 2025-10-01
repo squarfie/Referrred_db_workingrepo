@@ -52,9 +52,9 @@ label.form-control-label{
 
 
 <div class="header pb-6 d-flex align-items-center" 
-     style="min-height: 200px; background-size: auto; background-image: url(/static/assets/img/theme/arsp-doh.png); background-size: cover; background-position: center top;">
+     style="min-height: 200px; background-size: auto; background-image: url(/static/assets/img/theme/resistance1.jpg); background-size: cover; background-position: center center;">
   <!-- Mask -->
-  <span class="mask bg-gradient-default opacity-8"></span>
+  <span class="mask bg-gradient-default opacity-6"></span>
   <!-- Header container -->
   <div class="container-fluid d-flex flex-column align-items-right">
     <div class="row">
@@ -86,8 +86,12 @@ label.form-control-label{
 <!-- DEMOGRAPHIC DATA -->
 
     <div class="col-xl-12 order-xl-1">
-      <form method="POST" action="{% url 'raw_data' %}" autocomplete="on" id="myform">
+      <form method="POST" 
+      action="{% if isolates %}{% url 'raw_data' isolates.id %}{% endif %}" 
+      autocomplete="on" id="myform">
+
         {% csrf_token %}
+
       <div class="card" >
         <div class="card-header" id="mytop">
           <div class="row align-items-center">
@@ -95,6 +99,25 @@ label.form-control-label{
                <h3 class="mb-0">SURVEILLANCE SITE INFORMATION </h3> 
             </div> -->
             <div class="col-12">
+                    <div class="row">
+                <div class="col-lg-12">
+                    <h4>Existing WGS Project</h4>
+                <label>
+                  <input type="checkbox" disabled {% if fastq_checked %}checked{% endif %}>
+                  FastQ Summary
+                </label> &nbsp;
+                <label>
+                  <input type="checkbox" disabled {% if gambit_checked %}checked{% endif %}>
+                  Gambit Summary
+                </label> &nbsp;
+                <label>
+                  <input type="checkbox" disabled {% if mlst_checked %}checked{% endif %}>
+                  MLST Summary
+                </label>
+
+                </div>
+              </div>
+              <br>
               <div class="row">
                 <div class="col-lg-2">
                   <div class="form-group" >
@@ -127,7 +150,7 @@ label.form-control-label{
                 </div>
               <div class="col-4 text-right">
                 <button class="btn btn-sm btn-success" onclick="history.back()">Back </button>
-                <a href="{% url 'accession_data' %}" class="btn btn-sm btn-primary">New Batch</a>
+                <a href="{% url 'batch_create_view' %}" class="btn btn-sm btn-primary">New Batch</a>
                 <button type="submit" class="btn btn-sm btn-primary">Save</button>
                 <a href="{% url 'show_data' %}" class="btn btn-sm btn-primary">View / Print</a>  
                 <a href="{% url 'add_breakpoints' %}" class="btn btn-warning btn-sm">Breakpoints</a>
@@ -148,13 +171,13 @@ label.form-control-label{
                 <div class="col-lg-4">
                 <div class="form-group">
                   <label class="form-control-label" for="AccessionNo">Accession Number</label>
-                  {{form.AccessionNo| append_attr:"class: form-control fontlarge"}} 
+                  {{form.AccessionNo| append_attr:"class: form-control fontsize"}} 
               </div>
               </div>
               <div class="col-lg-4">
                 <div class="form-group">
                   <label class="form-control-label" for="Batch_Name">Batch Name</label>
-                  {{form.Batch_Code| append_attr:"class: form-control fontlarge"}} 
+                  {{form.Batch_Code| append_attr:"class: form-control fontsize"}} 
               </div>
               </div>
             </div>
@@ -380,7 +403,7 @@ label.form-control-label{
                             </div>
                                <div class="col-lg-3">
                               <div class="form-group">
-                                <label class='form-control-label' for='OrganismCode'>Organism Code</label> {{form.ars_OrgName| append_attr:"class: form-control" }}
+                                <label class='form-control-label' for='OrganismCode'>Organism Code</label> {{form.OrganismCode| append_attr:"class: form-control" }}
                               </div>
                             </div>
                             <div class="col-lg-3">
@@ -413,14 +436,15 @@ label.form-control-label{
                     <div class="card-body  text-info">
                   <div class="row">
 
-                          <div class="table-responsive">
+                          <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
                             <table class="table align-items-center text-center table-sm table-responsive" style="padding: 1em; border-width: 0; border-collapse: collapse; height: auto; width: 100%;">
                               <thead class="thead-light" style="text-align: center; width: 100%;">
                                 <tr style="line-height: 15px;">
                                   <th scope="col"  >ANTIBIOTIC</th>
                                   <th scope="col" >TEST METHOD</th>
                                   <th scope="col" >WHONET CODE</th>
-                                  <th scope="col" style="text-align: center; width:98px">TEST RESULT</th>
+                                  <th scope="col" style="text-align: center;">TEST RESULT</th>
+                                  <th scope="col">RIS</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -431,7 +455,16 @@ label.form-control-label{
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Antibiotic }}</td>
                                   <td>Disk</td>
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Whonet_Abx }}</td>
-                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="disk_{{entry.id}}" value="{{ab_Disk_value |default:'' }}" type="number" style="width: 50px;" min="0"/></td>
+                                       <td>
+                                                <input name="disk_{{ entry.id }}" 
+                                                       value="{% get_existing_value existing_entries entry.id 'disk' %}" 
+                                                       type="number" min="0" style="width: 70px;"/>
+                                            </td>
+                                            <td>
+                                              <input type="text" style="width: 50px;" name="disk_enris_{{ entry.id }}"
+                                                     value="{% get_existing_value existing_entries entry.id 'disk_enris' %}" >
+                                            </td>
+
                                   {% endif %}
                                   </tr>
                                 {% endfor %}
@@ -458,6 +491,7 @@ label.form-control-label{
                                   <th scope="col" >WHONET CODE</th>
                                   <th scope="col" >Operand</th>
                                   <th scope="col" style="text-align: center; width: 98px;">TEST RESULT</th>
+                                  <th scope="col" >RIS</th>
                                   <th scope="col" style="text-align: center; width: 98px;">Alert MIC</th>
                                 </tr>
                               </thead>
@@ -469,9 +503,21 @@ label.form-control-label{
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Antibiotic }}</td>
                                   <td>MIC</td>
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Whonet_Abx }}</td>
-                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="mic_operand_{{entry.id}}" type="text" value="{{ab_MIC_operand|default:'' }}"style="width: 50px;" /></td>
-                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="mic_{{entry.id}}" value="{{ab_MIC_value|default:'' }}" type="number" style="width: 50px;" min="0" step="0.001"/></td>
-                                  <td style="border-spacing: 0; border-collapse: collapse;"><input type="checkbox" style="width: auto; transform: scale(1.5);" name="alert_mic_{{ entry.id }}" value="{{ab_AlertMIC}}"></input></td>
+                                   <td><input type="text" style="width: 50px;" name="mic_operand_{{ entry.id }}" value="{% get_existing_value existing_entries entry.id 'mic_operand' %}"></td> 
+                                            <td>
+                                                <input name="mic_{{ entry.id }}" 
+                                                       value="{% get_existing_value existing_entries entry.id 'mic' %}" 
+                                                       type="number" min="0" step="0.001" style="width: 70px;"/>
+                                            </td>
+                                            <td>
+                                              <input name="mic_enris_{{ entry.id }}"
+                                                     value="{% get_existing_value existing_entries entry.id 'mic_enris' %}" type="text" style="width: 50px;"  >
+                                            </td>
+                                            <td>
+                                              {% get_existing_value existing_entries entry.id 'alert_mic' as alert_mic_checked %}
+                                            <input type="checkbox" style="transform: scale(1.5); margin: 4px;"  name="alert_mic_{{ entry.id }}"
+                                                  {% if alert_mic_checked %}checked{% endif %}>
+                                            </td>
                                   {% endif %}
                                   </tr>
                                 {% endfor %}
@@ -615,6 +661,7 @@ label.form-control-label{
                                 <th scope="col">Test Method</th>
                                 <th scope="col" >WHONET CODE</th>
                                 <th scope="col">Test Result</th>
+                                <th scope="col">RIS</th>
                               </tr>
                             </thead>
                               <tbody>
@@ -625,7 +672,8 @@ label.form-control-label{
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Antibiotic }}</td>
                                   <td>Disk</td>
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Whonet_Abx }}</td>
-                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_disk_{{retest.id}}" value="{{retest.ab_Retest_DiskValue |default:'' }}" type="number" style="width: 50px;" min="0"/></td>
+                                   <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_disk_{{retest.id}}" value= "{% get_existing_value retest_entries retest.id 'retest_disk' %}" type="number" style="width: 50px;" min="0"/></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_disk_enris_{{retest.id}}" value="{% get_existing_value retest_entries retest.id 'retest_disk_enris' %}" type="text" style="width: 50px;"/></td>
                                   {% endif %}
                                 </tr>
                               {% endfor %}
@@ -655,6 +703,7 @@ label.form-control-label{
                                 <th scope="col" >WHONET CODE</th>
                                 <th scope="col" >Operand</th>
                                 <th scope="col">Test Result</th>
+                                <th scope="col">RIS</th>
                                 <th scope="col" style="text-align: center; width: 98px;">Alert MIC</th>
                               </tr>
                             </thead>
@@ -666,10 +715,14 @@ label.form-control-label{
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Antibiotic }}</td>
                                   <td>MIC</td>
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Whonet_Abx }}</td>
-                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="retest_mic_operand_{{retest.id}}" value="{{retest.ab_Retest_MIC_operand_|default:'' }}" type="text" style="width: 50px;"/></td>
-                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_mic_{{retest.id}}" value="{{retest.ab_Retest_MICValue|default:'' }}" type="number" style="width: 50px;" min="0" step="0.001"/></td>
-                                  <td style="border-spacing: 0; border-collapse: collapse;"><input type="checkbox" style="width: auto; transform: scale(1.5);" name="retest_alert_mic_{{ retest.id }}" value="{{ab_Retest_AlertMIC}}">
-                                  </input>&nbsp;</td>
+                                 <td style="border-spacing: 0; border-collapse: collapse;"><input name="retest_mic_operand_{{retest.id}}" value= "{% get_existing_value retest_entries retest.id 'retest_mic_operand' %}" type="text" style="width: 50px;"/></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_mic_{{retest.id}}" value="{% get_existing_value retest_entries retest.id 'retest_mic' %}" type="number" style="width: 50px;" min="0" step="0.001"/></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_mic_enris_{{retest.id}}" value="{% get_existing_value retest_entries retest.id 'retest_mic_enris' %}" type="text" style="width: 50px;"/></td>
+                                   <td>
+                                    {% get_existing_value retest_entries retest.id 'retest_alert_mic' as retest_alert_mic_checked %}
+                                    <input type="checkbox" style="transform: scale(1.5); margin: 4px;"  name="retest_alert_mic_{{ retest.id }}"
+                                    {% if retest_alert_mic_checked %}checked{% endif %}>
+                                  </input></td>
                                   {% endif %}
                                 </tr>
                               {% endfor %}
@@ -689,7 +742,7 @@ label.form-control-label{
                </div>
             
             <div class="pl-lg-12">
-              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">LABORATORY PERSONNEL PROVIDING INFORMATION</h6>
+              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ARSRL PERSONNEL PROVIDING INFORMATION</h6>
               <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
               </div>
             <div class="row">
@@ -700,46 +753,62 @@ label.form-control-label{
                   <div class="card-body  text-info">
                     <div class="col-lg-12">
                       <div class="row">
-                        <div class="col-lg-4">
+                        <div class="col-lg-3">
                           <div class="form-group">                    
-                            <label class='form-control-label' for='Laboratory_Staff'>Laboratory Staff</label>
+                            <label class='form-control-label' for='arsp_Encoder'>Encoded by</label>
                             <div class="d-flex align-items-center">
-                              {{ form.Laboratory_Staff| append_attr:"class: form-control "}} 
+                              {{ form.arsp_Encoder| append_attr:"class: form-control "}} 
                               <span><a href="{% url 'add_contact' %}" class="col-4 shortcut-item" style="padding: 0;">
                               <span class="ni ni-settings" style="margin-left: 10px; line-height: 0; vertical-align: text-bottom;"></span>
                               </a></span>
-                              </div>
+                            </div>
                           </div>
                         </div>
+                        <div class="col-lg-3">
+                            <div class="form-group">
+                              <label class='form-control-label' for='arsp_Enc_Lic'>License Number</label> {{ form.arsp_Enc_Lic| append_attr:"class: form-control "}} 
+                          </div>
+                     </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                              <label class='form-control-label' for='arsp_License'>Contact Number</label> {{ form.arsp_License| append_attr:"class: form-control "}} 
+                          </div>
+                         
+                        </div>
+                        </div>
+                        <div class="row">
                         <div class="col-lg-4">
                             <div class="form-group">
                               <label class='form-control-label' for='Date_Accomplished_ARSP'>Date_Accomplished</label> {{form.Date_Accomplished_ARSP| append_attr:"class: form-control"}}
                             </div>
                         </div>
-                        <div class="col-lg-4">
-                            <div class="form-group">
-                              <label class='form-control-label' for='ars_contact'>Contact Number</label> {{ form.ars_contact| append_attr:"class: form-control "}} 
-                          </div>
-                         
-                        </div>
-                     </div>
-                        <div class="row">
-                          <div class="col-lg-4">
-                            <div class="form-group">
-                              <label class='form-control-label' for='ars_email'>Email Address</label> {{form.ars_email| append_attr:"class: form-control"}}
-                              
-                            </div>
-                          </div>
-                          <div class="col-lg-8">
-                            <div class="form-group">
-                              <label class='form-control-label' for='ars_notes'>Notes</label> {{form.ars_notes| append_attr:"class: form-control"}}
-                        </div> 
-                      </div> 
+
                     </div> 
                   </div> 
                      </div> 
                     </div> 
                 </div>  
+              </div>
+              <div class="pl-lg-12">
+              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">RECCOMENDATION</h6>
+              <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+              </div>
+              <div class="row">
+              <div class="col-lg-12">
+                <div class="card border-info mb-3">
+                  <div class="card-body  text-info">
+                    <div class="col-lg-12">
+                      <div class="row">
+                        <div class="col-lg-12">
+                          <div class="form-group">                    
+                              <label class='form-control-label' for='ars_reco'>Recommendation</label> {{form.ars_reco| append_attr:"class: form-control"}}
+                          </div>
+                        </div>
+                        </div>
+                        </div>
+                        </div>
+                        </div>
+                        </div>
               </div>
               </div> 
                <!--tabcontent 2-->
@@ -798,7 +867,7 @@ label.form-control-label{
       const labStaffId = $(this).val();
       if (labStaffId) {
         $.ajax({
-          url: "{% url 'get_arsStaff_Details' %}",
+          url: "{% url 'get_ars_staff_details' %}",
           data: { lab_staff_id: labStaffId },
           dataType: 'json',
           success: function (data) {
@@ -891,48 +960,80 @@ label.form-control-label{
 </script> -->
 
 <script>
-  function calculateAge() {
-      const birthInput = document.getElementById('id_Birthdate').value;
-      const consultInput = document.getElementById('id_Consult_Date').value;
+  // Improved: Wait for DOMContentLoaded before attaching event listeners
+  document.addEventListener('DOMContentLoaded', function() {
+    var birthInput = document.getElementById('id_Date_Birth');
+    var consultInput = document.getElementById('id_Spec_Date');
+    var ageField = document.getElementById('id_Age');
 
-      const ageField = document.getElementById('id_Age');
+    function calculateAge() {
+      if (!birthInput || !consultInput || !ageField) return;
 
-      // Ensure both fields are filled
-      if (!birthInput || !consultInput) {
-          ageField.value = '';
-          return;
+      const birthVal = birthInput.value;
+      const consultVal = consultInput.value;
+
+      if (!birthVal || !consultVal) {
+        ageField.value = '';
+        return;
       }
 
-      // Parse the input dates explicitly
-      const birthdate = new Date(birthInput);
-      const consultDate = new Date(consultInput);
+      // Parse as YYYY-MM-DD for consistency
+      const birthdate = new Date(birthVal.replace(/-/g, '/'));
+      const consultDate = new Date(consultVal.replace(/-/g, '/'));
 
-      // Validate the parsed dates
       if (isNaN(birthdate.getTime()) || isNaN(consultDate.getTime())) {
-          ageField.value = '';
-          return;
+        ageField.value = '';
+        return;
       }
 
       if (consultDate < birthdate) {
-          ageField.value = 'Invalid Dates';
-          return;
+        ageField.value = 'Invalid Dates';
+        return;
       }
 
-      // Calculate the age
       let age = consultDate.getFullYear() - birthdate.getFullYear();
       const m = consultDate.getMonth() - birthdate.getMonth();
       if (m < 0 || (m === 0 && consultDate.getDate() < birthdate.getDate())) {
-          age--;
+        age--;
       }
-
       ageField.value = age;
-  }
+    }
 
-  // Attach event listeners to the date fields
-  document.getElementById('id_Birthdate').addEventListener('change', calculateAge);
-  document.getElementById('id_Consult_Date').addEventListener('change', calculateAge);
+    birthInput.addEventListener('change', calculateAge);
+    consultInput.addEventListener('change', calculateAge);
+  });
 </script>
 
+<!-- Auto-fill license numbers -->
+<script>
+  $(document).ready(function() {
+    function bindStaffField(staffSelector, licenseSelector, licenseKey) {
+      $(staffSelector).change(function() {
+        var staffId = $(this).val();
+        if (staffId) {
+          $.ajax({
+            url: "{% url 'get_ars_staff_details' %}",
+            data: { ars_staff_id: staffId, license_field: licenseKey },
+            dataType: 'json',
+            success: function(data) {
+              if (data[licenseKey]) {
+                $(licenseSelector).val(data[licenseKey]);
+              }
+            }
+          });
+        } else {
+          $(licenseSelector).val('');
+        }
+      });
+    }
+
+    bindStaffField('#id_arsp_Encoder',   '#id_arsp_Enc_Lic',  'arsp_Enc_Lic');
+    bindStaffField('#id_arsp_Checker',   '#id_arsp_Chec_Lic', 'arsp_Chec_Lic');
+    bindStaffField('#id_arsp_Verifier',  '#id_arsp_Ver_Lic',  'arsp_Ver_Lic');
+    bindStaffField('#id_arsp_LabManager','#id_arsp_Lab_Lic',  'arsp_Lab_Lic');
+    bindStaffField('#id_arsp_Head',      '#id_arsp_Head_Lic', 'arsp_Head_Lic');
+  });
+</script>
 
   
 

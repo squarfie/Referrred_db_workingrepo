@@ -17,7 +17,7 @@
         </button>
       </form>
       <!-- end of search form -->
-      <div class="col-md-6 mt-3">
+      <div class="col-md-6 mt-1">
         {% if messages %}
           {% for message in messages %}
             <div class="alert alert-{{ message.tags }} border-0 p-0 text-dark fade show" style="background: transparent; font-weight: bold; font-size: 14px;">
@@ -104,15 +104,16 @@
           </a>
           <div class="dropdown-menu  dropdown-menu-right ">
             <div class="dropdown-header noti-title">
-              <h6 class="text-overflow m-0">Welcome!</h6>
+              <h6 class="text-overflow m-0">Welcome ! &nbsp; {{request.user.username}} </h6>
             </div>
-            <a href="/create.html" class="dropdown-item">
-              <i class="ni ni-single-02"></i>
-              <span>Add New</span>
+            <br>
+            <a class="dropdown-item" href="{% url 'register' %}">
+              <i class="ni ni-circle-08 text-primary"></i>
+              <span>Register</span>
             </a>
-            <div class="dropdown-divider"></div>
+             <div class="dropdown-divider"></div>
             <a href="{% url 'logout' %}" class="dropdown-item">
-              <i class="ni ni-user-run text-red"></i>
+              <i class="ni ni-curved-next text-primary"></i>
               <span>Logout</span>
             </a>
           </div>

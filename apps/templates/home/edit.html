@@ -3,7 +3,6 @@
 {% load widget_tweaks %}
 {% load custom_filters %}
 
-
 {% block title %} Demographic Data {% endblock title %}
 
 {% block content %}
@@ -86,7 +85,9 @@ label.form-control-label{
 <!-- DEMOGRAPHIC DATA -->
 
     <div class="col-xl-12 order-xl-1">
-     <form method="POST" action="{% url 'edit_data' id=isolates.id %}" autocomplete="on" id="myform" >
+      <form method="POST" 
+      action="{% if isolates %}{% url 'edit_data' isolates.id %}{% endif %}" 
+      autocomplete="on" id="myform">
         {% csrf_token %}
       <div class="card" >
         <div class="card-header" id="mytop">
@@ -101,9 +102,6 @@ label.form-control-label{
                       <label class="form-control-label" for="SiteCode">SITE CODE</label>
                       <div class="d-flex align-items-center">
                       {{ form.SiteCode| append_attr:"class: form-control "}} 
-                      <span><a href="{% url 'add_dropdown' %}" class="col-4 shortcut-item" style="padding: 0;">
-                      <span class="ni ni-settings" style="margin-left: 10px; line-height: 0; vertical-align: text-bottom;"></span>
-                      </a></span>
                       </div>
                   </div>
                 </div>
@@ -126,7 +124,7 @@ label.form-control-label{
                   </div>
                 </div>
               <div class="col-4 text-right">
-                <a href="{% url 'raw_data' %}" class="btn btn-sm btn-primary">Add New</a>
+                <a href="{% url 'batch_create_view' %}" class="btn btn-sm btn-primary">Add New</a>
                 <button type="submit" class="btn btn-sm btn-primary">Save</button>
                 <a href="{% url 'show_data' %}" class="btn btn-sm btn-primary">View / Print</a>  
                 <a href="{% url 'add_breakpoints' %}" class="btn btn-warning btn-sm">Breakpoints</a>
@@ -146,14 +144,13 @@ label.form-control-label{
                 <div class="col-lg-4">
                 <div class="form-group">
                   <label class="form-control-label" for="AccessionNo">Accession Number</label>
-                  {{form.AccessionNo| append_attr:"class: form-control fontlarge"}} 
+                  {{form.AccessionNo| append_attr:"class: form-control fontsize"}} 
               </div>
               </div>
               <div class="col-lg-3">
                 <div class="form-group">
-                  <label class='form-control-label' for='AccessionNoGen'></label>
-                  {{form.AccessionNoGen| append_attr:"class: form-control fontsize"}}
-            
+                  <label class='form-control-label' for='Batch_Code'>Batch Code</label>
+                  {{form.Batch_Code| append_attr:"class: form-control fontsize"}}
                 </div>
               </div>
           
@@ -382,7 +379,7 @@ label.form-control-label{
                             </div>
                                <div class="col-lg-3">
                               <div class="form-group">
-                                <label class='form-control-label' for='OrganismCode'>Organism Code</label> {{form.ars_OrgName| append_attr:"class: form-control" }}
+                                <label class='form-control-label' for='OrganismCode'>Organism Code</label> {{form.OrganismCode| append_attr:"class: form-control" }}
                               </div>
                             </div>
                             <div class="col-lg-3">
@@ -417,6 +414,7 @@ label.form-control-label{
                                   <th scope="col" style="width: 90px">WHONET CODE</th>
                                   <th scope="col" style="text-align: end; width: 98px;">TEST METHOD</th>
                                   <th scope="col" style="text-align: end; width: 98px;">RESULT</th>
+                                  <th scope="col" style="text-align: end; width: 98px;">RIS</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -431,6 +429,10 @@ label.form-control-label{
                                                 <input name="disk_{{ entry.id }}" 
                                                        value="{% get_existing_value existing_entries entry.id 'disk' %}" 
                                                        type="number" min="0" style="width: 70px;"/>
+                                            </td>
+                                            <td>
+                                              <input type="text" style="width: 50px;" name="disk_enris_{{ entry.id }}"
+                                                     value="{% get_existing_value existing_entries entry.id 'disk_enris' %}" >
                                             </td>
                                         {% endif %}
                                     </tr>
@@ -449,6 +451,7 @@ label.form-control-label{
                                   <th scope="col" style="text-align: end; width: 98px;">TEST METHOD</th>
                                   <th scope="col" style="text-align: end; width: 98px;">Operand</th>
                                   <th scope="col" style="text-align: end; width: 98px;">RESULT</th>
+                                  <th scope="col" style="text-align: end; width: 98px;">RIS</th>
                                   <th scope="col" style="text-align: end; width: 98px;">Alert MIC</th>
                                 </tr>
                               </thead>
@@ -465,6 +468,10 @@ label.form-control-label{
                                                 <input name="mic_{{ entry.id }}" 
                                                        value="{% get_existing_value existing_entries entry.id 'mic' %}" 
                                                        type="number" min="0" step="0.001" style="width: 70px;"/>
+                                            </td>
+                                            <td>
+                                              <input name="mic_enris_{{ entry.id }}"
+                                                     value="{% get_existing_value existing_entries entry.id 'mic_enris' %}" type="text" style="width: 50px;"  >
                                             </td>
                                             <td>
                                               {% get_existing_value existing_entries entry.id 'alert_mic' as alert_mic_checked %}
@@ -610,6 +617,7 @@ label.form-control-label{
                                 <th scope="col">Test Method</th>
                                 <th scope="col" >WHONET CODE</th>
                                 <th scope="col">Test Result</th>
+                                <th scope="col">RIS</th>
                               </tr>
                             </thead>
                               <tbody>
@@ -620,7 +628,8 @@ label.form-control-label{
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Antibiotic }}</td>
                                   <td>Disk</td>
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Whonet_Abx }}</td>
-                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_disk_{{retest.id}}" value="{{retest.ab_Retest_DiskValue |default:'' }}" type="number" style="width: 50px;" min="0"/></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_disk_{{retest.id}}" value= "{% get_existing_value retest_entries retest.id 'retest_disk' %}" type="number" style="width: 50px;" min="0"/></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_disk_enris_{{retest.id}}" value="{% get_existing_value retest_entries retest.id 'retest_disk_enris' %}" type="text" style="width: 50px;"/></td>
                                   {% endif %}
                                 </tr>
                               {% endfor %}
@@ -650,6 +659,7 @@ label.form-control-label{
                                 <th scope="col" >WHONET CODE</th>
                                 <th scope="col" >Operand</th>
                                 <th scope="col">Test Result</th>
+                                <th scope="col">RIS </th>
                                 <th scope="col" style="text-align: center; width: 98px;">Alert MIC</th>
                               </tr>
                             </thead>
@@ -661,10 +671,14 @@ label.form-control-label{
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Antibiotic }}</td>
                                   <td>MIC</td>
                                   <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Whonet_Abx }}</td>
-                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="retest_mic_operand_{{retest.id}}" value="{{retest.ab_Retest_MIC_operand_|default:'' }}" type="text" style="width: 50px;"/></td>
-                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_mic_{{retest.id}}" value="{{retest.ab_Retest_MICValue|default:'' }}" type="number" style="width: 50px;" min="0" step="0.001"/></td>
-                                  <td style="border-spacing: 0; border-collapse: collapse;"><input type="checkbox" style="width: auto; transform: scale(1.5);" name="retest_alert_mic_{{ retest.id }}" value="{{ab_Retest_AlertMIC}}">
-                                  </input>&nbsp;</td>
+                                  <td style="border-spacing: 0; border-collapse: collapse;"><input name="retest_mic_operand_{{retest.id}}" value= "{% get_existing_value retest_entries retest.id 'retest_mic_operand' %}" type="text" style="width: 50px;"/></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_mic_{{retest.id}}" value="{% get_existing_value retest_entries retest.id 'retest_mic' %}" type="number" style="width: 50px;" min="0" step="0.001"/></td>
+                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_mic_enris_{{retest.id}}" value="{% get_existing_value retest_entries retest.id 'retest_mic_enris' %}" type="text" style="width: 50px;"/></td>
+                                   <td>
+                                    {% get_existing_value retest_entries retest.id 'retest_alert_mic' as retest_alert_mic_checked %}
+                                    <input type="checkbox" style="transform: scale(1.5); margin: 4px;"  name="retest_alert_mic_{{ retest.id }}"
+                                    {% if retest_alert_mic_checked %}checked{% endif %}>
+                                  </input></td>
                                   {% endif %}
                                 </tr>
                               {% endfor %}
@@ -842,7 +856,7 @@ label.form-control-label{
       const labStaffId = $(this).val();
       if (labStaffId) {
         $.ajax({
-          url: "{% url 'get_Lab_Staff_Details' %}",  // Define this URL in your urls.py
+          url: "{% url 'get_ars_staff_details' %}",  // Define this URL in your urls.py
           data: {'lab_staff_id': labStaffId},
           dataType: 'json',
           success: function(data) {
@@ -855,6 +869,7 @@ label.form-control-label{
         $('#id_ars_email').val('');  // Clear ars_email if no Clinic_Staff is selected
       }
     });
+    
   });
   </script>
 
