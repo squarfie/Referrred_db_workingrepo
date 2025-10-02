@@ -75,3 +75,19 @@ class AssemblyForm(forms.ModelForm):
      class Meta:
           model = AssemblyScan
           fields = '__all__'
+
+
+class AmrUploadForm(forms.ModelForm):
+     class Meta:
+          model = AmrfinderUpload
+          fields = ['Amrfinderfile']
+
+
+class AmrfinderForm(forms.ModelForm):
+     class Meta:
+          model = Amrfinderplus
+          fields = '__all__'
+
+class DeleteRangeForm(forms.Form):
+    start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))

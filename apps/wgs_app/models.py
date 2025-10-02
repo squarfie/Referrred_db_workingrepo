@@ -2,7 +2,6 @@ from django.db import models
 from django.apps import apps
 # Create your models here.
 
-
 # Connector Table for WGS Projects
 class WGS_Project(models.Model):
     Ref_Accession = models.ForeignKey(
@@ -24,6 +23,8 @@ class WGS_Project(models.Model):
     WGS_Checkm2Summary = models.BooleanField(default=False, blank=True)
     WGS_Assembly_Acc = models.CharField(max_length=255, blank=True, null=True)
     WGS_AssemblySummary = models.BooleanField(default=False, blank=True)
+    WGS_Amrfinder_Acc = models.CharField(max_length=255, blank=True, null=True)
+    WGS_AmrfinderSummary = models.BooleanField(default=False, blank=True)
 
     class Meta:
         db_table = "WGS_Project"  # table name in DB
@@ -99,6 +100,7 @@ class FastqSummary(models.Model):
     readlen_status = models.CharField(max_length=255, blank=True, null=True)
     ns_overrep_status = models.CharField(max_length=255, blank=True, null=True)
     raw_reads_qc_summary = models.CharField(max_length=255, blank=True, null=True)
+    Date_uploaded = models.DateField(auto_now=True)
    
 
     class Meta:
@@ -307,6 +309,13 @@ class AssemblyUpload(models.Model):
 
 # Amrfinderplus
 class Amrfinderplus(models.Model):
+    amrfinder_project = models.ForeignKey(
+        "wgs_app.WGS_Project",   # connects to WGS_Project model
+        on_delete=models.CASCADE,
+        null=True,
+        related_name="amrfinder_entries"
+    )
+    Amrfinder_Accession = models.CharField(max_length=255, blank=True, null=True)
     name = models.CharField(max_length=255, blank=True, null=True)
     protein_id = models.CharField(max_length=255, blank=True, null=True)
     contig_id = models.CharField(max_length=255, blank=True, null=True)

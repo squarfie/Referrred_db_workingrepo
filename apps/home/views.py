@@ -54,8 +54,12 @@ def update_wgs_summaries_for_referred(referred_obj):
         wgs.WGS_GambitSummary = bool(wgs.WGS_Gambit_Acc) and wgs.WGS_Gambit_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
         # MLST summary
         wgs.WGS_MlstSummary = bool(wgs.WGS_Mlst_Acc) and wgs.WGS_Mlst_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
-         # MLST summary
+         # Checkm2 summary
         wgs.WGS_Checkm2Summary = bool(wgs.WGS_Checkm2_Acc) and wgs.WGS_Checkm2_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
+         # Assembly Scan
+        wgs.WGS_AssemblySummary = bool(wgs.WGS_Assembly_Acc) and wgs.WGS_Assembly_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
+         # Amr finder plus
+        wgs.WGS_AmrfinderSummary = bool(wgs.WGS_Amrfinder_Acc) and wgs.WGS_Amrfinder_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
         
         wgs.save()
 

@@ -28,9 +28,16 @@ urlpatterns = [
     path('assembly/show/', views.show_assembly, name='show_assembly'),
     path('assembly/delete/<int:pk>/', views.delete_assembly, name='delete_assembly'),
 
+
+    path('amrfinder/upload', views.upload_amrfinder, name='upload_amrfinder'),
+    path('amrfinder/show/', views.show_amrfinder, name='show_amrfinder'),
+    path('amrfinder/delete/<int:pk>/', views.delete_amrfinder, name='delete_amrfinder'),
+
+
     path('del_all/gambit/', views.delete_all_gambit, name='delete_all_gambit'),
     path('del_all/fastq/', views.delete_all_fastq, name='delete_all_fastq'),
     path('del_all/mlst/', views.delete_all_mlst, name='delete_all_mlst'),
     path('del_all/checkm2/', views.delete_all_checkm2, name='delete_all_checkm2'),
     path('del_all/assembly/', views.delete_all_assembly, name='delete_all_assembly'),
+    path('del_all/amrfinder/', views.delete_all_amrfinder, name='delete_all_amrfinder'),
 ]
