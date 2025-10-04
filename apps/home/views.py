@@ -2014,7 +2014,7 @@ def add_dropdown(request):
     # Fetch clinic data from the database for dropdown options
     site_items = SiteData.objects.all()
     
-    return render(request, 'home/SiteCodeForm.html', {'form': form, 'site_items': site_items})
+    return render(request, 'home/SiteCodeForm.html', {'form': form, 'site_items': site_items, 'upload_form': SiteCode_uploadForm()})
 
 @login_required(login_url="/login/")
 def delete_dropdown(request, id):
@@ -2022,10 +2022,73 @@ def delete_dropdown(request, id):
     site_items.delete()
     return redirect('site_view')
 
+def delete_all_dropdown(request):
+    SiteData.objects.all().delete()
+    messages.success(request, "All site codes were deleted successfully.")
+    return redirect('site_view')
+
 @login_required(login_url="/login/")
 def site_view(request):
     site_items = SiteData.objects.all()  # Fetch all clinic data
-    return render(request, 'home/SiteCodeView.html', {'site_items': site_items})
+    paginator = Paginator(site_items, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'home/SiteCodeView.html', {'page_obj': page_obj})
+
+def upload_sitecode(request):
+    if request.method == "POST":
+        upload_form = SiteCode_uploadForm(request.POST, request.FILES)
+        
+        if upload_form.is_valid():
+            uploaded_file = upload_form.save()
+            file = uploaded_file.File_uploadSite  # Get the uploaded file
+            
+            print("Uploaded file:", file)  # Debugging statement
+
+            try:
+                # Load file into a DataFrame based on file type
+                if file.name.endswith('.csv'):
+                    df = pd.read_csv(file)
+                elif file.name.endswith('.xlsx'):
+                    df = pd.read_excel(file)
+                else:
+                    messages.error(request, 'Unsupported file format. Please upload a CSV or Excel file.')
+                    return redirect('add_dropdown')
+
+                print("DataFrame contents:\n", df.head())  # Debugging statement
+
+                # Fill NaN values to avoid errors
+                df.fillna("", inplace=True)
+
+                # Loop through rows and save Site Codes
+                for _, row in df.iterrows():
+                    site_code = row.get('SiteCode', '').strip()
+                    site_name = row.get('SiteName', '').strip()
+
+                    if not site_code or not site_name:
+                        continue  # Skip empty rows
+
+                    # Create or update SiteData entry
+                    SiteData.objects.update_or_create(
+                        SiteCode=site_code,
+                        defaults={'SiteName': site_name}
+                    )
+
+                messages.success(request, "File uploaded successfully and data added!")
+                return redirect('site_view')
+
+            except Exception as e:
+                print("Error:", e)
+                messages.error(request, f"Error processing file: {e}")
+                return redirect('add_dropdown')
+        else:
+            messages.error(request, "Invalid form submission.")
+
+    else:
+        upload_form = SiteCode_uploadForm()
+
+    return render(request, 'home/SiteCodeForm.html', {'upload_form': upload_form, 'form': SiteCode_Form()})
 
 ################## done edited finish  ##########################
 

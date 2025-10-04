@@ -39,7 +39,12 @@
       <div class="card shadow border-0 mb-4">
         <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center">
           <h4 class="mb-0"><i class="ni ni-building mr-2"></i> Sentinel Site Details</h4>
-          <a href="{% url 'site_view' %}" class="btn btn-light btn-sm rounded-pill">View All</a>
+          <span class="d-flex gap-2">
+          <a href="{% url 'site_view' %}" class="btn btn-secondary btn-sm rounded-pill">View All</a>
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-toggle="modal" data-target="#UploadModal" >
+          <i class="ni ni-cloud-upload-96"></i> Upload Site
+          </button>
+          </span>
         </div>
 
         <div class="card-body" style="padding: 2rem;">
@@ -78,10 +83,46 @@
     </div>
   </div>
 </div>
+<!-- FastQ Modal -->
+<div class="modal fade" id="UploadModal" tabindex="-1" role="dialog" aria-labelledby="UploadModalLabel" aria-hidden="true">
+  <form method="POST" action="{% url 'site_upload' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="UploadModalLabel">Upload Site Code</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+        <div class="form-group">
+          <label for="id_File_uploadSite">Choose CSV/Excel File</label>
+          {{ upload_form.File_uploadSite|add_class:"form-control-file" }}
+        </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Upload Site Code</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
 
 <script>
   function refresh() {
     document.getElementById("dropdownform").reset();
   }
 </script>
+
+
+<!-- JS -->
+<script>
+function confirmOverwrite() {
+  return confirm("WARNING: Uploading will overwrite existing Data. Are you sure?");
+}
+</script>
+
 {% endblock content %}

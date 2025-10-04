@@ -38,15 +38,15 @@
           <!-- Card header -->
           <div class="card-header border-0">
             <div class="row">
-             <div class="col"><h5>Total records: {{ total_records }}</h5></div>
+              <div class="col"><h5>Total records: {{ total_records }}</h5></div>
               <div class="col md-6 d-flex justify-content-end">
-                <form class="navbar-search navbar-search-light form-inline mr-sm-3 " id="navbar-search-main">
+                <form id="search-input" class="navbar-search navbar-search-light form-inline mr-sm-3 " id="navbar-search-main">
                   <div class="form-group mb-0">
                     <div class="input-group input-group-alternative input-group-merge">
                       <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                       </div>
-                      <input class="form-control" placeholder="Search" type="text">
+                      <input class="form-control" placeholder="Search" type="text" onkeyup="searchTable()">
                     </div>
                   </div>
                   <button type="button" class="close" data-action="search-close" data-target="#navbar-search-main" aria-label="Close">
@@ -56,6 +56,7 @@
                 </form>
               </div>
             </div>
+          </div>
           </div>
           <!-- Light table -->
           <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
@@ -122,74 +123,67 @@
 
 
           </div>
-                      <!-- Card footer -->
-          <div class="card-footer py-4">
-              <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-end mb-0">
+                <!-- Card footer -->
+                <div class="card-footer py-4">
+                  <div class="d-flex justify-content-between align-items-center">
 
-                      {# First Page Button #}
-                      {% if page_obj.number > 1 %}
-                        <li class="page-item">
-                          <a class="page-link" href="?page=1">&laquo;</a>
-                        </li>
-                      {% else %}
-                        <li class="page-item disabled">
-                          <span class="page-link">&laquo;</span>
-                        </li>
-                      {% endif %}
+                    <!-- Go To Page Form -->
+                    <form method="get" class="form-inline mb-0">
+                      <input type="number" name="page"
+                            min="1"
+                            max="{{ page_obj.paginator.num_pages }}"
+                            value="{{ page_obj.number }}"
+                            class="form-control form-control-sm mr-2"
+                            style="width: 80px;">
+                      <button type="submit" class="btn btn-sm btn-primary">Go</button>
+                    </form>
 
-                      {# Previous Button #}
-                      {% if page_obj.has_previous %}
-                        <li class="page-item">
-                          <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
-                            <i class="fas fa-angle-left"></i>
-                          </a>
-                        </li>
-                      {% else %}
-                        <li class="page-item disabled">
-                          <span class="page-link"><i class="fas fa-angle-left"></i></span>
-                        </li>
-                      {% endif %}
+                          <!-- Pagination Controls -->
+                          <nav aria-label="Page navigation">
+                            <ul class="pagination mb-0">
 
-                      {# Page Number Window (2 before & 2 after current) #}
-                      {% for num in page_obj.paginator.page_range %}
-                        {% if num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
-                          {% if num == page_obj.number %}
-                            <li class="page-item active"><a class="page-link">{{ num }}</a></li>
-                          {% else %}
-                            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-                          {% endif %}
-                        {% endif %}
-                      {% endfor %}
+                              {# First Page Button #}
+                              {% if page_obj.has_previous %}
+                                <li class="page-item"><a class="page-link" href="?page=1">&laquo;</a></li>
+                              {% else %}
+                                <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                              {% endif %}
 
-                      {# Next Button #}
-                      {% if page_obj.has_next %}
-                        <li class="page-item">
-                          <a class="page-link" href="?page={{ page_obj.next_page_number }}">
-                            <i class="fas fa-angle-right"></i>
-                          </a>
-                        </li>
-                      {% else %}
-                        <li class="page-item disabled">
-                          <span class="page-link"><i class="fas fa-angle-right"></i></span>
-                        </li>
-                      {% endif %}
+                              {# Previous Button #}
+                              {% if page_obj.has_previous %}
+                                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&lsaquo;</a></li>
+                              {% endif %}
 
-                      {# Last Page Button #}
-                      {% if page_obj.number < page_obj.paginator.num_pages %}
-                        <li class="page-item">
-                          <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">&raquo;</a>
-                        </li>
-                      {% else %}
-                        <li class="page-item disabled">
-                          <span class="page-link">&raquo;</span>
-                        </li>
-                      {% endif %}
+                              {# Page Numbers: only show current -1 to current +1 #}
+                              {% for num in page_obj.paginator.page_range %}
+                                {% if num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
+                                  {% if num == page_obj.number %}
+                                    <li class="page-item active"><a class="page-link">{{ num }}</a></li>
+                                  {% else %}
+                                    <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                                  {% endif %}
+                                {% endif %}
+                              {% endfor %}
 
-                    </ul>
-              </nav>
-            </div>
-<!-- end of card footer -->
+                              {# Next Button #}
+                              {% if page_obj.has_next %}
+                                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">&rsaquo;</a></li>
+                              {% endif %}
+
+                              {# Last Page Button #}
+                              {% if page_obj.number < page_obj.paginator.num_pages %}
+                                <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">&raquo;</a></li>
+                              {% else %}
+                                <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                              {% endif %}
+
+                            </ul>
+                          </nav>
+                        </div>
+                      </div>
+                      <!-- end of card footer -->
+
+
         </div>
       </div>
     </div>
@@ -212,6 +206,20 @@ $(document).ready(function(){
 });
 </script>
 
+<!-- for search bar -->
+<script>
+  function searchTable() {
+    var input = document.querySelector("#search-input input");
+    var filter = input.value.toLowerCase();
+    var table = document.querySelector("table");
+    var rows = table.querySelectorAll("tbody tr");
+
+    rows.forEach(row => {
+      var text = row.textContent.toLowerCase();
+      row.style.display = text.includes(filter) ? "" : "none";
+    });
+  }
+</script>
 
 
 

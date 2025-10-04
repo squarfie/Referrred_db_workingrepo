@@ -440,7 +440,11 @@ class SiteData(models.Model):
 class Meta:
     db_table ="SiteData"
 
+class SiteCode_upload(models.Model):
+    File_uploadSite = models.FileField(upload_to='uploads/site/', null=True, blank=True)
 
+    class Meta:
+        db_table = "SiteCode_upload"
 
 class BreakpointsTable(models.Model):
     TestMethodChoices =(

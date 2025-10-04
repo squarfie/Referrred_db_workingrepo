@@ -218,6 +218,10 @@ class SiteCode_Form(forms.ModelForm):
         fields = ['SiteCode', 'SiteName']
 
 
+class SiteCode_uploadForm(forms.ModelForm):
+     class Meta:
+          model = SiteCode_upload
+          fields = ['File_uploadSite']
 
 #to handle many to many relationship saving
 def save(self, commit=True):

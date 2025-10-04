@@ -60,6 +60,9 @@ urlpatterns = [
     path("delete_batch/<int:batch_id>/", views.delete_batch, name="delete_batch"),
     path("review_batches/", views.review_batches, name="review_batches"),
     path("clean_batch/<int:batch_id>/", views.clean_batch, name="clean_batch"),
+    path('upload-sitecode/', views.upload_sitecode, name='site_upload'),
+    path('delete_all_dropdown/', views.delete_all_dropdown, name='delete_all_dropdown'),
+
 
 
     # path('batch/', views.show_accession, name="show_accession"),

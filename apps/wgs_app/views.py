@@ -10,6 +10,9 @@ import os
 from django.core.paginator import Paginator
 import re
 from .utils import format_accession
+from django.contrib.auth.decorators import login_required
+from django.conf import settings
+
 
 # handles the connection of WGS project to referred data
 @login_required
@@ -116,7 +119,6 @@ def show_wgs_projects(request):
          },  # only send page_obj
     )
 
-
 @login_required
 def delete_wgs(request, pk):
     wgs_item = get_object_or_404(WGS_Project, pk=pk)
@@ -152,8 +154,7 @@ def format_fastq_accession(raw_name: str, site_codes) -> str:
 
     return f"{match.group('prefix')}_{site}{match.group('num')}"
 
-
-@login_required(login_url="/login/")
+@login_required
 def upload_fastq(request):
     form = WGSProjectForm()
     fastq_form = FastqUploadForm()
@@ -293,7 +294,6 @@ def show_fastq(request):
          "total_records": total_records,
          },  # only send page_obj
     )
-
 
 
 @login_required
@@ -601,7 +601,7 @@ def delete_mlst(request, pk):
     messages.error(request, "Invalid request for deletion.")
     return redirect('show_mlst')  # <-- Correct URL name
 
-
+@login_required
 def delete_all_mlst(request):
     Mlst.objects.all().delete()
     messages.success(request, "Mlst Records have been deleted successfully.")
@@ -796,7 +796,7 @@ def delete_checkm2(request, pk):
     return redirect('show_checkm2')  # <-- Correct URL name
 
 
-
+@login_required
 def delete_all_checkm2(request):
     Checkm2.objects.all().delete()
     messages.success(request, "Checkm2 Records have been deleted successfully.")
@@ -1007,7 +1007,7 @@ def delete_assembly(request, pk):
     return redirect('show_assembly')  # <-- Correct URL name
 
 
-
+@login_required
 def delete_all_assembly(request):
     AssemblyScan.objects.all().delete()
     messages.success(request, "AssemblyScan Records have been deleted successfully.")
@@ -1181,6 +1181,7 @@ def show_amrfinder(request):
 
     total_records = Amrfinderplus.objects.count()
      # Paginate the queryset to display 20 records per page
+     
     paginator = Paginator(amrfinder_summaries, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1211,7 +1212,7 @@ def delete_amrfinder(request, pk):
     return redirect('show_amrfinder')  # <-- Correct URL name
 
 
-
+@login_required
 def delete_all_amrfinder(request):
     Amrfinderplus.objects.all().delete()
     messages.success(request, "AmrfinderPlus Records have been deleted successfully.")
