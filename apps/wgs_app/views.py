@@ -14,6 +14,18 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 
 
+def read_uploaded_file(uploaded_file):
+    import pandas as pd
+
+    filename = uploaded_file.name.lower()
+    if filename.endswith('.csv'):
+        return pd.read_csv(uploaded_file)
+    elif filename.endswith(('.xls', '.xlsx')):
+        return pd.read_excel(uploaded_file)
+    else:
+        raise ValueError("Unsupported file format. Please upload a CSV or Excel file.")
+    
+
 # handles the connection of WGS project to referred data
 @login_required
 def upload_wgs_view(request):
@@ -131,28 +143,7 @@ def delete_wgs(request, pk):
     messages.error(request, "Invalid request for deletion.")
     return redirect('show_wgs_projects')  # <-- Correct URL name
 
-def format_fastq_accession(raw_name: str, site_codes) -> str:
-    """
-    Convert raw sample name like:
-        15ARS-BGH0054-20220718A
-    into:
-        15ARS_BGH0054
 
-    Returns "" if it doesn’t match expected pattern or site not found.
-    """
-    if not raw_name:
-        return ""
-
-    # Match PREFIX (15ARS), site (BGH), number (0054)
-    match = re.match(r"^(?P<prefix>\d+ARS)-(?P<site>[A-Z]{2,6})(?P<num>\d+)", raw_name, re.IGNORECASE)
-    if not match:
-        return ""
-
-    site = match.group("site").upper()
-    if site not in site_codes:
-        return ""
-
-    return f"{match.group('prefix')}_{site}{match.group('num')}"
 
 @login_required
 def upload_fastq(request):
@@ -163,49 +154,105 @@ def upload_fastq(request):
     if request.method == "POST" and request.FILES.get("fastqfile"):
         fastq_form = FastqUploadForm(request.POST, request.FILES)
         if fastq_form.is_valid():
-            upload = fastq_form.save()
-            excel_file = upload.fastqfile
+            try:
+                upload = fastq_form.save()
+                df = read_uploaded_file(upload.fastqfile)
+                df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
+            except Exception as e:
+                messages.error(request, f"Error processing FASTQ file: {e}")
+                return render(request, "wgs_app/Add_wgs.html", {
+                    "form": form,
+                    "fastq_form": fastq_form,
+                    "gambit_form": GambitUploadForm(),
+                    "mlst_form": MlstUploadForm(),
+                    "checkm2_form": Checkm2UploadForm(),
+                    "amrfinder_form": AmrUploadForm(),
+                    "assembly_form": AssemblyUploadForm(),
+                    "editing": editing,
+                })
 
-            # Load Excel
-            df = pd.read_excel(excel_file)
-            df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
-
-            # Load valid site codes from DB
+            # ✅ Load all valid site codes from the SiteData table
             site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
 
-            
+            def format_fastq_accession(raw_name: str, site_codes: set) -> str:
+                """
+                Returns formatted accession only if BOTH 'ARS' and a valid SiteCode from SiteData exist in the name.
+                """
+                if not raw_name:
+                    return ""
 
+                name = raw_name.strip().upper() # normalize case
+
+                # Reject invalid patterns
+                if "UTPR" in name or "UTPN" in name or "BL" in name:
+                    return ""
+                
+                # ✅ Must contain 'ARS' - if not, return empty immediately
+                if "ARS" not in name:
+                    return ""
+
+                # ✅ Find if any valid SiteCode from DB exists in the sample name
+                # Use word boundaries to match complete site codes only
+                valid_code = None
+                for code in site_codes:
+                    code_upper = code.upper()
+                    # Look for the site code with word boundaries (hyphens, start/end of string)
+                    # Pattern: site code must be followed by a hyphen and digits
+                    pattern = rf"[-]?{re.escape(code_upper)}[-]?\d+"
+                    if re.search(pattern, name):
+                        valid_code = code_upper
+                        break
+
+                # No valid site code found → blank
+                if not valid_code:
+                    return ""
+
+                # ✅ Extract prefix that includes ARS (e.g., "18ARS")
+                prefix_match = re.search(r"(\d*ARS)", name)
+                prefix = prefix_match.group(1) if prefix_match else "ARS"
+
+                # ✅ Extract numeric digits after the site code (e.g., 0055)
+                num_match = re.search(rf"{re.escape(valid_code)}[-]?(\d+)", name)
+                digits = num_match.group(1) if num_match else ""
+
+                return f"{prefix}_{valid_code}{digits}" if digits else ""
+
+            # === Loop through rows ===
             for _, row in df.iterrows():
                 sample_name = str(row.get("sample", "")).strip()
                 fastq_accession = format_fastq_accession(sample_name, site_codes)
 
-                # Look up in referred data
-                referred_obj = (
-                    Referred_Data.objects.filter(AccessionNo=fastq_accession).first()
-                    if fastq_accession else ""
-                )
+                # if invalid accession keep blank
+                if not fastq_accession: 
+                    fastq_accession = ""
 
-                # Create or update project
+                referred_obj = None
+                if fastq_accession:
+                    referred_obj = Referred_Data.objects.filter(
+                        AccessionNo=fastq_accession
+                    ).first()
+
                 connect_project, _ = WGS_Project.objects.get_or_create(
-                    Ref_Accession=referred_obj,
+                    Ref_Accession=referred_obj if referred_obj else None,
                     defaults={
                         "WGS_GambitSummary": False,
                         "WGS_FastqSummary": False,
                         "WGS_MlstSummary": False,
                         "WGS_Checkm2Summary": False,
                         "WGS_AssemblySummary": False,
-                        "WGS_AmrfinderSummary": False
-                    }
+                        "WGS_AmrfinderSummary": False,
+                    },
                 )
 
                 connect_project.WGS_FastQ_Acc = fastq_accession
                 connect_project.WGS_FastqSummary = (
-                    bool(referred_obj)
-                    and fastq_accession == getattr(referred_obj, "AccessionNo", None)
+                    bool(fastq_accession)
+                    and bool(connect_project.Ref_Accession)
+                    and fastq_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
                 )
                 connect_project.save()
 
-                # Save fastq summary each time
+                # ✅ Always create summary, even if accession is blank
                 FastqSummary.objects.create(
                     FastQ_Accession=fastq_accession,
                     fastq_project=connect_project,
@@ -257,7 +304,7 @@ def upload_fastq(request):
                     duplication_status=row.get("duplication_status", ""),
                     readlen_status=row.get("readlen_status", ""),
                     ns_overrep_status=row.get("ns_overrep_status", ""),
-                    raw_reads_qc_summary=row.get("raw_reads_qc_summary", "")
+                    raw_reads_qc_summary=row.get("raw_reads_qc_summary", ""),
                 )
 
             messages.success(request, "FastQ records updated successfully.")
@@ -273,7 +320,6 @@ def upload_fastq(request):
         "assembly_form": AssemblyUploadForm(),
         "editing": editing,
     })
-
 
 
 @login_required
@@ -326,22 +372,83 @@ def upload_gambit(request):
     if request.method == "POST" and request.FILES.get("GambitFile"):
         gambit_form = GambitUploadForm(request.POST, request.FILES)
         if gambit_form.is_valid():
-            upload = gambit_form.save()
-            excel_file = upload.GambitFile
+            try:
+                upload = gambit_form.save()
+                df = read_uploaded_file(upload.GambitFile)
+                df.columns = df.columns.str.strip().str.replace(".", "_", regex=False)
+            except Exception as e:
+                messages.error(request, f"Error processing FASTQ file: {e}")
+                return render(request, "wgs_app/Add_wgs.html", {
+                    "form": form,
+                    "fastq_form": FastqUploadForm(),
+                    "gambit_form": gambit_form,
+                    "mlst_form": MlstUploadForm(),
+                    "checkm2_form": Checkm2UploadForm(),
+                    "amrfinder_form": AmrUploadForm(),
+                    "assembly_form": AssemblyUploadForm(),
+                    "editing": editing,
+                })
 
-            df = pd.read_excel(excel_file)
-            df.columns = df.columns.str.replace(".", "_", regex=False)  # normalize column names
+            site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
+                # helper to build accession
+            def format_gambit_accession(raw_name: str, site_codes: set) -> str:
+                """
+                Returns formatted accession only if BOTH 'ARS' and a valid SiteCode from SiteData exist in the name.
+                """
+                if not raw_name:
+                    return ""
+
+                name = raw_name.strip().upper() # normalize case
+
+                # Reject invalid patterns
+                if "UTPR" in name or "UTPN" in name or "BL" in name:
+                    return ""
+                
+                # ✅ Must contain 'ARS' - if not, return empty immediately
+                if "ARS" not in name:
+                    return ""
+
+                # ✅ Find if any valid SiteCode from DB exists in the sample name
+                # Use word boundaries to match complete site codes only
+                valid_code = None
+                for code in site_codes:
+                    code_upper = code.upper()
+                    # Look for the site code with word boundaries (hyphens, start/end of string)
+                    # Pattern: site code must be followed by a hyphen and digits
+                    pattern = rf"[-]?{re.escape(code_upper)}[-]?\d+"
+                    if re.search(pattern, name):
+                        valid_code = code_upper
+                        break
+
+                # No valid site code found → blank
+                if not valid_code:
+                    return ""
+
+                # ✅ Extract prefix that includes ARS (e.g., "18ARS")
+                prefix_match = re.search(r"(\d*ARS)", name)
+                prefix = prefix_match.group(1) if prefix_match else "ARS"
+
+                # ✅ Extract numeric digits after the site code (e.g., 0055)
+                num_match = re.search(rf"{re.escape(valid_code)}[-]?(\d+)", name)
+                digits = num_match.group(1) if num_match else ""
+
+                return f"{prefix}_{valid_code}{digits}" if digits else ""
+
 
             for _, row in df.iterrows():
                 sample_name = str(row.get("sample", "")).strip()
-                gambit_accession = "_".join(sample_name.split("-")[:2])  # parse accession
+                gambit_accession = format_gambit_accession(sample_name, site_codes)
 
-                # 🔎 Step 1: try to find Referred_Data with this accession
+                # if invalid accession keep blank
+                if not gambit_accession: 
+                    gambit_accession = ""
+
+                # Step 1: try to find Referred_Data with this accession
                 referred_obj = Referred_Data.objects.filter(
                     AccessionNo=gambit_accession
                 ).first()
 
-                # 🔎 Step 2: create or get WGS_Project
+                # Step 2: create or get WGS_Project
                 connect_project, _ = WGS_Project.objects.get_or_create(
                     Ref_Accession=referred_obj if referred_obj else None,
                     defaults={
@@ -349,6 +456,8 @@ def upload_gambit(request):
                         "WGS_FastqSummary": False,
                         "WGS_MlstSummary": False,
                         "WGS_Checkm2Summary": False,
+                        "WGS_AssemblySummary": False,
+                        "WGS_AmrfinderSummary": False,
                     }
                 )
 
@@ -364,23 +473,22 @@ def upload_gambit(request):
                 connect_project.save()
 
                 # 🔄 Step 5: update or create Gambit record
-                Gambit.objects.update_or_create(
+                Gambit.objects.create(
                     Gambit_Accession=gambit_accession,
-                    defaults={
-                        "gambit_project": connect_project,
-                        "sample": sample_name,
-                        "predicted_name": row.get("predicted_name", ""),
-                        "predicted_rank": row.get("predicted_rank", ""),
-                        "predicted_ncbi_id": row.get("predicted_ncbi_id", ""),
-                        "predicted_threshold": row.get("predicted_threshold", ""),
-                        "closest_distance": row.get("closest_distance", ""),
-                        "closest_description": row.get("closest_description", ""),
-                        "next_name": row.get("next_name", ""),
-                        "next_rank": row.get("next_rank", ""),
-                        "next_ncbi_id": row.get("next_ncbi_id", ""),
-                        "next_threshold": row.get("next_threshold", ""),
-                    },
+                    gambit_project=connect_project,
+                    sample=row.get("sample", sample_name),
+                    predicted_name=row.get("predicted_name", ""),
+                    predicted_rank=row.get("predicted_rank", ""),
+                    predicted_ncbi_id=row.get("predicted_ncbi_id", ""),
+                    predicted_threshold=row.get("predicted_threshold", ""),
+                    closest_distance=row.get("closest_distance", ""),
+                    closest_description=row.get("closest_description", ""),
+                    next_name=row.get("next_name", ""),
+                    next_rank=row.get("next_rank", ""),
+                    next_ncbi_id=row.get("next_ncbi_id", ""),
+                    next_threshold=row.get("next_threshold", ""),
                 )
+
 
             messages.success(request, "Gambit records updated successfully.")
             return redirect("show_gambit")
@@ -391,6 +499,8 @@ def upload_gambit(request):
         "gambit_form": gambit_form,
         "mlst_form": MlstUploadForm(),
         "checkm2_form": Checkm2UploadForm(),
+        "assembly_form": AssemblyUploadForm(),
+        "amrfinder_form": AmrUploadForm(),
         "editing": editing,
     })
 
@@ -635,54 +745,34 @@ def upload_checkm2(request):
                 # take basename and remove extension
                 base = os.path.basename(raw_name)
                 base_noext = os.path.splitext(base)[0].strip()
-                # must contain ARS to be eligible
+
                 if "ARS" not in base_noext:
                     return ""
+
                 parts = re.split(r"[-_]", base_noext)
                 if not parts:
                     return ""
-                prefix = parts[0]  # e.g. "24ARS" or "22ARS"
 
-                # 1) look for a part like LETTERS + DIGITS where LETTERS is a valid site code
+                prefix = parts[0]  # e.g. "18ARS"
+
+                # Look for a part that matches sitecode+digits (e.g. BGH0055, CVM0162)
                 for part in parts[1:]:
-                    m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
+                    m = re.match(r"^([A-Za-z]{2,6})(\d+)", part)
                     if m:
                         letters = m.group(1).upper()
                         digits = m.group(2)
                         if letters in site_codes:
                             return f"{prefix}_{letters}{digits}"
 
-                # 2) look for an exact sitecode part, then try to extract digits from the next part
-                for i in range(1, len(parts)):
-                    part = parts[i]
-                    if part.upper() in site_codes:
-                        letters = part.upper()
-                        digits = ""
-                        # try the next part for a letters+digits pattern or digits
-                        if i + 1 < len(parts):
-                            next_part = parts[i + 1]
-                            m2 = re.match(r"^([A-Za-z]{2,6})(\d+)$", next_part)
-                            if m2:
-                                digits = m2.group(2)
-                            else:
-                                # fallback: grab the first run of digits in next_part
-                                dmatch = re.search(r"(\d+)", next_part)
-                                if dmatch:
-                                    digits = dmatch.group(1)
-                        # fallback: extract digits from current part
-                        if not digits:
-                            dmatch2 = re.search(r"(\d+)", part)
-                            if dmatch2:
-                                digits = dmatch2.group(1)
-                        return f"{prefix}_{letters}{digits}" if digits else f"{prefix}_{letters}"
+                # If sitecode and digits are separated (rare case)
+                for i in range(1, len(parts) - 1):
+                    if parts[i].upper() in site_codes:
+                        letters = parts[i].upper()
+                        digits_match = re.search(r"(\d+)", parts[i + 1])
+                        if digits_match:
+                            return f"{prefix}_{letters}{digits_match.group(1)}"
+                        return f"{prefix}_{letters}"
 
-                # 3) as a last attempt, find any part that contains a valid sitecode prefix
-                for part in parts[1:]:
-                    m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
-                    if m and m.group(1).upper() in site_codes:
-                        return f"{prefix}_{m.group(1).upper()}{m.group(2)}"
-
-                # none matched → return blank
                 return ""
 
             print("Total rows in dataframe:", len(df))
@@ -829,57 +919,35 @@ def upload_assembly(request):
                 # take basename and remove extension
                 base = os.path.basename(raw_name)
                 base_noext = os.path.splitext(base)[0].strip()
-                # must contain ARS to be eligible
+
                 if "ARS" not in base_noext:
                     return ""
+
                 parts = re.split(r"[-_]", base_noext)
                 if not parts:
                     return ""
-                prefix = parts[0]  # e.g. "24ARS" or "22ARS"
 
-                # 1) look for a part like LETTERS + DIGITS where LETTERS is a valid site code
+                prefix = parts[0]  # e.g. "18ARS"
+
+                # Look for a part that matches sitecode+digits (e.g. BGH0055, CVM0162)
                 for part in parts[1:]:
-                    m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
+                    m = re.match(r"^([A-Za-z]{2,6})(\d+)", part)
                     if m:
                         letters = m.group(1).upper()
                         digits = m.group(2)
                         if letters in site_codes:
                             return f"{prefix}_{letters}{digits}"
 
-                # 2) look for an exact sitecode part, then try to extract digits from the next part
-                for i in range(1, len(parts)):
-                    part = parts[i]
-                    if part.upper() in site_codes:
-                        letters = part.upper()
-                        digits = ""
-                        # try the next part for a letters+digits pattern or digits
-                        if i + 1 < len(parts):
-                            next_part = parts[i + 1]
-                            m2 = re.match(r"^([A-Za-z]{2,6})(\d+)$", next_part)
-                            if m2:
-                                digits = m2.group(2)
-                            else:
-                                # fallback: grab the first run of digits in next_part
-                                dmatch = re.search(r"(\d+)", next_part)
-                                if dmatch:
-                                    digits = dmatch.group(1)
-                        # fallback: extract digits from current part
-                        if not digits:
-                            dmatch2 = re.search(r"(\d+)", part)
-                            if dmatch2:
-                                digits = dmatch2.group(1)
-                        return f"{prefix}_{letters}{digits}" if digits else f"{prefix}_{letters}"
+                # If sitecode and digits are separated (rare case)
+                for i in range(1, len(parts) - 1):
+                    if parts[i].upper() in site_codes:
+                        letters = parts[i].upper()
+                        digits_match = re.search(r"(\d+)", parts[i + 1])
+                        if digits_match:
+                            return f"{prefix}_{letters}{digits_match.group(1)}"
+                        return f"{prefix}_{letters}"
 
-                # 3) as a last attempt, find any part that contains a valid sitecode prefix
-                for part in parts[1:]:
-                    m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
-                    if m and m.group(1).upper() in site_codes:
-                        return f"{prefix}_{m.group(1).upper()}{m.group(2)}"
-
-                # none matched → return blank
                 return ""
-
-            print("Total rows in dataframe:", len(df))
 
 
 

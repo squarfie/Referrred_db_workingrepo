@@ -106,17 +106,9 @@ class FastqSummary(models.Model):
     class Meta:
         db_table = "FastqSummary"
 
-    def save(self, *args, **kwargs):
-        # auto-generate FastQ_Accession if sample provided
-        if self.sample and not self.FastQ_Accession:
-            try:
-                self.FastQ_Accession = "_".join(self.sample.split("-")[:2])
-            except Exception:
-                self.FastQ_Accession = None
-        super().save(*args, **kwargs)
-
     def __str__(self):
-        return self.FastQ_Accession or ""
+        return self.sample or ""
+
     
     
 # uploading project files
@@ -147,37 +139,11 @@ class Gambit(models.Model):
     next_rank = models.CharField(max_length=255, blank=True, null=True)
     next_ncbi_id = models.CharField(max_length=255, blank=True, null=True)
     next_threshold = models.CharField(max_length=255, blank=True, null=True)
+
     class Meta:
         db_table = "gambit"
-    
-    def save(self, *args, **kwargs):
-        # auto-generate Gambit_Accession from sample
-        if self.sample and not self.Gambit_Accession:
-            try:
-                self.Gambit_Accession = "_".join(self.sample.split("-")[:2])
-            except Exception:
-                self.Gambit_Accession = None
-
-        super().save(*args, **kwargs)
-
-       # 🔄 After saving, sync to linked WGS_Project
-        if self.gambit_project and self.Gambit_Accession:
-            project = self.gambit_project
-            project.WGS_Gambit_Acc = self.Gambit_Accession
-
-            # check against Referred_Data accession
-            if (
-                project.Ref_Accession
-                and self.Gambit_Accession == project.Ref_Accession.AccessionNo
-            ):
-                project.WGS_GambitSummary = True
-            else:
-                project.WGS_GambitSummary = False
-
-            project.save()
-
     def __str__(self):
-        return self.Gambit_Accession or ""
+        return self.sample or ""
 
 
 # uploading project files
