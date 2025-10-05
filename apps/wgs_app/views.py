@@ -13,7 +13,7 @@ from .utils import format_accession
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 
-
+# helper to read uploaded file (csv or excel)
 def read_uploaded_file(uploaded_file):
     import pandas as pd
 
@@ -144,6 +144,7 @@ def delete_wgs(request, pk):
     return redirect('show_wgs_projects')  # <-- Correct URL name
 
 
+############## FASTQ
 
 @login_required
 def upload_fastq(request):
@@ -171,7 +172,7 @@ def upload_fastq(request):
                     "editing": editing,
                 })
 
-            # ✅ Load all valid site codes from the SiteData table
+            # Load all valid site codes from the SiteData table
             site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
 
             def format_fastq_accession(raw_name: str, site_codes: set) -> str:
@@ -555,125 +556,144 @@ def upload_mlst(request):
 
     if request.method == "POST" and request.FILES.get("Mlstfile"):
         mlst_form = MlstUploadForm(request.POST, request.FILES)
-        if mlst_form.is_valid():
+        try:
             upload = mlst_form.save()
-            excel_file = upload.Mlstfile
+            df = read_uploaded_file(upload.Mlstfile)
+            df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
+        except Exception as e:
+            messages.error(request, f"Error processing MLST file: {e}")
+            return render(request, "wgs_app/Add_wgs.html", {
+                "form": form,
+                "fastq_form": FastqUploadForm(),
+                "gambit_form": GambitUploadForm(),
+                "mlst_form": mlst_form,
+                "checkm2_form": Checkm2UploadForm(),
+                "amrfinder_form": AmrUploadForm(),
+                "assembly_form": AssemblyUploadForm(),
+                "editing": editing,
+            })
 
-            # Read Excel
-            df = pd.read_excel(excel_file)
-            df.columns = df.columns.str.strip().str.replace(".", "_", regex=False)  # normalize headers
+        # ✅ Load all valid site codes from the SiteData table
+        site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
 
-
-            site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
-            
-                        # helper to build accession
-            def format_mlst_accession(raw_name: str, site_codes: set) -> str:
-                if not raw_name:
-                    return ""
-                base = os.path.basename(raw_name)
-                base_noext = os.path.splitext(base)[0].strip()
-                if "ARS" not in base_noext:
-                    return ""
-                parts = re.split(r"[-_]", base_noext)
-                if not parts:
-                    return ""
-                prefix = parts[0]
-
-                # 1) look for SITE#### where SITE is valid
-                for part in parts[1:]:
-                    m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
-                    if m:
-                        letters, digits = m.group(1).upper(), m.group(2)
-                        if letters in site_codes:
-                            return f"{prefix}_{letters}{digits}"
-
-                # 2) exact site code, then try to grab digits from next part
-                for i in range(1, len(parts)):
-                    part = parts[i]
-                    if part.upper() in site_codes:
-                        letters = part.upper()
-                        digits = ""
-                        if i + 1 < len(parts):
-                            next_part = parts[i + 1]
-                            m2 = re.match(r"^([A-Za-z]{2,6})(\d+)$", next_part)
-                            if m2:
-                                digits = m2.group(2)
-                            else:
-                                dmatch = re.search(r"(\d+)", next_part)
-                                if dmatch:
-                                    digits = dmatch.group(1)
-                        if not digits:
-                            dmatch2 = re.search(r"(\d+)", part)
-                            if dmatch2:
-                                digits = dmatch2.group(1)
-                        return f"{prefix}_{letters}{digits}" if digits else f"{prefix}_{letters}"
-
+        # === Helper: build accession from file name ===
+        def format_mlst_accession(raw_name: str, site_codes: set) -> str:
+            if not raw_name:
                 return ""
 
-            print("Total rows in dataframe:", len(df))
+            base_noext = os.path.splitext(os.path.basename(raw_name))[0].strip()
 
-            for _, row in df.iterrows():
-                # Extract sample name
-                full_path = str(row.get("name", "")).strip()
-                mlst_accession = format_mlst_accession(full_path, site_codes)
+            # Must contain 'ARS' to be valid
+            if "ARS" not in base_noext:
+                return ""
 
-                # Step 1: try to find Referred_Data with this accession (only if non-blank)
-                referred_obj = (
-                    Referred_Data.objects.filter(AccessionNo=mlst_accession).first()
-                    if mlst_accession else None
-                )
+            parts = re.split(r"[-_]", base_noext)
+            if not parts:
+                return ""
 
-                # Get or create WGS_Project
-                connect_project, _ = WGS_Project.objects.get_or_create(
-                    Ref_Accession=referred_obj if referred_obj else None,
-                    defaults={
-                        "WGS_GambitSummary": False,
-                        "WGS_FastqSummary": False,
-                        "WGS_MlstSummary": False,
-                        "WGS_Checkm2Summary": False,
-                        "WGS_AssemblySummary": False,
-                        "WGS_AmrfinderSummary": False,
-                    }
-                )
+            prefix = parts[0]
 
-                # Step 3: update project accession & summary flag (safe)
-                connect_project.WGS_Mlst_Acc = mlst_accession
-                connect_project.WGS_MlstSummary = (
-                    mlst_accession != "" and
-                    bool(connect_project.Ref_Accession) and
-                    mlst_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
-                )
-                connect_project.save()
+            # 1️⃣ Look for SITE#### pattern where SITE is valid
+            for part in parts[1:]:
+                match = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
+                if match:
+                    letters, digits = match.group(1).upper(), match.group(2)
+                    if letters in site_codes:
+                        return f"{prefix}_{letters}{digits}"
 
-                # Update or create Mlst record
-                Mlst.objects.create(
-                    Mlst_Accession=mlst_accession,
-                    mlst_project=connect_project,
-                    name=row.get("name", ""),
-                    scheme=row.get("scheme", ""),
-                    mlst=row.get("MLST", ""),
-                    allele1=row.get("allele1", ""),
-                    allele2=row.get("allele2", ""),
-                    allele3=row.get("allele3", ""),
-                    allele4=row.get("allele4", ""),
-                    allele5=row.get("allele5", ""),
-                    allele6=row.get("allele6", ""),
-                    allele7=row.get("allele7", "")
-                )
+            # 2️⃣ Look for a separate valid site code, then grab digits from next part
+            for i in range(1, len(parts)):
+                part = parts[i]
+                if part.upper() in site_codes:
+                    letters = part.upper()
+                    digits = ""
 
-            messages.success(request, "MLST records updated successfully.")
-            return redirect("show_mlst")
+                    if i + 1 < len(parts):
+                        next_part = parts[i + 1]
+                        next_match = re.match(r"^([A-Za-z]{2,6})(\d+)$", next_part)
+                        if next_match:
+                            digits = next_match.group(2)
+                        else:
+                            digit_match = re.search(r"(\d+)", next_part)
+                            if digit_match:
+                                digits = digit_match.group(1)
 
+                    # fallback — digits inside current part
+                    if not digits:
+                        digit_match2 = re.search(r"(\d+)", part)
+                        if digit_match2:
+                            digits = digit_match2.group(1)
+
+                    return f"{prefix}_{letters}{digits}" if digits else f"{prefix}_{letters}"
+
+            return ""
+
+        print("✅ Total rows in DataFrame:", len(df))
+
+        # === Loop through rows ===
+        for _, row in df.iterrows():
+            full_path = str(row.get("name", "")).strip()
+            mlst_accession = format_mlst_accession(full_path, site_codes)
+
+            # Find Referred_Data (optional)
+            referred_obj = (
+                Referred_Data.objects.filter(AccessionNo=mlst_accession).first()
+                if mlst_accession else None
+            )
+
+            # Get or create WGS_Project
+            connect_project, _ = WGS_Project.objects.get_or_create(
+                Ref_Accession=referred_obj if referred_obj else None,
+                defaults={
+                    "WGS_GambitSummary": False,
+                    "WGS_FastqSummary": False,
+                    "WGS_MlstSummary": False,
+                    "WGS_Checkm2Summary": False,
+                    "WGS_AssemblySummary": False,
+                    "WGS_AmrfinderSummary": False,
+                }
+            )
+
+            # Update project MLST accession and summary status
+            connect_project.WGS_Mlst_Acc = mlst_accession
+            connect_project.WGS_MlstSummary = (
+                mlst_accession
+                and bool(connect_project.Ref_Accession)
+                and mlst_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
+            )
+            connect_project.save()
+
+            # Always create new MLST record
+            Mlst.objects.create(
+                Mlst_Accession=mlst_accession,
+                mlst_project=connect_project,
+                name=row.get("name", ""),
+                scheme=row.get("scheme", ""),
+                mlst=row.get("MLST", ""),
+                allele1=row.get("allele1", ""),
+                allele2=row.get("allele2", ""),
+                allele3=row.get("allele3", ""),
+                allele4=row.get("allele4", ""),
+                allele5=row.get("allele5", ""),
+                allele6=row.get("allele6", ""),
+                allele7=row.get("allele7", "")
+            )
+
+        messages.success(request, "MLST records updated successfully.")
+        return redirect("show_mlst")
+
+    # === GET request fallback ===
     return render(request, "wgs_app/Add_wgs.html", {
         "form": form,
         "fastq_form": FastqUploadForm(),
         "gambit_form": GambitUploadForm(),
         "mlst_form": mlst_form,
         "checkm2_form": Checkm2UploadForm(),
-        "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": AmrUploadForm(),
+        "assembly_form": AssemblyUploadForm(),
         "editing": editing,
     })
+
 
 
 
@@ -724,115 +744,121 @@ def delete_all_mlst(request):
 def upload_checkm2(request):
     form = WGSProjectForm()
     checkm2_form = Checkm2UploadForm()
-    editing = False  
+    editing = False
 
     if request.method == "POST" and request.FILES.get("Checkm2file"):
         checkm2_form = Checkm2UploadForm(request.POST, request.FILES)
-        if checkm2_form.is_valid():
+        try:
             upload = checkm2_form.save()
-            excel_file = upload.Checkm2file
+            df = read_uploaded_file(upload.Mlstfile)
+            df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
+        except Exception as e:
+            messages.error(request, f"Error processing MLST file: {e}")
+            return render(request, "wgs_app/Add_wgs.html", {
+                "form": form,
+                "fastq_form": FastqUploadForm(),
+                "gambit_form": GambitUploadForm(),
+                "mlst_form": MlstUploadForm(),
+                "checkm2_form": checkm2_form,
+                "amrfinder_form": AmrUploadForm(),
+                "assembly_form": AssemblyUploadForm(),
+                "editing": editing,
+            })
 
-            df = pd.read_excel(excel_file)
-            df.columns = df.columns.str.replace(".", "", regex=False)  # normalize column names
+        site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
 
+        # Helper to build accession
+        def format_checkm2_accession(raw_name: str) -> str:
+            if not raw_name:
+                return ""
+            # Take basename and remove extension
+            base = os.path.basename(raw_name)
+            base_noext = os.path.splitext(base)[0].strip()
 
-            site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
-
-                        # helper to build accession
-            def format_checkm2_accession(raw_name: str) -> str:
-                if not raw_name:
-                    return ""
-                # take basename and remove extension
-                base = os.path.basename(raw_name)
-                base_noext = os.path.splitext(base)[0].strip()
-
-                if "ARS" not in base_noext:
-                    return ""
-
-                parts = re.split(r"[-_]", base_noext)
-                if not parts:
-                    return ""
-
-                prefix = parts[0]  # e.g. "18ARS"
-
-                # Look for a part that matches sitecode+digits (e.g. BGH0055, CVM0162)
-                for part in parts[1:]:
-                    m = re.match(r"^([A-Za-z]{2,6})(\d+)", part)
-                    if m:
-                        letters = m.group(1).upper()
-                        digits = m.group(2)
-                        if letters in site_codes:
-                            return f"{prefix}_{letters}{digits}"
-
-                # If sitecode and digits are separated (rare case)
-                for i in range(1, len(parts) - 1):
-                    if parts[i].upper() in site_codes:
-                        letters = parts[i].upper()
-                        digits_match = re.search(r"(\d+)", parts[i + 1])
-                        if digits_match:
-                            return f"{prefix}_{letters}{digits_match.group(1)}"
-                        return f"{prefix}_{letters}"
-
+            if "ARS" not in base_noext:
                 return ""
 
-            print("Total rows in dataframe:", len(df))
-            
-            for _, row in df.iterrows():
-                sample_name = str(row.get("Name", "")).strip().replace(".fna", "")
-                checkm2_accession = format_checkm2_accession(sample_name)
+            parts = re.split(r"[-_]", base_noext)
+            if not parts:
+                return ""
 
+            prefix = parts[0]  # e.g. "18ARS"
 
-                # Step 1: try to find Referred_Data with this accession (only if non-blank)
-                referred_obj = (
-                    Referred_Data.objects.filter(AccessionNo=checkm2_accession).first()
-                    if checkm2_accession else None
-                )
+            # Look for a part that matches sitecode+digits (e.g. BGH0055, CVM0162)
+            for part in parts[1:]:
+                m = re.match(r"^([A-Za-z]{2,6})(\d+)", part)
+                if m:
+                    letters = m.group(1).upper()
+                    digits = m.group(2)
+                    if letters in site_codes:
+                        return f"{prefix}_{letters}{digits}"
 
-                # 🔎 Step 2: create or get WGS_Project
-                connect_project, _ = WGS_Project.objects.get_or_create(
-                    Ref_Accession=referred_obj if referred_obj else None,
-                    defaults={
-                        "WGS_GambitSummary": False,
-                        "WGS_FastqSummary": False,
-                        "WGS_MlstSummary": False,
-                        "WGS_Checkm2Summary": False,
-                        "WGS_AssemblySummary": False,
-                        "WGS_AmrfinderSummary": False,
+            # If sitecode and digits are separated (rare case)
+            for i in range(1, len(parts) - 1):
+                if parts[i].upper() in site_codes:
+                    letters = parts[i].upper()
+                    digits_match = re.search(r"(\d+)", parts[i + 1])
+                    if digits_match:
+                        return f"{prefix}_{letters}{digits_match.group(1)}"
+                    return f"{prefix}_{letters}"
 
-                    }
-                )
+            return ""
 
-               # Step 3: update project accession & summary flag (safe)
-                connect_project.WGS_Checkm2_Acc = checkm2_accession
-                connect_project.WGS_Checkm2Summary = (
-                    checkm2_accession != "" and
-                    bool(connect_project.Ref_Accession) and
-                    checkm2_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
-                )
+        print("Total rows in dataframe:", len(df))
 
-                connect_project.save()
+        for _, row in df.iterrows():
+            sample_name = str(row.get("Name", "")).strip().replace(".fna", "")
+            checkm2_accession = format_checkm2_accession(sample_name)
 
-                # 🔄 Step 4: get or create Checkm2 record
-                Checkm2.objects.create(
-                    Checkm2_Accession=checkm2_accession,
-                    Name=sample_name,
-                    checkm2_project=connect_project,
-                    Completeness=row.get("Completeness", ""),
-                    Contamination=row.get("Contamination", ""),
-                    Completeness_Model_Used=row.get("Completeness_Model_Used", ""),
-                    Translation_Table_Used=row.get("Translation_Table_Used", ""),
-                    Coding_Density=row.get("Coding_Density", ""),
-                    Contig_N50=row.get("Contig_N50", ""),
-                    Average_Gene_Length=row.get("Average_Gene_Length", ""),
-                    GC_Content=row.get("GC_Content", ""),
-                    Total_Coding_Sequences=row.get("Total_Coding_Sequences", ""),
-                    Total_Contigs=row.get("Total_Contigs", ""),
-                    Max_Contig_Length=row.get("Max_Contig_Length", ""),
-                    Additional_Notes=row.get("Additional_Notes", ""),
-                )
+            # Step 1: Try to find Referred_Data with this accession (only if non-blank)
+            referred_obj = (
+                Referred_Data.objects.filter(AccessionNo=checkm2_accession).first()
+                if checkm2_accession else None
+            )
 
-            messages.success(request, "Checkm2 records uploaded successfully.")
-            return redirect("show_checkm2")
+            # Step 2: Create or get WGS_Project
+            connect_project, _ = WGS_Project.objects.get_or_create(
+                Ref_Accession=referred_obj if referred_obj else None,
+                defaults={
+                    "WGS_GambitSummary": False,
+                    "WGS_FastqSummary": False,
+                    "WGS_MlstSummary": False,
+                    "WGS_Checkm2Summary": False,
+                    "WGS_AssemblySummary": False,
+                    "WGS_AmrfinderSummary": False,
+                }
+            )
+
+            # Step 3: Update project accession & summary flag (safe)
+            connect_project.WGS_Checkm2_Acc = checkm2_accession
+            connect_project.WGS_Checkm2Summary = (
+                checkm2_accession != "" and
+                bool(connect_project.Ref_Accession) and
+                checkm2_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
+            )
+            connect_project.save()
+
+            # Step 4: Create Checkm2 record
+            Checkm2.objects.create(
+                Checkm2_Accession=checkm2_accession,
+                Name=sample_name,
+                checkm2_project=connect_project,
+                Completeness=row.get("Completeness", ""),
+                Contamination=row.get("Contamination", ""),
+                Completeness_Model_Used=row.get("Completeness_Model_Used", ""),
+                Translation_Table_Used=row.get("Translation_Table_Used", ""),
+                Coding_Density=row.get("Coding_Density", ""),
+                Contig_N50=row.get("Contig_N50", ""),
+                Average_Gene_Length=row.get("Average_Gene_Length", ""),
+                GC_Content=row.get("GC_Content", ""),
+                Total_Coding_Sequences=row.get("Total_Coding_Sequences", ""),
+                Total_Contigs=row.get("Total_Contigs", ""),
+                Max_Contig_Length=row.get("Max_Contig_Length", ""),
+                Additional_Notes=row.get("Additional_Notes", ""),
+            )
+
+        messages.success(request, "Checkm2 records uploaded successfully.")
+        return redirect("show_checkm2")
 
     return render(request, "wgs_app/Add_wgs.html", {
         "form": form,
@@ -844,6 +870,7 @@ def upload_checkm2(request):
         "amrfinder_form": AmrUploadForm(),
         "editing": editing,
     })
+
 
 
 
@@ -896,128 +923,134 @@ def delete_all_checkm2(request):
 
 ###################  Assembly Scan
 @login_required
+@login_required
 def upload_assembly(request):
     form = WGSProjectForm()
     assembly_form = AssemblyUploadForm()
-    editing = False  
+    editing = False
 
     if request.method == "POST" and request.FILES.get("Assemblyfile"):
         assembly_form = AssemblyUploadForm(request.POST, request.FILES)
-        if assembly_form.is_valid():
+        try:
             upload = assembly_form.save()
-            excel_file = upload.Assemblyfile
+            df = read_uploaded_file(upload.Mlstfile)
+            df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
+        except Exception as e:
+            messages.error(request, f"Error processing MLST file: {e}")
+            return render(request, "wgs_app/Add_wgs.html", {
+                "form": form,
+                "fastq_form": FastqUploadForm(),
+                "gambit_form": GambitUploadForm(),
+                "mlst_form": MlstUploadForm(),
+                "checkm2_form": Checkm2UploadForm(),
+                "amrfinder_form": AmrUploadForm(),
+                "assembly_form": assembly_form,
+                "editing": editing,
+            })
 
-            df = pd.read_excel(excel_file)
-            df.columns = df.columns.str.replace(".", "_", regex=False)  # normalize column names
+        site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
 
+        # Helper to build accession
+        def format_assembly_accession(raw_name: str) -> str:
+            if not raw_name:
+                return ""
+            # Take basename and remove extension
+            base = os.path.basename(raw_name)
+            base_noext = os.path.splitext(base)[0].strip()
 
-            site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
-            # helper to build accession
-            def format_assembly_accession(raw_name: str) -> str:
-                if not raw_name:
-                    return ""
-                # take basename and remove extension
-                base = os.path.basename(raw_name)
-                base_noext = os.path.splitext(base)[0].strip()
-
-                if "ARS" not in base_noext:
-                    return ""
-
-                parts = re.split(r"[-_]", base_noext)
-                if not parts:
-                    return ""
-
-                prefix = parts[0]  # e.g. "18ARS"
-
-                # Look for a part that matches sitecode+digits (e.g. BGH0055, CVM0162)
-                for part in parts[1:]:
-                    m = re.match(r"^([A-Za-z]{2,6})(\d+)", part)
-                    if m:
-                        letters = m.group(1).upper()
-                        digits = m.group(2)
-                        if letters in site_codes:
-                            return f"{prefix}_{letters}{digits}"
-
-                # If sitecode and digits are separated (rare case)
-                for i in range(1, len(parts) - 1):
-                    if parts[i].upper() in site_codes:
-                        letters = parts[i].upper()
-                        digits_match = re.search(r"(\d+)", parts[i + 1])
-                        if digits_match:
-                            return f"{prefix}_{letters}{digits_match.group(1)}"
-                        return f"{prefix}_{letters}"
-
+            if "ARS" not in base_noext:
                 return ""
 
+            parts = re.split(r"[-_]", base_noext)
+            if not parts:
+                return ""
 
+            prefix = parts[0]  # e.g. "18ARS"
 
-            for _, row in df.iterrows():
-                sample_name = str(row.get("sample", "")).strip()
-                assembly_accession = format_assembly_accession(sample_name)
+            # Look for a part that matches sitecode+digits (e.g. BGH0055, CVM0162)
+            for part in parts[1:]:
+                m = re.match(r"^([A-Za-z]{2,6})(\d+)", part)
+                if m:
+                    letters = m.group(1).upper()
+                    digits = m.group(2)
+                    if letters in site_codes:
+                        return f"{prefix}_{letters}{digits}"
 
+            # If sitecode and digits are separated (rare case)
+            for i in range(1, len(parts) - 1):
+                if parts[i].upper() in site_codes:
+                    letters = parts[i].upper()
+                    digits_match = re.search(r"(\d+)", parts[i + 1])
+                    if digits_match:
+                        return f"{prefix}_{letters}{digits_match.group(1)}"
+                    return f"{prefix}_{letters}"
 
-                # Step 1: try to find Referred_Data with this accession (only if non-blank)
-                referred_obj = (
-                    Referred_Data.objects.filter(AccessionNo=assembly_accession).first()
-                    if assembly_accession else None
-                )
+            return ""
 
+        for _, row in df.iterrows():
+            sample_name = str(row.get("sample", "")).strip()
+            assembly_accession = format_assembly_accession(sample_name)
 
-                # 🔎 Step 2: create or get WGS_Project
-                connect_project, _ = WGS_Project.objects.get_or_create(
-                    Ref_Accession=referred_obj if referred_obj else None,
-                    defaults={
-                        "WGS_GambitSummary": False,
-                        "WGS_FastqSummary": False,
-                        "WGS_MlstSummary": False,
-                        "WGS_Checkm2Summary": False,
-                        "WGS_AssemblySummary": False,
-                        "WGS_AmrfinderSummary": False
-                    }
-                )
+            # Step 1: Try to find Referred_Data with this accession (only if non-blank)
+            referred_obj = (
+                Referred_Data.objects.filter(AccessionNo=assembly_accession).first()
+                if assembly_accession else None
+            )
 
-                # Step 3: update project accession & summary flag (safe)
-                connect_project.WGS_Assembly_Acc = assembly_accession
-                connect_project.WGS_AssemblySummary = (
-                    assembly_accession != "" and
-                    bool(connect_project.Ref_Accession) and
-                    assembly_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
-                )
-                connect_project.save()
+            # Step 2: Create or get WGS_Project
+            connect_project, _ = WGS_Project.objects.get_or_create(
+                Ref_Accession=referred_obj if referred_obj else None,
+                defaults={
+                    "WGS_GambitSummary": False,
+                    "WGS_FastqSummary": False,
+                    "WGS_MlstSummary": False,
+                    "WGS_Checkm2Summary": False,
+                    "WGS_AssemblySummary": False,
+                    "WGS_AmrfinderSummary": False,
+                }
+            )
 
-                # 🔄 Step 4: get or create AssemblyScan record
-                AssemblyScan.objects.create(
-                        Assembly_Accession=assembly_accession,
-                        sample=sample_name,
-                        assembly_project=connect_project,
-                        total_contig=row.get("total_contig", ""),
-                        total_contig_length=row.get("total_contig_length", ""),
-                        max_contig_length=row.get("max_contig_length", ""),
-                        mean_contig_length=row.get("mean_contig_length", ""),
-                        median_contig_length=row.get("median_contig_length", ""),
-                        min_contig_length=row.get("min_contig_length", ""),
-                        n50_contig_length=row.get("n50_contig_length", ""),
-                        l50_contig_count=row.get("l50_contig_count", ""),
-                        num_contig_non_acgtn=row.get("num_contig_non_acgtn", ""),
-                        contig_percent_a=row.get("contig_percent_a", ""),
-                        contig_percent_c=row.get("contig_percent_c", ""),
-                        contig_percent_g=row.get("contig_percent_g", ""),
-                        contig_percent_t=row.get("contig_percent_t", ""),
-                        contig_percent_n=row.get("contig_percent_n", ""),
-                        contig_non_acgtn=row.get("contig_non_acgtn", ""),
-                        contigs_greater_1m=row.get("contigs_greater_1m", ""),
-                        contigs_greater_100k=row.get("contigs_greater_100k", ""),
-                        contigs_greater_10k=row.get("contigs_greater_10k", ""),
-                        contigs_greater_1k=row.get("contigs_greater_1k", ""),
-                        percent_contigs_greater_1m=row.get("percent_contigs_greater_1m", ""),
-                        percent_contigs_greater_100k=row.get("percent_contigs_greater_100k", ""),
-                        percent_contigs_greater_10k=row.get("percent_contigs_greater_10k", ""),
-                        percent_contigs_greater_1k=row.get("percent_contigs_greater_1k", ""),
-                    
-                )
+            # Step 3: Update project accession & summary flag (safe)
+            connect_project.WGS_Assembly_Acc = assembly_accession
+            connect_project.WGS_AssemblySummary = (
+                assembly_accession != "" and
+                bool(connect_project.Ref_Accession) and
+                assembly_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
+            )
+            connect_project.save()
 
-            messages.success(request, "AssemblyScan records uploaded successfully.")
-            return redirect("show_assembly")
+            # Step 4: Create AssemblyScan record
+            AssemblyScan.objects.create(
+                Assembly_Accession=assembly_accession,
+                sample=sample_name,
+                assembly_project=connect_project,
+                total_contig=row.get("total_contig", ""),
+                total_contig_length=row.get("total_contig_length", ""),
+                max_contig_length=row.get("max_contig_length", ""),
+                mean_contig_length=row.get("mean_contig_length", ""),
+                median_contig_length=row.get("median_contig_length", ""),
+                min_contig_length=row.get("min_contig_length", ""),
+                n50_contig_length=row.get("n50_contig_length", ""),
+                l50_contig_count=row.get("l50_contig_count", ""),
+                num_contig_non_acgtn=row.get("num_contig_non_acgtn", ""),
+                contig_percent_a=row.get("contig_percent_a", ""),
+                contig_percent_c=row.get("contig_percent_c", ""),
+                contig_percent_g=row.get("contig_percent_g", ""),
+                contig_percent_t=row.get("contig_percent_t", ""),
+                contig_percent_n=row.get("contig_percent_n", ""),
+                contig_non_acgtn=row.get("contig_non_acgtn", ""),
+                contigs_greater_1m=row.get("contigs_greater_1m", ""),
+                contigs_greater_100k=row.get("contigs_greater_100k", ""),
+                contigs_greater_10k=row.get("contigs_greater_10k", ""),
+                contigs_greater_1k=row.get("contigs_greater_1k", ""),
+                percent_contigs_greater_1m=row.get("percent_contigs_greater_1m", ""),
+                percent_contigs_greater_100k=row.get("percent_contigs_greater_100k", ""),
+                percent_contigs_greater_10k=row.get("percent_contigs_greater_10k", ""),
+                percent_contigs_greater_1k=row.get("percent_contigs_greater_1k", ""),
+            )
+
+        messages.success(request, "AssemblyScan records uploaded successfully.")
+        return redirect("show_assembly")
 
     return render(request, "wgs_app/Add_wgs.html", {
         "form": form,
@@ -1029,6 +1062,7 @@ def upload_assembly(request):
         "assembly_form": assembly_form,
         "editing": editing,
     })
+
 
 
 
@@ -1092,144 +1126,155 @@ def upload_amrfinder(request):
 
     if request.method == "POST" and request.FILES.get("Amrfinderfile"):
         amrfinder_form = AmrUploadForm(request.POST, request.FILES)
-        if amrfinder_form.is_valid():
+        try:
             upload = amrfinder_form.save()
-            excel_file = upload.Amrfinderfile
+            df = read_uploaded_file(upload.Mlstfile)
+            df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
+        except Exception as e:
+            messages.error(request, f"Error processing MLST file: {e}")
+            return render(request, "wgs_app/Add_wgs.html", {
+                "form": form,
+                "fastq_form": FastqUploadForm(),
+                "gambit_form": GambitUploadForm(),
+                "mlst_form": MlstUploadForm(),
+                "checkm2_form": Checkm2UploadForm(),
+                "amrfinder_form": amrfinder_form,
+                "assembly_form": AssemblyUploadForm(),
+                "editing": editing,
+            })
 
-            df = pd.read_excel(excel_file)
-            df.columns = (
-                df.columns
-                  .str.strip()
-                  .str.replace(" ", "_", regex=False)
-                  .str.replace("%", "pct", regex=False)
-                  .str.replace(".", "_", regex=False)
-                  .str.lower()
-            )
+        # Clean and standardize column names
+        df.columns = (
+            df.columns
+            .str.strip()
+            .str.replace(" ", "_", regex=False)
+            .str.replace("%", "pct", regex=False)
+            .str.replace(".", "_", regex=False)
+            .str.lower()
+        )
 
-            # preload all valid site codes from SiteData (uppercase)
-            site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
-            # helper to build accession
-            def format_amrfinder_accession(raw_name: str) -> str:
-                if not raw_name:
-                    return ""
-                # take basename and remove extension
-                base = os.path.basename(raw_name)
-                base_noext = os.path.splitext(base)[0].strip()
-                # must contain ARS to be eligible
-                if "ARS" not in base_noext:
-                    return ""
-                parts = re.split(r"[-_]", base_noext)
-                if not parts:
-                    return ""
-                prefix = parts[0]  # e.g. "24ARS" or "22ARS"
+        # Preload all valid site codes from SiteData (uppercase)
+        site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
 
-                # 1) look for a part like LETTERS + DIGITS where LETTERS is a valid site code
-                for part in parts[1:]:
-                    m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
-                    if m:
-                        letters = m.group(1).upper()
-                        digits = m.group(2)
-                        if letters in site_codes:
-                            return f"{prefix}_{letters}{digits}"
+        # Helper to build accession
+        def format_amrfinder_accession(raw_name: str) -> str:
+            if not raw_name:
+                return ""
+            base_noext = os.path.splitext(os.path.basename(raw_name))[0].strip()
 
-                # 2) look for an exact sitecode part, then try to extract digits from the next part
-                for i in range(1, len(parts)):
-                    part = parts[i]
-                    if part.upper() in site_codes:
-                        letters = part.upper()
-                        digits = ""
-                        # try the next part for a letters+digits pattern or digits
-                        if i + 1 < len(parts):
-                            next_part = parts[i + 1]
-                            m2 = re.match(r"^([A-Za-z]{2,6})(\d+)$", next_part)
-                            if m2:
-                                digits = m2.group(2)
-                            else:
-                                # fallback: grab the first run of digits in next_part
-                                dmatch = re.search(r"(\d+)", next_part)
-                                if dmatch:
-                                    digits = dmatch.group(1)
-                        # fallback: extract digits from current part
-                        if not digits:
-                            dmatch2 = re.search(r"(\d+)", part)
-                            if dmatch2:
-                                digits = dmatch2.group(1)
-                        return f"{prefix}_{letters}{digits}" if digits else f"{prefix}_{letters}"
-
-                # 3) as a last attempt, find any part that contains a valid sitecode prefix
-                for part in parts[1:]:
-                    m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
-                    if m and m.group(1).upper() in site_codes:
-                        return f"{prefix}_{m.group(1).upper()}{m.group(2)}"
-
-                # none matched → return blank
+            # Must contain ARS to be eligible
+            if "ARS" not in base_noext:
                 return ""
 
-            print("Total rows in dataframe:", len(df))
+            parts = re.split(r"[-_]", base_noext)
+            if not parts:
+                return ""
 
-            for _, row in df.iterrows():
-                sample_name = str(row.get("name", "")).strip()
-                amrfinder_accession = format_amrfinder_accession(sample_name)
+            prefix = parts[0]  # e.g., "24ARS"
 
-                # Step 1: try to find Referred_Data with this accession (only if non-blank)
-                referred_obj = (
-                    Referred_Data.objects.filter(AccessionNo=amrfinder_accession).first()
-                    if amrfinder_accession else None
-                )
+            # 1) Look for LETTERS + DIGITS where LETTERS is a valid site code
+            for part in parts[1:]:
+                m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
+                if m:
+                    letters = m.group(1).upper()
+                    digits = m.group(2)
+                    if letters in site_codes:
+                        return f"{prefix}_{letters}{digits}"
 
-                # Step 2: create or get WGS_Project
-                connect_project, _ = WGS_Project.objects.get_or_create(
-                    Ref_Accession=referred_obj if referred_obj else None,
-                    defaults={
-                        "WGS_GambitSummary": False,
-                        "WGS_FastqSummary": False,
-                        "WGS_MlstSummary": False,
-                        "WGS_Checkm2Summary": False,
-                        "WGS_AssemblySummary": False,
-                        "WGS_AmrfinderSummary": False,
-                    }
-                )
+            # 2) Check if sitecode is a separate part followed by digits
+            for i in range(1, len(parts)):
+                part = parts[i]
+                if part.upper() in site_codes:
+                    letters = part.upper()
+                    digits = ""
+                    if i + 1 < len(parts):
+                        next_part = parts[i + 1]
+                        m2 = re.match(r"^([A-Za-z]{2,6})(\d+)$", next_part)
+                        if m2:
+                            digits = m2.group(2)
+                        else:
+                            dmatch = re.search(r"(\d+)", next_part)
+                            if dmatch:
+                                digits = dmatch.group(1)
+                    if not digits:
+                        dmatch2 = re.search(r"(\d+)", part)
+                        if dmatch2:
+                            digits = dmatch2.group(1)
+                    return f"{prefix}_{letters}{digits}" if digits else f"{prefix}_{letters}"
 
-                # Step 3: update project accession & summary flag (safe)
-                connect_project.WGS_Amrfinder_Acc = amrfinder_accession
-                connect_project.WGS_AmrfinderSummary = (
-                    amrfinder_accession != "" and
-                    bool(connect_project.Ref_Accession) and
-                    amrfinder_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
-                )
-                connect_project.save()
+            # 3) As a fallback, match any valid sitecode prefix
+            for part in parts[1:]:
+                m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
+                if m and m.group(1).upper() in site_codes:
+                    return f"{prefix}_{m.group(1).upper()}{m.group(2)}"
 
-                # Step 4: create Amrfinderplus record (store every row)
-                Amrfinderplus.objects.create(
-                    Amrfinder_Accession=amrfinder_accession,
-                    name=sample_name,
-                    protein_id=row.get("protein_id", ""),
-                    contig_id=row.get("contig_id", ""),
-                    start=row.get("start", ""),
-                    stop=row.get("stop", ""),
-                    strand=row.get("strand", ""),
-                    element_symbol=row.get("element_symbol", ""),
-                    element_name=row.get("element_name", ""),
-                    scope=row.get("scope", ""),
-                    type_field=row.get("type", ""),
-                    subtype=row.get("subtype", ""),
-                    class_field=row.get("class", ""),
-                    subclass=row.get("subclass", ""),
-                    method=row.get("method", ""),
-                    target_length=row.get("target_length", ""),
-                    reference_sequence_length=row.get("reference_sequence_length", ""),
-                    percent_coverage_of_reference=row.get("pct_coverage_of_reference", ""),
-                    percent_identity_to_reference=row.get("pct_identity_to_reference", ""),
-                    alignment_length=row.get("alignment_length", ""),
-                    closest_reference_accession=row.get("closest_reference_accession", ""),
-                    closest_reference_name=row.get("closest_reference_name", ""),
-                    hmm_accession=row.get("hmm_accession", ""),
-                    hmm_description=row.get("hmm_description", ""),
-                    amrfinder_project=connect_project,
-                )
+            return ""
 
-            messages.success(request, "Amrfinder records uploaded successfully.")
-            return redirect("show_amrfinder")
+        print("Total rows in dataframe:", len(df))
+
+        for _, row in df.iterrows():
+            sample_name = str(row.get("name", "")).strip()
+            amrfinder_accession = format_amrfinder_accession(sample_name)
+
+            # Step 1: Try to find Referred_Data with this accession (only if non-blank)
+            referred_obj = (
+                Referred_Data.objects.filter(AccessionNo=amrfinder_accession).first()
+                if amrfinder_accession else None
+            )
+
+            # Step 2: Create or get WGS_Project
+            connect_project, _ = WGS_Project.objects.get_or_create(
+                Ref_Accession=referred_obj if referred_obj else None,
+                defaults={
+                    "WGS_GambitSummary": False,
+                    "WGS_FastqSummary": False,
+                    "WGS_MlstSummary": False,
+                    "WGS_Checkm2Summary": False,
+                    "WGS_AssemblySummary": False,
+                    "WGS_AmrfinderSummary": False,
+                }
+            )
+
+            # Step 3: Update project accession & summary flag
+            connect_project.WGS_Amrfinder_Acc = amrfinder_accession
+            connect_project.WGS_AmrfinderSummary = (
+                amrfinder_accession != "" and
+                bool(connect_project.Ref_Accession) and
+                amrfinder_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
+            )
+            connect_project.save()
+
+            # Step 4: Create Amrfinderplus record
+            Amrfinderplus.objects.create(
+                Amrfinder_Accession=amrfinder_accession,
+                name=sample_name,
+                protein_id=row.get("protein_id", ""),
+                contig_id=row.get("contig_id", ""),
+                start=row.get("start", ""),
+                stop=row.get("stop", ""),
+                strand=row.get("strand", ""),
+                element_symbol=row.get("element_symbol", ""),
+                element_name=row.get("element_name", ""),
+                scope=row.get("scope", ""),
+                type_field=row.get("type", ""),
+                subtype=row.get("subtype", ""),
+                class_field=row.get("class", ""),
+                subclass=row.get("subclass", ""),
+                method=row.get("method", ""),
+                target_length=row.get("target_length", ""),
+                reference_sequence_length=row.get("reference_sequence_length", ""),
+                percent_coverage_of_reference=row.get("pct_coverage_of_reference", ""),
+                percent_identity_to_reference=row.get("pct_identity_to_reference", ""),
+                alignment_length=row.get("alignment_length", ""),
+                closest_reference_accession=row.get("closest_reference_accession", ""),
+                closest_reference_name=row.get("closest_reference_name", ""),
+                hmm_accession=row.get("hmm_accession", ""),
+                hmm_description=row.get("hmm_description", ""),
+                amrfinder_project=connect_project,
+            )
+
+        messages.success(request, "Amrfinder records uploaded successfully.")
+        return redirect("show_amrfinder")
 
     return render(request, "wgs_app/Add_wgs.html", {
         "form": form,
