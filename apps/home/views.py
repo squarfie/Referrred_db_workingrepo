@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+from io import TextIOWrapper
 import os
 from django.conf import settings
 from django.templatetags.static import static
@@ -2562,6 +2563,8 @@ def delete_city(request, id):
     city_items.delete()
     return redirect('view_locations')
 
+
+
 @login_required(login_url="/login/")
 #download combined table
 def download_combined_table(request):
@@ -2571,8 +2574,7 @@ def download_combined_table(request):
     # Fetch all unique antibiotic codes (both initial and retest), excluding None values
     unique_antibiotics_raw = (
         AntibioticEntry.objects
-        .values_list('ab_Abx_code', 'ab_Edit_Abx_code')
-        .distinct()
+        .values_list('ab_Abx_code', 'ab_Retest_Abx_code').distinct()
     )
 
     # Flatten and clean the list (avoid duplicates)
@@ -2595,27 +2597,18 @@ def download_combined_table(request):
 
     # Write the header row
     header = [
-       "Hide", "Copy_data", "Batch_Name", "Batch_Code", "Date_of_Entry", "RefNo", 
-        "BatchNo", "Total_batch", "AccessionNo", "AccessionNoGen", "Default_Year", 
-        "SiteCode", "Site_Name", "Site_NameGen", "Referral_Date", "Patient_ID", 
-        "First_Name", "Mid_Name", "Last_Name", "Date_Birth", "Age", "Age_Verification", 
-        "Sex", "Date_Admis", "Nosocomial", "Diagnosis", "Diagnosis_ICD10", "Ward", 
-        "Service_Type", "Spec_Num", "Spec_Date", "Spec_Type", "Reason", "Growth", 
-        "Urine_ColCt", "ampC", "ESBL", "CARB", "MBL", "BL", "MR", "mecA", "ICR", 
-        "OtherResMech", "Site_Pre", "Site_Org", "Site_Pos", "OrganismCode", "Comments", 
-        "ars_ampC", "ars_ESBL", "ars_CARB", "ars_ECIM", "ars_MCIM", "ars_EC_MCIM", 
-        "ars_MBL", "ars_BL", "ars_MR", "ars_mecA", "ars_ICR", "ars_Pre", "ars_Post", 
-        "ars_OrgCode", "ars_OrgName", "ars_ct_ctl", "ars_tz_tzl", "ars_cn_cni", 
-        "ars_ip_ipi", "ars_reco_Code", "ars_reco", "SiteName", "Status", "Month_Date", 
-        "Day_Date", "Year_Date", "RefDate", "Start_AccNo", "End_AccNo", "No_Isolates", 
-        "BatchNumber", "TotalBatchNumber", "Encoded_by", "Encoded_by_Initials", "Edited_by", 
-        "Edited_by_Initials", "Checked_by", "Checked_by_Initials", "Verified_by_Senior", 
-        "Verified_by_Senior_Initials", "Verified_by_LabManager", "Verified_by_LabManager_Initials", 
-        "Noted_by", "Noted_by_Initials", "Concordance_Check", "Concordance_by", "Concordance_by_Initials", 
-        "abx_code", "Laboratory_Staff", "Date_Accomplished_ARSP", "ars_notes", "ars_contact", 
-        "ars_email", "arsp_Encoder", "arsp_Enc_Lic", "arsp_Checker", "arsp_Chec_Lic", 
-        "arsp_Verifier", "arsp_Ver_Lic", "arsp_LabManager", "arsp_Lab_Lic", "arsp_Head", "arsp_Head_Lic"
-]
+            "Batch_id", "Hide", "Copy_data", "Batch_Name", "Batch_Code", "Date_of_Entry", "RefNo", "BatchNo", "Total_batch",
+            "AccessionNo", "AccessionNoGen", "Default_Year", "SiteCode", "Site_Name", "Referral_Date", "Patient_ID",
+            "First_Name", "Mid_Name", "Last_Name", "Date_Birth", "Age", "Age_Verification", "Sex", "Date_Admis", "Nosocomial",
+            "Diagnosis", "Diagnosis_ICD10", "Ward", "Service_Type", "Spec_Num", "Spec_Date", "Spec_Type", "Reason", "Growth",
+            "Urine_ColCt", "ampC", "ESBL", "CARB", "MBL", "BL", "MR", "mecA", "ICR", "OtherResMech", "Site_Pre", "Site_Org",
+            "Site_Pos", "OrganismCode", "Comments", "ars_ampC", "ars_ESBL", "ars_CARB", "ars_ECIM", "ars_MCIM", "ars_EC_MCIM",
+            "ars_MBL", "ars_BL", "ars_MR", "ars_mecA", "ars_ICR", "ars_Pre", "ars_Post", "ars_OrgCode", "ars_OrgName",
+            "ars_ct_ctl", "ars_tz_tzl", "ars_cn_cni", "ars_ip_ipi", "ars_reco_Code", "ars_reco", "SiteName", "Status",
+            "Month_Date", "Day_Date", "Year_Date", "RefDate", "Start_AccNo", "End_AccNo", "No_Isolates", "BatchNumber",
+            "TotalBatchNumber", "Concordance_Check", "Concordance_by", "Concordance_by_Initials", "abx_code"
+        ]
+
     # Add antibiotic-related headers
     for abx in sorted_antibiotics:
         is_disk_abx = BreakpointsTable.objects.filter(Whonet_Abx=abx, Disk_Abx=True).exists()
@@ -2631,13 +2624,61 @@ def download_combined_table(request):
     writer.writerow(header)
 
     # Now write each data row
-    for egasp_entry in referred_data_entries:
+    for referred_entry in referred_data_entries:
         row = [
-            egasp_entry.Date_of_Entry,egasp_entry.ID_Number,egasp_entry.Egasp_Id,egasp_entry.PTIDCode,egasp_entry.Laboratory,egasp_entry.Clinic,egasp_entry.Consult_Date,egasp_entry.Consult_Type,egasp_entry.Client_Type,egasp_entry.Uic_Ptid,egasp_entry.Clinic_Code,egasp_entry.ClinicCodeGen,egasp_entry.First_Name,egasp_entry.Middle_Name,egasp_entry.Last_Name,egasp_entry.Suffix,egasp_entry.Birthdate,egasp_entry.Age,egasp_entry.Sex,egasp_entry.Gender_Identity,egasp_entry.Gender_Identity_Other,egasp_entry.Occupation,egasp_entry.Civil_Status,egasp_entry.Civil_Status_Other,egasp_entry.Current_Province,egasp_entry.Current_City,egasp_entry.Current_Country,egasp_entry.Permanent_Province,egasp_entry.Permanent_City,egasp_entry.Permanent_Country,egasp_entry.Nationality,egasp_entry.Nationality_Other,egasp_entry.Travel_History,egasp_entry.Travel_History_Specify,egasp_entry.Client_Group,egasp_entry.Client_Group_Other,egasp_entry.History_Of_Sex_Partner,egasp_entry.Nationality_Sex_Partner,egasp_entry.Date_of_Last_Sex,egasp_entry.Nationality_Sex_Partner_Other,egasp_entry.Number_Of_Sex_Partners,egasp_entry.Relationship_to_Partners,egasp_entry.SB_Urethral,egasp_entry.SB_Vaginal,egasp_entry.SB_Anal_Insertive,egasp_entry.SB_Anal_Receptive,egasp_entry.SB_Oral_Insertive,egasp_entry.SB_Oral_Receptive,egasp_entry.Sharing_of_Sex_Toys,egasp_entry.SB_Others,egasp_entry.Sti_None,egasp_entry.Sti_Hiv,egasp_entry.Sti_Hepatitis_B,egasp_entry.Sti_Hepatitis_C,egasp_entry.Sti_NGI,egasp_entry.Sti_Syphilis,egasp_entry.Sti_Chlamydia,egasp_entry.Sti_Anogenital_Warts,egasp_entry.Sti_Genital_Ulcer,egasp_entry.Sti_Herpes,egasp_entry.Sti_Other,egasp_entry.Illicit_Drug_Use,egasp_entry.Illicit_Drug_Specify,egasp_entry.Abx_Use_Prescribed,egasp_entry.Abx_Use_Prescribed_Specify,egasp_entry.Abx_Use_Self_Medicated,egasp_entry.Abx_Use_Self_Medicated_Specify,egasp_entry.Abx_Use_None,egasp_entry.Abx_Use_Other,egasp_entry.Abx_Use_Other_Specify,egasp_entry.Route_Oral,egasp_entry.Route_Injectable_IV,egasp_entry.Route_Dermal,egasp_entry.Route_Suppository,egasp_entry.Route_Other,egasp_entry.Symp_With_Discharge,egasp_entry.Symp_No,egasp_entry.Symp_Discharge_Urethra,egasp_entry.Symp_Discharge_Vagina,egasp_entry.Symp_Discharge_Anus,egasp_entry.Symp_Discharge_Oropharyngeal,egasp_entry.Symp_Pain_Lower_Abdomen,egasp_entry.Symp_Tender_Testicles,egasp_entry.Symp_Painful_Urination,egasp_entry.Symp_Painful_Intercourse,egasp_entry.Symp_Rectal_Pain,egasp_entry.Symp_Other,egasp_entry.Outcome_Of_Follow_Up_Visit,egasp_entry.Prev_Test_Pos,egasp_entry.Prev_Test_Pos_Date,egasp_entry.Result_Test_Cure_Initial,egasp_entry.Result_Test_Cure_Followup,egasp_entry.NoTOC_Other_Test,egasp_entry.NoTOC_DatePerformed,egasp_entry.NoTOC_Result_of_Test,egasp_entry.Patient_Compliance_Antibiotics,egasp_entry.OtherDrugs_Specify,egasp_entry.OtherDrugs_Dosage,egasp_entry.OtherDrugs_Route,egasp_entry.OtherDrugs_Duration,egasp_entry.Gonorrhea_Treatment,egasp_entry.Treatment_Outcome,egasp_entry.Primary_Antibiotic,egasp_entry.Primary_Abx_Other,egasp_entry.Secondary_Antibiotic,egasp_entry.Secondary_Abx_Other,egasp_entry.Notes,egasp_entry.Clinic_Staff,egasp_entry.Requesting_Physician,egasp_entry.Telephone_Number,egasp_entry.Email_Address,egasp_entry.Date_Accomplished_Clinic,egasp_entry.Date_Requested_Clinic,egasp_entry.Date_Specimen_Collection,egasp_entry.Specimen_Code,egasp_entry.Specimen_Type,egasp_entry.Specimen_Quality,egasp_entry.Date_Of_Gram_Stain,egasp_entry.Diagnosis_At_This_Visit,egasp_entry.Gram_Neg_Intracellular,egasp_entry.Gram_Neg_Extracellular,egasp_entry.Gs_Presence_Of_Pus_Cells,egasp_entry.Presence_GN_Intracellular,egasp_entry.Presence_GN_Extracellular,egasp_entry.GS_Pus_Cells,egasp_entry.Epithelial_Cells,egasp_entry.GS_Date_Released,egasp_entry.GS_Others,egasp_entry.GS_Negative,egasp_entry.Date_Received_in_lab,egasp_entry.Positive_Culture_Date,egasp_entry.Culture_Result,egasp_entry.Species_Identification,egasp_entry.Other_species_ID,egasp_entry.Specimen_Quality_Cs,egasp_entry.Susceptibility_Testing_Date,egasp_entry.Retested_Mic,egasp_entry.Confirmation_Ast_Date,egasp_entry.Beta_Lactamase,egasp_entry.PPng,egasp_entry.TRng,egasp_entry.Date_Released,egasp_entry.For_possible_WGS,egasp_entry.Date_stocked,egasp_entry.Location,egasp_entry.abx_code,egasp_entry.Laboratory_Staff,egasp_entry.Date_Accomplished_ARSP,egasp_entry.ars_notes,egasp_entry.ars_contact,egasp_entry.ars_email,
+            # Batch details
+            referred_entry.Batch_id, referred_entry.Hide, referred_entry.Copy_data,
+            referred_entry.Batch_Name, referred_entry.Batch_Code, referred_entry.Date_of_Entry,
+            referred_entry.RefNo, referred_entry.BatchNo, referred_entry.Total_batch,
+
+            # Accession and site info
+            referred_entry.AccessionNo, referred_entry.AccessionNoGen, referred_entry.Default_Year,
+            referred_entry.SiteCode, referred_entry.Site_Name, referred_entry.Referral_Date,
+
+            # Patient info
+            referred_entry.Patient_ID, referred_entry.First_Name, referred_entry.Mid_Name,
+            referred_entry.Last_Name, referred_entry.Date_Birth, referred_entry.Age,
+            referred_entry.Age_Verification, referred_entry.Sex,
+
+            # Hospital and diagnosis info
+            referred_entry.Date_Admis, referred_entry.Nosocomial, referred_entry.Diagnosis,
+            referred_entry.Diagnosis_ICD10, referred_entry.Ward, referred_entry.Service_Type,
+
+            # Specimen details
+            referred_entry.Spec_Num, referred_entry.Spec_Date, referred_entry.Spec_Type,
+            referred_entry.Reason, referred_entry.Growth, referred_entry.Urine_ColCt,
+
+            # Resistance mechanisms
+            referred_entry.ampC, referred_entry.ESBL, referred_entry.CARB, referred_entry.MBL,
+            referred_entry.BL, referred_entry.MR, referred_entry.mecA, referred_entry.ICR,
+            referred_entry.OtherResMech,
+
+            # Site and organism info
+            referred_entry.Site_Pre, referred_entry.Site_Org, referred_entry.Site_Pos,
+            referred_entry.OrganismCode, referred_entry.Comments,
+
+            # ARS results
+            referred_entry.ars_ampC, referred_entry.ars_ESBL, referred_entry.ars_CARB,
+            referred_entry.ars_ECIM, referred_entry.ars_MCIM, referred_entry.ars_EC_MCIM,
+            referred_entry.ars_MBL, referred_entry.ars_BL, referred_entry.ars_MR,
+            referred_entry.ars_mecA, referred_entry.ars_ICR, referred_entry.ars_Pre,
+            referred_entry.ars_Post, referred_entry.ars_OrgCode, referred_entry.ars_OrgName,
+            referred_entry.ars_ct_ctl, referred_entry.ars_tz_tzl, referred_entry.ars_cn_cni,
+            referred_entry.ars_ip_ipi, referred_entry.ars_reco_Code, referred_entry.ars_reco,
+
+            # Reporting and meta info
+            referred_entry.SiteName, referred_entry.Status, referred_entry.Month_Date,
+            referred_entry.Day_Date, referred_entry.Year_Date, referred_entry.RefDate,
+            referred_entry.Start_AccNo, referred_entry.End_AccNo, referred_entry.No_Isolates,
+            referred_entry.BatchNumber, referred_entry.TotalBatchNumber,
+
+            # Concordance and antibiotic info
+            referred_entry.Concordance_Check, referred_entry.Concordance_by,
+            referred_entry.Concordance_by_Initials, referred_entry.abx_code,
         ]
 
         # Fetch related antibiotics for this Egasp entry, sorted
-        antibiotics = AntibioticEntry.objects.filter(ab_idNumber_egasp=egasp_entry).order_by('ab_Abx_code')
+        antibiotics = AntibioticEntry.objects.filter(ab_idNum_referred=referred_entry).order_by('ab_Abx_code')
 
         # Create a mapping for quick lookup
         abx_data = {}
@@ -2679,4 +2720,243 @@ def download_combined_table(request):
         writer.writerow(row)
 
     return response
+
+
+def read_uploaded_file(uploaded_file):
+    import pandas as pd
+
+    filename = uploaded_file.name.lower()
+    if filename.endswith('.csv'):
+        return pd.read_csv(uploaded_file)
+    elif filename.endswith(('.xls', '.xlsx')):
+        return pd.read_excel(uploaded_file)
+    else:
+        raise ValueError("Unsupported file format. Please upload a CSV or Excel file.")
+
+#for uploading data in tables referred data and antibiotics entries
+def upload_combined_table(request):
+    form = WGSProjectForm()
+    referred_upload = ReferredData_upload()
+
+
+    if request.method == "POST" and request.FILES.get("ReferredDataFile"):
+        referred_upload = ReferredUploadForm(request.POST, request.FILES)
+        if referred_upload.is_valid():
+            try:
+                upload = referred_upload.save()
+                df = read_uploaded_file(upload.ReferredDataFile)
+                df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
+            except Exception as e:
+                messages.error(request, f"Error processing FASTQ file: {e}")
+                return render(request, "home/Tables.html", {
+                    "form": form,
+                    "fastq_form": referred_upload,
+                })
+
+    # if request.method == 'POST':
+    #     upload_form = ReferredUploadForm(request.POST, request.FILES)
+        
+    #     if upload_form.is_valid():  # Changed from 'form' to 'upload_form'
+    #         uploaded_file = request.FILES['ReferredDataFile']
+    #         csv_file = TextIOWrapper(uploaded_file.file, encoding='utf-8')
+    #         reader = csv.DictReader(csv_file)
+
+            # for row in reader:
+            #     accession_no = row.get('AccessionNo', '').strip()
+            #     if not accession_no:
+            #         continue  # Skip rows without accession number
+
+            for row in df:
+                accession_no = row.get('AccessionNo', '').strip()
+                if not accession_no:
+                    continue  # Skip rows without accession number
+                
+                # Helper function to parse dates
+                def parse_date_field(date_str):
+                    if not date_str or date_str.strip() == '':
+                        return None
+                    return parse_date(date_str.strip())
+                
+                # Helper function to parse integers
+                def parse_int_field(int_str):
+                    if not int_str or int_str.strip() == '':
+                        return None
+                    try:
+                        return int(int_str.strip())
+                    except ValueError:
+                        return None
+                
+                # Helper function to parse booleans
+                def parse_bool_field(bool_str):
+                    if not bool_str or bool_str.strip() == '':
+                        return False
+                    return bool_str.strip().lower() in ['true', '1', 'yes']
+
+                # Get or create Batch_Table instance if needed
+                batch_id = None
+                batch_id_str = row.get('Batch_id', '').strip()
+                if batch_id_str:
+                    try:
+                        batch_id = Batch_Table.objects.get(id=int(batch_id_str))
+                    except (Batch_Table.DoesNotExist, ValueError):
+                        batch_id = None
+
+                # Create or update the Referred Data Record
+                referred_data, created = Referred_Data.objects.update_or_create(
+                    AccessionNo=accession_no,
+                    defaults={
+                        'Batch_id': batch_id,
+                        'Hide': parse_bool_field(row.get('Hide')),
+                        'Copy_data': parse_bool_field(row.get('Copy_data')),
+                        'Batch_Name': row.get('Batch_Name', '').strip(),
+                        'Batch_Code': row.get('Batch_Code', '').strip(),
+                        'RefNo': row.get('RefNo', '').strip(),
+                        'BatchNo': row.get('BatchNo', '').strip(),
+                        'Total_batch': row.get('Total_batch', '').strip(),
+                        'AccessionNoGen': row.get('AccessionNoGen', '').strip(),
+                        'Default_Year': parse_date_field(row.get('Default_Year')),
+                        'SiteCode': row.get('SiteCode', '').strip(),
+                        'Site_Name': row.get('Site_Name', '').strip(),
+                        'Referral_Date': parse_date_field(row.get('Referral_Date')),
+                        'Patient_ID': row.get('Patient_ID', '').strip(),
+                        'First_Name': row.get('First_Name', '').strip(),
+                        'Mid_Name': row.get('Mid_Name', '').strip(),
+                        'Last_Name': row.get('Last_Name', '').strip(),
+                        'Date_Birth': parse_date_field(row.get('Date_Birth')),
+                        'Age': row.get('Age', '').strip(),
+                        'Age_Verification': row.get('Age_Verification', '').strip(),
+                        'Sex': row.get('Sex', '').strip(),
+                        'Date_Admis': parse_date_field(row.get('Date_Admis')),
+                        'Nosocomial': row.get('Nosocomial', 'n/a'),
+                        'Diagnosis': row.get('Diagnosis', '').strip(),
+                        'Diagnosis_ICD10': row.get('Diagnosis_ICD10', '').strip(),
+                        'Ward': row.get('Ward', '').strip(),
+                        'Service_Type': row.get('Service_Type', 'n/a'),
+                        'Spec_Num': row.get('Spec_Num', '').strip(),
+                        'Spec_Date': parse_date_field(row.get('Spec_Date')),
+                        'Spec_Type': row.get('Spec_Type', '').strip(),
+                        'Reason': row.get('Reason', 'n/a'),
+                        'Growth': row.get('Growth', '').strip(),
+                        'Urine_ColCt': row.get('Urine_ColCt', '').strip(),
+                        'ampC': row.get('ampC', 'n/a'),
+                        'ESBL': row.get('ESBL', 'n/a'),
+                        'CARB': row.get('CARB', 'n/a'),
+                        'MBL': row.get('MBL', 'n/a'),
+                        'BL': row.get('BL', 'n/a'),
+                        'MR': row.get('MR', 'n/a'),
+                        'mecA': row.get('mecA', 'n/a'),
+                        'ICR': row.get('ICR', 'n/a'),
+                        'OtherResMech': row.get('OtherResMech', '').strip(),
+                        'Site_Pre': row.get('Site_Pre', '').strip(),
+                        'Site_Org': row.get('Site_Org', '').strip(),
+                        'Site_Pos': row.get('Site_Pos', '').strip(),
+                        'OrganismCode': row.get('OrganismCode', '').strip(),
+                        'Comments': row.get('Comments', '').strip(),
+                        'ars_ampC': row.get('ars_ampC', 'n/a'),
+                        'ars_ESBL': row.get('ars_ESBL', 'n/a'),
+                        'ars_CARB': row.get('ars_CARB', 'n/a'),
+                        'ars_ECIM': row.get('ars_ECIM', 'n/a'),
+                        'ars_MCIM': row.get('ars_MCIM', 'n/a'),
+                        'ars_EC_MCIM': row.get('ars_EC_MCIM', 'n/a'),
+                        'ars_MBL': row.get('ars_MBL', 'n/a'),
+                        'ars_BL': row.get('ars_BL', 'n/a'),
+                        'ars_MR': row.get('ars_MR', 'n/a'),
+                        'ars_mecA': row.get('ars_mecA', 'n/a'),
+                        'ars_ICR': row.get('ars_ICR', 'n/a'),
+                        'ars_Pre': row.get('ars_Pre', '').strip(),
+                        'ars_Post': row.get('ars_Post', '').strip(),
+                        'ars_OrgCode': row.get('ars_OrgCode', '').strip(),
+                        'ars_OrgName': row.get('ars_OrgName', '').strip(),
+                        'ars_ct_ctl': row.get('ars_ct_ctl', '').strip(),
+                        'ars_tz_tzl': row.get('ars_tz_tzl', '').strip(),
+                        'ars_cn_cni': row.get('ars_cn_cni', '').strip(),
+                        'ars_ip_ipi': row.get('ars_ip_ipi', '').strip(),
+                        'ars_reco_Code': row.get('ars_reco_Code', '').strip(),
+                        'ars_reco': row.get('ars_reco', '').strip(),
+                        'SiteName': row.get('SiteName', '').strip(),
+                        'Status': row.get('Status', 'n/a'),
+                        'Month_Date': parse_date_field(row.get('Month_Date')),
+                        'Day_Date': parse_date_field(row.get('Day_Date')),
+                        'Year_Date': parse_date_field(row.get('Year_Date')),
+                        'RefDate': parse_date_field(row.get('RefDate')),
+                        'Start_AccNo': parse_int_field(row.get('Start_AccNo')),
+                        'End_AccNo': parse_int_field(row.get('End_AccNo')),
+                        'No_Isolates': parse_int_field(row.get('No_Isolates')),
+                        'BatchNumber': parse_int_field(row.get('BatchNumber')),
+                        'TotalBatchNumber': parse_int_field(row.get('TotalBatchNumber')),
+                        'Concordance_Check': row.get('Concordance_Check', '').strip(),
+                        'Concordance_by': row.get('Concordance_by', '').strip(),
+                        'Concordance_by_Initials': row.get('Concordance_by_Initials', '').strip(),
+                        'abx_code': row.get('abx_code', '').strip(),
+                        'arsp_Encoder': row.get('arsp_Encoder', '').strip(),
+                        'arsp_Enc_Lic': row.get('arsp_Enc_Lic', '').strip(),
+                        'arsp_Checker': row.get('arsp_Checker', '').strip(),
+                        'arsp_Chec_Lic': row.get('arsp_Chec_Lic', '').strip(),
+                        'arsp_Verifier': row.get('arsp_Verifier', '').strip(),
+                        'arsp_Ver_Lic': row.get('arsp_Ver_Lic', '').strip(),
+                        'arsp_LabManager': row.get('arsp_LabManager', '').strip(),
+                        'arsp_Lab_Lic': row.get('arsp_Lab_Lic', '').strip(),
+                        'arsp_Head': row.get('arsp_Head', '').strip(),
+                        'arsp_Head_Lic': row.get('arsp_Head_Lic', '').strip(),
+                        'Date_Accomplished_ARSP': parse_date_field(row.get('Date_Accomplished_ARSP')),
+                    }
+                )
+
+                # Clear previous antibiotics for this entry
+                AntibioticEntry.objects.filter(ab_idNum_referred=referred_data).delete()
+
+                # Loop over antibiotics in the row
+                for field in row:
+                    if field.endswith('_Val'):
+                        abx_code = field.replace('_Val', '')
+                        val = row.get(f'{abx_code}_Val', '').strip()
+                        ris = row.get(f'{abx_code}_RIS', '').strip()
+                        operand = row.get(f'{abx_code}_Op', '').strip()
+
+                        rt_val = row.get(f'{abx_code}_RT_Val', '').strip()
+                        rt_ris = row.get(f'{abx_code}_RT_RIS', '').strip()
+                        rt_operand = row.get(f'{abx_code}_RT_Op', '').strip()
+
+                        if not val and not rt_val:
+                            continue  # Skip if no values at all
+
+                        is_disk_abx = BreakpointsTable.objects.filter(
+                            Whonet_Abx=abx_code, Disk_Abx=True
+                        ).exists()
+
+                        abx_entry = AntibioticEntry(
+                            ab_idNum_referred=referred_data,
+                            ab_AccessionNo=accession_no,
+                            ab_Abx_code=abx_code,
+                        )
+
+                        if is_disk_abx:
+                            abx_entry.ab_Disk_value = int(val) if val else None
+                            abx_entry.ab_Disk_RIS = ris if ris else ''
+                            abx_entry.ab_Retest_DiskValue = int(rt_val) if rt_val else None
+                            abx_entry.ab_Retest_Disk_RIS = rt_ris if rt_ris else ''
+                        else:
+                            abx_entry.ab_MIC_value = float(val) if val else None
+                            abx_entry.ab_MIC_RIS = ris if ris else ''
+                            abx_entry.ab_MIC_operand = operand if operand else ''
+                            abx_entry.ab_Retest_MICValue = float(rt_val) if rt_val else None
+                            abx_entry.ab_Retest_MIC_RIS = rt_ris if rt_ris else ''
+                            abx_entry.ab_Retest_MIC_operand = rt_operand if rt_operand else ''
+
+                        abx_entry.save()
+
+                        # Link antibiotic to matching breakpoints
+                        bp_matches = BreakpointsTable.objects.filter(Whonet_Abx=abx_code)
+                        if bp_matches.exists():
+                            abx_entry.ab_breakpoints_id.set(bp_matches)
+
+            messages.success(request, "CSV uploaded and data imported successfully.")
+            return redirect('show_data')
+        else:
+            messages.error(request, 'Form validation failed. Please check your file.')
+    else:
+        upload_form = ReferredUploadForm()
+
+    return render(request, 'tables.html', {'upload_form': upload_form})
+
 

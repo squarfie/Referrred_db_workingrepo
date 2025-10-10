@@ -18,7 +18,7 @@ class WGS_Project(models.Model):
     WGS_Gambit_Acc = models.CharField(max_length=255, blank=True, null=True)
     WGS_GambitSummary = models.BooleanField(default=False, blank=True)
     WGS_Mlst_Acc = models.CharField(max_length=255, blank=True, null=True)
-    WGS_MlstSummary = models.BooleanField(default=False, blank=True)
+    WGS_MlstSummary = models.BooleanField(default=False, blank=True, null=True)
     WGS_Checkm2_Acc = models.CharField(max_length=255, blank=True, null=True)
     WGS_Checkm2Summary = models.BooleanField(default=False, blank=True)
     WGS_Assembly_Acc = models.CharField(max_length=255, blank=True, null=True)
@@ -100,7 +100,7 @@ class FastqSummary(models.Model):
     readlen_status = models.CharField(max_length=255, blank=True, null=True)
     ns_overrep_status = models.CharField(max_length=255, blank=True, null=True)
     raw_reads_qc_summary = models.CharField(max_length=255, blank=True, null=True)
-    Date_uploaded = models.DateField(auto_now=True)
+    Date_uploaded_f = models.DateField(auto_now=True)
    
 
     class Meta:
@@ -139,6 +139,7 @@ class Gambit(models.Model):
     next_rank = models.CharField(max_length=255, blank=True, null=True)
     next_ncbi_id = models.CharField(max_length=255, blank=True, null=True)
     next_threshold = models.CharField(max_length=255, blank=True, null=True)
+    Date_uploaded_g= models.DateField(auto_now=True)
 
     class Meta:
         db_table = "gambit"
@@ -182,6 +183,7 @@ class Mlst(models.Model):
     allele5 = models.CharField(max_length=255, blank=True, null=True)
     allele6 = models.CharField(max_length=255, blank=True, null=True)
     allele7 = models.CharField(max_length=255, blank=True, null=True)
+    Date_uploaded_m = models.DateField(auto_now=True)
     class Meta:
         db_table = "mlst"
     def __str__(self):
@@ -217,6 +219,7 @@ class Checkm2(models.Model):
     Total_Contigs = models.CharField(max_length=255, blank=True, null=True)
     Max_Contig_Length = models.CharField(max_length=255, blank=True, null=True)
     Additional_Notes = models.CharField(max_length=255, blank=True, null=True)
+    Date_uploaded_c = models.DateField(auto_now=True)
     class Meta:
         db_table = "checkm2"
     def __str__(self):
@@ -262,6 +265,7 @@ class AssemblyScan(models.Model):
     percent_contigs_greater_100k = models.CharField(max_length=255, blank=True, null=True)
     percent_contigs_greater_10k = models.CharField(max_length=255, blank=True, null=True)
     percent_contigs_greater_1k = models.CharField(max_length=255, blank=True, null=True)
+    Date_uploaded_as = models.DateField(auto_now=True)
     class Meta:
         db_table = "assembly-scan"
     def __str__(self):
@@ -305,6 +309,7 @@ class Amrfinderplus(models.Model):
     closest_reference_name = models.CharField(max_length=255, blank=True, null=True)
     hmm_accession = models.CharField(max_length=255, blank=True, null=True)
     hmm_description = models.CharField(max_length=255, blank=True, null=True)
+    Date_uploaded_am = models.DateField(auto_now=True)
     class Meta:
         db_table = "amrfinderplus"
     def __str__(self):

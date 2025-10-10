@@ -593,7 +593,7 @@ def upload_mlst(request):
 
             prefix = parts[0]
 
-            # 1️⃣ Look for SITE#### pattern where SITE is valid
+            # Look for SITE#### pattern where SITE is valid
             for part in parts[1:]:
                 match = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
                 if match:
@@ -601,7 +601,7 @@ def upload_mlst(request):
                     if letters in site_codes:
                         return f"{prefix}_{letters}{digits}"
 
-            # 2️⃣ Look for a separate valid site code, then grab digits from next part
+            # 2Look for a separate valid site code, then grab digits from next part
             for i in range(1, len(parts)):
                 part = parts[i]
                 if part.upper() in site_codes:
@@ -677,6 +677,7 @@ def upload_mlst(request):
                 allele5=row.get("allele5", ""),
                 allele6=row.get("allele6", ""),
                 allele7=row.get("allele7", "")
+                
             )
 
         messages.success(request, "MLST records updated successfully.")
@@ -691,7 +692,7 @@ def upload_mlst(request):
         "checkm2_form": Checkm2UploadForm(),
         "amrfinder_form": AmrUploadForm(),
         "assembly_form": AssemblyUploadForm(),
-        "editing": editing,
+        "editing": editing
     })
 
 
@@ -750,7 +751,7 @@ def upload_checkm2(request):
         checkm2_form = Checkm2UploadForm(request.POST, request.FILES)
         try:
             upload = checkm2_form.save()
-            df = read_uploaded_file(upload.Mlstfile)
+            df = read_uploaded_file(upload.Checkm2file)
             df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
         except Exception as e:
             messages.error(request, f"Error processing MLST file: {e}")
@@ -922,7 +923,6 @@ def delete_all_checkm2(request):
 
 
 ###################  Assembly Scan
-@login_required
 @login_required
 def upload_assembly(request):
     form = WGSProjectForm()
@@ -1128,7 +1128,7 @@ def upload_amrfinder(request):
         amrfinder_form = AmrUploadForm(request.POST, request.FILES)
         try:
             upload = amrfinder_form.save()
-            df = read_uploaded_file(upload.Mlstfile)
+            df = read_uploaded_file(upload.Amrfinderfile)
             df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
         except Exception as e:
             messages.error(request, f"Error processing MLST file: {e}")
@@ -1248,6 +1248,7 @@ def upload_amrfinder(request):
             Amrfinderplus.objects.create(
                 Amrfinder_Accession=amrfinder_accession,
                 name=sample_name,
+                amrfinder_project=connect_project,
                 protein_id=row.get("protein_id", ""),
                 contig_id=row.get("contig_id", ""),
                 start=row.get("start", ""),
@@ -1270,7 +1271,8 @@ def upload_amrfinder(request):
                 closest_reference_name=row.get("closest_reference_name", ""),
                 hmm_accession=row.get("hmm_accession", ""),
                 hmm_description=row.get("hmm_description", ""),
-                amrfinder_project=connect_project,
+                Date_uploaded_am = row.get("date_uploaded_am","")
+
             )
 
         messages.success(request, "Amrfinder records uploaded successfully.")
@@ -1330,4 +1332,5 @@ def delete_all_amrfinder(request):
     Amrfinderplus.objects.all().delete()
     messages.success(request, "AmrfinderPlus Records have been deleted successfully.")
     return redirect('show_amrfinder')  # Redirect to the table view
+
 

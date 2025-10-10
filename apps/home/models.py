@@ -204,28 +204,17 @@ class Referred_Data(models.Model):
     arsp_Lab_Lic = models.CharField(max_length=100,blank=True, null=True, default='')
     arsp_Head = models.CharField(max_length=255, blank=True, default='')
     arsp_Head_Lic = models.CharField(max_length=100,blank=True, null=True, default='')
-    
-
-    #laboratory personnel delete this once finalized
-    Laboratory_Staff = models.CharField(max_length=100,blank=True, default='', null=True)
     Date_Accomplished_ARSP=models.DateField(blank=True, null=True)
-    #########
-
-    #Connection to WGS Table
-    Con_WGSFastq = models.BooleanField(default=False)  # <-- moved here
-
-    
-    
     
     def __str__(self):
         return self.AccessionNo
-    
     
 class Meta:
     db_table ="Referred_Data"
 
 
-
+class ReferredData_upload(models.Model):
+    ReferredDataFile = models.FileField(upload_to='uploads/raw/', null=True, blank=True)
 
   
 # for final edit table
