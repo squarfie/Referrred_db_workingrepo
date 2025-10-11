@@ -4,6 +4,12 @@ from django import forms
 from apps.home.models import *
 
 
+# Referred Data Upload Form
+class ReferredUploadForm(forms.ModelForm):
+     class Meta:
+          model = ReferredData_upload
+          fields = ['ReferredDataFile']
+
 
 # WGS Projects
 class WGSProjectForm(forms.ModelForm):

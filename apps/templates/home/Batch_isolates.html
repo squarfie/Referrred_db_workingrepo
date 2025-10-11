@@ -25,9 +25,9 @@
      
           <div class="col-lg-6 col-5 text-right">
             <a class="btn btn-sm btn-neutral" href="{% url 'batch_create_view' %}">New Batch</a>
-            <a class="btn btn-sm btn-neutral" href="{% url 'show_data' %}">View All Batches</a>
+            <a class="btn btn-sm btn-success" href="{% url 'show_data' %}">View All Batches</a>
                 {% if batch %}
-                <a class="btn btn-sm btn-neutral" href="{% url 'delete_batch' batch.id %}"
+                <a class="btn btn-sm btn-warning" href="{% url 'delete_batch' batch.id %}"
                   onclick="return confirm('Are you sure you want to delete the whole batch {{ batch.bat_Batch_Name }}?');">
                   Delete this Batch
                 </a>

@@ -6,12 +6,12 @@ Copyright (c) 2019 - present AppSeed.us
 from django.urls import path, re_path, include
 from apps.home import views
 
-
-
 urlpatterns = [
 
     # The home page
     path('', views.index, name='home'),
+    
+
     #the forms
     path('batch/', views.batch_create_view,name='batch_create_view'),
     # path('generate-accession/', views.generate_accession, name='generate_accession'),
@@ -63,6 +63,8 @@ urlpatterns = [
     path('upload-sitecode/', views.upload_sitecode, name='site_upload'),
     path('delete_all_dropdown/', views.delete_all_dropdown, name='delete_all_dropdown'),
 
+    #include wgs_app urls
+    path('upload/', include('apps.wgs_app.urls')),
 
 
     # path('batch/', views.show_accession, name="show_accession"),

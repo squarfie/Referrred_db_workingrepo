@@ -59,6 +59,12 @@
               <span class="nav-link-text">View Records</span>
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'view_wgs_overview' %}">
+              <i class="ni ni-atom text-warning"></i>
+              <span class="nav-link-text">WGS Data</span>
+            </a>
+          </li>
          
              
         </ul>
@@ -156,9 +162,10 @@
             </div>
           </div>
           <!-- end of modal -->
+        
            <li class="nav-item">
             <a class="nav-link" 
-               href="{% url 'upload_fastq' %}">
+               href="{% url 'upload_wgs_view' %}">
               <i class="ni ni-cloud-upload-96 text-warning"></i>
               <span class="nav-link-text ">Upload Data</span>
             </a>
@@ -169,8 +176,16 @@
               <i class="ni ni-cloud-download-95 text-warning"></i>
               <span class="nav-link-text ">Download Table</span>
             </a>
-            <hr class="my-3">
+          </ul>
           </li>
+            <div>
+            <hr class="my-3" />
+          <h6 class="navbar-heading p-0 text-muted">
+          <span class="docs-normal">Settings</span>
+        </h6>
+           </div>
+
+           <ul class="navbar-nav mb-md-3">
           <li class="nav-item">
             <a class="nav-link" 
                href="{% url 'add_breakpoints' %}">

@@ -1,5 +1,14 @@
+
+from io import TextIOWrapper
+import io
+import re
+from django.db import transaction
+import csv
+
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from .forms import *
+from apps.home.forms import *
 import pandas as pd
 from apps.home.models import *
 from .models import *
@@ -38,7 +47,9 @@ def upload_wgs_view(request):
         checkm2_form = Checkm2UploadForm(request.POST, request.FILES)
         assembly_form = AssemblyUploadForm(request.POST, request.FILES)
         amrfinder_form = AmrUploadForm(request.POST, request.FILES)
+        referred_form = ReferredUploadForm(request.POST, request.FILES)
 
+        referred_uploaded = False
         project_saved = False
         fastq_uploaded = False
         gambit_uploaded = False
@@ -46,6 +57,11 @@ def upload_wgs_view(request):
         checkm2_uploaded = False
         assembly_uploaded = False
         amrfinder_uploaded = False
+        
+         # WGS Project
+        if referred_form.is_valid():
+            form.save()
+            referred_uploaded = True
 
         # WGS Project
         if form.is_valid():
@@ -84,11 +100,12 @@ def upload_wgs_view(request):
             amrfinder_uploaded = True
 
         # If any form worked, refresh
-        if project_saved or fastq_uploaded or gambit_uploaded or mlst_uploaded or checkm2_uploaded or assembly_uploaded or amrfinder_uploaded:
+        if project_saved or referred_uploaded or fastq_uploaded or gambit_uploaded or mlst_uploaded or checkm2_uploaded or assembly_uploaded or amrfinder_uploaded:
             return redirect("upload_wgs_view")
 
     else:
         form = WGSProjectForm()
+        referred_form = ReferredUploadForm()
         fastq_form = FastqUploadForm()
         gambit_form = GambitUploadForm()
         mlst_form = MlstUploadForm()
@@ -101,6 +118,7 @@ def upload_wgs_view(request):
         "wgs_app/Add_wgs.html",
         {
             "form": form,
+            "referred_form": referred_form,
             "fastq_form": fastq_form,
             "gambit_form": gambit_form,
             "mlst_form": mlst_form,
@@ -112,24 +130,38 @@ def upload_wgs_view(request):
     )
 
 
+# @login_required
+# def show_wgs_projects(request):
+#     wgs_projects = WGS_Project.objects.all().order_by("id")  # optional ordering
+
+#     total_records = WGS_Project.objects.count()
+#      # Paginate the queryset to display 20 records per page
+#     paginator = Paginator(wgs_projects, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+
+#     # Render the template with paginated data
+#     return render(
+#         request,
+#         "wgs_app/show_wgs_proj.html",
+#         {"page_obj": page_obj,
+#          "total_records": total_records,
+#          },  # only send page_obj
+#     )
+
+
 @login_required
 def show_wgs_projects(request):
-    wgs_projects = WGS_Project.objects.all().order_by("id")  # optional ordering
+    # Get all Referred_Data that have associated WGS projects
+    referred_with_wgs = Referred_Data.objects.filter(
+        AccessionNo__isnull=False
+    ).distinct()
+    
+    context = {
+        'referred_list': referred_with_wgs,
+    }
+    return render(request, 'wgs_app/view_match.html', context)
 
-    total_records = WGS_Project.objects.count()
-     # Paginate the queryset to display 20 records per page
-    paginator = Paginator(wgs_projects, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    # Render the template with paginated data
-    return render(
-        request,
-        "wgs_app/show_wgs_proj.html",
-        {"page_obj": page_obj,
-         "total_records": total_records,
-         },  # only send page_obj
-    )
 
 @login_required
 def delete_wgs(request, pk):
@@ -169,6 +201,7 @@ def upload_fastq(request):
                     "checkm2_form": Checkm2UploadForm(),
                     "amrfinder_form": AmrUploadForm(),
                     "assembly_form": AssemblyUploadForm(),
+                    "referred_form": ReferredUploadForm(),
                     "editing": editing,
                 })
 
@@ -319,6 +352,7 @@ def upload_fastq(request):
         "checkm2_form": Checkm2UploadForm(),
         "amrfinder_form": AmrUploadForm(),
         "assembly_form": AssemblyUploadForm(),
+        "referred_form": ReferredUploadForm(),
         "editing": editing,
     })
 
@@ -387,6 +421,7 @@ def upload_gambit(request):
                     "checkm2_form": Checkm2UploadForm(),
                     "amrfinder_form": AmrUploadForm(),
                     "assembly_form": AssemblyUploadForm(),
+                    "referred_form": ReferredUploadForm(),
                     "editing": editing,
                 })
 
@@ -502,6 +537,7 @@ def upload_gambit(request):
         "checkm2_form": Checkm2UploadForm(),
         "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": AmrUploadForm(),
+        "referred_form": ReferredUploadForm(),
         "editing": editing,
     })
 
@@ -570,6 +606,7 @@ def upload_mlst(request):
                 "checkm2_form": Checkm2UploadForm(),
                 "amrfinder_form": AmrUploadForm(),
                 "assembly_form": AssemblyUploadForm(),
+                "referred_form": ReferredUploadForm(),
                 "editing": editing,
             })
 
@@ -692,6 +729,7 @@ def upload_mlst(request):
         "checkm2_form": Checkm2UploadForm(),
         "amrfinder_form": AmrUploadForm(),
         "assembly_form": AssemblyUploadForm(),
+        "referred_form": ReferredUploadForm(),
         "editing": editing
     })
 
@@ -763,6 +801,7 @@ def upload_checkm2(request):
                 "checkm2_form": checkm2_form,
                 "amrfinder_form": AmrUploadForm(),
                 "assembly_form": AssemblyUploadForm(),
+                "referred_form": ReferredUploadForm(),
                 "editing": editing,
             })
 
@@ -869,6 +908,7 @@ def upload_checkm2(request):
         "checkm2_form": checkm2_form,
         "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": AmrUploadForm(),
+        "referred_form": ReferredUploadForm(),
         "editing": editing,
     })
 
@@ -945,6 +985,7 @@ def upload_assembly(request):
                 "checkm2_form": Checkm2UploadForm(),
                 "amrfinder_form": AmrUploadForm(),
                 "assembly_form": assembly_form,
+                "referred_form": ReferredUploadForm(),
                 "editing": editing,
             })
 
@@ -1060,6 +1101,7 @@ def upload_assembly(request):
         "checkm2_form": Checkm2UploadForm(),
         "amrfinder_form": AmrUploadForm(),
         "assembly_form": assembly_form,
+        "referred_form": ReferredUploadForm(),
         "editing": editing,
     })
 
@@ -1140,6 +1182,7 @@ def upload_amrfinder(request):
                 "checkm2_form": Checkm2UploadForm(),
                 "amrfinder_form": amrfinder_form,
                 "assembly_form": AssemblyUploadForm(),
+                "referred_form": ReferredUploadForm(),
                 "editing": editing,
             })
 
@@ -1286,6 +1329,7 @@ def upload_amrfinder(request):
         "checkm2_form": Checkm2UploadForm(),
         "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": amrfinder_form,
+        "referred_form": ReferredUploadForm(),
         "editing": editing,
     })
 
@@ -1334,3 +1378,365 @@ def delete_all_amrfinder(request):
     return redirect('show_amrfinder')  # Redirect to the table view
 
 
+
+
+#### uploading referred data
+@login_required
+@transaction.atomic
+def upload_combined_table(request):
+    form = WGSProjectForm()
+    referred_form = ReferredUploadForm()
+    
+    if request.method == "POST" and request.FILES.get("ReferredDataFile"):
+        try:
+            uploaded_file = request.FILES["ReferredDataFile"]
+            file_name = uploaded_file.name.lower()
+            
+            # Determine file type and read accordingly
+            if file_name.endswith('.csv'):
+                # Read CSV file
+                file = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
+                reader = csv.DictReader(file)
+                rows = list(reader)
+            elif file_name.endswith(('.xlsx', '.xls')):
+                # Read Excel file
+                df = pd.read_excel(uploaded_file)
+                # Convert DataFrame to list of dictionaries
+                rows = df.to_dict('records')
+            else:
+                messages.error(request, "Unsupported file format. Please upload CSV, XLSX, or XLS file.")
+                return render(request, "wgs_app/Add_wgs.html", {
+                    "referred_form": referred_form,
+                    "form": form,
+                    "fastq_form": FastqUploadForm(),
+                    "gambit_form": GambitUploadForm(),
+                    "mlst_form": MlstUploadForm(),
+                    "checkm2_form": Checkm2UploadForm(),
+                    "assembly_form": AssemblyUploadForm(),
+                    "amrfinder_form": AmrUploadForm(),
+                })
+
+            created_ref, updated_ref, created_abx, updated_abx = 0, 0, 0, 0
+
+            # Get all antibiotic codes known to the system
+            known_abx = set(BreakpointsTable.objects.values_list("Whonet_Abx", flat=True))
+
+            # Helper: extract MIC operand and numeric part (handles ≤, ≥, etc.)
+            def parse_mic_value(value_str):
+                if not value_str or pd.isna(value_str):
+                    return "", None
+                value_str = str(value_str).strip()
+                match = re.match(r"^([<>=≤≥]+)?\s*([\d.]+)$", value_str)
+                if match:
+                    operand = match.group(1) or ""
+                    mic_val = float(match.group(2))
+                    return operand, mic_val
+                try:
+                    return "", float(value_str)
+                except ValueError:
+                    return "", None
+
+            # === LOOP THROUGH ROWS ===
+            for row in rows:
+                # Handle both dict keys (CSV) and potential NaN values (Excel)
+                accession = row.get("AccessionNo") or row.get("ID_Number")
+                if not accession or pd.isna(accession):
+                    continue  # skip if missing
+
+                # Convert row values, handling NaN from Excel
+                cleaned_row = {}
+                for k, v in row.items():
+                    if pd.isna(v):
+                        cleaned_row[k] = ""
+                    else:
+                        cleaned_row[k] = v
+
+                # --- Create or update Referred_Data ---
+                ref_obj, ref_created = Referred_Data.objects.update_or_create(
+                    AccessionNo=str(accession).strip(),
+                    defaults={
+                        k: v for k, v in cleaned_row.items()
+                        if k in [f.name for f in Referred_Data._meta.get_fields()]
+                    },
+                )
+                if ref_created:
+                    created_ref += 1
+                else:
+                    updated_ref += 1
+
+                # --- Create/update AntibioticEntry records ---
+                for abx in known_abx:
+                    abx_val = cleaned_row.get(f"{abx}", "")
+                    abx_ris = cleaned_row.get(f"{abx}_RIS", "")
+                    abx_rt_val = cleaned_row.get(f"{abx}_RT", "")
+                    abx_rt_ris = cleaned_row.get(f"{abx}_RT_RIS", "")
+                    
+                    # Convert to string and strip
+                    abx_val = str(abx_val).strip() if abx_val else ""
+                    abx_ris = str(abx_ris).strip() if abx_ris else ""
+                    abx_rt_val = str(abx_rt_val).strip() if abx_rt_val else ""
+                    abx_rt_ris = str(abx_rt_ris).strip() if abx_rt_ris else ""
+
+                    # Skip if all empty
+                    if not any([abx_val, abx_ris, abx_rt_val, abx_rt_ris]):
+                        continue
+
+                    mic_operand, mic_value = parse_mic_value(abx_val)
+                    ret_mic_operand, ret_mic_value = parse_mic_value(abx_rt_val)
+
+                    ab_entry, ab_created = AntibioticEntry.objects.update_or_create(
+                        ab_idNum_referred=ref_obj,
+                        ab_Abx_code=abx,
+                        defaults={
+                            # Sentinel (Initial) values
+                            "ab_MIC_operand": mic_operand or "",
+                            "ab_MIC_value": mic_value if mic_value is not None else None,
+                            "ab_MIC_RIS": abx_ris or "",
+                            "ab_Disk_value": None,
+                            "ab_Disk_RIS": "",
+
+                            # Retest (ARSRL) values
+                            "ab_Retest_MIC_operand": ret_mic_operand or "",
+                            "ab_Retest_MICValue": ret_mic_value if ret_mic_value is not None else None,
+                            "ab_Retest_MIC_RIS": abx_rt_ris or "",
+                            "ab_Retest_DiskValue": None,
+                            "ab_Retest_Disk_RIS": "",
+                        },
+                    )
+
+                    if ab_created:
+                        created_abx += 1
+                    else:
+                        updated_abx += 1
+
+            messages.success(
+                request,
+                f" Upload complete! "
+                f"{created_ref} new Referred_Data, {updated_ref} updated; "
+                f"{created_abx} new AntibioticEntry, {updated_abx} updated."
+            )
+            return redirect("show_data")
+
+        except Exception as e:
+            messages.error(request, f"⚠️ Error processing file: {e}")
+            import traceback
+            print(traceback.format_exc())  # For debugging
+
+    # --- Default view ---
+    return render(request, "wgs_app/Add_wgs.html", {
+        "referred_form": referred_form,
+        "form": form,
+        "fastq_form": FastqUploadForm(),
+        "gambit_form": GambitUploadForm(),
+        "mlst_form": MlstUploadForm(),
+        "checkm2_form": Checkm2UploadForm(),
+        "assembly_form": AssemblyUploadForm(),
+        "amrfinder_form": AmrUploadForm(),
+    })
+
+
+
+########### Show all WGS project entries for one Referred_Data AccessionNo,
+##########  including FastQ, CheckM2, AMRFinder tables.
+
+
+@login_required
+def view_wgs_overview(request):
+    referred_list = Referred_Data.objects.all().order_by('AccessionNo')
+    table_data = []
+
+    for referred in referred_list:
+        projects = WGS_Project.objects.filter(Ref_Accession=referred)
+
+        summary_flags = {
+            'fastq': projects.filter(WGS_FastqSummary=True).exists(),
+            'mlst': projects.filter(WGS_MlstSummary=True).exists(),
+            'checkm2': projects.filter(WGS_Checkm2Summary=True).exists(),
+            'assembly': projects.filter(WGS_AssemblySummary=True).exists(),
+            'gambit': projects.filter(WGS_GambitSummary=True).exists(),
+            'amrfinder': projects.filter(WGS_AmrfinderSummary=True).exists(),
+        }
+
+        related_data = {}
+        if summary_flags['fastq']:
+            related_data['fastq'] = FastqSummary.objects.filter(fastq_project__in=projects)
+        if summary_flags['mlst']:
+            related_data['mlst'] = Mlst.objects.filter(mlst_project__in=projects)
+        if summary_flags['checkm2']:
+            related_data['checkm2'] = Checkm2.objects.filter(checkm2_project__in=projects)
+        if summary_flags['assembly']:
+            related_data['assembly'] = AssemblyScan.objects.filter(assembly_project__in=projects)
+        if summary_flags['gambit']:
+            related_data['gambit'] = Gambit.objects.filter(gambit_project__in=projects)
+        if summary_flags['amrfinder']:
+            related_data['amrfinder'] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
+
+        table_data.append({
+            'accession': referred,
+            'summary_flags': summary_flags,
+            'related_data': related_data,
+        })
+
+            # Calculate counts
+        counts = {
+            'total': len(table_data),
+            'fastq': sum(1 for entry in table_data if entry['summary_flags']['fastq']),
+            'gambit': sum(1 for entry in table_data if entry['summary_flags']['gambit']),
+            'mlst': sum(1 for entry in table_data if entry['summary_flags']['mlst']),
+            'checkm2': sum(1 for entry in table_data if entry['summary_flags']['checkm2']),
+            'assembly': sum(1 for entry in table_data if entry['summary_flags']['assembly']),
+            'amrfinder': sum(1 for entry in table_data if entry['summary_flags']['amrfinder']),
+        }
+        
+
+    context = {
+        'table_data': table_data,
+        'counts': counts,
+    }
+
+    return render(request, 'wgs_app/Wgs_overview.html', context)
+
+
+
+### download all wgs data 
+@login_required
+def download_all_wgs_data(request):
+    """
+    Export all WGS data (across all tables) into one Excel file with multiple sheets.
+    Each sheet corresponds to one WGS data table.
+    """
+
+    # Helper to safely convert queryset → DataFrame
+    def qs_to_df(qs, model_name):
+        if not qs.exists():
+            return pd.DataFrame()
+        df = pd.DataFrame.from_records(qs.values())
+        df.insert(0, 'Table', model_name)
+        return df
+
+    # Gather all data
+    fastq_qs = FastqSummary.objects.all().select_related('fastq_project__Ref_Accession')
+    mlst_qs = Mlst.objects.all().select_related('mlst_project__Ref_Accession')
+    checkm2_qs = Checkm2.objects.all().select_related('checkm2_project__Ref_Accession')
+    assembly_qs = AssemblyScan.objects.all().select_related('assembly_project__Ref_Accession')
+    amrfinder_qs = Amrfinderplus.objects.all().select_related('amrfinder_project__Ref_Accession')
+    gambit_qs = Gambit.objects.all().select_related('gambit_project__Ref_Accession')
+
+    # Convert to DataFrames
+    fastq_df = qs_to_df(fastq_qs, "FastqSummary")
+    mlst_df = qs_to_df(mlst_qs, "Mlst")
+    checkm2_df = qs_to_df(checkm2_qs, "CheckM2")
+    assembly_df = qs_to_df(assembly_qs, "AssemblyScan")
+    amrfinder_df = qs_to_df(amrfinder_qs, "Amrfinderplus")
+    gambit_df = qs_to_df(gambit_qs, "Gambit")
+
+    # Add Referred Accession to each if possible
+    def add_ref_accession(df, qs, rel_field):
+        if df.empty:
+            return df
+        ref_map = {}
+        for obj in qs:
+            ref_acc = getattr(obj, rel_field).Ref_Accession.AccessionNo if getattr(obj, rel_field).Ref_Accession else None
+            ref_map[obj.id] = ref_acc
+        df.insert(1, 'Ref_Accession', df['id'].map(ref_map))
+        return df
+
+    fastq_df = add_ref_accession(fastq_df, fastq_qs, 'fastq_project')
+    mlst_df = add_ref_accession(mlst_df, mlst_qs, 'mlst_project')
+    checkm2_df = add_ref_accession(checkm2_df, checkm2_qs, 'checkm2_project')
+    assembly_df = add_ref_accession(assembly_df, assembly_qs, 'assembly_project')
+    amrfinder_df = add_ref_accession(amrfinder_df, amrfinder_qs, 'amrfinder_project')
+    gambit_df = add_ref_accession(gambit_df, gambit_qs, 'gambit_project')
+
+    # Combine all into Excel
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        fastq_df.to_excel(writer, index=False, sheet_name="FastQ")
+        mlst_df.to_excel(writer, index=False, sheet_name="MLST")
+        checkm2_df.to_excel(writer, index=False, sheet_name="CheckM2")
+        assembly_df.to_excel(writer, index=False, sheet_name="Assembly")
+        amrfinder_df.to_excel(writer, index=False, sheet_name="AMRFinder")
+        gambit_df.to_excel(writer, index=False, sheet_name="Gambit")
+
+    # Create response
+    output.seek(0)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="All_WGS_Data.xlsx"'
+    return response
+
+## download only matched Accessions
+@login_required
+def download_matched_wgs_data(request):
+    """
+    Export only WGS data where accession numbers match across ALL WGS tables.
+    That means the same Ref_Accession exists in Fastq, MLST, CheckM2, Assembly, AMRFinder, and Gambit.
+    """
+
+    # Step 1: Get all accession numbers that appear in each table
+    fastq_acc = set(FastqSummary.objects.filter(fastq_project__Ref_Accession__isnull=False)
+                    .values_list('fastq_project__Ref_Accession__AccessionNo', flat=True))
+    mlst_acc = set(Mlst.objects.filter(mlst_project__Ref_Accession__isnull=False)
+                    .values_list('mlst_project__Ref_Accession__AccessionNo', flat=True))
+    checkm2_acc = set(Checkm2.objects.filter(checkm2_project__Ref_Accession__isnull=False)
+                    .values_list('checkm2_project__Ref_Accession__AccessionNo', flat=True))
+    assembly_acc = set(AssemblyScan.objects.filter(assembly_project__Ref_Accession__isnull=False)
+                    .values_list('assembly_project__Ref_Accession__AccessionNo', flat=True))
+    amrfinder_acc = set(Amrfinderplus.objects.filter(amrfinder_project__Ref_Accession__isnull=False)
+                    .values_list('amrfinder_project__Ref_Accession__AccessionNo', flat=True))
+    gambit_acc = set(Gambit.objects.filter(gambit_project__Ref_Accession__isnull=False)
+                    .values_list('gambit_project__Ref_Accession__AccessionNo', flat=True))
+
+    # Step 2: Find the intersection (accessions present in all WGS tables)
+    matched_accessions = fastq_acc & mlst_acc & checkm2_acc & assembly_acc & amrfinder_acc & gambit_acc
+
+    if not matched_accessions:
+        # If no matches, return a simple message instead of an empty file
+        response = HttpResponse("No accessions have complete WGS data across all tables.", content_type="text/plain")
+        return response
+
+    # Step 3: Query only data with matched Ref_Accession values
+    fastq_qs = FastqSummary.objects.filter(fastq_project__Ref_Accession__AccessionNo__in=matched_accessions)
+    mlst_qs = Mlst.objects.filter(mlst_project__Ref_Accession__AccessionNo__in=matched_accessions)
+    checkm2_qs = Checkm2.objects.filter(checkm2_project__Ref_Accession__AccessionNo__in=matched_accessions)
+    assembly_qs = AssemblyScan.objects.filter(assembly_project__Ref_Accession__AccessionNo__in=matched_accessions)
+    amrfinder_qs = Amrfinderplus.objects.filter(amrfinder_project__Ref_Accession__AccessionNo__in=matched_accessions)
+    gambit_qs = Gambit.objects.filter(gambit_project__Ref_Accession__AccessionNo__in=matched_accessions)
+
+    # Step 4: Convert each queryset into a DataFrame
+    def qs_to_df(qs, model_name, rel_field):
+        if not qs.exists():
+            return pd.DataFrame()
+        df = pd.DataFrame.from_records(qs.values())
+        df.insert(0, "Table", model_name)
+        df.insert(1, "Ref_Accession", [
+            getattr(getattr(obj, rel_field).Ref_Accession, "AccessionNo", None) for obj in qs
+        ])
+        return df
+
+    fastq_df = qs_to_df(fastq_qs, "FastqSummary", "fastq_project")
+    mlst_df = qs_to_df(mlst_qs, "Mlst", "mlst_project")
+    checkm2_df = qs_to_df(checkm2_qs, "Checkm2", "checkm2_project")
+    assembly_df = qs_to_df(assembly_qs, "AssemblyScan", "assembly_project")
+    amrfinder_df = qs_to_df(amrfinder_qs, "Amrfinderplus", "amrfinder_project")
+    gambit_df = qs_to_df(gambit_qs, "Gambit", "gambit_project")
+
+    # Step 5: Write to Excel (multi-sheet)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        fastq_df.to_excel(writer, index=False, sheet_name="FastQ")
+        mlst_df.to_excel(writer, index=False, sheet_name="MLST")
+        checkm2_df.to_excel(writer, index=False, sheet_name="CheckM2")
+        assembly_df.to_excel(writer, index=False, sheet_name="Assembly")
+        amrfinder_df.to_excel(writer, index=False, sheet_name="AMRFinder")
+        gambit_df.to_excel(writer, index=False, sheet_name="Gambit")
+
+    output.seek(0)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = 'attachment; filename="Matched_WGS_Data.xlsx"'
+    return response

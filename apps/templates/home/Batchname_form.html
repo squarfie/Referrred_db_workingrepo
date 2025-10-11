@@ -1,7 +1,7 @@
 {% extends 'layouts/base.html' %}
 {% load widget_tweaks %}
 {% load custom_filters %}
-{% block title %} Demographic Data {% endblock title %}
+{% block title %} Create Batch {% endblock title %}
 
 {% block content %}
 {% block stylesheets %}
@@ -20,20 +20,10 @@
     border-radius: 4px;
     height: 50px;
   }
-  #myform {
-    font-size: small;
-  }
-  label.form-control-label {
-    font-size: small;
-  }
-  .fontsize {
-    font-size: large;
-    color: blue;
-    font-weight: bold;
-  }
-  .fontlarge {
-    font-size: large;
-  }
+  #myform { font-size: small; }
+  label.form-control-label { font-size: small; }
+  .fontsize { font-size: large; color: blue; font-weight: bold; }
+  .fontlarge { font-size: large; }
 </style>
 {% endblock stylesheets %}
 
@@ -43,50 +33,53 @@
   <div class="container-fluid d-flex flex-column align-items-right">
     <div class="row">
       <div class="container-fluid">
-      <div class="header-body">
-        <div class="row align-items-center py-4">
-          <div class="col-lg-6 col-7">
-            <h6 class="h2 text-white d-inline-block mb-0">Referred Isolates Database</h6>
-            <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
-              <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
-                <li class="breadcrumb-item active" aria-current="page">Create Batch</li>
-              </ol>
-            </nav>
+        <div class="header-body">
+          <div class="row align-items-center py-4">
+            <div class="col-lg-6 col-7">
+              <h6 class="h2 text-white d-inline-block mb-0">Referred Isolates Database</h6>
+              <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+                <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+                  <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+                  <li class="breadcrumb-item active" aria-current="page">Create Batch</li>
+                </ol>
+              </nav>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-      <div class="col-lg-10 col-md-4"><br><br>
-      
       </div>
     </div>
   </div>
 </div>
 
-<div class="container-fluid mt--8">
+<div class="container-fluid mt--7">
   <div class="row justify-content-center">
     <div class="col-lg-10 col-md-12">
       <div class="card shadow border-0 mb-4" 
            style="background: linear-gradient(135deg, #e3f0ff 0%, #f9f9f9 100%); box-shadow: 0 8px 24px rgba(0,0,0,0.08);">
         <div class="card-header bg-gradient-primary text-white">
           <h4 class="mb-0"><i class="ni ni-single-02 mr-2"></i> Batch Form</h4>
-
         </div>
+
         <div class="card-body" style="padding: 2.5rem;">
           <form method="POST" action="{% url 'batch_create_view' %}" id="accession-form">
             {% csrf_token %}
-          <div class="form-row">
-            <div class="form-group col-md-3">
-              <label class="form-control-label">Status</label>
-              {{ form.bat_Status|append_attr:"class: form-control rounded-pill" }}
-            </div>
-          
-          </div>
 
-
+            <!-- If overwrite confirmation flag is passed -->
+            {% if confirm_overwrite %}
+              <div class="alert alert-warning">
+                <strong>⚠️ Batch already exists.</strong> Confirm overwrite to replace it.
+              </div>
+              <input type="hidden" name="confirm_overwrite" value="true">
+            {% endif %}
 
             <!-- Row 1 -->
+            <div class="form-row">
+              <div class="form-group col-md-3">
+                <label class="form-control-label">Status</label>
+                {{ form.bat_Status|append_attr:"class: form-control rounded-pill" }}
+              </div>
+            </div>
+
             <div class="form-row">
               <div class="form-group col-md-3">
                 <div class="d-flex align-items-center mb-1">
@@ -126,7 +119,8 @@
                 {{ form.bat_Batch_Name|append_attr:"class: form-control bg-light font-weight-bold rounded-pill" }}
               </div>
             </div>
-            <!-- Row 3 -->
+
+            <!-- Staff Rows -->
             <div class="form-row">
               <div class="form-group col-md-3">
                 <label class="form-control-label">Encoded by</label>
@@ -140,13 +134,12 @@
                 <label class="form-control-label">Edited by</label>
                 {{ form.bat_Checker|append_attr:"class: form-control rounded-pill" }}
               </div>
-               <div class="form-group col-md-3">
+              <div class="form-group col-md-3">
                 <label class="form-control-label">License No.</label>
                 {{ form.bat_Chec_Lic|append_attr:"class: form-control rounded-pill" }}
               </div>
             </div>
 
-            <!-- Row 4 -->
             <div class="form-row">
               <div class="form-group col-md-3">
                 <label class="form-control-label">Verified by</label>
@@ -178,16 +171,24 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">
-              <button type="submit" class="btn btn-info btn-lg rounded-pill">
-                <i class="ni ni-fat-add mr-2"></i> Save Batch
-              </button>
+              {% if confirm_overwrite %}
+                <button type="submit" class="btn btn-danger btn-lg rounded-pill">
+                  <i class="fa fa-trash"></i> Confirm Overwrite
+                </button>
+                <a href="{% url 'show_batches' %}" class="btn btn-secondary btn-lg rounded-pill">
+                  Cancel
+                </a>
+              {% else %}
+                <button type="submit" class="btn btn-info btn-lg rounded-pill">
+                  <i class="ni ni-fat-add mr-2"></i> Save Batch
+                </button>
+              {% endif %}
               <button type="button" class="btn btn-success btn-lg rounded-pill" onclick="refresh()">
                 <i class="ni ni-bell-55 mr-2"></i> Refresh
               </button>
-               <!-- View Isolates Button -->
-                <a id="view-isolates-btn" href="{% url 'show_batches' %}" class="btn btn-primary btn-lg rounded-pill">
-                  <i class="ni ni-bullet-list-67 mr-2"></i> View Last Batch
-                </a>
+              <a id="view-isolates-btn" href="{% url 'show_batches' %}" class="btn btn-primary btn-lg rounded-pill">
+                <i class="ni ni-bullet-list-67 mr-2"></i> View Last Batch
+              </a>
             </div>
           </form>
         </div>
@@ -206,81 +207,84 @@
 
 {% block javascripts %}
 <script>
-  const mybutton = document.getElementById("myBtn");
-  window.onscroll = function() { scrollFunction(); };
-  function scrollFunction() {
-    if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
-      mybutton.style.display = "block";
-    } else {
-      mybutton.style.display = "none";
-    }
-  }
-  function topFunction() {
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-  }
+// back to top
+const mybutton = document.getElementById("myBtn");
+window.onscroll = function() { scrollFunction(); };
+function scrollFunction() {
+  mybutton.style.display = (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) ? "block" : "none";
+}
+function topFunction() {
+  document.body.scrollTop = 0;
+  document.documentElement.scrollTop = 0;
+}
 </script>
-
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
 <!-- Auto-fill site name + batch name -->
 <script>
-  $(document).ready(function() {
-    var $siteCode = $('#id_bat_SiteCode'),
-        $refDate = $('#id_bat_Referral_Date'),
-        $batchNum = $('#id_bat_BatchNo'),
-        $refNo = $('#id_bat_RefNo'),
-        $totalBatch = $('#id_bat_Total_batch'),
-        $siteNameGen = $('#id_bat_Site_NameGen'),
-        $batchName = $('#id_bat_Batch_Name');
+$(document).ready(function() {
+  var $siteCode = $('#id_bat_SiteCode'),
+      $refDate = $('#id_bat_Referral_Date'),
+      $batchNum = $('#id_bat_BatchNo'),
+      $refNo = $('#id_bat_RefNo'),
+      $totalBatch = $('#id_bat_Total_batch'),
+      $siteNameGen = $('#id_bat_Site_NameGen'),
+      $batchName = $('#id_bat_Batch_Name');
 
-    function debounce(func, wait) {
-      var timeout;
-      return function() {
-        clearTimeout(timeout);
-        timeout = setTimeout(func, wait);
-      };
+  function debounce(func, wait) {
+    var timeout;
+    return function() {
+      clearTimeout(timeout);
+      timeout = setTimeout(func, wait);
+    };
+  }
+
+  function generateBatchName() {
+    var site = $siteCode.val(),
+        dateVal = $refDate.val(),
+        batch = $batchNum.val(),
+        ref = $refNo.val(),
+        total = $totalBatch.val();
+
+    if (site && dateVal && batch && total && ref) {
+      var parts = dateVal.split('-');
+      var dateClean = parts[1] + parts[2] + parts[0];
+      $batchName.val(site + '_' + dateClean + '_' + batch + '.' + total + '_' + ref);
+    } else {
+      $batchName.val('');
     }
+  }
 
-    function generateBatchName() {
-      var site = $siteCode.val(),
-          dateVal = $refDate.val(),
-          batch = $batchNum.val(),
-          ref = $refNo.val(),
-          total = $totalBatch.val();
+  var debouncedGenerateBatchName = debounce(generateBatchName, 300);
 
-      if (site && dateVal && batch && total && ref) {
-        var parts = dateVal.split('-');
-        var dateClean = parts[1] + parts[2] + parts[0];
-        $batchName.val(site + '_' + dateClean + '_' + batch + '.' + total + '_' + ref);
-      } else {
-        $batchName.val('');
-      }
+  $siteCode.change(function() {
+    var site = $(this).val();
+    if (site) {
+      $.ajax({
+        url: "{% url 'get_clinic_code' %}",
+        data: { site_code: site },
+        dataType: 'json',
+        success: function(data) {
+          $siteNameGen.val(data.site_name);
+          generateBatchName();
+        }
+      });
+    } else {
+      $siteNameGen.val('');
+      $batchName.val('');
     }
-
-    var debouncedGenerateBatchName = debounce(generateBatchName, 300);
-
-    $siteCode.change(function() {
-      var site = $(this).val();
-      if (site) {
-        $.ajax({
-          url: "{% url 'get_clinic_code' %}",
-          data: { site_code: site },
-          dataType: 'json',
-          success: function(data) {
-            $siteNameGen.val(data.site_name);
-            generateBatchName();
-          }
-        });
-      } else {
-        $siteNameGen.val('');
-        $batchName.val('');
-      }
-    });
-
-    $('#id_bat_RefNo, #id_bat_Referral_Date, #id_bat_BatchNo, #id_bat_Total_batch').on('input change', debouncedGenerateBatchName);
   });
+
+  $('#id_bat_RefNo, #id_bat_Referral_Date, #id_bat_BatchNo, #id_bat_Total_batch').on('input change', debouncedGenerateBatchName);
+});
 </script>
+
+<!-- Refresh -->
+<script>
+function refresh() {
+  document.getElementById('accession-form').reset();
+}
+</script>
+
 
 <!-- Auto-fill license numbers -->
 <script>
@@ -324,8 +328,6 @@
     document.getElementById('id_bat_Batch_Name').value = '';
   }
 </script>
-
-
 
 
 

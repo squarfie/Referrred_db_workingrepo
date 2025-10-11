@@ -1,8 +1,8 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-from phonenumber_field.modelfields import PhoneNumberField
 from django.core.validators import EmailValidator
 from apps.wgs_app.models import *
+from phonenumber_field.modelfields import PhoneNumberField
 
 # Create your models here.
 
@@ -194,28 +194,48 @@ class Referred_Data(models.Model):
     abx_code=models.CharField(max_length=25, blank=True, default="")
 
     
-    arsp_Encoder = models.CharField(max_length=255, blank=True, default='')
-    arsp_Enc_Lic = models.CharField(max_length=100,blank=True, null=True, default='')
-    arsp_Checker = models.CharField(max_length=255, blank=True,  default='') 
-    arsp_Chec_Lic = models.CharField(max_length=100,blank=True, null=True, default='')
-    arsp_Verifier = models.CharField(max_length=255, blank=True, default='')
-    arsp_Ver_Lic = models.CharField(max_length=100,blank=True, null=True, default='')
-    arsp_LabManager = models.CharField(max_length=255, blank=True, default='')
-    arsp_Lab_Lic = models.CharField(max_length=100,blank=True, null=True, default='')
-    arsp_Head = models.CharField(max_length=255, blank=True, default='')
-    arsp_Head_Lic = models.CharField(max_length=100,blank=True, null=True, default='')
+    arsp_Encoder = models.CharField(max_length=255, blank=True, null=True, default="")
+    arsp_Enc_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
+    arsp_Checker = models.CharField(max_length=255, blank=True, null=True, default="") 
+    arsp_Chec_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
+    arsp_Verifier = models.CharField(max_length=255, blank=True, null=True, default="")
+    arsp_Ver_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
+    arsp_LabManager = models.CharField(max_length=255, blank=True, null=True, default="")
+    arsp_Lab_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
+    arsp_Head = models.CharField(max_length=255, blank=True, null=True, default="")
+    arsp_Head_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
     Date_Accomplished_ARSP=models.DateField(blank=True, null=True)
     
+    def save(self, *args, **kwargs):
+        # Fill defaults to prevent NULL insertion
+        self.arsp_Encoder = self.arsp_Encoder or ""
+        self.arsp_Enc_Lic = self.arsp_Enc_Lic or ""
+        self.arsp_Checker = self.arsp_Checker or ""
+        self.arsp_Chec_Lic = self.arsp_Chec_Lic or ""
+        self.arsp_Verifier = self.arsp_Verifier or ""
+        self.arsp_Ver_Lic = self.arsp_Ver_Lic or ""
+        self.arsp_LabManager = self.arsp_LabManager or ""
+        self.arsp_Lab_Lic = self.arsp_Lab_Lic or ""
+        self.arsp_Head = self.arsp_Head or ""
+        self.arsp_Head_Lic = self.arsp_Head_Lic or ""
+        super().save(*args, **kwargs)
+
+
     def __str__(self):
         return self.AccessionNo
     
-class Meta:
-    db_table ="Referred_Data"
+    class Meta:
+        db_table ="Referred_Data"
+
+
+
 
 
 class ReferredData_upload(models.Model):
-    ReferredDataFile = models.FileField(upload_to='uploads/raw/', null=True, blank=True)
+    ReferredDataFile = models.FileField(upload_to='uploads/referred/', null=True, blank=True)
 
+    class Meta:
+        db_table ="Referred_upload"
   
 # for final edit table
 class Final_Data(models.Model):
@@ -367,8 +387,8 @@ class Final_Data(models.Model):
         return self.f_AccessionNo
     
     
-class Meta:
-    db_table ="Final_Data"
+    class Meta:
+        db_table ="Final_Data"
 
 
 
@@ -389,8 +409,8 @@ class TATform(models.Model):
     ars_LabManager = models.CharField(max_length=255, blank=True,)
     ars_Head = models.CharField(max_length=255, blank=True,)
 
-class Meta:
-    db_table ="TATform"
+    class Meta:
+        db_table ="TATform"
 
 
 class TATprocess(models.Model):
@@ -398,8 +418,8 @@ class TATprocess(models.Model):
     TAT_Process = models.CharField(max_length=255, blank=True,)
     Unit_code = models.CharField(max_length=3, blank=True,)
 
-class Meta:
-    db_Table ="TATprocess"
+    class Meta:
+        db_table ="TATprocess"
 
 
 class TATUpload(models.Model):
@@ -464,15 +484,15 @@ class BreakpointsTable(models.Model):
     def __str__(self):
         return self.Abx_code 
 
-class Meta:
-    db_table ="BreakpointsTable"
+    class Meta:
+        db_table ="BreakpointsTable"
 
 
 class Breakpoint_upload(models.Model):
     File_uploadBP = models.FileField(upload_to='uploads/breakpoints/', null=True, blank=True)
 
-class Meta:
-    db_table = "Breakpoint_upload"
+    class Meta:
+        db_table = "Breakpoint_upload"
 
     
 #for antibiotic test entries
@@ -489,8 +509,8 @@ class AntibioticEntry(models.Model):
 
     #sentinel site results
     ab_Disk_value = models.IntegerField(blank=True, null=True)
-    ab_Disk_RIS = models.CharField(max_length=4, blank=True)
-    ab_Disk_enRIS = models.CharField(max_length=4, blank=True, default='')
+    ab_Disk_RIS = models.CharField(max_length=4, blank=True) 
+    ab_Disk_enRIS = models.CharField(max_length=4, blank=True, default='') 
     
     ab_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
     ab_MIC_value = models.DecimalField(max_digits=5, decimal_places=3, blank=True, null=True)
