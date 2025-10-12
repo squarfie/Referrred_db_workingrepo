@@ -47,6 +47,8 @@ urlpatterns = [
     path('wgs/download-wgs/', views.download_all_wgs_data, name='download_all_wgs_data'),
     path('wgs/download_matched/', views.download_matched_wgs_data, name='download_matched_wgs_data'),
 
+    path("amrfinder/delete_by_date/", views.delete_amrfinder_by_date, name="delete_amrfinder_by_date"),
+    path("fastq/delete_by_date/", views.delete_fastq_by_date, name="delete_fastq_by_date"),
 
     # path('overview/', views.view_data_overview, name='view_data_overview'),
 

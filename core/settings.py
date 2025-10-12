@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'phonenumber_field',
     'phonenumbers',
-    "apps.wgs_app",
+    'apps.wgs_app.apps.WgsAppConfig', 
+    # "apps.wgs_app",
 ]
 
 MIDDLEWARE = [

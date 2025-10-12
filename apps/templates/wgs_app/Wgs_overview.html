@@ -104,7 +104,7 @@
                 data-assembly="{% if entry.summary_flags.assembly %}true{% else %}false{% endif %}"
                 data-amrfinder="{% if entry.summary_flags.amrfinder %}true{% else %}false{% endif %}">
               <td class="text-left">
-                <strong class="text-primary">{{ entry.accession.AccessionNo }}</strong>
+                <strong class="text-primary">{{ entry.accession }}</strong>
               </td>
               <td>
                 {% if entry.summary_flags.fastq %}

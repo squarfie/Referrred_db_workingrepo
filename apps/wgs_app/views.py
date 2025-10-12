@@ -1,10 +1,11 @@
 
+import datetime
 from io import TextIOWrapper
 import io
 import re
 from django.db import transaction
 import csv
-
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from .forms import *
@@ -21,6 +22,8 @@ import re
 from .utils import format_accession
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
+from datetime import datetime
+from django.utils.dateparse import parse_date
 
 # helper to read uploaded file (csv or excel)
 def read_uploaded_file(uploaded_file):
@@ -266,16 +269,15 @@ def upload_fastq(request):
                         AccessionNo=fastq_accession
                     ).first()
 
-                connect_project, _ = WGS_Project.objects.get_or_create(
+                # Allow multiple WGS_Project per accession
+                connect_project = WGS_Project.objects.create(
                     Ref_Accession=referred_obj if referred_obj else None,
-                    defaults={
-                        "WGS_GambitSummary": False,
-                        "WGS_FastqSummary": False,
-                        "WGS_MlstSummary": False,
-                        "WGS_Checkm2Summary": False,
-                        "WGS_AssemblySummary": False,
-                        "WGS_AmrfinderSummary": False,
-                    },
+                    WGS_GambitSummary=False,
+                    WGS_FastqSummary=False,
+                    WGS_MlstSummary=False,
+                    WGS_Checkm2Summary=False,
+                    WGS_AssemblySummary=False,
+                    WGS_AmrfinderSummary=False,
                 )
 
                 connect_project.WGS_FastQ_Acc = fastq_accession
@@ -357,9 +359,34 @@ def upload_fastq(request):
     })
 
 
+# @login_required
+# def show_fastq(request):
+#     fastq_summaries = FastqSummary.objects.all().order_by("id")  # optional ordering
+
+#     total_records = FastqSummary.objects.count()
+#      # Paginate the queryset to display 20 records per page
+#     paginator = Paginator(fastq_summaries, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+
+#     # Render the template with paginated data
+#     return render(
+#         request,
+#         "wgs_app/show_fastq.html",
+#         {"page_obj": page_obj,
+#          "total_records": total_records,
+#          },  # only send page_obj
+#     )
+
 @login_required
 def show_fastq(request):
-    fastq_summaries = FastqSummary.objects.all().order_by("id")  # optional ordering
+    fastq_summaries = FastqSummary.objects.all().order_by('-Date_uploaded_f')
+    upload_dates = (
+        FastqSummary.objects.exclude(Date_uploaded_f__isnull=True)
+        .values_list('Date_uploaded_f', flat=True)
+        .distinct()
+        .order_by('-Date_uploaded_f')
+    )
 
     total_records = FastqSummary.objects.count()
      # Paginate the queryset to display 20 records per page
@@ -367,14 +394,25 @@ def show_fastq(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Render the template with paginated data
-    return render(
-        request,
-        "wgs_app/show_fastq.html",
-        {"page_obj": page_obj,
-         "total_records": total_records,
-         },  # only send page_obj
-    )
+    return render(request, "wgs_app/show_fastq.html", {
+        "page_obj": page_obj,
+        "upload_dates": upload_dates,
+        "total_records": total_records,
+    })
+
+
+
+# @login_required
+# def delete_fastq(request, pk):
+#     fastq_item = get_object_or_404(FastqSummary, pk=pk)
+
+#     if request.method == "POST":
+#         fastq_item.delete()
+#         messages.success(request, f"Record {fastq_item.sample} deleted successfully!")
+#         return redirect('show_fastq')  # <-- Correct URL name
+
+#     messages.error(request, "Invalid request for deletion.")
+#     return redirect('show_fastq')  # <-- Correct URL name
 
 
 @login_required
@@ -382,12 +420,19 @@ def delete_fastq(request, pk):
     fastq_item = get_object_or_404(FastqSummary, pk=pk)
 
     if request.method == "POST":
+        # Before deleting, clear related field in WGS_Project
+        WGS_Project.objects.filter(WGS_FastQ_Acc=fastq_item.FastQ_Accession).update(
+            WGS_FastQ_Acc="",
+            WGS_FastqSummary=False
+        )
+  
         fastq_item.delete()
         messages.success(request, f"Record {fastq_item.sample} deleted successfully!")
-        return redirect('show_fastq')  # <-- Correct URL name
+        return redirect('show_fastq')
 
     messages.error(request, "Invalid request for deletion.")
-    return redirect('show_fastq')  # <-- Correct URL name
+    return redirect('show_fastq')
+
 
 
 def delete_all_fastq(request):
@@ -395,6 +440,32 @@ def delete_all_fastq(request):
     messages.success(request, "FastQ Records have been deleted successfully.")
     return redirect('show_fastq')  # Redirect to the table view
 
+
+
+
+@login_required
+def delete_fastq_by_date(request):
+    if request.method == "POST":
+        upload_date_str = request.POST.get("upload_date")
+        print("🕒 Received upload_date_str:", upload_date_str)
+
+        if not upload_date_str:
+            messages.error(request, "Please select an upload date to delete.")
+            return redirect("show_fastq")
+
+        # Use Django’s date parser
+        upload_date = parse_date(upload_date_str)
+
+        if not upload_date:
+            messages.error(request, f"Invalid date format: {upload_date_str}")
+            return redirect("show_fastq")
+
+        deleted_count, _ = FastqSummary.objects.filter(Date_uploaded_f=upload_date).delete()
+        messages.success(request, f"✅ Deleted {deleted_count} FASTQ records uploaded on {upload_date}.")
+        return redirect("show_fastq")
+
+    messages.error(request, "Invalid request method.")
+    return redirect("show_fastq")
 
 
 #########   Gambit
@@ -1265,18 +1336,37 @@ def upload_amrfinder(request):
                 if amrfinder_accession else None
             )
 
-            # Step 2: Create or get WGS_Project
-            connect_project, _ = WGS_Project.objects.get_or_create(
-                Ref_Accession=referred_obj if referred_obj else None,
-                defaults={
-                    "WGS_GambitSummary": False,
-                    "WGS_FastqSummary": False,
-                    "WGS_MlstSummary": False,
-                    "WGS_Checkm2Summary": False,
-                    "WGS_AssemblySummary": False,
-                    "WGS_AmrfinderSummary": False,
-                }
+            # # Step 2: Create or get WGS_Project
+            # connect_project, _ = WGS_Project.objects.get_or_create(
+            #     Ref_Accession=referred_obj if referred_obj else None,
+            #     defaults={
+            #         "WGS_GambitSummary": False,
+            #         "WGS_FastqSummary": False,
+            #         "WGS_MlstSummary": False,
+            #         "WGS_Checkm2Summary": False,
+            #         "WGS_AssemblySummary": False,
+            #         "WGS_AmrfinderSummary": False,
+            #     }
+            # )
+
+            # Step 2: Safely get or create WGS_Project
+            connect_project = (
+                WGS_Project.objects.filter(Ref_Accession=referred_obj).first()
+                if referred_obj else None
             )
+
+            # Step 2: Allow multiple WGS_Project per accession
+            connect_project = WGS_Project.objects.create(
+                Ref_Accession=referred_obj if referred_obj else None,
+                WGS_GambitSummary=False,
+                WGS_FastqSummary=False,
+                WGS_MlstSummary=False,
+                WGS_Checkm2Summary=False,
+                WGS_AssemblySummary=False,
+                WGS_AmrfinderSummary=False,
+            )
+
+
 
             # Step 3: Update project accession & summary flag
             connect_project.WGS_Amrfinder_Acc = amrfinder_accession
@@ -1334,26 +1424,40 @@ def upload_amrfinder(request):
     })
 
 
+# @login_required
+# def show_amrfinder(request):
+#     amrfinder_summaries = Amrfinderplus.objects.all().order_by("id")  # optional ordering
+
+#     total_records = Amrfinderplus.objects.count()
+#      # Paginate the queryset to display 20 records per page
+     
+#     paginator = Paginator(amrfinder_summaries, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+
+#     # Render the template with paginated data
+#     return render(
+#         request,
+#         "wgs_app/show_amrfinder.html",
+#         {"page_obj": page_obj,
+#          "total_records": total_records,
+#          },  # only send page_obj
+#     )
+
 @login_required
 def show_amrfinder(request):
-    amrfinder_summaries = Amrfinderplus.objects.all().order_by("id")  # optional ordering
-
-    total_records = Amrfinderplus.objects.count()
-     # Paginate the queryset to display 20 records per page
-     
-    paginator = Paginator(amrfinder_summaries, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    # Render the template with paginated data
-    return render(
-        request,
-        "wgs_app/show_amrfinder.html",
-        {"page_obj": page_obj,
-         "total_records": total_records,
-         },  # only send page_obj
+    records = Amrfinderplus.objects.all().order_by('-Date_uploaded_am')
+    upload_dates = (
+        Amrfinderplus.objects.exclude(Date_uploaded_am__isnull=True)
+        .values_list('Date_uploaded_am', flat=True)
+        .distinct()
+        .order_by('-Date_uploaded_am')
     )
 
+    return render(request, "wgs_app/show_amrfinder.html", {
+        "records": records,
+        "upload_dates": upload_dates,
+    })
 
 
 
@@ -1377,6 +1481,37 @@ def delete_all_amrfinder(request):
     messages.success(request, "AmrfinderPlus Records have been deleted successfully.")
     return redirect('show_amrfinder')  # Redirect to the table view
 
+
+
+
+@login_required
+def delete_amrfinder_by_date(request):
+    if request.method == "POST":
+        upload_date_str = request.POST.get("upload_date")
+        if not upload_date_str:
+            messages.error(request, "Please select an upload date to delete.")
+            return redirect("show_amrfinder")
+
+        try:
+            target_date = datetime.strptime(upload_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            messages.error(request, "Invalid date format. Please use YYYY-MM-DD.")
+            return redirect("show_amrfinder")
+
+        start = datetime.combine(target_date, datetime.min.time())
+        end = datetime.combine(target_date + datetime.timedelta(days=1), datetime.min.time())
+
+        deleted_count, _ = Amrfinderplus.objects.filter(
+            Date_uploaded_am__gte=start,
+            Date_uploaded_am__lt=end
+        ).delete()
+
+        messages.success(request, f"✅ Deleted {deleted_count} records uploaded on {target_date}.")
+
+    else:
+        messages.error(request, "Invalid request method.")
+
+    return redirect("show_amrfinder")
 
 
 
@@ -1540,13 +1675,80 @@ def upload_combined_table(request):
 ##########  including FastQ, CheckM2, AMRFinder tables.
 
 
+# @login_required
+# def view_wgs_overview(request):
+#     referred_list = Referred_Data.objects.all().order_by('AccessionNo')
+#     table_data = []
+
+#     for referred in referred_list:
+#         projects = WGS_Project.objects.filter(Ref_Accession=referred)
+
+#         summary_flags = {
+#             'fastq': projects.filter(WGS_FastqSummary=True).exists(),
+#             'mlst': projects.filter(WGS_MlstSummary=True).exists(),
+#             'checkm2': projects.filter(WGS_Checkm2Summary=True).exists(),
+#             'assembly': projects.filter(WGS_AssemblySummary=True).exists(),
+#             'gambit': projects.filter(WGS_GambitSummary=True).exists(),
+#             'amrfinder': projects.filter(WGS_AmrfinderSummary=True).exists(),
+#         }
+
+#         related_data = {}
+#         if summary_flags['fastq']:
+#             related_data['fastq'] = FastqSummary.objects.filter(fastq_project__in=projects)
+#         if summary_flags['mlst']:
+#             related_data['mlst'] = Mlst.objects.filter(mlst_project__in=projects)
+#         if summary_flags['checkm2']:
+#             related_data['checkm2'] = Checkm2.objects.filter(checkm2_project__in=projects)
+#         if summary_flags['assembly']:
+#             related_data['assembly'] = AssemblyScan.objects.filter(assembly_project__in=projects)
+#         if summary_flags['gambit']:
+#             related_data['gambit'] = Gambit.objects.filter(gambit_project__in=projects)
+#         if summary_flags['amrfinder']:
+#             related_data['amrfinder'] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
+
+#         table_data.append({
+#             'accession': referred,
+#             'summary_flags': summary_flags,
+#             'related_data': related_data,
+#         })
+
+#             # Calculate counts
+#         counts = {
+#             'total': len(table_data),
+#             'fastq': sum(1 for entry in table_data if entry['summary_flags']['fastq']),
+#             'gambit': sum(1 for entry in table_data if entry['summary_flags']['gambit']),
+#             'mlst': sum(1 for entry in table_data if entry['summary_flags']['mlst']),
+#             'checkm2': sum(1 for entry in table_data if entry['summary_flags']['checkm2']),
+#             'assembly': sum(1 for entry in table_data if entry['summary_flags']['assembly']),
+#             'amrfinder': sum(1 for entry in table_data if entry['summary_flags']['amrfinder']),
+#         }
+        
+
+#     context = {
+#         'table_data': table_data,
+#         'counts': counts,
+#     }
+
+#     return render(request, 'wgs_app/Wgs_overview.html', context)
+
+
+
 @login_required
 def view_wgs_overview(request):
     referred_list = Referred_Data.objects.all().order_by('AccessionNo')
     table_data = []
 
     for referred in referred_list:
-        projects = WGS_Project.objects.filter(Ref_Accession=referred)
+        # Match projects by either FK or any WGS accession field
+        projects = WGS_Project.objects.filter(
+            Q(Ref_Accession__AccessionNo=referred.AccessionNo) |
+            Q(WGS_FastQ_Acc=referred.AccessionNo) |
+            Q(WGS_Mlst_Acc=referred.AccessionNo) |
+            Q(WGS_Checkm2_Acc=referred.AccessionNo) |
+            Q(WGS_Assembly_Acc=referred.AccessionNo) |
+            Q(WGS_Gambit_Acc=referred.AccessionNo) |
+            Q(WGS_Amrfinder_Acc=referred.AccessionNo)
+        ).distinct()
 
         summary_flags = {
             'fastq': projects.filter(WGS_FastqSummary=True).exists(),
@@ -1572,30 +1774,26 @@ def view_wgs_overview(request):
             related_data['amrfinder'] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
 
         table_data.append({
-            'accession': referred,
+            'accession': referred.AccessionNo,
             'summary_flags': summary_flags,
             'related_data': related_data,
         })
 
-            # Calculate counts
-        counts = {
-            'total': len(table_data),
-            'fastq': sum(1 for entry in table_data if entry['summary_flags']['fastq']),
-            'gambit': sum(1 for entry in table_data if entry['summary_flags']['gambit']),
-            'mlst': sum(1 for entry in table_data if entry['summary_flags']['mlst']),
-            'checkm2': sum(1 for entry in table_data if entry['summary_flags']['checkm2']),
-            'assembly': sum(1 for entry in table_data if entry['summary_flags']['assembly']),
-            'amrfinder': sum(1 for entry in table_data if entry['summary_flags']['amrfinder']),
-        }
-        
-
-    context = {
-        'table_data': table_data,
-        'counts': counts,
+    # Count detections
+    counts = {
+        'total': len(table_data),
+        'fastq': sum(1 for entry in table_data if entry['summary_flags']['fastq']),
+        'gambit': sum(1 for entry in table_data if entry['summary_flags']['gambit']),
+        'mlst': sum(1 for entry in table_data if entry['summary_flags']['mlst']),
+        'checkm2': sum(1 for entry in table_data if entry['summary_flags']['checkm2']),
+        'assembly': sum(1 for entry in table_data if entry['summary_flags']['assembly']),
+        'amrfinder': sum(1 for entry in table_data if entry['summary_flags']['amrfinder']),
     }
 
-    return render(request, 'wgs_app/Wgs_overview.html', context)
-
+    return render(request, 'wgs_app/Wgs_overview.html', {
+        'table_data': table_data,
+        'counts': counts,
+    })
 
 
 ### download all wgs data 

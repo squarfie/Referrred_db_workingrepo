@@ -6,7 +6,7 @@ from django.apps import apps
 class WGS_Project(models.Model):
     Ref_Accession = models.ForeignKey(
         "home.Referred_Data",
-        on_delete=models.SET_NULL,   # keep WGS_Project even if parent is deleted
+        on_delete=models.CASCADE,   #DELETE WHEN REFERR5RED DATA ACCESSION IS DELETED
         null=True,
         blank=True,
         related_name='project_entries',
@@ -46,7 +46,7 @@ class WGS_Project(models.Model):
 class FastqSummary(models.Model):
     fastq_project = models.ForeignKey(
         "wgs_app.WGS_Project",   # connects to WGS_Project model
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="fastq_entries"
     )
@@ -100,7 +100,7 @@ class FastqSummary(models.Model):
     readlen_status = models.CharField(max_length=255, blank=True, null=True)
     ns_overrep_status = models.CharField(max_length=255, blank=True, null=True)
     raw_reads_qc_summary = models.CharField(max_length=255, blank=True, null=True)
-    Date_uploaded_f = models.DateField(auto_now=True)
+    Date_uploaded_f = models.DateField(auto_now_add=True)
    
 
     class Meta:
@@ -123,7 +123,7 @@ class FastqUpload(models.Model):
 class Gambit(models.Model):
     gambit_project = models.ForeignKey(
         "wgs_app.WGS_Project",   # connects to WGS_Project model
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="gambit_entries"
     )
@@ -139,7 +139,7 @@ class Gambit(models.Model):
     next_rank = models.CharField(max_length=255, blank=True, null=True)
     next_ncbi_id = models.CharField(max_length=255, blank=True, null=True)
     next_threshold = models.CharField(max_length=255, blank=True, null=True)
-    Date_uploaded_g= models.DateField(auto_now=True)
+    Date_uploaded_g= models.DateField(auto_now_add=True)
 
     class Meta:
         db_table = "gambit"
@@ -168,7 +168,7 @@ class GambitDisplayConfig(models.Model):
 class Mlst(models.Model):
     mlst_project = models.ForeignKey(
         "wgs_app.WGS_Project",   # connects to WGS_Project model
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="mlst_entries"
     )
@@ -183,7 +183,7 @@ class Mlst(models.Model):
     allele5 = models.CharField(max_length=255, blank=True, null=True)
     allele6 = models.CharField(max_length=255, blank=True, null=True)
     allele7 = models.CharField(max_length=255, blank=True, null=True)
-    Date_uploaded_m = models.DateField(auto_now=True)
+    Date_uploaded_m = models.DateField(auto_now_add=True)
     class Meta:
         db_table = "mlst"
     def __str__(self):
@@ -200,7 +200,7 @@ class MlstUpload(models.Model):
 class Checkm2(models.Model):
     checkm2_project = models.ForeignKey(
         "wgs_app.WGS_Project",   # connects to WGS_Project model
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="checkm2_entries"
     )
@@ -219,7 +219,7 @@ class Checkm2(models.Model):
     Total_Contigs = models.CharField(max_length=255, blank=True, null=True)
     Max_Contig_Length = models.CharField(max_length=255, blank=True, null=True)
     Additional_Notes = models.CharField(max_length=255, blank=True, null=True)
-    Date_uploaded_c = models.DateField(auto_now=True)
+    Date_uploaded_c = models.DateField(auto_now_add=True)
     class Meta:
         db_table = "checkm2"
     def __str__(self):
@@ -236,7 +236,7 @@ class Checkm2Upload(models.Model):
 class AssemblyScan(models.Model):
     assembly_project = models.ForeignKey(
         "wgs_app.WGS_Project",   # connects to WGS_Project model
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="assembly_entries"
     )
@@ -265,7 +265,7 @@ class AssemblyScan(models.Model):
     percent_contigs_greater_100k = models.CharField(max_length=255, blank=True, null=True)
     percent_contigs_greater_10k = models.CharField(max_length=255, blank=True, null=True)
     percent_contigs_greater_1k = models.CharField(max_length=255, blank=True, null=True)
-    Date_uploaded_as = models.DateField(auto_now=True)
+    Date_uploaded_as = models.DateField(auto_now_add=True)
     class Meta:
         db_table = "assembly-scan"
     def __str__(self):
@@ -281,7 +281,7 @@ class AssemblyUpload(models.Model):
 class Amrfinderplus(models.Model):
     amrfinder_project = models.ForeignKey(
         "wgs_app.WGS_Project",   # connects to WGS_Project model
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="amrfinder_entries"
     )
@@ -309,7 +309,7 @@ class Amrfinderplus(models.Model):
     closest_reference_name = models.CharField(max_length=255, blank=True, null=True)
     hmm_accession = models.CharField(max_length=255, blank=True, null=True)
     hmm_description = models.CharField(max_length=255, blank=True, null=True)
-    Date_uploaded_am = models.DateField(auto_now=True)
+    Date_uploaded_am = models.DateField(auto_now_add=True)
     class Meta:
         db_table = "amrfinderplus"
     def __str__(self):
