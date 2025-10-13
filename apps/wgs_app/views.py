@@ -1739,6 +1739,9 @@ def view_wgs_overview(request):
     table_data = []
 
     for referred in referred_list:
+        acc = referred.AccessionNo
+
+    for referred in referred_list:
         # Match projects by either FK or any WGS accession field
         projects = WGS_Project.objects.filter(
             Q(Ref_Accession__AccessionNo=referred.AccessionNo) |
@@ -1758,6 +1761,22 @@ def view_wgs_overview(request):
             'gambit': projects.filter(WGS_GambitSummary=True).exists(),
             'amrfinder': projects.filter(WGS_AmrfinderSummary=True).exists(),
         }
+
+
+        # Add related Referred_Data info to each row
+        table_data.append({
+            'accession': acc,
+            'patient_id': referred.Patient_ID,
+            'patient_name': f"{referred.Last_Name}, {referred.First_Name} {referred.Mid_Name or ''}".strip(),
+            'age': referred.Age,
+            'sex': referred.Sex,
+            'ward': referred.Ward,
+            'specimen': referred.Spec_Type,
+            'diagnosis': referred.Diagnosis_ICD10,
+            'growth': referred.Growth,
+            'date_collected': referred.Spec_Date,
+            'summary_flags': summary_flags,
+        })
 
         related_data = {}
         if summary_flags['fastq']:
@@ -1952,10 +1971,10 @@ def download_matched_wgs_data(request):
     """
     mode = request.GET.get("mode", "any").lower()  # 'any' or 'all'
 
-    # ---- Step 1: Collect valid accessions from Referred_Data ----
+    # Collect valid accessions from Referred_Data ----
     referred_acc = set(Referred_Data.objects.values_list("AccessionNo", flat=True))
 
-    # ---- Step 2: Collect accessions from WGS tables ----
+    # Collect accessions from WGS tables ----
     fastq_acc = set(FastqSummary.objects.filter(FastQ_Accession__in=referred_acc)
                     .values_list("FastQ_Accession", flat=True))
     mlst_acc = set(Mlst.objects.filter(Mlst_Accession__in=referred_acc)
@@ -1969,7 +1988,7 @@ def download_matched_wgs_data(request):
     gambit_acc = set(Gambit.objects.filter(Gambit_Accession__in=referred_acc)
                     .values_list("Gambit_Accession", flat=True))
 
-    # ---- Step 3: Combine or intersect ----
+    # Combine or intersect ----
     if mode == "all":
         matched_accessions = (
             fastq_acc & mlst_acc & checkm2_acc & assembly_acc & amrfinder_acc & gambit_acc
@@ -1982,7 +2001,7 @@ def download_matched_wgs_data(request):
     if not matched_accessions:
         return HttpResponse("No matching WGS accessions found in Referred_Data.", content_type="text/plain")
 
-    # ---- Step 4: Filter only matched records ----
+    # Filter only matched records ----
     fastq_qs = FastqSummary.objects.filter(FastQ_Accession__in=matched_accessions)
     mlst_qs = Mlst.objects.filter(Mlst_Accession__in=matched_accessions)
     checkm2_qs = Checkm2.objects.filter(Checkm2_Accession__in=matched_accessions)
