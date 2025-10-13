@@ -20,7 +20,10 @@
         <div class="col-lg-6 col-5 text-right">
           <a class="btn btn-sm btn-neutral" href="{% url 'batch_create_view' %}">New Batch</a>
           <a class="btn btn-sm btn-neutral" href="{% url 'upload_wgs_view' %}">Upload Data</a>
-          <a href="{% url 'download_matched_wgs_data' %}" class="btn btn-sm btn-warning">Matched WGS</a>
+          <a href="{% url 'download_matched_wgs_data' %}" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#downloadModal">Download WGS Data</a>
+              <!-- <button class="btn btn-success" data-toggle="modal" data-target="#downloadModal">
+             Download WGS Data
+            </button> -->
           <button class="btn btn-sm btn-neutral" onclick="history.back()">Back</button>
         </div>
       </div>
@@ -419,6 +422,37 @@
             {% endfor %}
           </tbody>
         </table>
+        <!-- Download Selection Modal -->
+<div class="modal fade" id="downloadModal" tabindex="-1" role="dialog" aria-labelledby="downloadModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content shadow-lg border-0">
+      <div class="modal-header bg-gradient-primary text-white">
+        <h5 class="modal-title" id="downloadModalLabel">Download WGS Data</h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">
+          Choose which type of WGS data you want to download:
+        </p>
+        <ul>
+          <li><strong>Complete Sets:</strong> Accessions found in <em>all</em> WGS tables (FastQ, MLST, CheckM2, Assembly, AMRFinder, Gambit)</li>
+          <li><strong>Partial Sets:</strong> Accessions found in <em>any</em> WGS table</li>
+        </ul>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <a href="{% url 'download_matched_wgs_data' %}?mode=all" class="btn btn-primary">
+          <i class="ni ni-check-bold"></i> Download Complete Sets
+        </a>
+        <a href="{% url 'download_matched_wgs_data' %}?mode=any" class="btn btn-success">
+          <i class="ni ni-cloud-download-95"></i> Download Partial Sets
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
       </div>
     </div>
   </div>

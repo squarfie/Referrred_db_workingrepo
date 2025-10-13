@@ -1865,76 +1865,163 @@ def download_all_wgs_data(request):
     response['Content-Disposition'] = 'attachment; filename="All_WGS_Data.xlsx"'
     return response
 
+
+
 ## download only matched Accessions
+# @login_required
+# def download_matched_wgs_data(request):
+#     """
+#     Export only WGS data where accession numbers match across ALL WGS tables.
+#     That means the same Ref_Accession exists in Fastq, MLST, CheckM2, Assembly, AMRFinder, and Gambit.
+#     """
+
+#     # Step 1: Get all accession numbers that appear in each table
+#     fastq_acc = set(FastqSummary.objects.filter(fastq_project__Ref_Accession__isnull=False)
+#                     .values_list('fastq_project__Ref_Accession__AccessionNo', flat=True))
+#     mlst_acc = set(Mlst.objects.filter(mlst_project__Ref_Accession__isnull=False)
+#                     .values_list('mlst_project__Ref_Accession__AccessionNo', flat=True))
+#     checkm2_acc = set(Checkm2.objects.filter(checkm2_project__Ref_Accession__isnull=False)
+#                     .values_list('checkm2_project__Ref_Accession__AccessionNo', flat=True))
+#     assembly_acc = set(AssemblyScan.objects.filter(assembly_project__Ref_Accession__isnull=False)
+#                     .values_list('assembly_project__Ref_Accession__AccessionNo', flat=True))
+#     amrfinder_acc = set(Amrfinderplus.objects.filter(amrfinder_project__Ref_Accession__isnull=False)
+#                     .values_list('amrfinder_project__Ref_Accession__AccessionNo', flat=True))
+#     gambit_acc = set(Gambit.objects.filter(gambit_project__Ref_Accession__isnull=False)
+#                     .values_list('gambit_project__Ref_Accession__AccessionNo', flat=True))
+
+#     # Step 2: Find the intersection (accessions present in all WGS tables)
+#     matched_accessions = fastq_acc & mlst_acc & checkm2_acc & assembly_acc & amrfinder_acc & gambit_acc
+
+#     if not matched_accessions:
+#         # If no matches, return a simple message instead of an empty file
+#         response = HttpResponse("No accessions have complete WGS data across all tables.", content_type="text/plain")
+#         return response
+
+#     # Step 3: Query only data with matched Ref_Accession values
+#     fastq_qs = FastqSummary.objects.filter(fastq_project__Ref_Accession__AccessionNo__in=matched_accessions)
+#     mlst_qs = Mlst.objects.filter(mlst_project__Ref_Accession__AccessionNo__in=matched_accessions)
+#     checkm2_qs = Checkm2.objects.filter(checkm2_project__Ref_Accession__AccessionNo__in=matched_accessions)
+#     assembly_qs = AssemblyScan.objects.filter(assembly_project__Ref_Accession__AccessionNo__in=matched_accessions)
+#     amrfinder_qs = Amrfinderplus.objects.filter(amrfinder_project__Ref_Accession__AccessionNo__in=matched_accessions)
+#     gambit_qs = Gambit.objects.filter(gambit_project__Ref_Accession__AccessionNo__in=matched_accessions)
+
+#     # Step 4: Convert each queryset into a DataFrame
+#     def qs_to_df(qs, model_name, rel_field):
+#         if not qs.exists():
+#             return pd.DataFrame()
+#         df = pd.DataFrame.from_records(qs.values())
+#         df.insert(0, "Table", model_name)
+#         df.insert(1, "Ref_Accession", [
+#             getattr(getattr(obj, rel_field).Ref_Accession, "AccessionNo", None) for obj in qs
+#         ])
+#         return df
+
+#     fastq_df = qs_to_df(fastq_qs, "FastqSummary", "fastq_project")
+#     mlst_df = qs_to_df(mlst_qs, "Mlst", "mlst_project")
+#     checkm2_df = qs_to_df(checkm2_qs, "Checkm2", "checkm2_project")
+#     assembly_df = qs_to_df(assembly_qs, "AssemblyScan", "assembly_project")
+#     amrfinder_df = qs_to_df(amrfinder_qs, "Amrfinderplus", "amrfinder_project")
+#     gambit_df = qs_to_df(gambit_qs, "Gambit", "gambit_project")
+
+#     # Step 5: Write to Excel (multi-sheet)
+#     output = io.BytesIO()
+#     with pd.ExcelWriter(output, engine="openpyxl") as writer:
+#         fastq_df.to_excel(writer, index=False, sheet_name="FastQ")
+#         mlst_df.to_excel(writer, index=False, sheet_name="MLST")
+#         checkm2_df.to_excel(writer, index=False, sheet_name="CheckM2")
+#         assembly_df.to_excel(writer, index=False, sheet_name="Assembly")
+#         amrfinder_df.to_excel(writer, index=False, sheet_name="AMRFinder")
+#         gambit_df.to_excel(writer, index=False, sheet_name="Gambit")
+
+#     output.seek(0)
+#     response = HttpResponse(
+#         output.getvalue(),
+#         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+#     )
+#     response["Content-Disposition"] = 'attachment; filename="Matched_WGS_Data.xlsx"'
+#     return response
+
+
+
+
 @login_required
 def download_matched_wgs_data(request):
     """
-    Export only WGS data where accession numbers match across ALL WGS tables.
-    That means the same Ref_Accession exists in Fastq, MLST, CheckM2, Assembly, AMRFinder, and Gambit.
+    Export WGS data that match Ref_Accession (Referred_Data.AccessionNo).
+    Mode: ?mode=any or ?mode=all
     """
+    mode = request.GET.get("mode", "any").lower()  # 'any' or 'all'
 
-    # Step 1: Get all accession numbers that appear in each table
-    fastq_acc = set(FastqSummary.objects.filter(fastq_project__Ref_Accession__isnull=False)
-                    .values_list('fastq_project__Ref_Accession__AccessionNo', flat=True))
-    mlst_acc = set(Mlst.objects.filter(mlst_project__Ref_Accession__isnull=False)
-                    .values_list('mlst_project__Ref_Accession__AccessionNo', flat=True))
-    checkm2_acc = set(Checkm2.objects.filter(checkm2_project__Ref_Accession__isnull=False)
-                    .values_list('checkm2_project__Ref_Accession__AccessionNo', flat=True))
-    assembly_acc = set(AssemblyScan.objects.filter(assembly_project__Ref_Accession__isnull=False)
-                    .values_list('assembly_project__Ref_Accession__AccessionNo', flat=True))
-    amrfinder_acc = set(Amrfinderplus.objects.filter(amrfinder_project__Ref_Accession__isnull=False)
-                    .values_list('amrfinder_project__Ref_Accession__AccessionNo', flat=True))
-    gambit_acc = set(Gambit.objects.filter(gambit_project__Ref_Accession__isnull=False)
-                    .values_list('gambit_project__Ref_Accession__AccessionNo', flat=True))
+    # ---- Step 1: Collect valid accessions from Referred_Data ----
+    referred_acc = set(Referred_Data.objects.values_list("AccessionNo", flat=True))
 
-    # Step 2: Find the intersection (accessions present in all WGS tables)
-    matched_accessions = fastq_acc & mlst_acc & checkm2_acc & assembly_acc & amrfinder_acc & gambit_acc
+    # ---- Step 2: Collect accessions from WGS tables ----
+    fastq_acc = set(FastqSummary.objects.filter(FastQ_Accession__in=referred_acc)
+                    .values_list("FastQ_Accession", flat=True))
+    mlst_acc = set(Mlst.objects.filter(Mlst_Accession__in=referred_acc)
+                    .values_list("Mlst_Accession", flat=True))
+    checkm2_acc = set(Checkm2.objects.filter(Checkm2_Accession__in=referred_acc)
+                    .values_list("Checkm2_Accession", flat=True))
+    assembly_acc = set(AssemblyScan.objects.filter(Assembly_Accession__in=referred_acc)
+                    .values_list("Assembly_Accession", flat=True))
+    amrfinder_acc = set(Amrfinderplus.objects.filter(Amrfinder_Accession__in=referred_acc)
+                    .values_list("Amrfinder_Accession", flat=True))
+    gambit_acc = set(Gambit.objects.filter(Gambit_Accession__in=referred_acc)
+                    .values_list("Gambit_Accession", flat=True))
+
+    # ---- Step 3: Combine or intersect ----
+    if mode == "all":
+        matched_accessions = (
+            fastq_acc & mlst_acc & checkm2_acc & assembly_acc & amrfinder_acc & gambit_acc
+        )
+    else:  # mode == "any"
+        matched_accessions = (
+            fastq_acc | mlst_acc | checkm2_acc | assembly_acc | amrfinder_acc | gambit_acc
+        )
 
     if not matched_accessions:
-        # If no matches, return a simple message instead of an empty file
-        response = HttpResponse("No accessions have complete WGS data across all tables.", content_type="text/plain")
-        return response
+        return HttpResponse("No matching WGS accessions found in Referred_Data.", content_type="text/plain")
 
-    # Step 3: Query only data with matched Ref_Accession values
-    fastq_qs = FastqSummary.objects.filter(fastq_project__Ref_Accession__AccessionNo__in=matched_accessions)
-    mlst_qs = Mlst.objects.filter(mlst_project__Ref_Accession__AccessionNo__in=matched_accessions)
-    checkm2_qs = Checkm2.objects.filter(checkm2_project__Ref_Accession__AccessionNo__in=matched_accessions)
-    assembly_qs = AssemblyScan.objects.filter(assembly_project__Ref_Accession__AccessionNo__in=matched_accessions)
-    amrfinder_qs = Amrfinderplus.objects.filter(amrfinder_project__Ref_Accession__AccessionNo__in=matched_accessions)
-    gambit_qs = Gambit.objects.filter(gambit_project__Ref_Accession__AccessionNo__in=matched_accessions)
+    # ---- Step 4: Filter only matched records ----
+    fastq_qs = FastqSummary.objects.filter(FastQ_Accession__in=matched_accessions)
+    mlst_qs = Mlst.objects.filter(Mlst_Accession__in=matched_accessions)
+    checkm2_qs = Checkm2.objects.filter(Checkm2_Accession__in=matched_accessions)
+    assembly_qs = AssemblyScan.objects.filter(Assembly_Accession__in=matched_accessions)
+    amrfinder_qs = Amrfinderplus.objects.filter(Amrfinder_Accession__in=matched_accessions)
+    gambit_qs = Gambit.objects.filter(Gambit_Accession__in=matched_accessions)
 
-    # Step 4: Convert each queryset into a DataFrame
-    def qs_to_df(qs, model_name, rel_field):
+    # ---- Step 5: Convert to DataFrames ----
+    def qs_to_df(qs, model_name, acc_field):
         if not qs.exists():
             return pd.DataFrame()
         df = pd.DataFrame.from_records(qs.values())
         df.insert(0, "Table", model_name)
-        df.insert(1, "Ref_Accession", [
-            getattr(getattr(obj, rel_field).Ref_Accession, "AccessionNo", None) for obj in qs
-        ])
+        df.insert(1, "AccessionNo", df[acc_field])
         return df
 
-    fastq_df = qs_to_df(fastq_qs, "FastqSummary", "fastq_project")
-    mlst_df = qs_to_df(mlst_qs, "Mlst", "mlst_project")
-    checkm2_df = qs_to_df(checkm2_qs, "Checkm2", "checkm2_project")
-    assembly_df = qs_to_df(assembly_qs, "AssemblyScan", "assembly_project")
-    amrfinder_df = qs_to_df(amrfinder_qs, "Amrfinderplus", "amrfinder_project")
-    gambit_df = qs_to_df(gambit_qs, "Gambit", "gambit_project")
+    fastq_df = qs_to_df(fastq_qs, "FastqSummary", "FastQ_Accession")
+    mlst_df = qs_to_df(mlst_qs, "Mlst", "Mlst_Accession")
+    checkm2_df = qs_to_df(checkm2_qs, "Checkm2", "Checkm2_Accession")
+    assembly_df = qs_to_df(assembly_qs, "AssemblyScan", "Assembly_Accession")
+    amrfinder_df = qs_to_df(amrfinder_qs, "Amrfinderplus", "Amrfinder_Accession")
+    gambit_df = qs_to_df(gambit_qs, "Gambit", "Gambit_Accession")
 
-    # Step 5: Write to Excel (multi-sheet)
+    # ---- Step 6: Write to Excel ----
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        fastq_df.to_excel(writer, index=False, sheet_name="FastQ")
-        mlst_df.to_excel(writer, index=False, sheet_name="MLST")
-        checkm2_df.to_excel(writer, index=False, sheet_name="CheckM2")
-        assembly_df.to_excel(writer, index=False, sheet_name="Assembly")
-        amrfinder_df.to_excel(writer, index=False, sheet_name="AMRFinder")
-        gambit_df.to_excel(writer, index=False, sheet_name="Gambit")
+        if not fastq_df.empty: fastq_df.to_excel(writer, index=False, sheet_name="FastQ")
+        if not mlst_df.empty: mlst_df.to_excel(writer, index=False, sheet_name="MLST")
+        if not checkm2_df.empty: checkm2_df.to_excel(writer, index=False, sheet_name="CheckM2")
+        if not assembly_df.empty: assembly_df.to_excel(writer, index=False, sheet_name="Assembly")
+        if not amrfinder_df.empty: amrfinder_df.to_excel(writer, index=False, sheet_name="AMRFinder")
+        if not gambit_df.empty: gambit_df.to_excel(writer, index=False, sheet_name="Gambit")
 
     output.seek(0)
+    filename = f"WGS_Data_{mode.title()}_{pd.Timestamp.now().date()}.xlsx"
+
     response = HttpResponse(
         output.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response["Content-Disposition"] = 'attachment; filename="Matched_WGS_Data.xlsx"'
+    response["Content-Disposition"] = f'attachment; filename=\"{filename}\"'
     return response
