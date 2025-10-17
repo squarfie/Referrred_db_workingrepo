@@ -63,8 +63,12 @@ urlpatterns = [
     path('upload-sitecode/', views.upload_sitecode, name='site_upload'),
     path('delete_all_dropdown/', views.delete_all_dropdown, name='delete_all_dropdown'),
 
-    #include wgs_app urls
+    path("copy_to_final/<int:id>/", views.copy_data_to_final, name="copy_data_to_final"),
+    path("upload_raw/", views.upload_combined_table, name='upload_combined_table'),
+    
+    #include all app's urls
     path('upload/', include('apps.wgs_app.urls')),
+    path('final/', include('apps.home_final.urls')),
 
 
     # path('batch/', views.show_accession, name="show_accession"),

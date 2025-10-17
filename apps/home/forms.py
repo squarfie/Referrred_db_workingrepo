@@ -3,6 +3,13 @@ from django import forms
 from phonenumber_field.formfields import PhoneNumberField
 
 
+# Referred Data Upload Form
+class ReferredUploadForm(forms.ModelForm):
+     class Meta:
+          model = ReferredData_upload
+          fields = ['ReferredDataFile']
+
+
     
 class Referred_Form(forms.ModelForm):
 
@@ -110,6 +117,11 @@ class Referred_Form(forms.ModelForm):
             self.fields['arsp_Lab_Lic'].widget.attrs['readonly'] = True  
             self.fields['arsp_Head_Lic'].widget.attrs['readonly'] = True
         
+
+
+
+
+
 
 
 

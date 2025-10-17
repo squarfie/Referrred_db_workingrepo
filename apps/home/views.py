@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+from io import TextIOWrapper
 import os
 from django.conf import settings
 from django.templatetags.static import static
@@ -11,9 +12,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.template import loader
 from django.db.models import Prefetch
 from .models import *
+from apps.home_final.models import *
 from apps.wgs_app.models import *
 from .forms import *
 from apps.wgs_app.forms import *
+from apps.home_final.forms import *
 from django.contrib import messages
 # imports for generating pdf
 from django.template.loader import get_template
@@ -680,6 +683,7 @@ def raw_data(request, id):
     existing_entries = all_entries.filter(ab_Abx_code__isnull=False)  # Regular entries
     retest_entries = all_entries.filter(ab_Retest_Abx_code__isnull=False)   # Retest entries
 
+
     # --- Handle GET request ---
     if request.method == "GET":
         form = Referred_Form(instance=isolates)
@@ -701,6 +705,8 @@ def raw_data(request, id):
         if form.is_valid():
             isolates = form.save(commit=False)
             isolates.save()
+
+
 
             # --- Handle main antibiotics ---
             for entry in whonet_abx_data:
@@ -1310,12 +1316,16 @@ def breakpoints_view(request):
     page_obj = paginator.get_page(page_number)
     return render(request, 'home/BreakpointsView.html',{ 'breakpoints':breakpoints,  'page_obj': page_obj})
 
+
+
 @login_required(login_url="/login/")
 #Delete breakpoints
 def breakpoints_del(request, id):
     breakpoints = get_object_or_404(BreakpointsTable, pk=id)
     breakpoints.delete()
     return redirect('breakpoints_view')
+
+
 
 @login_required(login_url="/login/")
 # for uploading and replacing existing breakpoints data
@@ -2231,3 +2241,314 @@ def read_uploaded_file(uploaded_file):
 
 #     return render(request, 'tables.html', {'upload_form': upload_form})
 
+
+@login_required(login_url="/login/")
+def copy_data_to_final(request, id):
+    """
+    Copies all data from Referred_Data and its AntibioticEntries
+    into Final_Data and Final_AntibioticEntry.
+    """
+    try:
+        isolates = get_object_or_404(Referred_Data, pk=id)
+        all_entries = AntibioticEntry.objects.filter(ab_idNum_f_referred=isolates)
+
+        with transaction.atomic():
+            # --- Create or Update Final_Data ---
+            final_obj, created = Final_Data.objects.update_or_create(
+                f_AccessionNo=isolates.AccessionNo,
+                defaults={
+                    # Batch info
+                    "f_Batch_Code": getattr(isolates, "Batch_Code", ""),
+                    "f_Batch_Name": getattr(isolates, "Batch_Name", ""),
+                    "f_RefNo": getattr(isolates, "RefNo", None),
+                    "f_BatchNo": getattr(isolates, "BatchNo", ""),
+                    "f_Total_batch": getattr(isolates, "Total_batch", ""),
+                    "f_SiteCode": getattr(isolates, "Site_Code", ""),
+                    "f_Site_Name": getattr(isolates, "Site_Name", ""),
+                    "f_Referral_Date": getattr(isolates, "Referral_Date", None),
+
+                    # Patient Info
+                    "f_Patient_ID": getattr(isolates, "Patient_ID", ""),
+                    "f_First_Name": getattr(isolates, "First_Name", ""),
+                    "f_Mid_Name": getattr(isolates, "Mid_Name", ""),
+                    "f_Last_Name": getattr(isolates, "Last_Name", ""),
+                    "f_Date_Birth": getattr(isolates, "Date_Birth", None),
+                    "f_Age": getattr(isolates, "Age", ""),
+                    "f_Sex": getattr(isolates, "Sex", ""),
+                    "f_Date_Admis": getattr(isolates, "Date_Admis", None),
+                    "f_Diagnosis": getattr(isolates, "Diagnosis", ""),
+                    "f_Diagnosis_ICD10": getattr(isolates, "Diagnosis_ICD10", ""),
+                    "f_Ward": getattr(isolates, "Ward", ""),
+                    "f_Ward_Type": getattr(isolates, "Ward_Type", ""),
+                    "f_Service_Type": getattr(isolates, "Service_Type", "n/a"),
+
+                    # Specimen
+                    "f_Spec_Num": getattr(isolates, "Spec_Num", ""),
+                    "f_Spec_Date": getattr(isolates, "Spec_Date", None),
+                    "f_Spec_Type": getattr(isolates, "Spec_Type", ""),
+                    "f_Growth": getattr(isolates, "Growth", ""),
+                    "f_Urine_ColCt": getattr(isolates, "Urine_ColCt", ""),
+
+                    # Organism
+                    "f_Site_Pre": getattr(isolates, "Site_Pre", ""),
+                    "f_Site_Org": getattr(isolates, "Site_Org", ""),
+                    "f_Site_Pos": getattr(isolates, "Site_Pos", ""),
+                    "f_OrganismCode": getattr(isolates, "OrganismCode", ""),
+                    "f_Comments": getattr(isolates, "Comments", ""),
+                },
+            )
+
+            # --- Clear existing entries in Final_AntibioticEntry ---
+            Final_AntibioticEntry.objects.filter(ab_idNum_f_referred=final_obj).delete()
+
+            # --- Copy each AntibioticEntry record ---
+            for entry in all_entries:
+                final_entry = Final_AntibioticEntry.objects.create(
+                    ab_idNum_f_referred=final_obj,
+                    ab_AccessionNo=entry.ab_AccessionNo,
+                    ab_RefNo=getattr(isolates, "RefNo", ""),
+                    ab_Antibiotic=entry.ab_Antibiotic,
+                    ab_Abx_code=entry.ab_Abx_code,
+                    ab_Abx=entry.ab_Abx,
+                    ab_Disk_value=entry.ab_Disk_value,
+                    ab_Disk_RIS=entry.ab_Disk_RIS,
+                    ab_Disk_enRIS=entry.ab_Disk_enRIS,
+                    ab_MIC_operand=entry.ab_MIC_operand,
+                    ab_MIC_value=entry.ab_MIC_value,
+                    ab_MIC_RIS=entry.ab_MIC_RIS,
+                    ab_MIC_enRIS=entry.ab_MIC_enRIS,
+                    ab_R_breakpoint=entry.ab_R_breakpoint,
+                    ab_I_breakpoint=entry.ab_I_breakpoint,
+                    ab_SDD_breakpoint=entry.ab_SDD_breakpoint,
+                    ab_S_breakpoint=entry.ab_S_breakpoint,
+                    ab_Retest_Antibiotic=entry.ab_Retest_Antibiotic,
+                    ab_Retest_Abx_code=entry.ab_Retest_Abx_code,
+                    ab_Retest_Abx=entry.ab_Retest_Abx,
+                    ab_Retest_DiskValue=entry.ab_Retest_DiskValue,
+                    ab_Retest_Disk_RIS=entry.ab_Retest_Disk_RIS,
+                    ab_Retest_Disk_enRIS=entry.ab_Retest_Disk_enRIS,
+                    ab_Retest_MIC_operand=entry.ab_Retest_MIC_operand,
+                    ab_Retest_MICValue=entry.ab_Retest_MICValue,
+                    ab_Retest_MIC_RIS=entry.ab_Retest_MIC_RIS,
+                    ab_Retest_MIC_enRIS=entry.ab_Retest_MIC_enRIS,
+                    ab_Ret_R_breakpoint=entry.ab_Ret_R_breakpoint,
+                    ab_Ret_I_breakpoint=entry.ab_Ret_I_breakpoint,
+                    ab_Ret_SDD_breakpoint=entry.ab_Ret_SDD_breakpoint,
+                    ab_Ret_S_breakpoint=entry.ab_Ret_S_breakpoint,
+                )
+
+                # Copy M2M breakpoints
+                final_entry.ab_breakpoints_id.set(entry.ab_breakpoints_id.all())
+
+            messages.success(
+                request,
+                f"Data successfully copied to Final_Data (Accession: {isolates.AccessionNo})."
+            )
+
+        return redirect("show_data")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        messages.error(request, f"⚠️ Error copying data: {e}")
+        return redirect("show_data")
+    
+
+
+
+    
+#### uploading referred data
+@login_required
+@transaction.atomic
+def upload_combined_table(request):
+    form = WGSProjectForm()
+    referred_form = ReferredUploadForm()
+
+    if request.method == "POST" and request.FILES.get("ReferredDataFile"):
+        try:
+            uploaded_file = request.FILES["ReferredDataFile"]
+            file_name = uploaded_file.name.lower()
+
+            # Load the file
+            if file_name.endswith(".csv"):
+                file = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
+                reader = csv.DictReader(file)
+                df = pd.DataFrame(reader)
+            elif file_name.endswith((".xlsx", ".xls")):
+                df = pd.read_excel(uploaded_file)
+            else:
+                messages.error(request, "Unsupported file format. Please upload CSV, XLSX, or XLS file.")
+                return render(request, "wgs_app/Add_wgs.html", {
+                    "referred_form": referred_form,
+                    "form": form,
+                    "fastq_form": FastqUploadForm(),
+                    "gambit_form": GambitUploadForm(),
+                    "mlst_form": MlstUploadForm(),
+                    "checkm2_form": Checkm2UploadForm(),
+                    "assembly_form": AssemblyUploadForm(),
+                    "amrfinder_form": AmrUploadForm(),
+                })
+
+            # Transpose if Needed 
+            # If the file is oriented with samples as columns instead of rows
+            if df.shape[0] < df.shape[1] and "AccessionNo" not in df.columns:
+                df = df.transpose()
+                df.columns = df.iloc[0]  # set headers from first row
+                df = df[1:]              # drop header row
+
+            rows = df.to_dict("records")
+
+            # site codes and setup
+            site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
+            model_fields = [f.name for f in Referred_Data._meta.get_fields()]
+            known_abx = set(BreakpointsTable.objects.values_list("Whonet_Abx", flat=True))
+
+            created_ref, updated_ref, created_abx, updated_abx = 0, 0, 0, 0
+
+            # field map
+            FIELD_MAP = {
+                "patient id": "Patient_ID",
+                "specimen type": "Spec_Type",
+                "collection date": "Spec_Date",
+                "diagnosis code": "Diagnosis_ICD10",
+                "ward/unit": "Ward",
+                "growth result": "Growth",
+                "accession number": "AccessionNo",
+
+            }
+
+            def normalize_header(header):
+                key = header.strip().lower()
+                key = key.replace("_", " ").replace("-", " ")
+                key = re.sub(r"\s+", " ", key).strip()
+                return FIELD_MAP.get(key, header)
+
+            # helper for parsing mic values
+            def parse_mic_value(value_str):
+                if not value_str or pd.isna(value_str):
+                    return "", None
+                value_str = str(value_str).strip()
+                match = re.match(r"^([<>=≤≥]+)?\s*([\d.]+)$", value_str)
+                if match:
+                    return match.group(1) or "", float(match.group(2))
+                try:
+                    return "", float(value_str)
+                except ValueError:
+                    return "", None
+
+            def extract_site_code(accession_no):
+                """Find 3-letter site code inside the accession number."""
+                for code in site_codes:
+                    if re.search(rf"{code}", str(accession_no), re.IGNORECASE):
+                        return code
+                return ""
+
+            def parse_batch_info(batch_name):
+                """
+                Extract BatchCode info from string like '1.1 GMH_09122019_1.1_0001-0009'
+                Returns dict: {batch_no, total_batch, ref_no}
+                """
+                if not batch_name or pd.isna(batch_name):
+                    return {"BatchNo": "", "TotalBatch": "", "RefNo": ""}
+
+                batch_name = str(batch_name)
+                batch_match = re.search(r"(\d+)\.(\d+)", batch_name)
+                range_match = re.search(r"_(\d{4}-\d{4})", batch_name)
+
+                batch_no = batch_match.group(1) if batch_match else ""
+                total_batch = batch_match.group(2) if batch_match else ""
+                ref_no = range_match.group(1) if range_match else ""
+
+                return {
+                    "BatchNo": batch_no,
+                    "TotalBatch": total_batch,
+                    "RefNo": ref_no,
+                }
+
+            # --- STEP 5: Process Rows ---
+            for row in rows:
+                cleaned_row = {}
+                for k, v in row.items():
+                    mapped_key = normalize_header(k)
+                    cleaned_row[mapped_key] = "" if pd.isna(v) else v
+
+                accession = cleaned_row.get("AccessionNo") or cleaned_row.get("ID_Number")
+                if not accession:
+                    continue
+
+                # Extract additional info
+                site_code = extract_site_code(accession)
+                batch_name = cleaned_row.get("Batch_Name") or cleaned_row.get("batch_name", "")
+                batch_info = parse_batch_info(batch_name)
+
+                # Merge into defaults
+                cleaned_row.update({
+                    "Site_Code": site_code,
+                    "BatchNo": batch_info["BatchNo"],
+                    "Total_Batch": batch_info["TotalBatch"],
+                    "RefNo": batch_info["RefNo"],
+                })
+
+                valid_fields = {k: v for k, v in cleaned_row.items() if k in model_fields}
+
+                # --- Create/Update Referred_Data ---
+                ref_obj, ref_created = Referred_Data.objects.update_or_create(
+                    AccessionNo=str(accession).strip(),
+                    defaults=valid_fields,
+                )
+                created_ref += int(ref_created)
+                updated_ref += int(not ref_created)
+
+                # --- Antibiotic Records ---
+                for abx in known_abx:
+                    abx_val = str(cleaned_row.get(abx, "")).strip()
+                    abx_ris = str(cleaned_row.get(f"{abx}_RIS", "")).strip()
+                    abx_rt_val = str(cleaned_row.get(f"{abx}_RT", "")).strip()
+                    abx_rt_ris = str(cleaned_row.get(f"{abx}_RT_RIS", "")).strip()
+
+                    if not any([abx_val, abx_ris, abx_rt_val, abx_rt_ris]):
+                        continue
+
+                    mic_op, mic_val = parse_mic_value(abx_val)
+                    ret_op, ret_val = parse_mic_value(abx_rt_val)
+
+                    ab_entry, ab_created = AntibioticEntry.objects.update_or_create(
+                        ab_idNum_referred=ref_obj,
+                        ab_Abx_code=abx,
+                        defaults={
+                            "ab_MIC_operand": mic_op,
+                            "ab_MIC_value": mic_val,
+                            "ab_MIC_RIS": abx_ris,
+                            "ab_Retest_MIC_operand": ret_op,
+                            "ab_Retest_MICValue": ret_val,
+                            "ab_Retest_MIC_RIS": abx_rt_ris,
+                        },
+                    )
+                    created_abx += int(ab_created)
+                    updated_abx += int(not ab_created)
+
+            # --- STEP 6: Summary ---
+            messages.success(
+                request,
+                f" Upload complete! "
+                f"{created_ref} new Referred_Data, {updated_ref} updated; "
+                f"{created_abx} new AntibioticEntry, {updated_abx} updated."
+            )
+            return redirect("show_data")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f"⚠️ Error processing file: {e}")
+
+    # --- Default View ---
+    return render(request, "wgs_app/Add_wgs.html", {
+        "referred_form": referred_form,
+        "form": form,
+        "fastq_form": FastqUploadForm(),
+        "gambit_form": GambitUploadForm(),
+        "mlst_form": MlstUploadForm(),
+        "checkm2_form": Checkm2UploadForm(),
+        "assembly_form": AssemblyUploadForm(),
+        "amrfinder_form": AmrUploadForm(),
+    })

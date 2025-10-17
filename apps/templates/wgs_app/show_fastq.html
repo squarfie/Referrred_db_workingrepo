@@ -311,14 +311,6 @@ thead.thead-light {
 <!-- JavaScript -->
 {% block javascripts %}
 <script>
-$(document).ready(function(){
-  // Set delete form action when delete button clicked
-  $('.delete-btn').click(function(){
-    var url = $(this).data('url');
-    $('#deleteForm').attr('action', url);
-  });
-});
-
 // Search table function
 function searchTable() {
   var input = document.getElementById("search-input");

@@ -2,13 +2,8 @@
 from .models import *
 from django import forms
 from apps.home.models import *
+from apps.home_final.models import *
 
-
-# Referred Data Upload Form
-class ReferredUploadForm(forms.ModelForm):
-     class Meta:
-          model = ReferredData_upload
-          fields = ['ReferredDataFile']
 
 
 # WGS Projects

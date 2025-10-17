@@ -1,16 +1,18 @@
 from django.db import models
 from django.apps import apps
+from apps.home.models import *
+from apps.home_final.models import *
 # Create your models here.
 
 # Connector Table for WGS Projects
 class WGS_Project(models.Model):
     Ref_Accession = models.ForeignKey(
-        "home.Referred_Data",
-        on_delete=models.CASCADE,   #DELETE WHEN REFERR5RED DATA ACCESSION IS DELETED
+        Final_Data,
+        on_delete=models.CASCADE,   #DELETE WHEN FINAL REFERRED DATA ACCESSION IS DELETED
         null=True,
         blank=True,
         related_name='project_entries',
-        to_field='AccessionNo'
+        to_field='f_AccessionNo'
     )
 
     WGS_FastQ_Acc = models.CharField(max_length=255, blank=True, null=True)

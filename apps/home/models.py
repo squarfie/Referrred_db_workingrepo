@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.validators import EmailValidator
 from apps.wgs_app.models import *
+from apps.home_final.models import *
 from phonenumber_field.modelfields import PhoneNumberField
 
 # Create your models here.
@@ -128,6 +129,7 @@ class Referred_Data(models.Model):
     Diagnosis=models.CharField(max_length=255, blank=True,)
     Diagnosis_ICD10=models.CharField(max_length=255, blank=True,)
     Ward=models.CharField(max_length=255, blank=True,)
+    Ward_Type = models.CharField(max_length=255, blank=True,)
     Service_Type=models.CharField(max_length=255, choices=ServiceTypeChoice, default="n/a")
     #Isolate Information
     Spec_Num=models.CharField(max_length=255, blank=True,)
@@ -186,8 +188,6 @@ class Referred_Data(models.Model):
     Start_AccNo=models.IntegerField(null=True, blank=True)
     End_AccNo=models.IntegerField(null=True, blank=True)
     No_Isolates=models.IntegerField(null=True, blank=True)
-    BatchNumber=models.IntegerField(null=True, blank=True)
-    TotalBatchNumber=models.IntegerField(null=True, blank=True)
     Concordance_Check=models.CharField(max_length=255, blank=True,)
     Concordance_by=models.CharField(max_length=255, blank=True,)
     Concordance_by_Initials=models.CharField(max_length=255, blank=True,)
@@ -206,6 +206,11 @@ class Referred_Data(models.Model):
     arsp_Head_Lic = models.CharField(max_length=100,blank=True, null=True, default="")
     Date_Accomplished_ARSP=models.DateField(blank=True, null=True)
     
+    x_mrse = models.CharField(max_length=255, blank=True)
+    x_mrsamrse = models.CharField(max_length=255, blank=True)
+    x_entbac = models.CharField(max_length=255, blank=True)
+    edta = models.CharField(max_length=255, blank=True)
+
     def save(self, *args, **kwargs):
         # Fill defaults to prevent NULL insertion
         self.arsp_Encoder = self.arsp_Encoder or ""
@@ -237,159 +242,6 @@ class ReferredData_upload(models.Model):
     class Meta:
         db_table ="Referred_upload"
   
-# for final edit table
-class Final_Data(models.Model):
-    f_Common_Choices = (
-        ('n/a','n/a'),
-        ('Yes', 'Yes'),
-        ('No', 'No'),
-    )
-
-    f_Common_pheno = (
-        ('n/a','n/a'),
-        ('(+)','(+)'),
-        ('(-)', '(-)'),
-        ('NT', 'NT'),
-    )
-    f_SexatbirthChoice=(
-        ('n/a','n/a'),
-        ('Male', 'Male'),
-        ('Female', 'Female')
-    )
-
-    f_ServiceTypeChoice=(
-        ('n/a','n/a'),
-        ('In','In'),
-        ('Out','Out')
-        
-    )
-    f_ReasonChoices=(
-        ('n/a','n/a'),
-        ('a & d','a & d'),
-        ('confirmation of org and ast','a'),
-        ('for ast only','b'),
-        ('difficult to ID','c'),
-        ('for serotyping','d'),
-        ('for research','e'),
-        ('Others','o')
-    )
-
- 
-   
-    # Batch Data
-    f_Hide=models.BooleanField(default=False)
-    f_Batch_Code=models.CharField(max_length=255, blank=True,)
-    f_Date_of_Entry =models.DateTimeField(auto_now_add=True)
-    f_RefNo=models.IntegerField(null=True, blank=True) #
-    f_BatchNo=models.CharField(max_length=255, blank=True,)
-    f_Total_batch=models.CharField(max_length=100, blank=True,)
-    f_AccessionNo=models.CharField(max_length=255, blank=True,)
-    f_AccessionNoGen=models.CharField(max_length=100, blank=True)
-    f_Default_Year=models.DateField(null=True, blank=True)
-    f_SiteCode=models.CharField(max_length=255, blank=True,) #
-    f_Site_Name=models.CharField(max_length=255, blank=True,) #
-    f_Referral_Date=models.DateField(null=True, blank=True)
-    #Patient Information
-    f_Patient_ID=models.CharField(max_length=255, blank=True,)
-    f_First_Name=models.CharField(max_length=255, blank=True,)
-    f_Mid_Name=models.CharField(max_length=255, blank=True,)
-    f_Last_Name = models.CharField(max_length=255, blank=True)
-    f_Date_Birth = models.DateField(null=True, blank=True)
-    f_Age = models.CharField(max_length=255, blank=True)
-    f_Age_Verification = models.CharField(max_length=255, blank=True)
-    f_Sex = models.CharField(max_length=255, blank=True)
-    f_Date_Admis = models.DateField(null=True, blank=True)
-    f_Nosocomial = models.CharField(max_length=255, choices=f_Common_Choices, default="n/a")
-    f_Diagnosis = models.CharField(max_length=255, blank=True)
-    f_Diagnosis_ICD10 = models.CharField(max_length=255, blank=True)
-    f_Ward = models.CharField(max_length=255, blank=True)
-    f_Service_Type = models.CharField(max_length=255, choices=f_ServiceTypeChoice, default="n/a")
-
-    #Isolate Information
-    f_Spec_Num=models.CharField(max_length=255, blank=True,)
-    f_Spec_Date = models.DateField(null=True, blank=True)
-    f_Spec_Type = models.CharField(max_length=255, blank=True, null=True)
-    f_Reason = models.TextField(max_length=255, choices=f_ReasonChoices, default="n/a")
-    f_Growth = models.CharField(max_length=255, blank=True)
-    f_Urine_ColCt = models.CharField(max_length=255, blank=True)
-
-    # Phenotypic Results
-    f_ampC = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ESBL = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_CARB = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_MBL = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_BL = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_MR = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_mecA = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ICR = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_OtherResMech = models.CharField(max_length=255, blank=True)
-
-    # Organism Result
-    f_Site_Pre = models.CharField(max_length=255, blank=True)
-    f_Site_Org = models.CharField(max_length=255, blank=True)
-    f_Site_Pos = models.CharField(max_length=255, blank=True)
-    f_OrganismCode = models.CharField(max_length=255, blank=True)
-    f_Comments = models.TextField(blank=True, null=True)
-
-    # ARSRL Sty Results
-    f_ars_ampC = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_ESBL = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_CARB = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_ECIM = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_MCIM = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_EC_MCIM = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_MBL = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_BL = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_MR = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_mecA = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_ICR = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_Pre = models.CharField(max_length=255, blank=True)
-    f_ars_Post = models.CharField(max_length=255, blank=True)
-    f_ars_OrgCode = models.CharField(max_length=255, blank=True)
-    f_ars_OrgName = models.CharField(max_length=255, blank=True)
-    f_ars_ct_ctl = models.CharField(max_length=255, blank=True)
-    f_ars_tz_tzl = models.CharField(max_length=255, blank=True)
-    f_ars_cn_cni = models.CharField(max_length=255, blank=True)
-    f_ars_ip_ipi = models.CharField(max_length=255, blank=True)
-    f_ars_reco_Code = models.CharField(max_length=255, blank=True)
-    f_ars_reco = models.TextField(blank=True, null=True)
-
-    # Batch Table Data
-    f_SiteName = models.CharField(max_length=255, blank=True)
-    f_Month_Date = models.DateField(null=True, blank=True)
-    f_Day_Date = models.DateField(null=True, blank=True)
-    f_Year_Date = models.DateField(null=True, blank=True)
-    f_RefDate = models.DateField(null=True, blank=True)
-    f_Start_AccNo = models.IntegerField(null=True, blank=True)
-    f_End_AccNo = models.IntegerField(null=True, blank=True)
-    f_No_Isolates = models.IntegerField(null=True, blank=True)
-    f_BatchNumber = models.IntegerField(null=True, blank=True)
-    f_TotalBatchNumber = models.IntegerField(null=True, blank=True)
-    f_Encoded_by = models.CharField(max_length=255, blank=True)
-    f_Encoded_by_Initials = models.CharField(max_length=255, blank=True)
-    f_Edited_by = models.CharField(max_length=255, blank=True)
-    f_Edited_by_Initials = models.CharField(max_length=255, blank=True)
-    f_Checked_by = models.CharField(max_length=255, blank=True)
-    f_Checked_by_Initials = models.CharField(max_length=255, blank=True)
-    f_Verified_by_Senior = models.CharField(max_length=255, blank=True)
-    f_Verified_by_Senior_Initials = models.CharField(max_length=255, blank=True)
-    f_Verified_by_LabManager = models.CharField(max_length=255, blank=True)
-    f_Verified_by_LabManager_Initials = models.CharField(max_length=255, blank=True)
-    f_Noted_by = models.CharField(max_length=255, blank=True)
-    f_Noted_by_Initials = models.CharField(max_length=255, blank=True)
-    f_Concordance_Check = models.CharField(max_length=255, blank=True)
-    f_Concordance_by = models.CharField(max_length=255, blank=True)
-    f_Concordance_by_Initials = models.CharField(max_length=255, blank=True)
-    f_abx_code = models.CharField(max_length=25, blank=True, default="")
-
-
-    def __str__(self):
-        return self.f_AccessionNo
-    
-    
-    class Meta:
-        db_table ="Final_Data"
-
 
 
 
@@ -556,6 +408,8 @@ class AntibioticEntry(models.Model):
 
     class Meta:
         db_table = "AntibioticEntry"
+
+
 
 
 class SpecimenTypeModel(models.Model):

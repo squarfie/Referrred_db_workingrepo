@@ -35,27 +35,32 @@
 <!-- Main Content -->
 <div class="container-fluid mt--6">
   
+
   <!-- Referred Data Upload Section -->
   <div class="card shadow mb-4">
-    <div class="card-header border-0" style="background: linear-gradient(135deg, #81dde0 0%, #93ddaf 100%);">
+    <div class="card-header border-0 bg-gradient-primary">
       <div class="row align-items-center">
         <div class="col">
-          <h3 class="mb-0 text-white"><i class="ni ni-single-copy-04 mr-2"></i>Referred Isolates Database</h3>
+          <h3 class="mb-0 text-white"><i class="ni ni-world mr-2"></i>Referred Isolates Data</h3>
         </div>
       </div>
     </div>
+    <div class="card-body pt-4 pb-5">
+       <p class="text-center text-muted mb-4">Upload raw or final referred data</p>
+    <div class="row">
+  <!-- Raw referred Isolates upload -->
     <div class="card-body">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
       <div class="row justify-content-center">
-        <div class="col-lg-6 col-md-8">
-          <div class="text-center py-4">
+          <div class="text-center p-4">
             <div class="icon-circle mx-auto mb-4" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg,#eff317 0%,  #81dde0 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(129, 221, 224, 0.4);">
               <i class="ni ni-single-copy-04 text-white" style="font-size: 2.5rem;"></i>
             </div>
-            <h4 class="mb-3">Upload Referred Isolates Data</h4>
-            <p class="text-muted mb-4">Upload your CSV or Excel file containing referred isolates</p>
+            <h4 class="mb-3">Upload Referred Raw Data</h4>
+            <p class="text-muted mb-4">Upload your CSV or Excel file containing referred raw data</p>
             <div class="d-flex justify-content-center gap-3">
               <button type="button" class="btn btn-lg" style="background: linear-gradient(135deg, #eff317  0%,#81dde0 100%); color: white; min-width: 200px;" data-toggle="modal" data-target="#UploadReferredModal">
-                <i class="ni ni-cloud-upload-96 mr-2"></i>Upload Data
+                <i class="ni ni-cloud-upload-96 mr-2"></i>Upload Raw
               </button>
               <a href="#" class="btn btn-outline-primary btn-lg" style="min-width: 200px;">
                 <i class="ni ni-folder-17 mr-2"></i>View Data
@@ -65,7 +70,34 @@
         </div>
       </div>
     </div>
+  <!-- Final Referred Data Upload -->
+    <div class="card-body">
+        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+          <div class="row justify-content-center">
+          <div class="text-center p-4">
+            <div class="icon-circle mx-auto mb-4" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg,#eff317 0%,  #81dde0 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(129, 221, 224, 0.4);">
+              <i class="ni ni-single-copy-04 text-white" style="font-size: 2.5rem;"></i>
+            </div>
+            <h4 class="mb-3">Upload Final Referred Data</h4>
+            <p class="text-muted mb-4">Upload your CSV or Excel file containing referred final data</p>
+            <div class="d-flex justify-content-center gap-3">
+              <button type="button" class="btn btn-lg" style="background: linear-gradient(135deg, #eff317  0%,#81dde0 100%); color: white; min-width: 200px;" data-toggle="modal" data-target="#UploadFinalReferredModal">
+                <i class="ni ni-cloud-upload-96 mr-2"></i>Upload Final
+              </button>
+              <a href="{% url 'show_final_data'%}" class="btn btn-outline-primary btn-lg" style="min-width: 200px;">
+                <i class="ni ni-folder-17 mr-2"></i>View Data
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
   </div>
+  </div>
+
+
+
 
   <!-- Genomic Analysis Data Section -->
   <div class="card shadow">
@@ -81,7 +113,7 @@
       
       <!-- Upload Grid -->
       <div class="row">
-        
+
         <!-- FastQ Data Card -->
         <div class="col-lg-4 col-md-6 mb-4">
           <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
@@ -251,6 +283,42 @@
   </form>
 </div>
 
+
+<!-- Upload Referred Final Data Modal -->
+<div class="modal fade" id="UploadFinalReferredModal" tabindex="-1" role="dialog" aria-labelledby="UploadFinalReferredLabel" aria-hidden="true">
+  <form method="POST" action="{% url 'upload_final_combined_table' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header text-white" style="background: linear-gradient(135deg, #81dde0 0%, #eff317 100%);">
+          <h5 class="modal-title text-white" id="UploadFinalReferredLabel">
+            <i class="ni ni-single-copy-04 mr-2"></i>Upload Referred Isolates Data
+          </h5>
+          <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info" role="alert">
+            <i class="ni ni-notification-70 mr-2"></i>
+            <strong>File Format:</strong> Upload CSV or Excel file with referred isolates data.
+          </div>
+          <div class="form-group">
+            <label for="referredfile" class="form-control-label">Choose CSV/Excel File</label>
+            {{ referred_form.FinalDataFile|add_class:"form-control-file" }}
+            <small class="form-text text-muted">Supported formats: CSV, XLSX, XLS</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn text-white" style="background: linear-gradient(135deg, #81dde0 0%, #eff317 100%);">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
 <!-- FastQ Modal -->
 <div class="modal fade" id="UploadModal" tabindex="-1" role="dialog" aria-labelledby="UploadModalLabel" aria-hidden="true">
   <form method="POST" action="{% url 'upload_fastq' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">

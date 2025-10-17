@@ -10,8 +10,10 @@ from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from .forms import *
 from apps.home.forms import *
+from apps.home_final.forms import *
 import pandas as pd
 from apps.home.models import *
+from apps.home_final.models import *
 from .models import *
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
@@ -50,7 +52,7 @@ def upload_wgs_view(request):
         checkm2_form = Checkm2UploadForm(request.POST, request.FILES)
         assembly_form = AssemblyUploadForm(request.POST, request.FILES)
         amrfinder_form = AmrUploadForm(request.POST, request.FILES)
-        referred_form = ReferredUploadForm(request.POST, request.FILES)
+        referred_form = FinalDataUploadForm(request.POST, request.FILES)
 
         referred_uploaded = False
         project_saved = False
@@ -108,7 +110,7 @@ def upload_wgs_view(request):
 
     else:
         form = WGSProjectForm()
-        referred_form = ReferredUploadForm()
+        referred_form = FinalDataUploadForm()
         fastq_form = FastqUploadForm()
         gambit_form = GambitUploadForm()
         mlst_form = MlstUploadForm()
@@ -156,8 +158,8 @@ def upload_wgs_view(request):
 @login_required
 def show_wgs_projects(request):
     # Get all Referred_Data that have associated WGS projects
-    referred_with_wgs = Referred_Data.objects.filter(
-        AccessionNo__isnull=False
+    referred_with_wgs = Final_Data.objects.filter(
+        f_AccessionNo__isnull=False
     ).distinct()
     
     context = {
@@ -204,7 +206,7 @@ def upload_fastq(request):
                     "checkm2_form": Checkm2UploadForm(),
                     "amrfinder_form": AmrUploadForm(),
                     "assembly_form": AssemblyUploadForm(),
-                    "referred_form": ReferredUploadForm(),
+                    "referred_form": FinalDataUploadForm(),
                     "editing": editing,
                 })
 
@@ -265,8 +267,8 @@ def upload_fastq(request):
 
                 referred_obj = None
                 if fastq_accession:
-                    referred_obj = Referred_Data.objects.filter(
-                        AccessionNo=fastq_accession
+                    referred_obj = Final_Data.objects.filter(
+                        f_AccessionNo=fastq_accession
                     ).first()
 
                 # Allow multiple WGS_Project per accession
@@ -284,7 +286,7 @@ def upload_fastq(request):
                 connect_project.WGS_FastqSummary = (
                     bool(fastq_accession)
                     and bool(connect_project.Ref_Accession)
-                    and fastq_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
+                    and fastq_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
                 )
                 connect_project.save()
 
@@ -354,7 +356,7 @@ def upload_fastq(request):
         "checkm2_form": Checkm2UploadForm(),
         "amrfinder_form": AmrUploadForm(),
         "assembly_form": AssemblyUploadForm(),
-        "referred_form": ReferredUploadForm(),
+        "referred_form": FinalDataUploadForm(),
         "editing": editing,
     })
 
@@ -492,7 +494,7 @@ def upload_gambit(request):
                     "checkm2_form": Checkm2UploadForm(),
                     "amrfinder_form": AmrUploadForm(),
                     "assembly_form": AssemblyUploadForm(),
-                    "referred_form": ReferredUploadForm(),
+                    "referred_form": FinalDataUploadForm(),
                     "editing": editing,
                 })
 
@@ -551,8 +553,8 @@ def upload_gambit(request):
                     gambit_accession = ""
 
                 # Step 1: try to find Referred_Data with this accession
-                referred_obj = Referred_Data.objects.filter(
-                    AccessionNo=gambit_accession
+                referred_obj = Final_Data.objects.filter(
+                    f_AccessionNo=gambit_accession
                 ).first()
 
                 # Step 2: create or get WGS_Project
@@ -574,7 +576,7 @@ def upload_gambit(request):
                 # 🔎 Step 4: summary flag = True if gambit_accession matches Ref_Accession.AccessionNo
                 connect_project.WGS_GambitSummary = (
                     bool(connect_project.Ref_Accession) 
-                    and gambit_accession == connect_project.Ref_Accession.AccessionNo
+                    and gambit_accession == connect_project.Ref_Accession.f_AccessionNo
                 )
 
                 connect_project.save()
@@ -608,30 +610,55 @@ def upload_gambit(request):
         "checkm2_form": Checkm2UploadForm(),
         "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": AmrUploadForm(),
-        "referred_form": ReferredUploadForm(),
+        "referred_form": FinalDataUploadForm(),
         "editing": editing,
     })
 
 
 
+# @login_required
+# def show_gambit(request):
+#     gambit_summaries = Gambit.objects.all()
+    
+#     total_records = Gambit.objects.count()
+#          # Paginate the queryset to display 20 records per page
+#     paginator = Paginator(gambit_summaries, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+
+#     # Render the template with paginated data
+#     return render(
+#         request,
+#         "wgs_app/show_gambit.html",
+#         {"page_obj": page_obj,
+#          "total_records": total_records,
+#          },  # only send page_obj
+#     )
+
+
 @login_required
 def show_gambit(request):
-    gambit_summaries = Gambit.objects.all()
-    
-    total_records = Gambit.objects.count()
-         # Paginate the queryset to display 20 records per page
+    gambit_summaries = Gambit.objects.all().order_by('-Date_uploaded_g')
+    upload_dates = (
+        Gambit.objects.exclude(Date_uploaded_g__isnull=True)
+        .values_list('Date_uploaded_g', flat=True)
+        .distinct()
+        .order_by('-Date_uploaded_g')
+    )
+
+    total_records = FastqSummary.objects.count()
+     # Paginate the queryset to display 20 records per page
     paginator = Paginator(gambit_summaries, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Render the template with paginated data
-    return render(
-        request,
-        "wgs_app/show_gambit.html",
-        {"page_obj": page_obj,
-         "total_records": total_records,
-         },  # only send page_obj
-    )
+    return render(request, "wgs_app/show_gambit.html", {
+        "page_obj": page_obj,
+        "upload_dates": upload_dates,
+        "total_records": total_records,
+    })
+
+
 
 
 @login_required
@@ -652,6 +679,31 @@ def delete_all_gambit(request):
     messages.success(request, "Gambit Records have been deleted successfully.")
     return redirect('show_gambit')  # Redirect to the table view
 
+
+
+@login_required
+def delete_gambit_by_date(request):
+    if request.method == "POST":
+        upload_date_str = request.POST.get("upload_date")
+        print("🕒 Received upload_date_str:", upload_date_str)
+
+        if not upload_date_str:
+            messages.error(request, "Please select an upload date to delete.")
+            return redirect("show_gambit")
+
+        # Use Django’s date parser
+        upload_date = parse_date(upload_date_str)
+
+        if not upload_date:
+            messages.error(request, f"Invalid date format: {upload_date_str}")
+            return redirect("show_gambit")
+
+        deleted_count, _ = Gambit.objects.filter(Date_uploaded_f=upload_date).delete()
+        messages.success(request, f"✅ Deleted {deleted_count} Gambit records uploaded on {upload_date}.")
+        return redirect("show_gambit")
+
+    messages.error(request, "Invalid request method.")
+    return redirect("show_gambit")
 
 
 #########   MLST
@@ -677,7 +729,7 @@ def upload_mlst(request):
                 "checkm2_form": Checkm2UploadForm(),
                 "amrfinder_form": AmrUploadForm(),
                 "assembly_form": AssemblyUploadForm(),
-                "referred_form": ReferredUploadForm(),
+                "referred_form": FinalDataUploadForm(),
                 "editing": editing,
             })
 
@@ -745,7 +797,7 @@ def upload_mlst(request):
 
             # Find Referred_Data (optional)
             referred_obj = (
-                Referred_Data.objects.filter(AccessionNo=mlst_accession).first()
+                Final_Data.objects.filter(f_AccessionNo=mlst_accession).first()
                 if mlst_accession else None
             )
 
@@ -767,7 +819,7 @@ def upload_mlst(request):
             connect_project.WGS_MlstSummary = (
                 mlst_accession
                 and bool(connect_project.Ref_Accession)
-                and mlst_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
+                and mlst_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
             )
             connect_project.save()
 
@@ -800,31 +852,53 @@ def upload_mlst(request):
         "checkm2_form": Checkm2UploadForm(),
         "amrfinder_form": AmrUploadForm(),
         "assembly_form": AssemblyUploadForm(),
-        "referred_form": ReferredUploadForm(),
+        "referred_form": FinalDataUploadForm(),
         "editing": editing
     })
 
 
 
 
+# @login_required
+# def show_mlst(request):
+#     mlst_summaries = Mlst.objects.all().order_by("id")  # optional ordering
+
+#     total_records = Mlst.objects.count()
+#      # Paginate the queryset to display 20 records per page
+#     paginator = Paginator(mlst_summaries, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+
+#     # Render the template with paginated data
+#     return render(
+#         request,
+#         "wgs_app/show_mlst.html",
+#         {"page_obj": page_obj,
+#          "total_records": total_records,
+#          },  # only send page_obj
+#     )
+
 @login_required
 def show_mlst(request):
-    mlst_summaries = Mlst.objects.all().order_by("id")  # optional ordering
+    mlst_summaries = Mlst.objects.all().order_by('-Date_uploaded_m')
+    upload_dates = (
+        Mlst.objects.exclude(Date_uploaded_m__isnull=True)
+        .values_list('Date_uploaded_m', flat=True)
+        .distinct()
+        .order_by('-Date_uploaded_m')
+    )
 
-    total_records = Mlst.objects.count()
+    total_records = FastqSummary.objects.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(mlst_summaries, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Render the template with paginated data
-    return render(
-        request,
-        "wgs_app/show_mlst.html",
-        {"page_obj": page_obj,
-         "total_records": total_records,
-         },  # only send page_obj
-    )
+    return render(request, "wgs_app/show_mlst.html", {
+        "page_obj": page_obj,
+        "upload_dates": upload_dates,
+        "total_records": total_records,
+    })
 
 
 
@@ -841,11 +915,38 @@ def delete_mlst(request, pk):
     messages.error(request, "Invalid request for deletion.")
     return redirect('show_mlst')  # <-- Correct URL name
 
+
 @login_required
 def delete_all_mlst(request):
     Mlst.objects.all().delete()
     messages.success(request, "Mlst Records have been deleted successfully.")
     return redirect('show_mlst')  # Redirect to the table view
+
+
+@login_required
+def delete_mlst_by_date(request):
+    if request.method == "POST":
+        upload_date_str = request.POST.get("upload_date")
+        print("🕒 Received upload_date_str:", upload_date_str)
+
+        if not upload_date_str:
+            messages.error(request, "Please select an upload date to delete.")
+            return redirect("show_mlst")
+
+        # Use Django’s date parser
+        upload_date = parse_date(upload_date_str)
+
+        if not upload_date:
+            messages.error(request, f"Invalid date format: {upload_date_str}")
+            return redirect("show_mlst")
+
+        deleted_count, _ = Gambit.objects.filter(Date_uploaded_f=upload_date).delete()
+        messages.success(request, f"✅ Deleted {deleted_count} Mlst records uploaded on {upload_date}.")
+        return redirect("show_mlst")
+
+    messages.error(request, "Invalid request method.")
+    return redirect("show_mlst")
+
 
 
 
@@ -872,7 +973,7 @@ def upload_checkm2(request):
                 "checkm2_form": checkm2_form,
                 "amrfinder_form": AmrUploadForm(),
                 "assembly_form": AssemblyUploadForm(),
-                "referred_form": ReferredUploadForm(),
+                "referred_form": FinalDataUploadForm(),
                 "editing": editing,
             })
 
@@ -923,7 +1024,7 @@ def upload_checkm2(request):
 
             # Step 1: Try to find Referred_Data with this accession (only if non-blank)
             referred_obj = (
-                Referred_Data.objects.filter(AccessionNo=checkm2_accession).first()
+                Final_Data.objects.filter(f_AccessionNo=checkm2_accession).first()
                 if checkm2_accession else None
             )
 
@@ -945,7 +1046,7 @@ def upload_checkm2(request):
             connect_project.WGS_Checkm2Summary = (
                 checkm2_accession != "" and
                 bool(connect_project.Ref_Accession) and
-                checkm2_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
+                checkm2_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
             )
             connect_project.save()
 
@@ -979,35 +1080,52 @@ def upload_checkm2(request):
         "checkm2_form": checkm2_form,
         "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": AmrUploadForm(),
-        "referred_form": ReferredUploadForm(),
+        "referred_form": FinalDataUploadForm(),
         "editing": editing,
     })
 
 
+# @login_required
+# def show_checkm2(request):
+#     checkm2_summaries = Checkm2.objects.all().order_by("id")  # optional ordering
 
+#     total_records = Checkm2.objects.count()
+#      # Paginate the queryset to display 20 records per page
+#     paginator = Paginator(checkm2_summaries, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
 
-
-
+#     # Render the template with paginated data
+#     return render(
+#         request,
+#         "wgs_app/show_checkm2.html",
+#         {"page_obj": page_obj,
+#          "total_records": total_records,
+#          },  # only send page_obj
+#     )
 
 
 @login_required
 def show_checkm2(request):
-    checkm2_summaries = Checkm2.objects.all().order_by("id")  # optional ordering
+    checkm2_summaries = Checkm2.objects.all().order_by('-Date_uploaded_c')
+    upload_dates = (
+        Checkm2.objects.exclude(Date_uploaded_c__isnull=True)
+        .values_list('Date_uploaded_c', flat=True)
+        .distinct()
+        .order_by('-Date_uploaded_c')
+    )
 
-    total_records = Checkm2.objects.count()
+    total_records = FastqSummary.objects.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(checkm2_summaries, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Render the template with paginated data
-    return render(
-        request,
-        "wgs_app/show_checkm2.html",
-        {"page_obj": page_obj,
-         "total_records": total_records,
-         },  # only send page_obj
-    )
+    return render(request, "wgs_app/show_checkm2.html", {
+        "page_obj": page_obj,
+        "upload_dates": upload_dates,
+        "total_records": total_records,
+    })
 
 
 
@@ -1030,6 +1148,34 @@ def delete_all_checkm2(request):
     Checkm2.objects.all().delete()
     messages.success(request, "Checkm2 Records have been deleted successfully.")
     return redirect('show_checkm2')  # Redirect to the table view
+
+
+
+
+@login_required
+def delete_checkm2_by_date(request):
+    if request.method == "POST":
+        upload_date_str = request.POST.get("upload_date")
+        print("🕒 Received upload_date_str:", upload_date_str)
+
+        if not upload_date_str:
+            messages.error(request, "Please select an upload date to delete.")
+            return redirect("show_checkm2")
+
+        # Use Django’s date parser
+        upload_date = parse_date(upload_date_str)
+
+        if not upload_date:
+            messages.error(request, f"Invalid date format: {upload_date_str}")
+            return redirect("show_checkm2")
+
+        deleted_count, _ = Gambit.objects.filter(Date_uploaded_f=upload_date).delete()
+        messages.success(request, f"✅ Deleted {deleted_count} Checkm2 records uploaded on {upload_date}.")
+        return redirect("show_checkm2")
+
+    messages.error(request, "Invalid request method.")
+    return redirect("show_checkm2")
+
 
 
 
@@ -1056,7 +1202,7 @@ def upload_assembly(request):
                 "checkm2_form": Checkm2UploadForm(),
                 "amrfinder_form": AmrUploadForm(),
                 "assembly_form": assembly_form,
-                "referred_form": ReferredUploadForm(),
+                "referred_form": FinalDataUploadForm(),
                 "editing": editing,
             })
 
@@ -1105,7 +1251,7 @@ def upload_assembly(request):
 
             # Step 1: Try to find Referred_Data with this accession (only if non-blank)
             referred_obj = (
-                Referred_Data.objects.filter(AccessionNo=assembly_accession).first()
+                Final_Data.objects.filter(f_AccessionNo=assembly_accession).first()
                 if assembly_accession else None
             )
 
@@ -1127,7 +1273,7 @@ def upload_assembly(request):
             connect_project.WGS_AssemblySummary = (
                 assembly_accession != "" and
                 bool(connect_project.Ref_Accession) and
-                assembly_accession == getattr(connect_project.Ref_Accession, "AccessionNo", None)
+                assembly_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
             )
             connect_project.save()
 
@@ -1172,7 +1318,7 @@ def upload_assembly(request):
         "checkm2_form": Checkm2UploadForm(),
         "amrfinder_form": AmrUploadForm(),
         "assembly_form": assembly_form,
-        "referred_form": ReferredUploadForm(),
+        "referred_form": FinalDataUploadForm(),
         "editing": editing,
     })
 
@@ -1186,24 +1332,47 @@ def upload_assembly(request):
 
 
 
+# @login_required
+# def show_assembly(request):
+#     assembly_summaries = AssemblyScan.objects.all().order_by("id")  # optional ordering
+
+#     total_records = AssemblyScan.objects.count()
+#      # Paginate the queryset to display 20 records per page
+#     paginator = Paginator(assembly_summaries, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+
+#     # Render the template with paginated data
+#     return render(
+#         request,
+#         "wgs_app/show_assembly.html",
+#         {"page_obj": page_obj,
+#          "total_records": total_records,
+#          },  # only send page_obj
+#     )
+
+
 @login_required
 def show_assembly(request):
-    assembly_summaries = AssemblyScan.objects.all().order_by("id")  # optional ordering
+    assembly_summaries = AssemblyScan.objects.all().order_by('-Date_uploaded_as')
+    upload_dates = (
+        AssemblyScan.objects.exclude(Date_uploaded_as__isnull=True)
+        .values_list('Date_uploaded_as', flat=True)
+        .distinct()
+        .order_by('-Date_uploaded_as')
+    )
 
-    total_records = AssemblyScan.objects.count()
+    total_records = FastqSummary.objects.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(assembly_summaries, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Render the template with paginated data
-    return render(
-        request,
-        "wgs_app/show_assembly.html",
-        {"page_obj": page_obj,
-         "total_records": total_records,
-         },  # only send page_obj
-    )
+    return render(request, "wgs_app/show_assembly.html", {
+        "page_obj": page_obj,
+        "upload_dates": upload_dates,
+        "total_records": total_records,
+    })
 
 
 
@@ -1230,6 +1399,33 @@ def delete_all_assembly(request):
 
 
 
+@login_required
+def delete_assembly_by_date(request):
+    if request.method == "POST":
+        upload_date_str = request.POST.get("upload_date")
+        print("🕒 Received upload_date_str:", upload_date_str)
+
+        if not upload_date_str:
+            messages.error(request, "Please select an upload date to delete.")
+            return redirect("show_assembly")
+
+        # Use Django’s date parser
+        upload_date = parse_date(upload_date_str)
+
+        if not upload_date:
+            messages.error(request, f"Invalid date format: {upload_date_str}")
+            return redirect("show_assembly")
+
+        deleted_count, _ = AssemblyScan.objects.filter(Date_uploaded_as=upload_date).delete()
+        messages.success(request, f"✅ Deleted {deleted_count} AssemblyScan records uploaded on {upload_date}.")
+        return redirect("show_assembly")
+
+    messages.error(request, "Invalid request method.")
+    return redirect("show_assembly")
+
+
+
+
 ###################  Amr finder
 @login_required
 def upload_amrfinder(request):
@@ -1253,7 +1449,7 @@ def upload_amrfinder(request):
                 "checkm2_form": Checkm2UploadForm(),
                 "amrfinder_form": amrfinder_form,
                 "assembly_form": AssemblyUploadForm(),
-                "referred_form": ReferredUploadForm(),
+                "referred_form": FinalDataUploadForm(),
                 "editing": editing,
             })
 
@@ -1332,7 +1528,7 @@ def upload_amrfinder(request):
 
             # Step 1: Try to find Referred_Data with this accession (only if non-blank)
             referred_obj = (
-                Referred_Data.objects.filter(AccessionNo=amrfinder_accession).first()
+                Final_Data.objects.filter(f_AccessionNo=amrfinder_accession).first()
                 if amrfinder_accession else None
             )
 
@@ -1419,7 +1615,7 @@ def upload_amrfinder(request):
         "checkm2_form": Checkm2UploadForm(),
         "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": amrfinder_form,
-        "referred_form": ReferredUploadForm(),
+        "referred_form": FinalDataUploadForm(),
         "editing": editing,
     })
 
@@ -1515,159 +1711,6 @@ def delete_amrfinder_by_date(request):
 
 
 
-#### uploading referred data
-@login_required
-@transaction.atomic
-def upload_combined_table(request):
-    form = WGSProjectForm()
-    referred_form = ReferredUploadForm()
-    
-    if request.method == "POST" and request.FILES.get("ReferredDataFile"):
-        try:
-            uploaded_file = request.FILES["ReferredDataFile"]
-            file_name = uploaded_file.name.lower()
-            
-            # Determine file type and read accordingly
-            if file_name.endswith('.csv'):
-                # Read CSV file
-                file = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
-                reader = csv.DictReader(file)
-                rows = list(reader)
-            elif file_name.endswith(('.xlsx', '.xls')):
-                # Read Excel file
-                df = pd.read_excel(uploaded_file)
-                # Convert DataFrame to list of dictionaries
-                rows = df.to_dict('records')
-            else:
-                messages.error(request, "Unsupported file format. Please upload CSV, XLSX, or XLS file.")
-                return render(request, "wgs_app/Add_wgs.html", {
-                    "referred_form": referred_form,
-                    "form": form,
-                    "fastq_form": FastqUploadForm(),
-                    "gambit_form": GambitUploadForm(),
-                    "mlst_form": MlstUploadForm(),
-                    "checkm2_form": Checkm2UploadForm(),
-                    "assembly_form": AssemblyUploadForm(),
-                    "amrfinder_form": AmrUploadForm(),
-                })
-
-            created_ref, updated_ref, created_abx, updated_abx = 0, 0, 0, 0
-
-            # Get all antibiotic codes known to the system
-            known_abx = set(BreakpointsTable.objects.values_list("Whonet_Abx", flat=True))
-
-            # Helper: extract MIC operand and numeric part (handles ≤, ≥, etc.)
-            def parse_mic_value(value_str):
-                if not value_str or pd.isna(value_str):
-                    return "", None
-                value_str = str(value_str).strip()
-                match = re.match(r"^([<>=≤≥]+)?\s*([\d.]+)$", value_str)
-                if match:
-                    operand = match.group(1) or ""
-                    mic_val = float(match.group(2))
-                    return operand, mic_val
-                try:
-                    return "", float(value_str)
-                except ValueError:
-                    return "", None
-
-            # === LOOP THROUGH ROWS ===
-            for row in rows:
-                # Handle both dict keys (CSV) and potential NaN values (Excel)
-                accession = row.get("AccessionNo") or row.get("ID_Number")
-                if not accession or pd.isna(accession):
-                    continue  # skip if missing
-
-                # Convert row values, handling NaN from Excel
-                cleaned_row = {}
-                for k, v in row.items():
-                    if pd.isna(v):
-                        cleaned_row[k] = ""
-                    else:
-                        cleaned_row[k] = v
-
-                # --- Create or update Referred_Data ---
-                ref_obj, ref_created = Referred_Data.objects.update_or_create(
-                    AccessionNo=str(accession).strip(),
-                    defaults={
-                        k: v for k, v in cleaned_row.items()
-                        if k in [f.name for f in Referred_Data._meta.get_fields()]
-                    },
-                )
-                if ref_created:
-                    created_ref += 1
-                else:
-                    updated_ref += 1
-
-                # --- Create/update AntibioticEntry records ---
-                for abx in known_abx:
-                    abx_val = cleaned_row.get(f"{abx}", "")
-                    abx_ris = cleaned_row.get(f"{abx}_RIS", "")
-                    abx_rt_val = cleaned_row.get(f"{abx}_RT", "")
-                    abx_rt_ris = cleaned_row.get(f"{abx}_RT_RIS", "")
-                    
-                    # Convert to string and strip
-                    abx_val = str(abx_val).strip() if abx_val else ""
-                    abx_ris = str(abx_ris).strip() if abx_ris else ""
-                    abx_rt_val = str(abx_rt_val).strip() if abx_rt_val else ""
-                    abx_rt_ris = str(abx_rt_ris).strip() if abx_rt_ris else ""
-
-                    # Skip if all empty
-                    if not any([abx_val, abx_ris, abx_rt_val, abx_rt_ris]):
-                        continue
-
-                    mic_operand, mic_value = parse_mic_value(abx_val)
-                    ret_mic_operand, ret_mic_value = parse_mic_value(abx_rt_val)
-
-                    ab_entry, ab_created = AntibioticEntry.objects.update_or_create(
-                        ab_idNum_referred=ref_obj,
-                        ab_Abx_code=abx,
-                        defaults={
-                            # Sentinel (Initial) values
-                            "ab_MIC_operand": mic_operand or "",
-                            "ab_MIC_value": mic_value if mic_value is not None else None,
-                            "ab_MIC_RIS": abx_ris or "",
-                            "ab_Disk_value": None,
-                            "ab_Disk_RIS": "",
-
-                            # Retest (ARSRL) values
-                            "ab_Retest_MIC_operand": ret_mic_operand or "",
-                            "ab_Retest_MICValue": ret_mic_value if ret_mic_value is not None else None,
-                            "ab_Retest_MIC_RIS": abx_rt_ris or "",
-                            "ab_Retest_DiskValue": None,
-                            "ab_Retest_Disk_RIS": "",
-                        },
-                    )
-
-                    if ab_created:
-                        created_abx += 1
-                    else:
-                        updated_abx += 1
-
-            messages.success(
-                request,
-                f" Upload complete! "
-                f"{created_ref} new Referred_Data, {updated_ref} updated; "
-                f"{created_abx} new AntibioticEntry, {updated_abx} updated."
-            )
-            return redirect("show_data")
-
-        except Exception as e:
-            messages.error(request, f"⚠️ Error processing file: {e}")
-            import traceback
-            print(traceback.format_exc())  # For debugging
-
-    # --- Default view ---
-    return render(request, "wgs_app/Add_wgs.html", {
-        "referred_form": referred_form,
-        "form": form,
-        "fastq_form": FastqUploadForm(),
-        "gambit_form": GambitUploadForm(),
-        "mlst_form": MlstUploadForm(),
-        "checkm2_form": Checkm2UploadForm(),
-        "assembly_form": AssemblyUploadForm(),
-        "amrfinder_form": AmrUploadForm(),
-    })
 
 
 
@@ -1733,86 +1776,176 @@ def upload_combined_table(request):
 
 
 
+# @login_required
+# def view_wgs_overview(request):
+#     referred_list = Referred_Data.objects.all().order_by('AccessionNo')
+#     table_data = []
+
+#     for referred in referred_list:
+#         acc = referred.AccessionNo
+
+#     for referred in referred_list:
+#         # Match projects by either FK or any WGS accession field
+#         projects = WGS_Project.objects.filter(
+#             Q(Ref_Accession__AccessionNo=referred.AccessionNo) |
+#             Q(WGS_FastQ_Acc=referred.AccessionNo) |
+#             Q(WGS_Mlst_Acc=referred.AccessionNo) |
+#             Q(WGS_Checkm2_Acc=referred.AccessionNo) |
+#             Q(WGS_Assembly_Acc=referred.AccessionNo) |
+#             Q(WGS_Gambit_Acc=referred.AccessionNo) |
+#             Q(WGS_Amrfinder_Acc=referred.AccessionNo)
+#         ).distinct()
+
+#         summary_flags = {
+#             'fastq': projects.filter(WGS_FastqSummary=True).exists(),
+#             'mlst': projects.filter(WGS_MlstSummary=True).exists(),
+#             'checkm2': projects.filter(WGS_Checkm2Summary=True).exists(),
+#             'assembly': projects.filter(WGS_AssemblySummary=True).exists(),
+#             'gambit': projects.filter(WGS_GambitSummary=True).exists(),
+#             'amrfinder': projects.filter(WGS_AmrfinderSummary=True).exists(),
+#         }
+
+
+#         # Add related Referred_Data info to each row
+#         table_data.append({
+#             'accession': acc,
+#             'patient_id': referred.Patient_ID,
+#             'patient_name': f"{referred.Last_Name}, {referred.First_Name} {referred.Mid_Name or ''}".strip(),
+#             'age': referred.Age,
+#             'sex': referred.Sex,
+#             'ward': referred.Ward,
+#             'specimen': referred.Spec_Type,
+#             'diagnosis': referred.Diagnosis_ICD10,
+#             'growth': referred.Growth,
+#             'date_collected': referred.Spec_Date,
+#             'summary_flags': summary_flags,
+#         })
+
+#         related_data = {}
+#         if summary_flags['fastq']:
+#             related_data['fastq'] = FastqSummary.objects.filter(fastq_project__in=projects)
+#         if summary_flags['mlst']:
+#             related_data['mlst'] = Mlst.objects.filter(mlst_project__in=projects)
+#         if summary_flags['checkm2']:
+#             related_data['checkm2'] = Checkm2.objects.filter(checkm2_project__in=projects)
+#         if summary_flags['assembly']:
+#             related_data['assembly'] = AssemblyScan.objects.filter(assembly_project__in=projects)
+#         if summary_flags['gambit']:
+#             related_data['gambit'] = Gambit.objects.filter(gambit_project__in=projects)
+#         if summary_flags['amrfinder']:
+#             related_data['amrfinder'] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
+
+#         table_data.append({
+#             'accession': referred.AccessionNo,
+#             'summary_flags': summary_flags,
+#             'related_data': related_data,
+#         })
+
+#     # Count detections
+#     counts = {
+#         'total': len(table_data),
+#         'fastq': sum(1 for entry in table_data if entry['summary_flags']['fastq']),
+#         'gambit': sum(1 for entry in table_data if entry['summary_flags']['gambit']),
+#         'mlst': sum(1 for entry in table_data if entry['summary_flags']['mlst']),
+#         'checkm2': sum(1 for entry in table_data if entry['summary_flags']['checkm2']),
+#         'assembly': sum(1 for entry in table_data if entry['summary_flags']['assembly']),
+#         'amrfinder': sum(1 for entry in table_data if entry['summary_flags']['amrfinder']),
+#     }
+
+#     return render(request, 'wgs_app/Wgs_overview.html', {
+#         'table_data': table_data,
+#         'counts': counts,
+#     })
+
+
+
 @login_required
 def view_wgs_overview(request):
-    referred_list = Referred_Data.objects.all().order_by('AccessionNo')
+    """
+    Displays all isolates (Referred_Data) with flags showing which WGS data exist.
+    Includes basic Referred_Data fields for quick reference.
+    """
+    referred_list = Final_Data.objects.all().order_by("f_AccessionNo")
     table_data = []
 
     for referred in referred_list:
-        acc = referred.AccessionNo
+        acc = referred.f_AccessionNo
 
-    for referred in referred_list:
-        # Match projects by either FK or any WGS accession field
+        # --- Match projects by accession (through FK or any WGS link) ---
         projects = WGS_Project.objects.filter(
-            Q(Ref_Accession__AccessionNo=referred.AccessionNo) |
-            Q(WGS_FastQ_Acc=referred.AccessionNo) |
-            Q(WGS_Mlst_Acc=referred.AccessionNo) |
-            Q(WGS_Checkm2_Acc=referred.AccessionNo) |
-            Q(WGS_Assembly_Acc=referred.AccessionNo) |
-            Q(WGS_Gambit_Acc=referred.AccessionNo) |
-            Q(WGS_Amrfinder_Acc=referred.AccessionNo)
+            Q(Ref_Accession__f_AccessionNo=acc) |
+            Q(WGS_FastQ_Acc=acc) |
+            Q(WGS_Mlst_Acc=acc) |
+            Q(WGS_Checkm2_Acc=acc) |
+            Q(WGS_Assembly_Acc=acc) |
+            Q(WGS_Gambit_Acc=acc) |
+            Q(WGS_Amrfinder_Acc=acc)
         ).distinct()
 
+        # --- Determine which WGS summaries exist ---
         summary_flags = {
-            'fastq': projects.filter(WGS_FastqSummary=True).exists(),
-            'mlst': projects.filter(WGS_MlstSummary=True).exists(),
-            'checkm2': projects.filter(WGS_Checkm2Summary=True).exists(),
-            'assembly': projects.filter(WGS_AssemblySummary=True).exists(),
-            'gambit': projects.filter(WGS_GambitSummary=True).exists(),
-            'amrfinder': projects.filter(WGS_AmrfinderSummary=True).exists(),
+            "fastq": projects.filter(WGS_FastqSummary=True).exists(),
+            "mlst": projects.filter(WGS_MlstSummary=True).exists(),
+            "checkm2": projects.filter(WGS_Checkm2Summary=True).exists(),
+            "assembly": projects.filter(WGS_AssemblySummary=True).exists(),
+            "gambit": projects.filter(WGS_GambitSummary=True).exists(),
+            "amrfinder": projects.filter(WGS_AmrfinderSummary=True).exists(),
         }
 
-
-        # Add related Referred_Data info to each row
-        table_data.append({
-            'accession': acc,
-            'patient_id': referred.Patient_ID,
-            'patient_name': f"{referred.Last_Name}, {referred.First_Name} {referred.Mid_Name or ''}".strip(),
-            'age': referred.Age,
-            'sex': referred.Sex,
-            'ward': referred.Ward,
-            'specimen': referred.Spec_Type,
-            'diagnosis': referred.Diagnosis_ICD10,
-            'growth': referred.Growth,
-            'date_collected': referred.Spec_Date,
-            'summary_flags': summary_flags,
-        })
-
+        # --- Collect related data if present ---
         related_data = {}
-        if summary_flags['fastq']:
-            related_data['fastq'] = FastqSummary.objects.filter(fastq_project__in=projects)
-        if summary_flags['mlst']:
-            related_data['mlst'] = Mlst.objects.filter(mlst_project__in=projects)
-        if summary_flags['checkm2']:
-            related_data['checkm2'] = Checkm2.objects.filter(checkm2_project__in=projects)
-        if summary_flags['assembly']:
-            related_data['assembly'] = AssemblyScan.objects.filter(assembly_project__in=projects)
-        if summary_flags['gambit']:
-            related_data['gambit'] = Gambit.objects.filter(gambit_project__in=projects)
-        if summary_flags['amrfinder']:
-            related_data['amrfinder'] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
+        if summary_flags["fastq"]:
+            related_data["fastq"] = FastqSummary.objects.filter(fastq_project__in=projects)
+        if summary_flags["mlst"]:
+            related_data["mlst"] = Mlst.objects.filter(mlst_project__in=projects)
+        if summary_flags["checkm2"]:
+            related_data["checkm2"] = Checkm2.objects.filter(checkm2_project__in=projects)
+        if summary_flags["assembly"]:
+            related_data["assembly"] = AssemblyScan.objects.filter(assembly_project__in=projects)
+        if summary_flags["gambit"]:
+            related_data["gambit"] = Gambit.objects.filter(gambit_project__in=projects)
+        if summary_flags["amrfinder"]:
+            related_data["amrfinder"] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
 
+        # --- Add combined row with referred info + WGS flags ---
         table_data.append({
-            'accession': referred.AccessionNo,
-            'summary_flags': summary_flags,
-            'related_data': related_data,
+            "accession": acc,
+            "patient_id": referred.f_Patient_ID,
+            "patient_name": f"{referred.f_Last_Name}, {referred.f_First_Name} {referred.f_Mid_Name or ''}".strip(),
+            "age": referred.f_Age,
+            "sex": referred.f_Sex,
+            "ward": referred.f_Ward,
+            "specimen": referred.f_Spec_Type,
+            "diagnosis": referred.f_Diagnosis_ICD10,
+            "growth": referred.f_Growth,
+            "date_collected": referred.f_Spec_Date,
+            "referral_date": referred.f_Referral_Date,
+            "summary_flags": summary_flags,
+            "related_data": related_data,
+
         })
 
-    # Count detections
+    # --- Summary counts for the page header or filters ---
     counts = {
-        'total': len(table_data),
-        'fastq': sum(1 for entry in table_data if entry['summary_flags']['fastq']),
-        'gambit': sum(1 for entry in table_data if entry['summary_flags']['gambit']),
-        'mlst': sum(1 for entry in table_data if entry['summary_flags']['mlst']),
-        'checkm2': sum(1 for entry in table_data if entry['summary_flags']['checkm2']),
-        'assembly': sum(1 for entry in table_data if entry['summary_flags']['assembly']),
-        'amrfinder': sum(1 for entry in table_data if entry['summary_flags']['amrfinder']),
+        "total": len(table_data),
+        "fastq": sum(1 for e in table_data if e["summary_flags"]["fastq"]),
+        "mlst": sum(1 for e in table_data if e["summary_flags"]["mlst"]),
+        "checkm2": sum(1 for e in table_data if e["summary_flags"]["checkm2"]),
+        "assembly": sum(1 for e in table_data if e["summary_flags"]["assembly"]),
+        "gambit": sum(1 for e in table_data if e["summary_flags"]["gambit"]),
+        "amrfinder": sum(1 for e in table_data if e["summary_flags"]["amrfinder"]),
     }
 
-    return render(request, 'wgs_app/Wgs_overview.html', {
-        'table_data': table_data,
-        'counts': counts,
+    paginator = Paginator(referred_list, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, "wgs_app/Wgs_overview.html", {
+        "page_obj" : page_obj,
+        "table_data": table_data,
+        "counts": counts,
     })
+
 
 
 ### download all wgs data 
@@ -1853,7 +1986,7 @@ def download_all_wgs_data(request):
             return df
         ref_map = {}
         for obj in qs:
-            ref_acc = getattr(obj, rel_field).Ref_Accession.AccessionNo if getattr(obj, rel_field).Ref_Accession else None
+            ref_acc = getattr(obj, rel_field).Ref_Accession.f_AccessionNo if getattr(obj, rel_field).Ref_Accession else None
             ref_map[obj.id] = ref_acc
         df.insert(1, 'Ref_Accession', df['id'].map(ref_map))
         return df
@@ -1972,7 +2105,7 @@ def download_matched_wgs_data(request):
     mode = request.GET.get("mode", "any").lower()  # 'any' or 'all'
 
     # Collect valid accessions from Referred_Data ----
-    referred_acc = set(Referred_Data.objects.values_list("AccessionNo", flat=True))
+    referred_acc = set(Final_Data.objects.values_list("f_AccessionNo", flat=True))
 
     # Collect accessions from WGS tables ----
     fastq_acc = set(FastqSummary.objects.filter(FastQ_Accession__in=referred_acc)
@@ -1999,7 +2132,7 @@ def download_matched_wgs_data(request):
         )
 
     if not matched_accessions:
-        return HttpResponse("No matching WGS accessions found in Referred_Data.", content_type="text/plain")
+        return HttpResponse("No matching WGS accessions found in Final Referred_Data.", content_type="text/plain")
 
     # Filter only matched records ----
     fastq_qs = FastqSummary.objects.filter(FastQ_Accession__in=matched_accessions)
@@ -2015,7 +2148,7 @@ def download_matched_wgs_data(request):
             return pd.DataFrame()
         df = pd.DataFrame.from_records(qs.values())
         df.insert(0, "Table", model_name)
-        df.insert(1, "AccessionNo", df[acc_field])
+        df.insert(1, "f_AccessionNo", df[acc_field])
         return df
 
     fastq_df = qs_to_df(fastq_qs, "FastqSummary", "FastQ_Accession")

@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'phonenumber_field',
     'phonenumbers',
     'apps.wgs_app.apps.WgsAppConfig', 
+    'apps.home_final', 
     # "apps.wgs_app",
 ]
 
