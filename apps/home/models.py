@@ -4,6 +4,7 @@ from django.core.validators import EmailValidator
 from apps.wgs_app.models import *
 from apps.home_final.models import *
 from phonenumber_field.modelfields import PhoneNumberField
+from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -446,3 +447,15 @@ class Recommendation(models.Model):
     
 
 
+class FieldMapping(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    raw_field = models.CharField(max_length=255)
+    mapped_field = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'raw_field')
+
+    def __str__(self):
+        return f"{self.user.username}: {self.raw_field} → {self.mapped_field}"

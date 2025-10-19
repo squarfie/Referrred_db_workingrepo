@@ -1,0 +1,220 @@
+{% extends "layouts/base.html" %}
+{% block title %}Upload Raw Data{% endblock %}
+
+{% block content %}
+
+<!-- Header Section -->
+<div class="header bg-primary pb-6" style="min-height: 200px; background-image: url(/static/assets/img/theme/viruses.jpg); background-size: cover; background-position: center center;">
+  <span class="mask bg-gradient-default opacity-6"></span>
+  <div class="container-fluid">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">Field Mapper Tool</h6>
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+              <li class="breadcrumb-item active" aria-current="page">Upload Raw Data</li>
+            </ol>
+          </nav>
+        </div>
+        <div class="col-lg-6 col-5 text-right">
+          <button class="btn btn-sm btn-neutral" onclick="history.back()">Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="container-fluid mt--6">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+      <div class="card shadow">
+        <!-- Card Header -->
+        <div class="card-header border-0" style="background: linear-gradient(135deg, #2dce89 0%, #2dcecc 100%);">
+          <div class="row align-items-center">
+            <div class="col">
+              <h3 class="mb-0 text-white">
+                <i class="ni ni-cloud-upload-96 mr-2"></i>Upload Raw File for Mapping
+              </h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="card-body">
+          <!-- Instructions -->
+          <div class="alert alert-info mb-4" role="alert">
+            <h4 class="alert-heading">
+              <i class="fas fa-info-circle mr-2"></i>Instructions
+            </h4>
+            <hr>
+            <p class="mb-2"><strong>Step 1:</strong> Upload your Excel (.xlsx, .xls) or CSV (.csv) file</p>
+            <p class="mb-2"><strong>Step 2:</strong> Map your raw column headers to model fields</p>
+            <p class="mb-0"><strong>Step 3:</strong> Download the mapped Excel file</p>
+          </div>
+
+          <!-- Upload Form -->
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="form-group">
+              <label class="form-control-label" for="raw_file">
+                <i class="fas fa-file-excel text-success mr-1"></i>Select File
+              </label>
+              <div class="custom-file">
+                <input type="file" 
+                       name="raw_file" 
+                       id="raw_file"
+                       accept=".xlsx,.xls,.csv" 
+                       class="custom-file-input" 
+                       required>
+                <label class="custom-file-label" for="raw_file">Choose file...</label>
+              </div>
+              <small class="form-text text-muted">
+                <i class="fas fa-exclamation-circle mr-1"></i>
+                Supported formats: Excel (.xlsx, .xls) and CSV (.csv)
+              </small>
+            </div>
+
+            <!-- File Preview Info -->
+            <div id="file-info" class="alert alert-secondary d-none mb-4" role="alert">
+              <div class="d-flex align-items-center">
+                <div class="mr-3">
+                  <i class="fas fa-file-alt fa-2x text-primary"></i>
+                </div>
+                <div>
+                  <h5 class="mb-1">Selected File</h5>
+                  <p class="mb-0" id="file-name-display"></p>
+                  <small class="text-muted" id="file-size-display"></small>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-center mt-4">
+              <button type="submit" class="btn btn-success btn-lg">
+                <i class="ni ni-send mr-2"></i>Continue to Mapping
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Card Footer -->
+        <div class="card-footer bg-light">
+          <div class="row align-items-center">
+            <div class="col">
+              <small class="text-muted">
+                <i class="fas fa-shield-alt mr-1"></i>
+                Your data is processed securely and temporarily stored only for mapping purposes.
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Help Card -->
+      <div class="card shadow mt-4">
+        <div class="card-header bg-gradient-warning">
+          <h4 class="mb-0 text-white">
+            <i class="fas fa-question-circle mr-2"></i>Need Help?
+          </h4>
+        </div>
+        <div class="card-body">
+          <h5 class="text-primary">Supported File Formats:</h5>
+          <ul>
+            <li><strong>Excel Files:</strong> .xlsx, .xls</li>
+            <li><strong>CSV Files:</strong> .csv (comma-separated values)</li>
+          </ul>
+          
+          <h5 class="text-primary mt-3">Tips:</h5>
+          <ul>
+            <li>Ensure your file has column headers in the first row</li>
+            <li>Column headers should be descriptive and unique</li>
+            <li>Remove any merged cells or complex formatting</li>
+            <li>Large files may take longer to process</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Styles -->
+<style>
+.alert-info {
+  background-color: #d1ecf1;
+  border-color: #bee5eb;
+  color: #0c5460;
+}
+
+.custom-file-label::after {
+  content: "Browse";
+  background-color: #5e72e4;
+  color: white;
+}
+
+.btn-lg {
+  padding: 0.875rem 2rem;
+  font-size: 1rem;
+}
+
+.card-shadow {
+  box-shadow: 0 0 2rem 0 rgba(136, 152, 170, 0.15);
+}
+</style>
+
+{% endblock %}
+
+<!-- JavaScript -->
+{% block javascripts %}
+<script>
+// Update file input label and show file info
+document.getElementById('raw_file').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  
+  if (file) {
+    // Update custom file input label
+    var label = e.target.nextElementSibling;
+    label.textContent = file.name;
+    
+    // Show file info
+    var fileInfo = document.getElementById('file-info');
+    var fileName = document.getElementById('file-name-display');
+    var fileSize = document.getElementById('file-size-display');
+    
+    fileName.textContent = file.name;
+    
+    // Format file size
+    var size = file.size;
+    var sizeStr = '';
+    if (size < 1024) {
+      sizeStr = size + ' bytes';
+    } else if (size < 1024 * 1024) {
+      sizeStr = (size / 1024).toFixed(2) + ' KB';
+    } else {
+      sizeStr = (size / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+    fileSize.textContent = 'Size: ' + sizeStr;
+    
+    fileInfo.classList.remove('d-none');
+  }
+});
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+  var fileInput = document.getElementById('raw_file');
+  
+  if (!fileInput.files || fileInput.files.length === 0) {
+    e.preventDefault();
+    alert('Please select a file to upload.');
+    return false;
+  }
+  
+  // Show loading state
+  var submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+});
+</script>
+{% endblock %}

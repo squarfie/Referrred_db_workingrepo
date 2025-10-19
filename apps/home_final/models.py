@@ -152,7 +152,6 @@ class Final_Data(models.Model):
     f_Concordance_Check = models.CharField(max_length=255, blank=True)
     f_Concordance_by = models.CharField(max_length=255, blank=True)
     f_Concordance_by_Initials = models.CharField(max_length=255, blank=True)
-    f_abx_code = models.CharField(max_length=25, blank=True, default="")
 
 
     f_x_mrse = models.CharField(max_length=255, blank=True, null=True, default="")

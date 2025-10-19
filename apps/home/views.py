@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 
 from io import TextIOWrapper
+import io
+import json
 import os
 from django.conf import settings
 from django.templatetags.static import static
@@ -2361,6 +2363,10 @@ def copy_data_to_final(request, id):
 @login_required
 @transaction.atomic
 def upload_combined_table(request):
+    """
+    Upload referred data (Referred_Data + AntibioticEntry) 
+    using user-defined field mappings from FieldMapping.
+    """
     form = WGSProjectForm()
     referred_form = ReferredUploadForm()
 
@@ -2369,62 +2375,48 @@ def upload_combined_table(request):
             uploaded_file = request.FILES["ReferredDataFile"]
             file_name = uploaded_file.name.lower()
 
-            # Load the file
+            # --- Load file ---
             if file_name.endswith(".csv"):
                 file = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
-                reader = csv.DictReader(file)
-                df = pd.DataFrame(reader)
+                df = pd.read_csv(file)
             elif file_name.endswith((".xlsx", ".xls")):
                 df = pd.read_excel(uploaded_file)
             else:
-                messages.error(request, "Unsupported file format. Please upload CSV, XLSX, or XLS file.")
+                messages.error(request, "Unsupported file format. Please upload CSV, XLSX, or XLS.")
                 return render(request, "wgs_app/Add_wgs.html", {
                     "referred_form": referred_form,
                     "form": form,
-                    "fastq_form": FastqUploadForm(),
-                    "gambit_form": GambitUploadForm(),
-                    "mlst_form": MlstUploadForm(),
-                    "checkm2_form": Checkm2UploadForm(),
-                    "assembly_form": AssemblyUploadForm(),
-                    "amrfinder_form": AmrUploadForm(),
                 })
 
-            # Transpose if Needed 
-            # If the file is oriented with samples as columns instead of rows
-            if df.shape[0] < df.shape[1] and "AccessionNo" not in df.columns:
-                df = df.transpose()
-                df.columns = df.iloc[0]  # set headers from first row
-                df = df[1:]              # drop header row
+            # --- Apply user-defined mappings ---
+            user_mappings = dict(
+                FieldMapping.objects.filter(user=request.user)
+                .values_list("raw_field", "mapped_field")
+            )
+            if user_mappings:
+                df.rename(columns=user_mappings, inplace=True)
+                print(f"[UPLOAD] Applied {len(user_mappings)} user field mappings.")
+            else:
+                messages.warning(request, "⚠️ No saved field mappings found. Using raw headers.")
 
+            # --- Normalize headers (fallback cleanup) ---
+            def normalize_header(header):
+                key = str(header).strip().lower().replace("_", " ").replace("-", " ")
+                return re.sub(r"\s+", " ", key).strip().title()
+
+            df.columns = [normalize_header(c) for c in df.columns]
+
+            # --- Prepare data ---
             rows = df.to_dict("records")
-
-            # site codes and setup
             site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
             model_fields = [f.name for f in Referred_Data._meta.get_fields()]
             known_abx = set(BreakpointsTable.objects.values_list("Whonet_Abx", flat=True))
 
             created_ref, updated_ref, created_abx, updated_abx = 0, 0, 0, 0
 
-            # field map
-            FIELD_MAP = {
-                "patient id": "Patient_ID",
-                "specimen type": "Spec_Type",
-                "collection date": "Spec_Date",
-                "diagnosis code": "Diagnosis_ICD10",
-                "ward/unit": "Ward",
-                "growth result": "Growth",
-                "accession number": "AccessionNo",
-
-            }
-
-            def normalize_header(header):
-                key = header.strip().lower()
-                key = key.replace("_", " ").replace("-", " ")
-                key = re.sub(r"\s+", " ", key).strip()
-                return FIELD_MAP.get(key, header)
-
-            # helper for parsing mic values
+            # --- Helper Functions ---
             def parse_mic_value(value_str):
+                """Extract operator and numeric MIC value (e.g. '<=0.5' → ('<=', 0.5))"""
                 if not value_str or pd.isna(value_str):
                     return "", None
                 value_str = str(value_str).strip()
@@ -2437,7 +2429,7 @@ def upload_combined_table(request):
                     return "", None
 
             def extract_site_code(accession_no):
-                """Find 3-letter site code inside the accession number."""
+                """Extract 3-letter site code from accession number (if exists)."""
                 for code in site_codes:
                     if re.search(rf"{code}", str(accession_no), re.IGNORECASE):
                         return code
@@ -2445,43 +2437,33 @@ def upload_combined_table(request):
 
             def parse_batch_info(batch_name):
                 """
-                Extract BatchCode info from string like '1.1 GMH_09122019_1.1_0001-0009'
-                Returns dict: {batch_no, total_batch, ref_no}
+                Parse batch-related details from a batch name like:
+                '1.1 GMH_09122019_1.1_0001-0009'
                 """
                 if not batch_name or pd.isna(batch_name):
                     return {"BatchNo": "", "TotalBatch": "", "RefNo": ""}
-
                 batch_name = str(batch_name)
                 batch_match = re.search(r"(\d+)\.(\d+)", batch_name)
                 range_match = re.search(r"_(\d{4}-\d{4})", batch_name)
-
-                batch_no = batch_match.group(1) if batch_match else ""
-                total_batch = batch_match.group(2) if batch_match else ""
-                ref_no = range_match.group(1) if range_match else ""
-
                 return {
-                    "BatchNo": batch_no,
-                    "TotalBatch": total_batch,
-                    "RefNo": ref_no,
+                    "BatchNo": batch_match.group(1) if batch_match else "",
+                    "TotalBatch": batch_match.group(2) if batch_match else "",
+                    "RefNo": range_match.group(1) if range_match else "",
                 }
 
-            # --- STEP 5: Process Rows ---
+            # --- Process each row ---
             for row in rows:
-                cleaned_row = {}
-                for k, v in row.items():
-                    mapped_key = normalize_header(k)
-                    cleaned_row[mapped_key] = "" if pd.isna(v) else v
+                cleaned_row = {k: ("" if pd.isna(v) else v) for k, v in row.items()}
 
                 accession = cleaned_row.get("AccessionNo") or cleaned_row.get("ID_Number")
                 if not accession:
                     continue
 
-                # Extract additional info
+                # Extract site and batch info
                 site_code = extract_site_code(accession)
-                batch_name = cleaned_row.get("Batch_Name") or cleaned_row.get("batch_name", "")
+                batch_name = cleaned_row.get("Batch_Name", "")
                 batch_info = parse_batch_info(batch_name)
 
-                # Merge into defaults
                 cleaned_row.update({
                     "Site_Code": site_code,
                     "BatchNo": batch_info["BatchNo"],
@@ -2489,9 +2471,10 @@ def upload_combined_table(request):
                     "RefNo": batch_info["RefNo"],
                 })
 
+                # Keep only model fields
                 valid_fields = {k: v for k, v in cleaned_row.items() if k in model_fields}
 
-                # --- Create/Update Referred_Data ---
+                # --- Create or update Referred_Data record ---
                 ref_obj, ref_created = Referred_Data.objects.update_or_create(
                     AccessionNo=str(accession).strip(),
                     defaults=valid_fields,
@@ -2499,7 +2482,7 @@ def upload_combined_table(request):
                 created_ref += int(ref_created)
                 updated_ref += int(not ref_created)
 
-                # --- Antibiotic Records ---
+                # --- Antibiotic Entries ---
                 for abx in known_abx:
                     abx_val = str(cleaned_row.get(abx, "")).strip()
                     abx_ris = str(cleaned_row.get(f"{abx}_RIS", "")).strip()
@@ -2527,10 +2510,10 @@ def upload_combined_table(request):
                     created_abx += int(ab_created)
                     updated_abx += int(not ab_created)
 
-            # --- STEP 6: Summary ---
+            # --- Success message ---
             messages.success(
                 request,
-                f" Upload complete! "
+                f"✅ Upload complete! "
                 f"{created_ref} new Referred_Data, {updated_ref} updated; "
                 f"{created_abx} new AntibioticEntry, {updated_abx} updated."
             )
@@ -2541,7 +2524,7 @@ def upload_combined_table(request):
             traceback.print_exc()
             messages.error(request, f"⚠️ Error processing file: {e}")
 
-    # --- Default View ---
+    # --- Default render (GET request) ---
     return render(request, "wgs_app/Add_wgs.html", {
         "referred_form": referred_form,
         "form": form,
@@ -2552,3 +2535,180 @@ def upload_combined_table(request):
         "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": AmrUploadForm(),
     })
+
+
+
+
+
+
+
+@login_required
+def field_mapper_tool(request):
+    """
+    STEP 1: Upload a raw file and preview headers for mapping.
+    """
+    if request.method == "POST" and request.FILES.get("raw_file"):
+        uploaded_file = request.FILES["raw_file"]
+
+        # --- Read file to extract headers ---
+        try:
+            if uploaded_file.name.endswith(".csv"):
+                df = pd.read_csv(uploaded_file, nrows=1)
+            else:
+                df = pd.read_excel(uploaded_file, nrows=1)
+        except Exception as e:
+            messages.error(request, f"Error reading file: {e}")
+            return redirect("field_mapper_tool")
+
+        raw_headers = df.columns.tolist()
+
+        # --- Save file temporarily to session ---
+        # Create temp directory if it doesn't exist
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_uploads')
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # Generate unique filename
+        temp_filename = f"{request.user.id}_{uploaded_file.name}"
+        temp_filepath = os.path.join(temp_dir, temp_filename)
+        
+        # Save file
+        with open(temp_filepath, 'wb+') as destination:
+            for chunk in uploaded_file.chunks():
+                destination.write(chunk)
+        
+        # Store path in session
+        request.session['temp_file_path'] = temp_filepath
+        request.session['temp_file_name'] = uploaded_file.name
+
+        # --- Get model field lists ---
+        final_fields = [f.name for f in Final_Data._meta.fields if f.name != "id"]
+        abx_fields = list(
+            BreakpointsTable.objects.filter(Show=True)
+            .values_list("Whonet_Abx", flat=True)
+            .distinct()
+        )
+
+        # --- Load saved mappings ---
+        saved_mappings = FieldMapping.objects.filter(user=request.user)
+        saved_dict = {m.raw_field: m.mapped_field for m in saved_mappings}
+
+        context = {
+            "raw_headers": raw_headers,
+            "final_fields": final_fields,
+            "abx_fields": abx_fields,
+            "saved_mappings": saved_dict,
+            "file_name": uploaded_file.name,
+        }
+
+        return render(request, "home/map_fields.html", context)
+
+    # --- GET request (upload step) ---
+    return render(request, "home/upload_raw.html")
+
+
+@login_required
+def generate_mapped_excel(request):
+    """
+    STEP 2: Apply user mappings and generate the mapped Excel file.
+    """
+    if request.method == "POST":
+        try:
+            # Get mapping from POST data
+            mapping_json = request.POST.get("mapping", "{}")
+            mapping = json.loads(mapping_json)
+
+            # Get file from session
+            temp_file_path = request.session.get('temp_file_path')
+            temp_file_name = request.session.get('temp_file_name', 'output.xlsx')
+
+            if not temp_file_path or not os.path.exists(temp_file_path):
+                messages.error(request, "File not found. Please upload the file again.")
+                return redirect("field_mapper_tool")
+
+            # Read the file
+            try:
+                if temp_file_name.endswith(".csv"):
+                    df = pd.read_csv(temp_file_path)
+                else:
+                    df = pd.read_excel(temp_file_path)
+            except Exception as e:
+                messages.error(request, f"Error reading file: {e}")
+                return redirect("field_mapper_tool")
+
+            # Save mappings to database
+            for raw_field, mapped_field in mapping.items():
+                if mapped_field:
+                    FieldMapping.objects.update_or_create(
+                        user=request.user,
+                        raw_field=raw_field,
+                        defaults={"mapped_field": mapped_field},
+                    )
+
+            # Apply mappings
+            mapped_cols = {r: m for r, m in mapping.items() if m}
+
+            if not mapped_cols:
+                # Export raw file if no mapping
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                    df.to_excel(writer, index=False, sheet_name="Raw_Data")
+                output.seek(0)
+                
+                # Clean up temp file
+                cleanup_temp_file(temp_file_path, request)
+                
+                response = HttpResponse(
+                    output.getvalue(),
+                    content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                response["Content-Disposition"] = 'attachment; filename="Raw_Data.xlsx"'
+                return response
+
+            # Rename columns and export
+            df.rename(columns=mapped_cols, inplace=True)
+            
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df.to_excel(writer, index=False, sheet_name="Mapped_Data")
+            output.seek(0)
+
+            # Clean up temp file
+            cleanup_temp_file(temp_file_path, request)
+
+            response = HttpResponse(
+                output.getvalue(),
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+            
+            # Generate output filename
+            base_name = os.path.splitext(temp_file_name)[0]
+            response["Content-Disposition"] = f'attachment; filename="{base_name}_Mapped.xlsx"'
+            
+            messages.success(request, "Mapped file generated successfully!")
+            return response
+
+        except Exception as e:
+            print(f"[ERROR] generate_mapped_excel: {e}")
+            messages.error(request, f"Error generating mapped file: {e}")
+            return redirect("field_mapper_tool")
+
+    return redirect("field_mapper_tool")
+
+
+@login_required
+def clear_mappings(request):
+    """
+    Clear all saved field mappings for the current user.
+    """
+    if request.method == "POST":
+        FieldMapping.objects.filter(user=request.user).delete()
+        messages.success(request, "Your saved field mappings were cleared.")
+    return redirect("field_mapper_tool")
+
+
+def cleanup_temp_file(file_path, request):
+    """
+    Helper function to delete temporary file and clear session.
+    """
+    if file_path and os.path.exists(file_path):
+            os.remove(file_path)

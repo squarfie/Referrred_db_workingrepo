@@ -65,6 +65,9 @@ urlpatterns = [
 
     path("copy_to_final/<int:id>/", views.copy_data_to_final, name="copy_data_to_final"),
     path("upload_raw/", views.upload_combined_table, name='upload_combined_table'),
+    path("field-mapper-tool/", views.field_mapper_tool, name="field_mapper_tool"),
+    path("generate-mapped-excel/", views.generate_mapped_excel, name="generate_mapped_excel"),
+    path("clear-mappings/", views.clear_mappings, name="clear_mappings"),
     
     #include all app's urls
     path('upload/', include('apps.wgs_app.urls')),
