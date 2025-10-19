@@ -46,9 +46,9 @@ class Batch_Table(models.Model):
 
 class Meta:
     db_table ="Batch_Table"
-
-
-    
+    constraints = [
+        models.UniqueConstraint(fields=['bat_AccessionNo', 'bat_Batch_Code'], name='unique_batch_accession')
+    ]
 
 
 class Referred_Data(models.Model):
@@ -231,6 +231,9 @@ class Referred_Data(models.Model):
     
     class Meta:
         db_table ="Referred_Data"
+        constraints = [
+            models.UniqueConstraint(fields=['AccessionNo', 'Batch_Code'], name='unique_accession_batch')
+        ]
 
 
 

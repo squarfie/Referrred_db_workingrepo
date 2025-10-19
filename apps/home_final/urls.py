@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 urlpatterns = [
         path('upload', views.upload_final_combined_table, name='upload_final_combined_table'),
+        path('upload_antibiotic', views.upload_antibiotic_entries, name='upload_antibiotic_entries'),
         path('show', views.show_final_data, name='show_final_data'),
         path('delete/<int:pk>/', views.delete_final_data, name='delete_final_data'),
         path('del_all', views.delete_all_final_data, name='delete_all_final_data'),

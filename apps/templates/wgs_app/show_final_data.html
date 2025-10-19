@@ -92,6 +92,8 @@
             <th>Accession No.</th>
             <th>Referral Date</th>
             <th>Patient Name</th>
+            <th>Organism</th>
+            <th>Specimen</th>
           </tr>
         </thead>
         <tbody class="list">
@@ -114,6 +116,8 @@
             </td>
             <td>{{ final.f_Referral_Date}}</td>
             <td>{{ final.f_First_Name}} {{final.f_Mid_Name}} {{final.f_Last_Name}}</td>
+            <td>{{ final.f_ars_OrgCode}}</td>
+            <td>{{ final.f_Spec_Type }}</td>
           </tr>
         
           {% endfor %}
@@ -160,7 +164,7 @@
 
 
     <!-- Card Footer with Pagination -->
-    <div class="card-footer py-4 bg-light">
+    <div class="card-footer py-4 bg-white">
       <div class="row align-items-center">
         <!-- Go To Page Form -->
         <div class="col-md-4">

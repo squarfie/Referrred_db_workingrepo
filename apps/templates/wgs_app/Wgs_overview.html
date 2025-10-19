@@ -20,10 +20,7 @@
         <div class="col-lg-6 col-5 text-right">
           <a class="btn btn-sm btn-neutral" href="{% url 'batch_create_view' %}">New Batch</a>
           <a class="btn btn-sm btn-neutral" href="{% url 'upload_wgs_view' %}">Upload Data</a>
-          <a href="{% url 'download_matched_wgs_data' %}" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#downloadModal">Download WGS Data</a>
-              <!-- <button class="btn btn-success" data-toggle="modal" data-target="#downloadModal">
-             Download WGS Data
-            </button> -->
+          <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#downloadModal">Download WGS Data</button>
           <button class="btn btn-sm btn-neutral" onclick="history.back()">Back</button>
         </div>
       </div>
@@ -37,13 +34,11 @@
     <div class="card-header bg-gradient-primary border-0">
       <div class="row align-items-center">
         <div class="col">
-          <h3 class="mb-0 text-white">
-            <i class="ni ni-atom mr-2"></i>WGS Data Overview
-          </h3>
+          <h3 class="mb-0 text-white"><i class="ni ni-atom mr-2"></i>WGS Data Overview</h3>
         </div>
         <div class="col text-right">
-          <span class="text-white">
-            <strong>{{ table_data|length }}</strong> Accession(s) in Total
+          <span class="text-white counter-text">
+            Loaded <strong style="color: #201cf0;">{{ table_data|length }} Accession(s)</strong> with sequencing data. 
           </span>
         </div>
       </div>
@@ -53,7 +48,6 @@
       <!-- Filter Section -->
       <div class="row mb-4">
         <div class="col-12">
-
           <div class="d-flex align-items-center justify-content-between flex-wrap">
             <h5 class="mb-0"><i class="ni ni-ui-04 mr-2"></i>Filter by Data Type:</h5>
             <div class="d-flex gap-2 flex-wrap">
@@ -72,7 +66,7 @@
               <button class="btn btn-sm btn-outline-danger filter-btn" data-filter="assembly">
                 <i class="ni ni-settings mr-1"></i>Assembly
               </button>
-              <button class="btn btn-sm filter-btn" data-filter="amrfinder" style="border-color: #8965e0; color: #4c1e6b;">
+              <button class="btn btn-sm btn-outline-purple filter-btn" data-filter="amrfinder">
                 <i class="ni ni-lock-circle-open mr-1"></i>AMRFinder
               </button>
               <button class="btn btn-sm btn-secondary" id="clear-filter">
@@ -83,9 +77,10 @@
         </div>
       </div>
 
+      <!-- Table -->
       <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
-        <table class="table table-hover table-flush align-middle mb-0" id="wgs-table" style="max-height: 500px;  overflow-x: auto;">
-          <thead class="thead-light">
+        <table class="table table-hover table-flush align-middle mb-0" id="wgs-table">
+          <thead class="thead-light sticky-top">
             <tr class="text-center">
               <th class="text-left">Accession No</th>
               <th><i class="ni ni-cloud-upload-96 text-success"></i> FastQ</th>
@@ -98,452 +93,93 @@
             </tr>
           </thead>
           <tbody>
-            
             {% for entry in table_data %}
-
-            <tr class="text-center data-row" 
-                data-fastq="{% if entry.summary_flags.fastq %}true{% else %}false{% endif %}"
-                data-gambit="{% if entry.summary_flags.gambit %}true{% else %}false{% endif %}"
-                data-mlst="{% if entry.summary_flags.mlst %}true{% else %}false{% endif %}"
-                data-checkm2="{% if entry.summary_flags.checkm2 %}true{% else %}false{% endif %}"
-                data-assembly="{% if entry.summary_flags.assembly %}true{% else %}false{% endif %}"
-                data-amrfinder="{% if entry.summary_flags.amrfinder %}true{% else %}false{% endif %}">
-              <td class="text-left">
-                <strong class="text-primary">{{ entry.accession }}</strong>
-              </td>
+            <tr class="text-center data-row"
+                data-fastq="{{ entry.summary_flags.fastq|yesno:'true,false' }}"
+                data-gambit="{{ entry.summary_flags.gambit|yesno:'true,false' }}"
+                data-mlst="{{ entry.summary_flags.mlst|yesno:'true,false' }}"
+                data-checkm2="{{ entry.summary_flags.checkm2|yesno:'true,false' }}"
+                data-assembly="{{ entry.summary_flags.assembly|yesno:'true,false' }}"
+                data-amrfinder="{{ entry.summary_flags.amrfinder|yesno:'true,false' }}">
+              <td class="text-left"><strong class="text-primary">{{ entry.accession }}</strong></td>
+              <td>{% if entry.summary_flags.fastq %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
+              <td>{% if entry.summary_flags.gambit %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
+              <td>{% if entry.summary_flags.mlst %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
+              <td>{% if entry.summary_flags.checkm2 %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
+              <td>{% if entry.summary_flags.assembly %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
+              <td>{% if entry.summary_flags.amrfinder %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
               <td>
-                {% if entry.summary_flags.fastq %}
-                  <span class="badge badge-success">✓</span>
-                {% else %}
-                  <span class="badge badge-light">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if entry.summary_flags.gambit %}
-                  <span class="badge badge-success">✓</span>
-                {% else %}
-                  <span class="badge badge-light">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if entry.summary_flags.mlst %}
-                  <span class="badge badge-success">✓</span>
-                {% else %}
-                  <span class="badge badge-light">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if entry.summary_flags.checkm2 %}
-                  <span class="badge badge-success">✓</span>
-                {% else %}
-                  <span class="badge badge-light">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if entry.summary_flags.assembly %}
-                  <span class="badge badge-success">✓</span>
-                {% else %}
-                  <span class="badge badge-light">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if entry.summary_flags.amrfinder %}
-                  <span class="badge badge-success">✓</span>
-                {% else %}
-                  <span class="badge badge-light">—</span>
-                {% endif %}
-              </td>
-              <td>
-                <button class="btn btn-sm btn-primary toggle-view-btn" type="button" 
-                        data-toggle="collapse" 
-                        data-target="#details{{ forloop.counter }}"
-                        aria-expanded="false">
+                <button class="btn btn-sm btn-primary toggle-view-btn" type="button" data-accession="{{ entry.accession }}">
                   <i class="ni ni-zoom-split-in"></i> <span class="btn-text">View</span>
                 </button>
               </td>
             </tr>
-
-            <!-- Expandable Details Row -->
-            <tr class="collapse detail-row" id="details{{ forloop.counter }}"
-                data-referred="{% if entry.summary_flags.fastq or entry.summary_flags.gambit or entry.summary_flags.mlst or entry.summary_flags.checkm2 or entry.summary_flags.assembly or entry.summary_flags.amrfinder %}true{% else %}false{% endif %}"
-                data-fastq="{% if entry.summary_flags.fastq %}true{% else %}false{% endif %}"
-                data-gambit="{% if entry.summary_flags.gambit %}true{% else %}false{% endif %}"
-                data-mlst="{% if entry.summary_flags.mlst %}true{% else %}false{% endif %}"
-                data-checkm2="{% if entry.summary_flags.checkm2 %}true{% else %}false{% endif %}"
-                data-assembly="{% if entry.summary_flags.assembly %}true{% else %}false{% endif %}"
-                data-amrfinder="{% if entry.summary_flags.amrfinder %}true{% else %}false{% endif %}">
-
-              <td colspan="8" class="p-4" style="background-color: #f7fafc;">
-                <div class="row">
-                  {% if entry.related_data %}
-                    <!-- Expandable Details Row -->
-                            <div class="col-12 mb-4">
-                              <div class="card mb-0">
-                                <div class="card-header py-2" style="background: linear-gradient(135deg, #164b77 0%, #509bd8 100%); color: white;">
-                                  <h5 class="mb-0 text-white">
-                                    <i class="ni ni-single-02 mr-2"></i> Isolate Details
-                                  </h5>
-                                </div>
-                                <div class="card-body p-3">
-                                  <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
-                                  <table class="table table-sm table-bordered mb-0">
-                                    <thead class="thead-light text-center">
-                                      <tr>
-                                      <th colspan="3" scope="col">
-                                        Identification
-                                      </th>
-                                      <th colspan="3" scope="col">
-                                        Specimen Details
-                                      </th>
-                                      <th colspan="3" scope="col">
-                                        Patient Details
-                                      </th >
-                                      <th colspan="3" scope="col">
-                                        Phenotypic Findings
-                                      </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                        <td colspan="3">
-                                          <strong>Accession No:</strong>&nbsp; <strong class="text-danger">  {{ entry.accession }} </strong> <br>
-                                          <strong>Referral Date:</strong> {{ entry.referral_date|date:"F j, Y" }} <br>       
-                                          <strong>Patient ID:</strong>&nbsp; {{ entry.patient_id }} <br>
-                                        </td>
-                                        <td colspan="3">
-                                            <strong>Specimen Type:</strong> &nbsp;{{ entry.specimen }} <br>
-                                            <strong>Specimen Date:</strong> &nbsp;{{ entry.date_collected|date:"Y-m-d" }} <br>
-                                            <strong>Growth:</strong>&nbsp; {{ entry.growth }}
-                                        </td>
-                                        <td colspan="3">
-                                            <strong>Patient Name:</strong>&nbsp; {{ entry.patient_name }} <br>
-                                            <div style="display: flex; justify-content: space-between; width: 200px;">
-                                                <span><strong>Sex:</strong> {{ entry.sex }}</span>
-                                                <span><strong>Age:</strong> {{ entry.age }}</span>
-                                              </div>
-                                            <strong>Ward:</strong> &nbsp;{{ entry.ward }}
-                                        </td>
-                                        <td colspan="3">
-
-                                        </td>
-                                        </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                                </div>
-                                </div>
-                                 </div>
-                            {% endif %}
-                  <!-- FastQ Data -->
-                  {% if entry.related_data.fastq %}
-                  <div class="col-12 mb-4">
-                    <div class="card mb-0">
-                      <div class="card-header bg-gradient-success py-2">
-                        <h5 class="mb-0 text-white">
-                          <i class="ni ni-cloud-upload-96 mr-2"></i>FastQ Summary 
-                        </h5>
-                      </div>
-                      <div class="card-body p-3">
-                        <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
-
-                          <table class="table table-sm table-bordered mb-0">
-                            <thead class="thead-light">
-                              <tr>
-                                <th>Sample</th>
-                                <th>Sequencing</th>
-                                <th>Before Reads</th>
-                                <th>After Reads</th>
-                                <th>Q30 Rate</th>
-                                <th>GC Content</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {% for f in entry.related_data.fastq %}
-                              <tr>
-                                <td>{{ f.sample|default:"N/A" }}</td>
-                                <td>{{ f.sequencing|default:"N/A" }}</td>
-                                <td>{{ f.before_total_reads|default:"N/A" }}</td>
-                                <td>{{ f.after_total_reads|default:"N/A" }}</td>
-                                <td>{{ f.post_trim_q30_rate|default:"N/A" }}</td>
-                                <td>{{ f.after_gc_content|default:"N/A" }}</td>
-                              </tr>
-                              {% endfor %}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {% endif %}
-
-                  <!-- Gambit Data -->
-                  {% if entry.related_data.gambit %}
-                  <div class="col-12 mb-4">
-                    <div class="card mb-0">
-                      <div class="card-header bg-gradient-primary py-2">
-                        <h5 class="mb-0 text-white">
-                          <i class="ni ni-chart-bar-32 mr-2"></i>Gambit Summary
-                        </h5>
-                      </div>
-                      <div class="card-body p-3">
-                        <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
-                          <table class="table table-sm table-bordered mb-0">
-                            <thead class="thead-light">
-                              <tr>
-                                <th>Sample</th>
-                                <th>Predicted Name</th>
-                                <th>Closest Genomes</th>
-                                <th>Distance</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {% for g in entry.related_data.gambit %}
-                              <tr>
-                                <td>{{ g.sample|default:"N/A" }}</td>
-                                <td>{{ g.predicted_name|default:"N/A" }}</td>
-                                <td>{{ g.closest_genomes|default:"N/A" }}</td>
-                                <td>{{ g.closest_distance|default:"N/A" }}</td>
-                              </tr>
-                              {% endfor %}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {% endif %}
-
-                  <!-- MLST Data -->
-                  {% if entry.related_data.mlst %}
-                  <div class="col-12 mb-4">
-                    <div class="card mb-0">
-                      <div class="card-header bg-gradient-warning py-2">
-                        <h5 class="mb-0 text-white">
-                          <i class="ni ni-atom mr-2"></i>MLST Summary
-                        </h5>
-                      </div>
-                      <div class="card-body p-3">
-                        <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
-                          <table class="table table-sm table-bordered mb-0">
-                            <thead class="thead-light">
-                              <tr>
-                                <th>Name</th>
-                                <th>Scheme</th>
-                                <th>MLST</th>
-                                <th>Alleles</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {% for m in entry.related_data.mlst %}
-                              <tr>
-                                <td>{{ m.name|default:"N/A" }}</td>
-                                <td>{{ m.scheme|default:"N/A" }}</td>
-                                <td>{{ m.mlst|default:"N/A" }}</td>
-                                <td>{{ m.alleles|default:"N/A" }}</td>
-                              </tr>
-                              {% endfor %}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {% endif %}
-
-                  <!-- CheckM2 Data -->
-                  {% if entry.related_data.checkm2 %}
-                  <div class="col-12 mb-4">
-                    <div class="card mb-0">
-                      <div class="card-header bg-gradient-info py-2">
-                        <h5 class="mb-0 text-white">
-                          <i class="ni ni-check-bold mr-2"></i>CheckM2 Summary
-                        </h5>
-                      </div>
-                      <div class="card-body p-3">
-                        <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
-                          <table class="table table-sm table-bordered mb-0">
-                            <thead class="thead-light">
-                              <tr>
-                                <th>Name</th>
-                                <th>Completeness (%)</th>
-                                <th>Contamination (%)</th>
-                                <th>Quality Score</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {% for c in entry.related_data.checkm2 %}
-                              <tr>
-                                <td>{{ c.Name|default:"N/A" }}</td>
-                                <td>{{ c.Completeness|default:"N/A" }}</td>
-                                <td>{{ c.Contamination|default:"N/A" }}</td>
-                                <td>{{ c.quality|default:"N/A" }}</td>
-                              </tr>
-                              {% endfor %}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {% endif %}
-
-                  <!-- Assembly Data -->
-                  {% if entry.related_data.assembly %}
-                  <div class="col-12 mb-4">
-                    <div class="card mb-0">
-                      <div class="card-header bg-gradient-danger py-2">
-                        <h5 class="mb-0 text-white">
-                          <i class="ni ni-settings mr-2"></i>Assembly Summary
-                        </h5>
-                      </div>
-                      <div class="card-body p-3">
-                        <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
-                          <table class="table table-sm table-bordered mb-0">
-                            <thead class="thead-light">
-                              <tr>
-                                <th>Sample</th>
-                                <th>Total Contigs</th>
-                                <th>N50 Length</th>
-                                <th>Total Length</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {% for a in entry.related_data.assembly %}
-                              <tr>
-                                <td>{{ a.sample|default:"N/A" }}</td>
-                                <td>{{ a.total_contig|default:"N/A" }}</td>
-                                <td>{{ a.n50_contig_length|default:"N/A" }}</td>
-                                <td>{{ a.total_contig_length|default:"N/A" }}</td>
-                              </tr>
-                              {% endfor %}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {% endif %}
-
-                  <!-- AMRFinder Data -->
-                  {% if entry.related_data.amrfinder %}
-                  <div class="col-12 mb-4">
-                    <div class="card mb-0">
-                      <div class="card-header py-2" style="background: linear-gradient(135deg, #8965e0 0%, #bc65e0 100%);">
-                        <h5 class="mb-0 text-white">
-                          <i class="ni ni-lock-circle-open mr-2"></i>AMRFinder Summary
-                        </h5>
-                      </div>
-                      <div class="card-body p-3">
-                        <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
-                          <table class="table table-sm table-bordered mb-0">
-                            <thead class="thead-light">
-                              <tr>
-                                <th>Name</th>
-                                <th>Gene Symbol</th>
-                                <th>Class</th>
-                                <th>Subclass</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {% for a in entry.related_data.amrfinder %}
-                              <tr>
-                                <td>{{ a.name|default:"N/A" }}</td>
-                                <td>{{ a.element_symbol|default:"N/A" }}</td>
-                                <td>{{ a.class_field|default:"N/A" }}</td>
-                                <td>{{ a.subclass|default:"N/A" }}</td>
-                              </tr>
-                              {% endfor %}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {% endif %}
-
-                  <!-- No Data Message -->
-                  {% if not entry.related_data.fastq and not entry.related_data.gambit and not entry.related_data.mlst and not entry.related_data.checkm2 and not entry.related_data.assembly and not entry.related_data.amrfinder %}
-                  <div class="col-12">
-                    <div class="alert alert-info mb-0">
-                      <i class="ni ni-notification-70 mr-2"></i>
-                      No detailed WGS data available for this accession.
-                    </div>
-                  </div>
-                  {% endif %}
-
-                </div>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="8" class="text-center py-5">
-                <i class="ni ni-folder-17 text-muted" style="font-size: 3rem;"></i>
-                <p class="text-muted mt-3 mb-0">No WGS data found</p>
-              </td>
-            </tr>
             {% endfor %}
-
-
           </tbody>
-
         </table>
-      
+      </div>
 
-              <!-- Download Selection Modal -->
-        <div class="modal fade" id="downloadModal" tabindex="-1" role="dialog" aria-labelledby="downloadModalLabel" aria-hidden="true">
-          <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content shadow-lg border-0">
-              <div class="modal-header bg-gradient-primary text-white">
-                <h5 class="modal-title" id="downloadModalLabel">Download WGS Data</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                  <span aria-hidden="true">&times;</span>
-                </button>
-              </div>
-              <div class="modal-body">
-                <p class="text-muted mb-3">
-                  Choose which type of WGS data you want to download:
-                </p>
-                <ul>
-                  <li><strong>Complete Sets:</strong> Accessions found in <em>all</em> WGS tables (FastQ, MLST, CheckM2, Assembly, AMRFinder, Gambit)</li>
-                  <li><strong>Partial Sets:</strong> Accessions found in <em>any</em> WGS table</li>
-                </ul>
-              </div>
-              <div class="modal-footer justify-content-between">
-                <a href="{% url 'download_all_wgs_data' %}?mode=all" class="btn btn-primary">
-                  <i class="ni ni-check-bold"></i> Download Complete Sets
+      <!-- Download Modal -->
+      <div class="modal fade" id="downloadModal" tabindex="-1" role="dialog" aria-labelledby="downloadModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-gradient-primary text-white">
+              <h5 class="modal-title" id="downloadModalLabel">Download WGS Data</h5>
+              <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p class="text-muted mb-3">Choose which type of WGS data you want to download:</p>
+              <ul>
+                <li><strong>Complete Sets:</strong> Found in <em>all</em> WGS tables</li>
+                <li><strong>Partial Sets:</strong> Found in <em>any</em> WGS table</li>
+              </ul>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <a href="{% url 'download_matched_wgs_data' %}?mode=all" class="btn btn-primary">
+                  <i class="ni ni-check-bold"></i> Complete Sets
                 </a>
                 <a href="{% url 'download_matched_wgs_data' %}?mode=any" class="btn btn-success">
-                  <i class="ni ni-cloud-download-95"></i> Download Partial Sets
+                  <i class="ni ni-cloud-download-95"></i> Partial Sets
                 </a>
-              </div>
             </div>
           </div>
         </div>
-
       </div>
+
     </div>
   </div>
 </div>
 
-
 <style>
+/* Color utilities */
 .text-purple {
   color: #8965e0;
 }
 
+.text-warning {
+  color: #fbc658;
+}
+
+/* Badge styles */
 .badge-light {
   background-color: #e9ecef;
   color: #6c757d;
 }
 
-.collapse.show {
-  background-color: #f7fafc;
+.btn-outline-purple {
+  color: #8965e0;
+  border-color: #8965e0;
 }
 
-.table-flush tbody tr:last-child td {
-  border-bottom: 0;
+.btn-outline-purple:hover {
+  background-color: #8965e0;
+  border-color: #8965e0;
+  color: white;
 }
 
+/* Filter button active states */
 .filter-btn.active {
   background-color: var(--btn-bg);
   color: white;
@@ -575,40 +211,59 @@
   border-color: #8965e0;
 }
 
+/* Utilities */
 .gap-2 {
   gap: 0.5rem;
 }
 
-
+.sticky-top {
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 10;
+}
 </style>
 
-
-<!-- Toggling from View to Hide button and filter buttons -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const filterButtons = document.querySelectorAll('.filter-btn');
   const clearButton = document.getElementById('clear-filter');
   const dataRows = document.querySelectorAll('.data-row');
-  const detailRows = document.querySelectorAll('.detail-row');
-  const toggleButtons = document.querySelectorAll('.toggle-view-btn');
-  
+  const counterText = document.querySelector('.counter-text');
   let activeFilter = null;
 
-  // Filter functionality for each filter buttons
-  filterButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      const filterType = this.getAttribute('data-filter');
+  function applyFilter(filterType) {
+    dataRows.forEach(row => {
+      const hasData = row.dataset[filterType] === 'true';
+      row.style.display = hasData ? '' : 'none';
+    });
+    updateCounter();
+  }
+
+  function showAllRows() {
+    dataRows.forEach(row => row.style.display = '');
+    updateCounter();
+  }
+
+  function updateCounter() {
+    const visibleCount = Array.from(dataRows).filter(r => r.style.display !== 'none').length;
+    if (counterText) {
+      const label = activeFilter ? `with ${activeFilter.toUpperCase()}` : 'in Total';
+      counterText.innerHTML = `<strong>${visibleCount}</strong> Accession(s) ${label}`;
+    }
+  }
+
+  filterButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const filterType = this.dataset.filter;
       
-      // Toggle active state
       if (activeFilter === filterType) {
-        // Deactivate current filter
         activeFilter = null;
-        this.classList.remove('active');
+        btn.classList.remove('active');
         showAllRows();
       } else {
-        // Activate new filter
-        filterButtons.forEach(btn => btn.classList.remove('active'));
-        this.classList.add('active');
+        filterButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
         activeFilter = filterType;
         applyFilter(filterType);
       }
@@ -617,77 +272,72 @@ document.addEventListener('DOMContentLoaded', function() {
 
   clearButton.addEventListener('click', function() {
     activeFilter = null;
-    filterButtons.forEach(btn => btn.classList.remove('active'));
+    filterButtons.forEach(b => b.classList.remove('active'));
     showAllRows();
   });
 
   // Toggle view button functionality
-  toggleButtons.forEach((button, index) => {
+  const toggleButtons = document.querySelectorAll('.toggle-view-btn');
+
+  toggleButtons.forEach(button => {
     button.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      
-      const targetId = this.getAttribute('data-target');
-      const targetElement = document.querySelector(targetId);
-      const isCurrentlyExpanded = targetElement && targetElement.classList.contains('show');
-      
-      // Toggle the collapse
-      $(targetElement).collapse('toggle');
-      
+
+      const accession = this.dataset.accession;
+      const parentRow = this.closest('tr');
+      const existingRow = document.querySelector(`#details-${accession}`);
       const icon = this.querySelector('i');
       const text = this.querySelector('.btn-text');
-      
-      // Update button immediately
-      if (isCurrentlyExpanded) {
-        // Currently expanded, will collapse
+
+      // If details already shown → remove (toggle off)
+      if (existingRow) {
+        existingRow.remove();
         icon.className = 'ni ni-zoom-split-in';
         text.textContent = 'View';
         this.classList.remove('btn-secondary');
         this.classList.add('btn-primary');
-      } else {
-        // Currently collapsed, will expand
-        icon.className = 'ni ni-zoom-split-out';
-        text.textContent = 'Hide';
-        this.classList.remove('btn-primary');
-        this.classList.add('btn-secondary');
+        return;
       }
+
+      // Create new placeholder row
+      const newRow = document.createElement('tr');
+      newRow.id = `details-${accession}`;
+      newRow.innerHTML = `
+        <td colspan="8" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+        </td>`;
+      parentRow.insertAdjacentElement('afterend', newRow);
+
+      // Change button to "Hide" state
+      icon.className = 'ni ni-zoom-split-out';
+      text.textContent = 'Hide';
+      this.classList.remove('btn-primary');
+      this.classList.add('btn-secondary');
+
+      // Fetch WGS details dynamically
+      fetch(`/wgs/get-details/${accession}/`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.html) {
+            newRow.innerHTML = `<td colspan="8">${data.html}</td>`;
+          } else {
+            newRow.innerHTML = `<td colspan="8" class="text-center text-danger">Failed to load details.</td>`;
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          newRow.innerHTML = `<td colspan="8" class="text-center text-danger">Error loading details.</td>`;
+          // Revert button on error
+          icon.className = 'ni ni-zoom-split-in';
+          text.textContent = 'View';
+          this.classList.remove('btn-secondary');
+          this.classList.add('btn-primary');
+        });
     });
   });
-
-  function applyFilter(filterType) {
-    dataRows.forEach((row, index) => {
-      const hasData = row.getAttribute(`data-${filterType}`) === 'true';
-      const detailRow = detailRows[index];
-      
-      if (hasData) {
-        row.style.display = '';
-        if (detailRow) detailRow.style.display = '';
-      } else {
-        row.style.display = 'none';
-        if (detailRow) {
-          detailRow.style.display = 'none';
-          // Close the detail if it's open
-          $(detailRow).collapse('hide');
-        }
-      }
-    });
-    
-    updateResultCount();
-  }
-
-  function showAllRows() {
-    dataRows.forEach(row => row.style.display = '');
-    detailRows.forEach(row => row.style.display = '');
-    updateResultCount();
-  }
-
-  function updateResultCount() {
-    const visibleRows = Array.from(dataRows).filter(row => row.style.display !== 'none');
-    const countElement = document.querySelector('.card-header .text-right span');
-    if (countElement) {
-      countElement.innerHTML = `<strong>${visibleRows.length}</strong> Accession(s) ${activeFilter ? `with ${activeFilter.toUpperCase()}` : 'in Total'}`;
-    }
-  }
 });
 </script>
 

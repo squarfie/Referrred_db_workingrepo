@@ -7,7 +7,7 @@ from apps.home_final.models import *
 # Connector Table for WGS Projects
 class WGS_Project(models.Model):
     Ref_Accession = models.ForeignKey(
-        Final_Data,
+        "home_final.Final_Data",   # connects to Final_Data model
         on_delete=models.CASCADE,   #DELETE WHEN FINAL REFERRED DATA ACCESSION IS DELETED
         null=True,
         blank=True,

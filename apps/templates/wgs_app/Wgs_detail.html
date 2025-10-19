@@ -1,0 +1,514 @@
+{% load static %}
+
+<div class="card mb-4 shadow-sm">
+  <div class="card-header py-3" style="background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);">
+    <h5 class="mb-0 text-white">
+      <i class="ni ni-single-copy-04 mr-2"></i>Referred Isolate Information
+    </h5>
+  </div>
+  <div class="card-body p-3">
+
+    <!-- Identification & Specimen -->
+    <div class="row mb-3">
+      <div class="col-lg-6">
+        <div class="info-section" style="border-left-color: #5e72e4;">
+          <h6 class="section-title mb-2">
+            <i class="ni ni-badge mr-2" style="color: #5e72e4;"></i>Identification
+          </h6>
+          <div class="info-item mb-2">
+            <label>Accession No:</label>
+            <p class="info-value font-weight-bold" style="color: #5e72e4;">{{ entry.accession }}</p>
+          </div>
+          <div class="row">
+            <div class="col-6">
+              <div class="info-item mb-0">
+                <label>Referral Date:</label>
+                <p class="info-value small">{{ entry.referral_date|date:"M j, Y"|default:"N/A" }}</p>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="info-item mb-0">
+                <label>Patient ID:</label>
+                <p class="info-value small">{{ entry.patient_id|default:"N/A" }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="info-section" style="border-left-color: #2dce89;">
+          <h6 class="section-title mb-2">
+            <i class="ni ni-album-2 mr-2" style="color: #2dce89;"></i>Specimen Details
+          </h6>
+          <div class="row">
+            <div class="col-6">
+              <div class="info-item mb-2">
+                <label>Type:</label>
+                <p class="info-value small">{{ entry.specimen|default:"N/A" }}</p>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="info-item mb-2">
+                <label>Collection Date:</label>
+                <p class="info-value small">{{ entry.date_collected|date:"M j, Y"|default:"N/A" }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="info-item mb-0">
+            <label>Growth:</label>
+            <p class="info-value">
+              {% if entry.growth %}
+                <span class="badge badge-success badge-sm">{{ entry.growth }}</span>
+              {% else %}
+                <span class="badge badge-secondary badge-sm">N/A</span>
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Patient & Clinical -->
+    <div class="row mb-3">
+      <div class="col-lg-6">
+        <div class="info-section" style="border-left-color: #11cdef;">
+          <h6 class="section-title mb-2">
+            <i class="ni ni-single-02 mr-2" style="color: #11cdef;"></i>Patient Information
+          </h6>
+          <div class="info-item mb-2">
+            <label>Name:</label>
+            <p class="info-value small">{{ entry.patient_name }}</p>
+          </div>
+          <div class="row">
+            <div class="col-4">
+              <div class="info-item mb-2">
+                <label>Sex:</label>
+                <p class="info-value">
+                  {% if entry.sex == 'M' %}
+                    <span class="badge badge-info badge-sm">Male</span>
+                  {% elif entry.sex == 'F' %}
+                    <span class="badge badge-pink badge-sm">Female</span>
+                  {% else %}
+                    <span class="badge badge-secondary badge-sm">{{ entry.sex|default:"N/A" }}</span>
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="info-item mb-2">
+                <label>Age:</label>
+                <p class="info-value">
+                  <span class="badge badge-sm badge-age">{{ entry.age|default:"N/A" }}</span>
+                </p>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="info-item mb-0">
+                <label>Ward:</label>
+                <p class="info-value small">{{ entry.ward|default:"N/A" }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="info-section" style="border-left-color: #fb6340;">
+          <h6 class="section-title mb-2">
+            <i class="ni ni-chart-pie-35 mr-2" style="color: #fb6340;"></i>Clinical Findings
+          </h6>
+          <div class="info-item mb-2">
+            <label>Organism:</label>
+            <p class="info-value font-weight-bold small" style="color: #fb6340;">
+              {{ entry.organism|default:"N/A" }}
+            </p>
+          </div>
+          <div class="row">
+            <div class="col-6">
+              <div class="info-item mb-2">
+                <label>Referring Lab:</label>
+                <p class="info-value small">{{ entry.sitecode|default:"N/A" }}</p>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="info-item mb-0">
+                {% if entry.antibiotics %}
+                <div class="antibiotic-grid">
+                  {% for abx in entry.antibiotics %}
+                    <div class="antibiotic-item">
+                      <span class="abx-code">{{ abx.code }}</span>
+                      <span class="abx-result badge badge-sm
+                        {% if abx.ris|upper == 'R' %}badge-danger
+                        {% elif abx.ris|upper == 'S' %}badge-success
+                        {% elif abx.ris|upper == 'I' %}badge-warning
+                        {% else %}badge-secondary{% endif %}">
+                        {{ abx.ris|default:abx.disk|default:abx.mic|default:"N/A" }}
+                      </span>
+                    </div>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-secondary small mb-0">
+                  <i class="ni ni-notification-70"></i> No antibiotic data available.
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WGS Data Sections -->
+    {% if entry.related_data.fastq %}
+      <div class="mt-4">
+        <div class="card mb-0">
+          <div class="card-header bg-gradient-success py-2">
+            <h5 class="mb-0 text-white">
+              <i class="ni ni-cloud-upload-96 mr-2"></i>FastQ Summary
+            </h5>
+          </div>
+          <div class="card-body p-3">
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+              <table class="table table-sm table-bordered mb-0">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Sample</th>
+                    <th>Sequencing</th>
+                    <th>Before Reads</th>
+                    <th>After Reads</th>
+                    <th>Q30 Rate</th>
+                    <th>GC Content</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for f in entry.related_data.fastq %}
+                  <tr>
+                    <td>{{ f.sample|default:"N/A" }}</td>
+                    <td>{{ f.sequencing|default:"N/A" }}</td>
+                    <td>{{ f.before_total_reads|default:"N/A" }}</td>
+                    <td>{{ f.after_total_reads|default:"N/A" }}</td>
+                    <td>{{ f.post_trim_q30_rate|default:"N/A" }}</td>
+                    <td>{{ f.after_gc_content|default:"N/A" }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if entry.related_data.gambit %}
+      <div class="mt-4">
+        <div class="card mb-0">
+          <div class="card-header bg-gradient-primary py-2">
+            <h5 class="mb-0 text-white">
+              <i class="ni ni-chart-bar-32 mr-2"></i>Gambit Summary
+            </h5>
+          </div>
+          <div class="card-body p-3">
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+              <table class="table table-sm table-bordered mb-0">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Sample</th>
+                    <th>Predicted Name</th>
+                    <th>Closest Genomes</th>
+                    <th>Distance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for g in entry.related_data.gambit %}
+                  <tr>
+                    <td>{{ g.sample|default:"N/A" }}</td>
+                    <td>{{ g.predicted_name|default:"N/A" }}</td>
+                    <td>{{ g.closest_genomes|default:"N/A" }}</td>
+                    <td>{{ g.closest_distance|default:"N/A" }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if entry.related_data.mlst %}
+      <div class="mt-4">
+        <div class="card mb-0">
+          <div class="card-header bg-gradient-warning py-2">
+            <h5 class="mb-0 text-white">
+              <i class="ni ni-atom mr-2"></i>MLST Summary
+            </h5>
+          </div>
+          <div class="card-body p-3">
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+              <table class="table table-sm table-bordered mb-0">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Name</th>
+                    <th>Scheme</th>
+                    <th>MLST</th>
+                    <th>Alleles</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for m in entry.related_data.mlst %}
+                  <tr>
+                    <td>{{ m.name|default:"N/A" }}</td>
+                    <td>{{ m.scheme|default:"N/A" }}</td>
+                    <td>{{ m.mlst|default:"N/A" }}</td>
+                    <td>{{ m.alleles|default:"N/A" }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if entry.related_data.checkm2 %}
+      <div class="mt-4">
+        <div class="card mb-0">
+          <div class="card-header bg-gradient-info py-2">
+            <h5 class="mb-0 text-white">
+              <i class="ni ni-check-bold mr-2"></i>CheckM2 Summary
+            </h5>
+          </div>
+          <div class="card-body p-3">
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+              <table class="table table-sm table-bordered mb-0">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Name</th>
+                    <th>Completeness (%)</th>
+                    <th>Contamination (%)</th>
+                    <th>Quality</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for c in entry.related_data.checkm2 %}
+                  <tr>
+                    <td>{{ c.Name|default:"N/A" }}</td>
+                    <td>{{ c.Completeness|default:"N/A" }}</td>
+                    <td>{{ c.Contamination|default:"N/A" }}</td>
+                    <td>{{ c.quality|default:"N/A" }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if entry.related_data.assembly %}
+      <div class="mt-4">
+        <div class="card mb-0">
+          <div class="card-header bg-gradient-danger py-2">
+            <h5 class="mb-0 text-white">
+              <i class="ni ni-settings mr-2"></i>Assembly Summary
+            </h5>
+          </div>
+          <div class="card-body p-3">
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+              <table class="table table-sm table-bordered mb-0">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Sample</th>
+                    <th>Total Contigs</th>
+                    <th>N50 Length</th>
+                    <th>Total Length</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for a in entry.related_data.assembly %}
+                  <tr>
+                    <td>{{ a.sample|default:"N/A" }}</td>
+                    <td>{{ a.total_contig|default:"N/A" }}</td>
+                    <td>{{ a.n50_contig_length|default:"N/A" }}</td>
+                    <td>{{ a.total_contig_length|default:"N/A" }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if entry.related_data.amrfinder %}
+      <div class="mt-4">
+        <div class="card mb-0">
+          <div class="card-header bg-gradient-purple py-2">
+            <h5 class="mb-0 text-white">
+              <i class="ni ni-lock-circle-open mr-2"></i>AMRFinder Summary
+            </h5>
+          </div>
+          <div class="card-body p-3">
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+              <table class="table table-sm table-bordered mb-0">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Name</th>
+                    <th>Gene Symbol</th>
+                    <th>Class</th>
+                    <th>Subclass</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for amr in entry.related_data.amrfinder %}
+                  <tr>
+                    <td>{{ amr.name|default:"N/A" }}</td>
+                    <td>{{ amr.element_symbol|default:"N/A" }}</td>
+                    <td>{{ amr.class_field|default:"N/A" }}</td>
+                    <td>{{ amr.subclass|default:"N/A" }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if not entry.related_data.fastq and not entry.related_data.mlst and not entry.related_data.gambit and not entry.related_data.checkm2 and not entry.related_data.assembly and not entry.related_data.amrfinder %}
+      <div class="alert alert-info mt-3">
+        <i class="ni ni-notification-70 mr-2"></i> No WGS data found for this accession.
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<style>
+/* Color utilities */
+.text-purple { color: #8965e0; }
+.text-success { color: #2dce89; }
+.text-warning { color: #fbc658; }
+.text-primary { color: #5e72e4; }
+.text-info { color: #11cdef; }
+.text-danger { color: #f5365c; }
+
+/* Badge styles */
+.badge-light { background-color: #e9ecef; color: #6c757d; }
+.badge-pink { background-color: #f3a4b5; color: white; }
+.badge-age { background-color: #5e72e4; color: white; }
+.badge-sm { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+
+/* Gradient backgrounds */
+.bg-gradient-success { background: linear-gradient(135deg, #2dce89 0%, #1fa876 100%); }
+.bg-gradient-primary { background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%); }
+.bg-gradient-warning { background: linear-gradient(135deg, #fbc658 0%, #f9b44d 100%); }
+.bg-gradient-info { background: linear-gradient(135deg, #11cdef 0%, #0fa5c2 100%); }
+.bg-gradient-danger { background: linear-gradient(135deg, #f5365c 0%, #d93450 100%); }
+.bg-gradient-purple { background: linear-gradient(135deg, #8965e0 0%, #6c4ec9 100%); }
+
+/* Info section styles */
+.info-section {
+  background-color: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #5e72e4;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #32325d;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.info-section[style*="border-left-color: #5e72e4"] .section-title {
+  border-bottom-color: #5e72e4;
+  color: #5e72e4;
+}
+
+.info-section[style*="border-left-color: #2dce89"] .section-title {
+  border-bottom-color: #2dce89;
+  color: #2dce89;
+}
+
+.info-section[style*="border-left-color: #11cdef"] .section-title {
+  border-bottom-color: #11cdef;
+  color: #11cdef;
+}
+
+.info-section[style*="border-left-color: #fb6340"] .section-title {
+  border-bottom-color: #fb6340;
+  color: #fb6340;
+}
+
+.info-item {
+  margin-bottom: 1rem;
+}
+
+.info-item label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #8898aa;
+  margin-bottom: 0.25rem;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 1rem;
+  color: #32325d;
+  margin-bottom: 0;
+  font-weight: 500;
+}
+
+/* Antibiotic grid */
+.antibiotic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.antibiotic-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.abx-code {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #32325d;
+}
+
+.abx-result {
+  font-size: 0.75rem;
+  width: fit-content;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .info-section {
+    padding: 1rem;
+  }
+  
+  .section-title {
+    font-size: 0.9rem;
+  }
+
+  .antibiotic-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

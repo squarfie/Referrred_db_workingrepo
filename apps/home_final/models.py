@@ -166,6 +166,9 @@ class Final_Data(models.Model):
     
     class Meta:
         db_table ="Final_Data"
+        constraints = [
+            models.UniqueConstraint(fields=['f_AccessionNo', 'f_Batch_Code'], name='unique_final_accession_batch')
+        ]
 
 class FinalData_upload(models.Model):
     FinalDataFile = models.FileField(upload_to='uploads/final/', null=True, blank=True)
@@ -237,3 +240,10 @@ class Final_AntibioticEntry(models.Model):
 
     class Meta:
         db_table = "FinalAntibioticEntry"
+
+
+class FinalAntibiotic_upload(models.Model):
+    FinalAntibioticFile = models.FileField(upload_to='uploads/final/antibiotic/', null=True, blank=True)
+
+    class Meta:
+        db_table ="FinalAntibiotic_upload"

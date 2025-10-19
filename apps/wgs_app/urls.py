@@ -43,7 +43,6 @@ urlpatterns = [
     
 
     path('wgs/data-overview', views.view_wgs_overview, name='view_wgs_overview'),
-    path('wgs/download-wgs/', views.download_all_wgs_data, name='download_all_wgs_data'),
     path('wgs/download_matched/', views.download_matched_wgs_data, name='download_matched_wgs_data'),
 
     
@@ -54,6 +53,8 @@ urlpatterns = [
     path("delete_by_date/assembly", views.delete_assembly_by_date, name="delete_assembly_by_date"),
     path("delete_by_date/amrfinder", views.delete_amrfinder_by_date, name="delete_amrfinder_by_date"),
   
+
+    path('get-details/<str:accession>/', views.get_wgs_details, name='get_wgs_details'),
 
 
     # path('overview/', views.view_data_overview, name='view_data_overview'),

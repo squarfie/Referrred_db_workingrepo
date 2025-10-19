@@ -1,4 +1,5 @@
 
+from collections import defaultdict
 import datetime
 from io import TextIOWrapper
 import io
@@ -6,7 +7,7 @@ import re
 from django.db import transaction
 import csv
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from .forms import *
 from apps.home.forms import *
@@ -26,7 +27,7 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from datetime import datetime
 from django.utils.dateparse import parse_date
-
+from django.template.loader import render_to_string
 # helper to read uploaded file (csv or excel)
 def read_uploaded_file(uploaded_file):
     import pandas as pd
@@ -246,11 +247,11 @@ def upload_fastq(request):
                 if not valid_code:
                     return ""
 
-                # ✅ Extract prefix that includes ARS (e.g., "18ARS")
+                # Extract prefix that includes ARS (e.g., "18ARS")
                 prefix_match = re.search(r"(\d*ARS)", name)
                 prefix = prefix_match.group(1) if prefix_match else "ARS"
 
-                # ✅ Extract numeric digits after the site code (e.g., 0055)
+                # Extract numeric digits after the site code (e.g., 0055)
                 num_match = re.search(rf"{re.escape(valid_code)}[-]?(\d+)", name)
                 digits = num_match.group(1) if num_match else ""
 
@@ -437,12 +438,36 @@ def delete_fastq(request, pk):
 
 
 
+# def delete_all_fastq(request):
+#     FastqSummary.objects.all().delete()
+#     messages.success(request, "FastQ Records have been deleted successfully.")
+#     return redirect('show_fastq')  # Redirect to the table view
+
+
+@login_required
 def delete_all_fastq(request):
+    """
+    Safely delete all FastQ records but preserve WGS_Project links
+    for other data types (MLST, CheckM2, Gambit, etc.).
+    """
+    # Step 1: Clear only FastQ fields in existing WGS_Project records
+    updated_count = WGS_Project.objects.filter(
+        WGS_FastQ_Acc__isnull=False
+    ).exclude(WGS_FastQ_Acc="").update(
+        WGS_FastQ_Acc="",
+        WGS_FastqSummary=False
+    )
+
+    # Step 2: Delete all FastQ summary data
     FastqSummary.objects.all().delete()
-    messages.success(request, "FastQ Records have been deleted successfully.")
-    return redirect('show_fastq')  # Redirect to the table view
 
+    # Step 3: Show success message
+    messages.success(
+        request,
+        f"All FastQ records deleted successfully, and {updated_count} WGS Project(s) were unlinked from FastQ data."
+    )
 
+    return redirect("show_fastq")
 
 
 @login_required
@@ -552,36 +577,30 @@ def upload_gambit(request):
                 if not gambit_accession: 
                     gambit_accession = ""
 
-                # Step 1: try to find Referred_Data with this accession
+                # try to find Referred_Data with this accession
                 referred_obj = Final_Data.objects.filter(
                     f_AccessionNo=gambit_accession
                 ).first()
 
-                # Step 2: create or get WGS_Project
-                connect_project, _ = WGS_Project.objects.get_or_create(
+              # Allow multiple WGS_Project per accession
+                connect_project = WGS_Project.objects.create(
                     Ref_Accession=referred_obj if referred_obj else None,
-                    defaults={
-                        "WGS_GambitSummary": False,
-                        "WGS_FastqSummary": False,
-                        "WGS_MlstSummary": False,
-                        "WGS_Checkm2Summary": False,
-                        "WGS_AssemblySummary": False,
-                        "WGS_AmrfinderSummary": False,
-                    }
+                    WGS_GambitSummary=False,
+                    WGS_FastqSummary=False,
+                    WGS_MlstSummary=False,
+                    WGS_Checkm2Summary=False,
+                    WGS_AssemblySummary=False,
+                    WGS_AmrfinderSummary=False,
                 )
 
-                # 🔎 Step 3: update Gambit accession in project
-                connect_project.WGS_Gambit_Acc = gambit_accession
-
-                # 🔎 Step 4: summary flag = True if gambit_accession matches Ref_Accession.AccessionNo
-                connect_project.WGS_GambitSummary = (
-                    bool(connect_project.Ref_Accession) 
-                    and gambit_accession == connect_project.Ref_Accession.f_AccessionNo
+                connect_project.WGS_FastQ_Acc = gambit_accession
+                connect_project.WGS_FastqSummary = (
+                    bool(gambit_accession)
+                    and bool(connect_project.Ref_Accession)
+                    and gambit_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
                 )
-
                 connect_project.save()
-
-                # 🔄 Step 5: update or create Gambit record
+                # update or create Gambit record
                 Gambit.objects.create(
                     Gambit_Accession=gambit_accession,
                     gambit_project=connect_project,
@@ -616,25 +635,6 @@ def upload_gambit(request):
 
 
 
-# @login_required
-# def show_gambit(request):
-#     gambit_summaries = Gambit.objects.all()
-    
-#     total_records = Gambit.objects.count()
-#          # Paginate the queryset to display 20 records per page
-#     paginator = Paginator(gambit_summaries, 20)
-#     page_number = request.GET.get('page')
-#     page_obj = paginator.get_page(page_number)
-
-#     # Render the template with paginated data
-#     return render(
-#         request,
-#         "wgs_app/show_gambit.html",
-#         {"page_obj": page_obj,
-#          "total_records": total_records,
-#          },  # only send page_obj
-#     )
-
 
 @login_required
 def show_gambit(request):
@@ -646,7 +646,7 @@ def show_gambit(request):
         .order_by('-Date_uploaded_g')
     )
 
-    total_records = FastqSummary.objects.count()
+    total_records = Gambit.objects.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(gambit_summaries, 20)
     page_number = request.GET.get('page')
@@ -666,18 +666,53 @@ def delete_gambit(request, pk):
     gambit_item = get_object_or_404(Gambit, pk=pk)
 
     if request.method == "POST":
+        # Before deleting, clear related field in WGS_Project
+        WGS_Project.objects.filter(WGS_FastQ_Acc=gambit_item.Gambit_Accession).update(
+            WGS_FastQ_Acc="",
+            WGS_FastqSummary=False
+        )
+
         gambit_item.delete()
         messages.success(request, f"Record {gambit_item.sample} deleted successfully!")
-        return redirect('show_gambit')  # <-- Correct URL name
+        return redirect('show_gambit')
 
     messages.error(request, "Invalid request for deletion.")
-    return redirect('show_gambit')  # <-- Correct URL name
+    return redirect('show_gambit')
 
 
+# @login_required
+# def delete_all_gambit(request):
+#     Gambit.objects.all().delete()
+#     messages.success(request, "Gambit Records have been deleted successfully.")
+#     return redirect('show_gambit')  # Redirect to the table view
+
+
+
+@login_required
 def delete_all_gambit(request):
+    """
+    Safely delete all Gambit records but preserve WGS_Project links
+    for other WGS data types (FastQ, MLST, CheckM2, Assembly, AMRFinder, etc.).
+    """
+    # Step 1: Clear only Gambit fields in existing WGS_Project records
+    updated_count = WGS_Project.objects.filter(
+        WGS_Gambit_Acc__isnull=False
+    ).exclude(WGS_Gambit_Acc="").update(
+        WGS_Gambit_Acc="",
+        WGS_GambitSummary=False
+    )
+
+    # Step 2: Delete all Gambit summary data
     Gambit.objects.all().delete()
-    messages.success(request, "Gambit Records have been deleted successfully.")
-    return redirect('show_gambit')  # Redirect to the table view
+
+    # Step 3: Display success message
+    messages.success(
+        request,
+        f"All Gambit records deleted successfully, and {updated_count} WGS Project(s) were unlinked from Gambit data."
+    )
+
+    return redirect("show_gambit")
+
 
 
 
@@ -801,26 +836,23 @@ def upload_mlst(request):
                 if mlst_accession else None
             )
 
-            # Get or create WGS_Project
-            connect_project, _ = WGS_Project.objects.get_or_create(
-                Ref_Accession=referred_obj if referred_obj else None,
-                defaults={
-                    "WGS_GambitSummary": False,
-                    "WGS_FastqSummary": False,
-                    "WGS_MlstSummary": False,
-                    "WGS_Checkm2Summary": False,
-                    "WGS_AssemblySummary": False,
-                    "WGS_AmrfinderSummary": False,
-                }
-            )
+             # Allow multiple WGS_Project per accession
+            connect_project = WGS_Project.objects.create(
+                    Ref_Accession=referred_obj if referred_obj else None,
+                    WGS_GambitSummary=False,
+                    WGS_FastqSummary=False,
+                    WGS_MlstSummary=False,
+                    WGS_Checkm2Summary=False,
+                    WGS_AssemblySummary=False,
+                    WGS_AmrfinderSummary=False,
+                )
 
-            # Update project MLST accession and summary status
             connect_project.WGS_Mlst_Acc = mlst_accession
             connect_project.WGS_MlstSummary = (
-                mlst_accession
-                and bool(connect_project.Ref_Accession)
-                and mlst_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
-            )
+                    bool(mlst_accession)
+                    and bool(connect_project.Ref_Accession)
+                    and mlst_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
+                )
             connect_project.save()
 
             # Always create new MLST record
@@ -858,26 +890,6 @@ def upload_mlst(request):
 
 
 
-
-# @login_required
-# def show_mlst(request):
-#     mlst_summaries = Mlst.objects.all().order_by("id")  # optional ordering
-
-#     total_records = Mlst.objects.count()
-#      # Paginate the queryset to display 20 records per page
-#     paginator = Paginator(mlst_summaries, 20)
-#     page_number = request.GET.get('page')
-#     page_obj = paginator.get_page(page_number)
-
-#     # Render the template with paginated data
-#     return render(
-#         request,
-#         "wgs_app/show_mlst.html",
-#         {"page_obj": page_obj,
-#          "total_records": total_records,
-#          },  # only send page_obj
-#     )
-
 @login_required
 def show_mlst(request):
     mlst_summaries = Mlst.objects.all().order_by('-Date_uploaded_m')
@@ -888,7 +900,7 @@ def show_mlst(request):
         .order_by('-Date_uploaded_m')
     )
 
-    total_records = FastqSummary.objects.count()
+    total_records = Mlst.objects.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(mlst_summaries, 20)
     page_number = request.GET.get('page')
@@ -903,24 +915,72 @@ def show_mlst(request):
 
 
 
+# @login_required
+# def delete_mlst(request, pk):
+#     mlst_item = get_object_or_404(Mlst, pk=pk)
+
+#     if request.method == "POST":
+#         mlst_item.delete()
+#         messages.success(request, f"Record {mlst_item.sample} deleted successfully!")
+#         return redirect('show_mlst')  # <-- Correct URL name
+
+#     messages.error(request, "Invalid request for deletion.")
+#     return redirect('show_mlst')  # <-- Correct URL name
+
+
 @login_required
 def delete_mlst(request, pk):
     mlst_item = get_object_or_404(Mlst, pk=pk)
 
     if request.method == "POST":
+        # Before deleting, clear related field in WGS_Project
+        WGS_Project.objects.filter(WGS_Mlst_Acc=mlst_item.Mlst_Accession).update(
+            WGS_Mlst_Acc="",
+            WGS_MlstSummary=False
+        )
+
         mlst_item.delete()
         messages.success(request, f"Record {mlst_item.sample} deleted successfully!")
-        return redirect('show_mlst')  # <-- Correct URL name
+        return redirect('show_mlst')
 
     messages.error(request, "Invalid request for deletion.")
-    return redirect('show_mlst')  # <-- Correct URL name
+    return redirect('show_mlst')
+
+
+
+# @login_required
+# def delete_all_mlst(request):
+#     Mlst.objects.all().delete()
+#     messages.success(request, "Mlst Records have been deleted successfully.")
+#     return redirect('show_mlst')  # Redirect to the table view
 
 
 @login_required
 def delete_all_mlst(request):
+    """
+    Safely delete all MLST records but preserve WGS_Project links
+    for other WGS data types (FastQ, CheckM2, Assembly, Gambit, AMRFinder, etc.).
+    """
+    # Step 1: Clear only MLST fields in existing WGS_Project records
+    updated_count = WGS_Project.objects.filter(
+        WGS_Mlst_Acc__isnull=False
+    ).exclude(WGS_Mlst_Acc="").update(
+        WGS_Mlst_Acc="",
+        WGS_MlstSummary=False
+    )
+
+    # Step 2: Delete all MLST summary data
     Mlst.objects.all().delete()
-    messages.success(request, "Mlst Records have been deleted successfully.")
-    return redirect('show_mlst')  # Redirect to the table view
+
+    # Step 3: Display success message
+    messages.success(
+        request,
+        f"All MLST records deleted successfully, and {updated_count} WGS Project(s) were unlinked from MLST data."
+    )
+
+    return redirect("show_mlst")
+
+
 
 
 @login_required
@@ -1028,29 +1088,26 @@ def upload_checkm2(request):
                 if checkm2_accession else None
             )
 
-            # Step 2: Create or get WGS_Project
-            connect_project, _ = WGS_Project.objects.get_or_create(
-                Ref_Accession=referred_obj if referred_obj else None,
-                defaults={
-                    "WGS_GambitSummary": False,
-                    "WGS_FastqSummary": False,
-                    "WGS_MlstSummary": False,
-                    "WGS_Checkm2Summary": False,
-                    "WGS_AssemblySummary": False,
-                    "WGS_AmrfinderSummary": False,
-                }
-            )
+            # Create WGS_Project
+            connect_project = WGS_Project.objects.create(
+                    Ref_Accession=referred_obj if referred_obj else None,
+                    WGS_GambitSummary=False,
+                    WGS_FastqSummary=False,
+                    WGS_MlstSummary=False,
+                    WGS_Checkm2Summary=False,
+                    WGS_AssemblySummary=False,
+                    WGS_AmrfinderSummary=False,
+                )
 
-            # Step 3: Update project accession & summary flag (safe)
             connect_project.WGS_Checkm2_Acc = checkm2_accession
             connect_project.WGS_Checkm2Summary = (
-                checkm2_accession != "" and
-                bool(connect_project.Ref_Accession) and
-                checkm2_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
-            )
+                    bool(checkm2_accession)
+                    and bool(connect_project.Ref_Accession)
+                    and checkm2_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
+                )
             connect_project.save()
 
-            # Step 4: Create Checkm2 record
+            # Create Checkm2 record
             Checkm2.objects.create(
                 Checkm2_Accession=checkm2_accession,
                 Name=sample_name,
@@ -1085,25 +1142,6 @@ def upload_checkm2(request):
     })
 
 
-# @login_required
-# def show_checkm2(request):
-#     checkm2_summaries = Checkm2.objects.all().order_by("id")  # optional ordering
-
-#     total_records = Checkm2.objects.count()
-#      # Paginate the queryset to display 20 records per page
-#     paginator = Paginator(checkm2_summaries, 20)
-#     page_number = request.GET.get('page')
-#     page_obj = paginator.get_page(page_number)
-
-#     # Render the template with paginated data
-#     return render(
-#         request,
-#         "wgs_app/show_checkm2.html",
-#         {"page_obj": page_obj,
-#          "total_records": total_records,
-#          },  # only send page_obj
-#     )
-
 
 @login_required
 def show_checkm2(request):
@@ -1115,7 +1153,7 @@ def show_checkm2(request):
         .order_by('-Date_uploaded_c')
     )
 
-    total_records = FastqSummary.objects.count()
+    total_records = Checkm2.objects.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(checkm2_summaries, 20)
     page_number = request.GET.get('page')
@@ -1130,24 +1168,72 @@ def show_checkm2(request):
 
 
 
+# @login_required
+# def delete_checkm2(request, pk):
+#     checkm2_item = get_object_or_404(Checkm2, pk=pk)
+
+#     if request.method == "POST":
+#         checkm2_item.delete()
+#         messages.success(request, f"Record {checkm2_item.Name} deleted successfully!")
+#         return redirect('show_checkm2')  # <-- Correct URL name
+
+#     messages.error(request, "Invalid request for deletion.")
+#     return redirect('show_checkm2')  # <-- Correct URL name
+
+
+
 @login_required
 def delete_checkm2(request, pk):
     checkm2_item = get_object_or_404(Checkm2, pk=pk)
 
     if request.method == "POST":
+        # Before deleting, clear related field in WGS_Project
+        WGS_Project.objects.filter(WGS_Checkm2_Acc=checkm2_item.Checkm2_Accession).update(
+            WGS_Checkm2_Acc="",
+            WGS_Checkm2Summary=False
+        )
+
         checkm2_item.delete()
         messages.success(request, f"Record {checkm2_item.Name} deleted successfully!")
-        return redirect('show_checkm2')  # <-- Correct URL name
+        return redirect('show_checkm2')
 
     messages.error(request, "Invalid request for deletion.")
-    return redirect('show_checkm2')  # <-- Correct URL name
+    return redirect('show_checkm2')
+
+
+
+
+# @login_required
+# def delete_all_checkm2(request):
+#     Checkm2.objects.all().delete()
+#     messages.success(request, "Checkm2 Records have been deleted successfully.")
+#     return redirect('show_checkm2')  # Redirect to the table view
 
 
 @login_required
 def delete_all_checkm2(request):
+    """
+    Safely delete all CheckM2 records but preserve WGS_Project links
+    for other WGS data types (FastQ, MLST, Assembly, Gambit, AMRFinder, etc.).
+    """
+    # Step 1: Clear only CheckM2 fields in existing WGS_Project records
+    updated_count = WGS_Project.objects.filter(
+        WGS_Checkm2_Acc__isnull=False
+    ).exclude(WGS_Checkm2_Acc="").update(
+        WGS_Checkm2_Acc="",
+        WGS_Checkm2Summary=False
+    )
+
+    # Step 2: Delete all CheckM2 summary data
     Checkm2.objects.all().delete()
-    messages.success(request, "Checkm2 Records have been deleted successfully.")
-    return redirect('show_checkm2')  # Redirect to the table view
+
+    # Step 3: Display success message
+    messages.success(
+        request,
+        f"All CheckM2 records deleted successfully, and {updated_count} WGS Project(s) were unlinked from CheckM2 data."
+    )
+
+    return redirect("show_checkm2")
 
 
 
@@ -1190,10 +1276,10 @@ def upload_assembly(request):
         assembly_form = AssemblyUploadForm(request.POST, request.FILES)
         try:
             upload = assembly_form.save()
-            df = read_uploaded_file(upload.Mlstfile)
+            df = read_uploaded_file(upload.Assemblyfile)
             df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
         except Exception as e:
-            messages.error(request, f"Error processing MLST file: {e}")
+            messages.error(request, f"Error processing Assembly file: {e}")
             return render(request, "wgs_app/Add_wgs.html", {
                 "form": form,
                 "fastq_form": FastqUploadForm(),
@@ -1256,25 +1342,22 @@ def upload_assembly(request):
             )
 
             # Step 2: Create or get WGS_Project
-            connect_project, _ = WGS_Project.objects.get_or_create(
-                Ref_Accession=referred_obj if referred_obj else None,
-                defaults={
-                    "WGS_GambitSummary": False,
-                    "WGS_FastqSummary": False,
-                    "WGS_MlstSummary": False,
-                    "WGS_Checkm2Summary": False,
-                    "WGS_AssemblySummary": False,
-                    "WGS_AmrfinderSummary": False,
-                }
-            )
+            connect_project = WGS_Project.objects.create(
+                    Ref_Accession=referred_obj if referred_obj else None,
+                    WGS_GambitSummary=False,
+                    WGS_FastqSummary=False,
+                    WGS_MlstSummary=False,
+                    WGS_Checkm2Summary=False,
+                    WGS_AssemblySummary=False,
+                    WGS_AmrfinderSummary=False,
+                )
 
-            # Step 3: Update project accession & summary flag (safe)
             connect_project.WGS_Assembly_Acc = assembly_accession
             connect_project.WGS_AssemblySummary = (
-                assembly_accession != "" and
-                bool(connect_project.Ref_Accession) and
-                assembly_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
-            )
+                    bool(assembly_accession)
+                    and bool(connect_project.Ref_Accession)
+                    and assembly_accession == getattr(connect_project.Ref_Accession, "f_AccessionNo", None)
+                )
             connect_project.save()
 
             # Step 4: Create AssemblyScan record
@@ -1325,33 +1408,6 @@ def upload_assembly(request):
 
 
 
-# @login_required
-# def show_assembly(request):
-#     assembly_summaries = AssemblyScan.objects.all()
-#     return render(request, "wgs_app/show_assembly.html", {"assembly_summaries": assembly_summaries})
-
-
-
-# @login_required
-# def show_assembly(request):
-#     assembly_summaries = AssemblyScan.objects.all().order_by("id")  # optional ordering
-
-#     total_records = AssemblyScan.objects.count()
-#      # Paginate the queryset to display 20 records per page
-#     paginator = Paginator(assembly_summaries, 20)
-#     page_number = request.GET.get('page')
-#     page_obj = paginator.get_page(page_number)
-
-#     # Render the template with paginated data
-#     return render(
-#         request,
-#         "wgs_app/show_assembly.html",
-#         {"page_obj": page_obj,
-#          "total_records": total_records,
-#          },  # only send page_obj
-#     )
-
-
 @login_required
 def show_assembly(request):
     assembly_summaries = AssemblyScan.objects.all().order_by('-Date_uploaded_as')
@@ -1362,7 +1418,7 @@ def show_assembly(request):
         .order_by('-Date_uploaded_as')
     )
 
-    total_records = FastqSummary.objects.count()
+    total_records = AssemblyScan.objects.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(assembly_summaries, 20)
     page_number = request.GET.get('page')
@@ -1377,25 +1433,52 @@ def show_assembly(request):
 
 
 
-
 @login_required
 def delete_assembly(request, pk):
     assembly_item = get_object_or_404(AssemblyScan, pk=pk)
 
     if request.method == "POST":
+        # Before deleting, clear related field in WGS_Project
+        WGS_Project.objects.filter(WGS_Assembly_Acc=assembly_item.Assembly_Accession).update(
+            WGS_Assembly_Acc="",
+            WGS_AssemblySummary=False
+        )
+
         assembly_item.delete()
         messages.success(request, f"Record {assembly_item.sample} deleted successfully!")
-        return redirect('show_assembly')  # <-- Correct URL name
+        return redirect('show_assembly')
 
     messages.error(request, "Invalid request for deletion.")
-    return redirect('show_assembly')  # <-- Correct URL name
+    return redirect('show_assembly')
+
+
 
 
 @login_required
 def delete_all_assembly(request):
+    """
+    Safely delete all Assembly records but preserve WGS_Project links
+    for other WGS data types (FastQ, MLST, CheckM2, Gambit, AMRFinder, etc.).
+    """
+    # Step 1: Clear only Assembly fields in existing WGS_Project records
+    updated_count = WGS_Project.objects.filter(
+        WGS_Assembly_Acc__isnull=False
+    ).exclude(WGS_Assembly_Acc="").update(
+        WGS_Assembly_Acc="",
+        WGS_AssemblySummary=False
+    )
+
+    # Step 2: Delete all Assembly summary data
     AssemblyScan.objects.all().delete()
-    messages.success(request, "AssemblyScan Records have been deleted successfully.")
-    return redirect('show_assembly')  # Redirect to the table view
+
+    # Step 3: Display success message
+    messages.success(
+        request,
+        f"All Assembly records deleted successfully, and {updated_count} WGS Project(s) were unlinked from Assembly data."
+    )
+
+    return redirect("show_assembly")
+
 
 
 
@@ -1532,20 +1615,7 @@ def upload_amrfinder(request):
                 if amrfinder_accession else None
             )
 
-            # # Step 2: Create or get WGS_Project
-            # connect_project, _ = WGS_Project.objects.get_or_create(
-            #     Ref_Accession=referred_obj if referred_obj else None,
-            #     defaults={
-            #         "WGS_GambitSummary": False,
-            #         "WGS_FastqSummary": False,
-            #         "WGS_MlstSummary": False,
-            #         "WGS_Checkm2Summary": False,
-            #         "WGS_AssemblySummary": False,
-            #         "WGS_AmrfinderSummary": False,
-            #     }
-            # )
-
-            # Step 2: Safely get or create WGS_Project
+            # Safely get or create WGS_Project
             connect_project = (
                 WGS_Project.objects.filter(Ref_Accession=referred_obj).first()
                 if referred_obj else None
@@ -1561,8 +1631,6 @@ def upload_amrfinder(request):
                 WGS_AssemblySummary=False,
                 WGS_AmrfinderSummary=False,
             )
-
-
 
             # Step 3: Update project accession & summary flag
             connect_project.WGS_Amrfinder_Acc = amrfinder_accession
@@ -1622,27 +1690,24 @@ def upload_amrfinder(request):
 
 # @login_required
 # def show_amrfinder(request):
-#     amrfinder_summaries = Amrfinderplus.objects.all().order_by("id")  # optional ordering
-
-#     total_records = Amrfinderplus.objects.count()
-#      # Paginate the queryset to display 20 records per page
-     
-#     paginator = Paginator(amrfinder_summaries, 20)
-#     page_number = request.GET.get('page')
-#     page_obj = paginator.get_page(page_number)
-
-#     # Render the template with paginated data
-#     return render(
-#         request,
-#         "wgs_app/show_amrfinder.html",
-#         {"page_obj": page_obj,
-#          "total_records": total_records,
-#          },  # only send page_obj
+#     records = Amrfinderplus.objects.all().order_by('-Date_uploaded_am')
+#     upload_dates = (
+#         Amrfinderplus.objects.exclude(Date_uploaded_am__isnull=True)
+#         .values_list('Date_uploaded_am', flat=True)
+#         .distinct()
+#         .order_by('-Date_uploaded_am')
 #     )
+
+#     return render(request, "wgs_app/show_amrfinder.html", {
+#         "records": records,
+#         "upload_dates": upload_dates,
+#     })
+
+
 
 @login_required
 def show_amrfinder(request):
-    records = Amrfinderplus.objects.all().order_by('-Date_uploaded_am')
+    amrfinder_summaries = Amrfinderplus.objects.all().order_by('-Date_uploaded_am')
     upload_dates = (
         Amrfinderplus.objects.exclude(Date_uploaded_am__isnull=True)
         .values_list('Date_uploaded_am', flat=True)
@@ -1650,11 +1715,32 @@ def show_amrfinder(request):
         .order_by('-Date_uploaded_am')
     )
 
+    total_records = Amrfinderplus.objects.count()
+     # Paginate the queryset to display 20 records per page
+    paginator = Paginator(amrfinder_summaries, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, "wgs_app/show_amrfinder.html", {
-        "records": records,
+        "page_obj": page_obj,
         "upload_dates": upload_dates,
+        "total_records": total_records,
     })
 
+
+
+
+# @login_required
+# def delete_amrfinder(request, pk):
+#     amrfinder_item = get_object_or_404(Amrfinderplus, pk=pk)
+
+#     if request.method == "POST":
+#         amrfinder_item.delete()
+#         messages.success(request, f"Record {amrfinder_item.name} deleted successfully!")
+#         return redirect('show_amrfinder')  # <-- Correct URL name
+
+#     messages.error(request, "Invalid request for deletion.")
+#     return redirect('show_amrfinder')  # <-- Correct URL name
 
 
 
@@ -1663,19 +1749,61 @@ def delete_amrfinder(request, pk):
     amrfinder_item = get_object_or_404(Amrfinderplus, pk=pk)
 
     if request.method == "POST":
+        # Before deleting, clear related field in WGS_Project
+        WGS_Project.objects.filter(WGS_Amrfinder_Acc=amrfinder_item.Amrfinder_Accession).update(
+            WGS_Amrfinder_Acc="",
+            WGS_AmrfinderSummary=False
+        )
+
         amrfinder_item.delete()
         messages.success(request, f"Record {amrfinder_item.name} deleted successfully!")
-        return redirect('show_amrfinder')  # <-- Correct URL name
+        return redirect('show_amrfinder')
 
     messages.error(request, "Invalid request for deletion.")
-    return redirect('show_amrfinder')  # <-- Correct URL name
+    return redirect('show_amrfinder')
+
+
+# @login_required
+# def delete_all_amrfinder(request):
+#     Amrfinderplus.objects.all().delete()
+#     messages.success(request, "AmrfinderPlus Records have been deleted successfully.")
+#     return redirect('show_amrfinder')  # Redirect to the table view
+
 
 
 @login_required
 def delete_all_amrfinder(request):
+    """
+    Safely delete all AMRFinder records but preserve WGS_Project links
+    for other WGS data types (FastQ, MLST, CheckM2, Assembly, Gambit, etc.).
+    """
+    # Step 1: Clear only AMRFinder fields in existing WGS_Project records
+    updated_count = WGS_Project.objects.filter(
+        WGS_Amrfinder_Acc__isnull=False
+    ).exclude(WGS_Amrfinder_Acc="").update(
+        WGS_Amrfinder_Acc="",
+        WGS_AmrfinderSummary=False
+    )
+
+    # Step 2: Delete all AMRFinder summary data
     Amrfinderplus.objects.all().delete()
-    messages.success(request, "AmrfinderPlus Records have been deleted successfully.")
-    return redirect('show_amrfinder')  # Redirect to the table view
+
+    # Step 3: Display success message
+    messages.success(
+        request,
+        f"All AMRFinder records deleted successfully, and {updated_count} WGS Project(s) were unlinked from AMRFinder data."
+    )
+
+    return redirect("show_amrfinder")
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1720,194 +1848,323 @@ def delete_amrfinder_by_date(request):
 
 # @login_required
 # def view_wgs_overview(request):
-#     referred_list = Referred_Data.objects.all().order_by('AccessionNo')
+#     """
+#     Displays all isolates (Referred_Data) with flags showing which WGS data exist.
+#     Includes basic Referred_Data fields for quick reference.
+#     """
+#     referred_list = Final_Data.objects.all().order_by("f_AccessionNo")
 #     table_data = []
 
 #     for referred in referred_list:
-#         projects = WGS_Project.objects.filter(Ref_Accession=referred)
+#         acc = referred.f_AccessionNo
 
-#         summary_flags = {
-#             'fastq': projects.filter(WGS_FastqSummary=True).exists(),
-#             'mlst': projects.filter(WGS_MlstSummary=True).exists(),
-#             'checkm2': projects.filter(WGS_Checkm2Summary=True).exists(),
-#             'assembly': projects.filter(WGS_AssemblySummary=True).exists(),
-#             'gambit': projects.filter(WGS_GambitSummary=True).exists(),
-#             'amrfinder': projects.filter(WGS_AmrfinderSummary=True).exists(),
-#         }
-
-#         related_data = {}
-#         if summary_flags['fastq']:
-#             related_data['fastq'] = FastqSummary.objects.filter(fastq_project__in=projects)
-#         if summary_flags['mlst']:
-#             related_data['mlst'] = Mlst.objects.filter(mlst_project__in=projects)
-#         if summary_flags['checkm2']:
-#             related_data['checkm2'] = Checkm2.objects.filter(checkm2_project__in=projects)
-#         if summary_flags['assembly']:
-#             related_data['assembly'] = AssemblyScan.objects.filter(assembly_project__in=projects)
-#         if summary_flags['gambit']:
-#             related_data['gambit'] = Gambit.objects.filter(gambit_project__in=projects)
-#         if summary_flags['amrfinder']:
-#             related_data['amrfinder'] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
-
-#         table_data.append({
-#             'accession': referred,
-#             'summary_flags': summary_flags,
-#             'related_data': related_data,
-#         })
-
-#             # Calculate counts
-#         counts = {
-#             'total': len(table_data),
-#             'fastq': sum(1 for entry in table_data if entry['summary_flags']['fastq']),
-#             'gambit': sum(1 for entry in table_data if entry['summary_flags']['gambit']),
-#             'mlst': sum(1 for entry in table_data if entry['summary_flags']['mlst']),
-#             'checkm2': sum(1 for entry in table_data if entry['summary_flags']['checkm2']),
-#             'assembly': sum(1 for entry in table_data if entry['summary_flags']['assembly']),
-#             'amrfinder': sum(1 for entry in table_data if entry['summary_flags']['amrfinder']),
-#         }
-        
-
-#     context = {
-#         'table_data': table_data,
-#         'counts': counts,
-#     }
-
-#     return render(request, 'wgs_app/Wgs_overview.html', context)
-
-
-
-# @login_required
-# def view_wgs_overview(request):
-#     referred_list = Referred_Data.objects.all().order_by('AccessionNo')
-#     table_data = []
-
-#     for referred in referred_list:
-#         acc = referred.AccessionNo
-
-#     for referred in referred_list:
-#         # Match projects by either FK or any WGS accession field
+#         # --- Match projects by accession (through FK or any WGS link) ---
 #         projects = WGS_Project.objects.filter(
-#             Q(Ref_Accession__AccessionNo=referred.AccessionNo) |
-#             Q(WGS_FastQ_Acc=referred.AccessionNo) |
-#             Q(WGS_Mlst_Acc=referred.AccessionNo) |
-#             Q(WGS_Checkm2_Acc=referred.AccessionNo) |
-#             Q(WGS_Assembly_Acc=referred.AccessionNo) |
-#             Q(WGS_Gambit_Acc=referred.AccessionNo) |
-#             Q(WGS_Amrfinder_Acc=referred.AccessionNo)
+#             Q(Ref_Accession__f_AccessionNo=acc) |
+#             Q(WGS_FastQ_Acc=acc) |
+#             Q(WGS_Mlst_Acc=acc) |
+#             Q(WGS_Checkm2_Acc=acc) |
+#             Q(WGS_Assembly_Acc=acc) |
+#             Q(WGS_Gambit_Acc=acc) |
+#             Q(WGS_Amrfinder_Acc=acc)
 #         ).distinct()
 
+#         # --- Determine which WGS summaries exist ---
 #         summary_flags = {
-#             'fastq': projects.filter(WGS_FastqSummary=True).exists(),
-#             'mlst': projects.filter(WGS_MlstSummary=True).exists(),
-#             'checkm2': projects.filter(WGS_Checkm2Summary=True).exists(),
-#             'assembly': projects.filter(WGS_AssemblySummary=True).exists(),
-#             'gambit': projects.filter(WGS_GambitSummary=True).exists(),
-#             'amrfinder': projects.filter(WGS_AmrfinderSummary=True).exists(),
+#             "fastq": projects.filter(WGS_FastqSummary=True).exists(),
+#             "mlst": projects.filter(WGS_MlstSummary=True).exists(),
+#             "checkm2": projects.filter(WGS_Checkm2Summary=True).exists(),
+#             "assembly": projects.filter(WGS_AssemblySummary=True).exists(),
+#             "gambit": projects.filter(WGS_GambitSummary=True).exists(),
+#             "amrfinder": projects.filter(WGS_AmrfinderSummary=True).exists(),
 #         }
 
-
-#         # Add related Referred_Data info to each row
-#         table_data.append({
-#             'accession': acc,
-#             'patient_id': referred.Patient_ID,
-#             'patient_name': f"{referred.Last_Name}, {referred.First_Name} {referred.Mid_Name or ''}".strip(),
-#             'age': referred.Age,
-#             'sex': referred.Sex,
-#             'ward': referred.Ward,
-#             'specimen': referred.Spec_Type,
-#             'diagnosis': referred.Diagnosis_ICD10,
-#             'growth': referred.Growth,
-#             'date_collected': referred.Spec_Date,
-#             'summary_flags': summary_flags,
-#         })
-
+#         # --- Collect related data if present ---
 #         related_data = {}
-#         if summary_flags['fastq']:
-#             related_data['fastq'] = FastqSummary.objects.filter(fastq_project__in=projects)
-#         if summary_flags['mlst']:
-#             related_data['mlst'] = Mlst.objects.filter(mlst_project__in=projects)
-#         if summary_flags['checkm2']:
-#             related_data['checkm2'] = Checkm2.objects.filter(checkm2_project__in=projects)
-#         if summary_flags['assembly']:
-#             related_data['assembly'] = AssemblyScan.objects.filter(assembly_project__in=projects)
-#         if summary_flags['gambit']:
-#             related_data['gambit'] = Gambit.objects.filter(gambit_project__in=projects)
-#         if summary_flags['amrfinder']:
-#             related_data['amrfinder'] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
+#         if summary_flags["fastq"]:
+#             related_data["fastq"] = FastqSummary.objects.filter(fastq_project__in=projects)
+#         if summary_flags["mlst"]:
+#             related_data["mlst"] = Mlst.objects.filter(mlst_project__in=projects)
+#         if summary_flags["checkm2"]:
+#             related_data["checkm2"] = Checkm2.objects.filter(checkm2_project__in=projects)
+#         if summary_flags["assembly"]:
+#             related_data["assembly"] = AssemblyScan.objects.filter(assembly_project__in=projects)
+#         if summary_flags["gambit"]:
+#             related_data["gambit"] = Gambit.objects.filter(gambit_project__in=projects)
+#         if summary_flags["amrfinder"]:
+#             related_data["amrfinder"] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
 
+#         # --- Add combined row with referred info + WGS flags ---
 #         table_data.append({
-#             'accession': referred.AccessionNo,
-#             'summary_flags': summary_flags,
-#             'related_data': related_data,
+#             "accession": acc,
+#             "patient_id": referred.f_Patient_ID,
+#             "patient_name": f"{referred.f_Last_Name}, {referred.f_First_Name} {referred.f_Mid_Name or ''}".strip(),
+#             "age": referred.f_Age,
+#             "sex": referred.f_Sex,
+#             "ward": referred.f_Ward,
+#             "specimen": referred.f_Spec_Type,
+#             "diagnosis": referred.f_Diagnosis_ICD10,
+#             "growth": referred.f_Growth,
+#             "date_collected": referred.f_Spec_Date,
+#             "referral_date": referred.f_Referral_Date,
+#             "summary_flags": summary_flags,
+#             "related_data": related_data,
+
 #         })
 
-#     # Count detections
+#     # --- Summary counts for the page header or filters ---
 #     counts = {
-#         'total': len(table_data),
-#         'fastq': sum(1 for entry in table_data if entry['summary_flags']['fastq']),
-#         'gambit': sum(1 for entry in table_data if entry['summary_flags']['gambit']),
-#         'mlst': sum(1 for entry in table_data if entry['summary_flags']['mlst']),
-#         'checkm2': sum(1 for entry in table_data if entry['summary_flags']['checkm2']),
-#         'assembly': sum(1 for entry in table_data if entry['summary_flags']['assembly']),
-#         'amrfinder': sum(1 for entry in table_data if entry['summary_flags']['amrfinder']),
+#         "total": len(table_data),
+#         "fastq": sum(1 for e in table_data if e["summary_flags"]["fastq"]),
+#         "mlst": sum(1 for e in table_data if e["summary_flags"]["mlst"]),
+#         "checkm2": sum(1 for e in table_data if e["summary_flags"]["checkm2"]),
+#         "assembly": sum(1 for e in table_data if e["summary_flags"]["assembly"]),
+#         "gambit": sum(1 for e in table_data if e["summary_flags"]["gambit"]),
+#         "amrfinder": sum(1 for e in table_data if e["summary_flags"]["amrfinder"]),
 #     }
 
-#     return render(request, 'wgs_app/Wgs_overview.html', {
-#         'table_data': table_data,
-#         'counts': counts,
+#     paginator = Paginator(referred_list, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+
+#     return render(request, "wgs_app/Wgs_overview.html", {
+#         "page_obj" : page_obj,
+#         "table_data": table_data,
+#         "counts": counts,
 #     })
 
+
+
+# view WGS overview with antibiotic entries 
+# @login_required
+# def view_wgs_overview(request):
+#     """
+#     Displays all isolates (Final_Data) with flags showing which WGS data exist
+#     and antibiotic entries if available.
+#     """
+#     referred_list = Final_Data.objects.all().order_by("f_AccessionNo")
+#     table_data = []
+
+#     # --- Pre-fetch antibiotic entries once to avoid N+1 queries ---
+#     all_antibiotics = Final_AntibioticEntry.objects.select_related("ab_idNum_f_referred").all()
+
+#     # Create a dictionary mapping accession_no -> antibiotics list
+#     abx_map = {}
+#     for ab in all_antibiotics:
+#         acc = getattr(ab.ab_idNum_f_referred, "f_AccessionNo", None)
+#         if acc:
+#             if acc not in abx_map:
+#                 abx_map[acc] = []
+#             abx_map[acc].append({
+#                 "code": ab.ab_Abx_code,
+#                 "ris": ab.ab_MIC_RIS or "",
+#                 "disk": ab.ab_Disk_value or "",
+#                 "mic": ab.ab_MIC_value or "",
+#             })
+
+#     for referred in referred_list:
+#         acc = referred.f_AccessionNo
+
+#         # --- Match projects by accession (through FK or any WGS link) ---
+#         projects = WGS_Project.objects.filter(
+#             Q(Ref_Accession__f_AccessionNo=acc)
+#             | Q(WGS_FastQ_Acc=acc)
+#             | Q(WGS_Mlst_Acc=acc)
+#             | Q(WGS_Checkm2_Acc=acc)
+#             | Q(WGS_Assembly_Acc=acc)
+#             | Q(WGS_Gambit_Acc=acc)
+#             | Q(WGS_Amrfinder_Acc=acc)
+#         ).distinct()
+
+#         # --- Determine which WGS summaries exist ---
+#         summary_flags = {
+#             "fastq": projects.filter(WGS_FastqSummary=True).exists(),
+#             "mlst": projects.filter(WGS_MlstSummary=True).exists(),
+#             "checkm2": projects.filter(WGS_Checkm2Summary=True).exists(),
+#             "assembly": projects.filter(WGS_AssemblySummary=True).exists(),
+#             "gambit": projects.filter(WGS_GambitSummary=True).exists(),
+#             "amrfinder": projects.filter(WGS_AmrfinderSummary=True).exists(),
+#         }
+
+#         # --- Collect related data if present ---
+#         related_data = {}
+#         if summary_flags["fastq"]:
+#             related_data["fastq"] = FastqSummary.objects.filter(fastq_project__in=projects)
+#         if summary_flags["mlst"]:
+#             related_data["mlst"] = Mlst.objects.filter(mlst_project__in=projects)
+#         if summary_flags["checkm2"]:
+#             related_data["checkm2"] = Checkm2.objects.filter(checkm2_project__in=projects)
+#         if summary_flags["assembly"]:
+#             related_data["assembly"] = AssemblyScan.objects.filter(assembly_project__in=projects)
+#         if summary_flags["gambit"]:
+#             related_data["gambit"] = Gambit.objects.filter(gambit_project__in=projects)
+#         if summary_flags["amrfinder"]:
+#             related_data["amrfinder"] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
+
+#         # --- Retrieve antibiotic data if available ---
+#         abx_entries = abx_map.get(acc, [])
+
+#         table_data.append({
+#             "accession": acc,
+#             "patient_id": referred.f_Patient_ID,
+#             "patient_name": f"{referred.f_Last_Name}, {referred.f_First_Name} {referred.f_Mid_Name or ''}".strip(),
+#             "age": referred.f_Age,
+#             "sex": referred.f_Sex,
+#             "ward": referred.f_Ward,
+#             "specimen": referred.f_Spec_Type,
+#             "organism": referred.f_ars_OrgCode,
+#             "sitecode": referred.f_SiteCode,
+#             "diagnosis": referred.f_Diagnosis_ICD10,
+#             "growth": referred.f_Growth,
+#             "date_collected": referred.f_Spec_Date,
+#             "referral_date": referred.f_Referral_Date,
+#             "summary_flags": summary_flags,
+#             "related_data": related_data,
+#             "antibiotics": abx_entries,  
+#         })
+
+#     # --- Summary counts for the page header or filters ---
+#     counts = {
+#         "total": len(table_data),
+#         "fastq": sum(1 for e in table_data if e["summary_flags"]["fastq"]),
+#         "mlst": sum(1 for e in table_data if e["summary_flags"]["mlst"]),
+#         "checkm2": sum(1 for e in table_data if e["summary_flags"]["checkm2"]),
+#         "assembly": sum(1 for e in table_data if e["summary_flags"]["assembly"]),
+#         "gambit": sum(1 for e in table_data if e["summary_flags"]["gambit"]),
+#         "amrfinder": sum(1 for e in table_data if e["summary_flags"]["amrfinder"]),
+#         "with_antibiotics": sum(1 for e in table_data if e["antibiotics"]),  
+#     }
+
+
+#     return render(
+#         request,
+#         "wgs_app/Wgs_overview.html",
+#         {
+#             "table_data": table_data,
+#             "counts": counts,
+#         },
+#     )
+
+
+# View WGS overview with antibiotic entries but optimized to reduce queries
+# Shows isolates that have WGS data in ANY of the WGS tables
 
 
 @login_required
 def view_wgs_overview(request):
     """
-    Displays all isolates (Referred_Data) with flags showing which WGS data exist.
-    Includes basic Referred_Data fields for quick reference.
+    Displays only isolates (Final_Data) that have matched WGS data
+    across any WGS table (FastQ, MLST, CheckM2, Assembly, Gambit, AMRFinder).
+    Includes antibiotic entries if available.
+    Works even if WGS_Project or FastQ data are deleted.
     """
-    referred_list = Final_Data.objects.all().order_by("f_AccessionNo")
+
+    # --- Step 1: Gather all accessions from any WGS table, safely ---
+    fastq_accs = list(FastqSummary.objects.values_list("sample", flat=True))
+    mlst_accs = list(Mlst.objects.values_list("mlst_project__WGS_Mlst_Acc", flat=True))
+    checkm2_accs = list(Checkm2.objects.values_list("checkm2_project__WGS_Checkm2_Acc", flat=True))
+    assembly_accs = list(AssemblyScan.objects.values_list("assembly_project__WGS_Assembly_Acc", flat=True))
+    gambit_accs = list(Gambit.objects.values_list("Gambit_Accession", flat=True))
+    amrfinder_accs = list(Amrfinderplus.objects.values_list("amrfinder_project__WGS_Amrfinder_Acc", flat=True))
+
+    # --- Combine all into one set ---
+    wgs_accessions = set(
+        fastq_accs + mlst_accs + checkm2_accs + assembly_accs + gambit_accs + amrfinder_accs
+    )
+
+    # --- Remove blanks and normalize ---
+    wgs_accessions = {acc.strip() for acc in wgs_accessions if acc and isinstance(acc, str)}
+
+    print("WGS Accessions Found:", len(wgs_accessions), list(wgs_accessions)[:10])  # Debug log
+
+    # --- Step 2: Load only matched isolates (trim fields for speed) ---
+    referred_list = Final_Data.objects.only(
+        "f_AccessionNo",
+        "f_Patient_ID",
+        "f_Last_Name",
+        "f_First_Name",
+        "f_Mid_Name",
+        "f_Age",
+        "f_Sex",
+        "f_Ward",
+        "f_Spec_Type",
+        "f_ars_OrgCode",
+        "f_SiteCode",
+        "f_Diagnosis_ICD10",
+        "f_Growth",
+        "f_Spec_Date",
+        "f_Referral_Date",
+    ).filter(f_AccessionNo__in=wgs_accessions).order_by("f_AccessionNo")
+
+    print("Matched Isolates:", referred_list.count())  # Debug log
+
+    # --- Step 3: Preload antibiotic entries ---
+    all_antibiotics = Final_AntibioticEntry.objects.select_related("ab_idNum_f_referred").only(
+        "ab_idNum_f_referred__f_AccessionNo",
+        "ab_Abx_code",
+        "ab_MIC_RIS",
+        "ab_MIC_value",
+        "ab_Disk_value",
+    )
+
+    abx_map = {}
+    for ab in all_antibiotics:
+        acc = getattr(ab.ab_idNum_f_referred, "f_AccessionNo", None)
+        if acc:
+            abx_map.setdefault(acc, []).append({
+                "code": ab.ab_Abx_code,
+                "ris": ab.ab_MIC_RIS or "",
+                "disk": ab.ab_Disk_value or "",
+                "mic": ab.ab_MIC_value or "",
+            })
+
     table_data = []
 
+    # --- Step 4: For each referred isolate ---
     for referred in referred_list:
-        acc = referred.f_AccessionNo
+        acc = referred.f_AccessionNo.strip() if referred.f_AccessionNo else None
+        if not acc:
+            continue
 
-        # --- Match projects by accession (through FK or any WGS link) ---
+        # Get projects if any exist
         projects = WGS_Project.objects.filter(
-            Q(Ref_Accession__f_AccessionNo=acc) |
-            Q(WGS_FastQ_Acc=acc) |
-            Q(WGS_Mlst_Acc=acc) |
-            Q(WGS_Checkm2_Acc=acc) |
-            Q(WGS_Assembly_Acc=acc) |
-            Q(WGS_Gambit_Acc=acc) |
-            Q(WGS_Amrfinder_Acc=acc)
+            Q(WGS_FastQ_Acc=acc)
+            | Q(WGS_Mlst_Acc=acc)
+            | Q(WGS_Checkm2_Acc=acc)
+            | Q(WGS_Assembly_Acc=acc)
+            | Q(WGS_Gambit_Acc=acc)
+            | Q(WGS_Amrfinder_Acc=acc)
         ).distinct()
 
-        # --- Determine which WGS summaries exist ---
+        # Determine which WGS data exist
         summary_flags = {
-            "fastq": projects.filter(WGS_FastqSummary=True).exists(),
-            "mlst": projects.filter(WGS_MlstSummary=True).exists(),
-            "checkm2": projects.filter(WGS_Checkm2Summary=True).exists(),
-            "assembly": projects.filter(WGS_AssemblySummary=True).exists(),
-            "gambit": projects.filter(WGS_GambitSummary=True).exists(),
-            "amrfinder": projects.filter(WGS_AmrfinderSummary=True).exists(),
+            "fastq": FastqSummary.objects.filter(Q(fastq_project__in=projects) | Q(sample=acc)).exists(),
+            "mlst": Mlst.objects.filter(Q(mlst_project__in=projects) | Q(mlst_project__WGS_Mlst_Acc=acc)).exists(),
+            "checkm2": Checkm2.objects.filter(Q(checkm2_project__in=projects) | Q(checkm2_project__WGS_Checkm2_Acc=acc)).exists(),
+            "assembly": AssemblyScan.objects.filter(Q(assembly_project__in=projects) | Q(assembly_project__WGS_Assembly_Acc=acc)).exists(),
+            "gambit": Gambit.objects.filter(Q(gambit_project__in=projects) | Q(Gambit_Accession=acc)).exists(),
+            "amrfinder": Amrfinderplus.objects.filter(Q(amrfinder_project__in=projects) | Q(amrfinder_project__WGS_Amrfinder_Acc=acc)).exists(),
         }
 
-        # --- Collect related data if present ---
+        # Collect related data
         related_data = {}
         if summary_flags["fastq"]:
-            related_data["fastq"] = FastqSummary.objects.filter(fastq_project__in=projects)
+            related_data["fastq"] = FastqSummary.objects.filter(Q(fastq_project__in=projects) | Q(sample=acc))
         if summary_flags["mlst"]:
-            related_data["mlst"] = Mlst.objects.filter(mlst_project__in=projects)
+            related_data["mlst"] = Mlst.objects.filter(Q(mlst_project__in=projects) | Q(mlst_project__WGS_Mlst_Acc=acc))
         if summary_flags["checkm2"]:
-            related_data["checkm2"] = Checkm2.objects.filter(checkm2_project__in=projects)
+            related_data["checkm2"] = Checkm2.objects.filter(Q(checkm2_project__in=projects) | Q(checkm2_project__WGS_Checkm2_Acc=acc))
         if summary_flags["assembly"]:
-            related_data["assembly"] = AssemblyScan.objects.filter(assembly_project__in=projects)
+            related_data["assembly"] = AssemblyScan.objects.filter(Q(assembly_project__in=projects) | Q(assembly_project__WGS_Assembly_Acc=acc))
         if summary_flags["gambit"]:
-            related_data["gambit"] = Gambit.objects.filter(gambit_project__in=projects)
+            related_data["gambit"] = Gambit.objects.filter(Q(gambit_project__in=projects) | Q(Gambit_Accession=acc))
         if summary_flags["amrfinder"]:
-            related_data["amrfinder"] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
+            related_data["amrfinder"] = Amrfinderplus.objects.filter(Q(amrfinder_project__in=projects) | Q(amrfinder_project__WGS_Amrfinder_Acc=acc))
 
-        # --- Add combined row with referred info + WGS flags ---
+        # Antibiotics
+        abx_entries = abx_map.get(acc, [])
+
+        # Append final table entry
         table_data.append({
             "accession": acc,
             "patient_id": referred.f_Patient_ID,
@@ -1916,16 +2173,17 @@ def view_wgs_overview(request):
             "sex": referred.f_Sex,
             "ward": referred.f_Ward,
             "specimen": referred.f_Spec_Type,
+            "organism": referred.f_ars_OrgCode,
+            "sitecode": referred.f_SiteCode,
             "diagnosis": referred.f_Diagnosis_ICD10,
             "growth": referred.f_Growth,
             "date_collected": referred.f_Spec_Date,
             "referral_date": referred.f_Referral_Date,
             "summary_flags": summary_flags,
             "related_data": related_data,
-
+            "antibiotics": abx_entries,
         })
 
-    # --- Summary counts for the page header or filters ---
     counts = {
         "total": len(table_data),
         "fastq": sum(1 for e in table_data if e["summary_flags"]["fastq"]),
@@ -1934,164 +2192,80 @@ def view_wgs_overview(request):
         "assembly": sum(1 for e in table_data if e["summary_flags"]["assembly"]),
         "gambit": sum(1 for e in table_data if e["summary_flags"]["gambit"]),
         "amrfinder": sum(1 for e in table_data if e["summary_flags"]["amrfinder"]),
+        "with_antibiotics": sum(1 for e in table_data if e["antibiotics"]),
     }
 
-    paginator = Paginator(referred_list, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
     return render(request, "wgs_app/Wgs_overview.html", {
-        "page_obj" : page_obj,
         "table_data": table_data,
         "counts": counts,
     })
 
 
-
-### download all wgs data 
+############ Show detailed WGS info for one Referred_Data AccessionNo,
 @login_required
-def download_all_wgs_data(request):
+def get_wgs_details(request, accession):
     """
-    Export all WGS data (across all tables) into one Excel file with multiple sheets.
-    Each sheet corresponds to one WGS data table.
+    Returns only the detailed info (HTML) for one accession.
+    Used for AJAX lazy loading.
     """
+    referred = Final_Data.objects.filter(f_AccessionNo=accession).first()
+    if not referred:
+        return JsonResponse({"error": "Accession not found."}, status=404)
 
-    # Helper to safely convert queryset → DataFrame
-    def qs_to_df(qs, model_name):
-        if not qs.exists():
-            return pd.DataFrame()
-        df = pd.DataFrame.from_records(qs.values())
-        df.insert(0, 'Table', model_name)
-        return df
+    # Fetch antibiotic entries
+    antibiotics = Final_AntibioticEntry.objects.filter(
+        ab_idNum_f_referred__f_AccessionNo=accession
+    ).values("ab_Abx_code", "ab_MIC_RIS", "ab_MIC_value", "ab_Disk_value")
 
-    # Gather all data
-    fastq_qs = FastqSummary.objects.all().select_related('fastq_project__Ref_Accession')
-    mlst_qs = Mlst.objects.all().select_related('mlst_project__Ref_Accession')
-    checkm2_qs = Checkm2.objects.all().select_related('checkm2_project__Ref_Accession')
-    assembly_qs = AssemblyScan.objects.all().select_related('assembly_project__Ref_Accession')
-    amrfinder_qs = Amrfinderplus.objects.all().select_related('amrfinder_project__Ref_Accession')
-    gambit_qs = Gambit.objects.all().select_related('gambit_project__Ref_Accession')
+    # Fetch related WGS projects
+    projects = WGS_Project.objects.filter(
+        Q(WGS_FastQ_Acc=accession)
+        | Q(WGS_Mlst_Acc=accession)
+        | Q(WGS_Checkm2_Acc=accession)
+        | Q(WGS_Assembly_Acc=accession)
+        | Q(WGS_Gambit_Acc=accession)
+        | Q(WGS_Amrfinder_Acc=accession)
+    ).distinct()
 
-    # Convert to DataFrames
-    fastq_df = qs_to_df(fastq_qs, "FastqSummary")
-    mlst_df = qs_to_df(mlst_qs, "Mlst")
-    checkm2_df = qs_to_df(checkm2_qs, "CheckM2")
-    assembly_df = qs_to_df(assembly_qs, "AssemblyScan")
-    amrfinder_df = qs_to_df(amrfinder_qs, "Amrfinderplus")
-    gambit_df = qs_to_df(gambit_qs, "Gambit")
+    summary_flags = {
+        "fastq": projects.filter(WGS_FastqSummary=True).exists(),
+        "mlst": projects.filter(WGS_MlstSummary=True).exists(),
+        "checkm2": projects.filter(WGS_Checkm2Summary=True).exists(),
+        "assembly": projects.filter(WGS_AssemblySummary=True).exists(),
+        "gambit": projects.filter(WGS_GambitSummary=True).exists(),
+        "amrfinder": projects.filter(WGS_AmrfinderSummary=True).exists(),
+    }
 
-    # Add Referred Accession to each if possible
-    def add_ref_accession(df, qs, rel_field):
-        if df.empty:
-            return df
-        ref_map = {}
-        for obj in qs:
-            ref_acc = getattr(obj, rel_field).Ref_Accession.f_AccessionNo if getattr(obj, rel_field).Ref_Accession else None
-            ref_map[obj.id] = ref_acc
-        df.insert(1, 'Ref_Accession', df['id'].map(ref_map))
-        return df
+    related_data = {}
+    if summary_flags["fastq"]:
+        related_data["fastq"] = FastqSummary.objects.filter(fastq_project__in=projects)
+    if summary_flags["mlst"]:
+        related_data["mlst"] = Mlst.objects.filter(mlst_project__in=projects)
+    if summary_flags["checkm2"]:
+        related_data["checkm2"] = Checkm2.objects.filter(checkm2_project__in=projects)
+    if summary_flags["assembly"]:
+        related_data["assembly"] = AssemblyScan.objects.filter(assembly_project__in=projects)
+    if summary_flags["gambit"]:
+        related_data["gambit"] = Gambit.objects.filter(gambit_project__in=projects)
+    if summary_flags["amrfinder"]:
+        related_data["amrfinder"] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
 
-    fastq_df = add_ref_accession(fastq_df, fastq_qs, 'fastq_project')
-    mlst_df = add_ref_accession(mlst_df, mlst_qs, 'mlst_project')
-    checkm2_df = add_ref_accession(checkm2_df, checkm2_qs, 'checkm2_project')
-    assembly_df = add_ref_accession(assembly_df, assembly_qs, 'assembly_project')
-    amrfinder_df = add_ref_accession(amrfinder_df, amrfinder_qs, 'amrfinder_project')
-    gambit_df = add_ref_accession(gambit_df, gambit_qs, 'gambit_project')
-
-    # Combine all into Excel
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        fastq_df.to_excel(writer, index=False, sheet_name="FastQ")
-        mlst_df.to_excel(writer, index=False, sheet_name="MLST")
-        checkm2_df.to_excel(writer, index=False, sheet_name="CheckM2")
-        assembly_df.to_excel(writer, index=False, sheet_name="Assembly")
-        amrfinder_df.to_excel(writer, index=False, sheet_name="AMRFinder")
-        gambit_df.to_excel(writer, index=False, sheet_name="Gambit")
-
-    # Create response
-    output.seek(0)
-    response = HttpResponse(
-        output.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    html = render_to_string(
+        "wgs_app/Wgs_detail.html",
+        {
+            "entry": {
+                "accession": accession,
+                "referred": referred,
+                "antibiotics": antibiotics,
+                "related_data": related_data,
+                "summary_flags": summary_flags,
+            }
+        },
+        request=request,  # ✅ important for static files and context
     )
-    response['Content-Disposition'] = 'attachment; filename="All_WGS_Data.xlsx"'
-    return response
 
+    return JsonResponse({"html": html})
 
-
-## download only matched Accessions
-# @login_required
-# def download_matched_wgs_data(request):
-#     """
-#     Export only WGS data where accession numbers match across ALL WGS tables.
-#     That means the same Ref_Accession exists in Fastq, MLST, CheckM2, Assembly, AMRFinder, and Gambit.
-#     """
-
-#     # Step 1: Get all accession numbers that appear in each table
-#     fastq_acc = set(FastqSummary.objects.filter(fastq_project__Ref_Accession__isnull=False)
-#                     .values_list('fastq_project__Ref_Accession__AccessionNo', flat=True))
-#     mlst_acc = set(Mlst.objects.filter(mlst_project__Ref_Accession__isnull=False)
-#                     .values_list('mlst_project__Ref_Accession__AccessionNo', flat=True))
-#     checkm2_acc = set(Checkm2.objects.filter(checkm2_project__Ref_Accession__isnull=False)
-#                     .values_list('checkm2_project__Ref_Accession__AccessionNo', flat=True))
-#     assembly_acc = set(AssemblyScan.objects.filter(assembly_project__Ref_Accession__isnull=False)
-#                     .values_list('assembly_project__Ref_Accession__AccessionNo', flat=True))
-#     amrfinder_acc = set(Amrfinderplus.objects.filter(amrfinder_project__Ref_Accession__isnull=False)
-#                     .values_list('amrfinder_project__Ref_Accession__AccessionNo', flat=True))
-#     gambit_acc = set(Gambit.objects.filter(gambit_project__Ref_Accession__isnull=False)
-#                     .values_list('gambit_project__Ref_Accession__AccessionNo', flat=True))
-
-#     # Step 2: Find the intersection (accessions present in all WGS tables)
-#     matched_accessions = fastq_acc & mlst_acc & checkm2_acc & assembly_acc & amrfinder_acc & gambit_acc
-
-#     if not matched_accessions:
-#         # If no matches, return a simple message instead of an empty file
-#         response = HttpResponse("No accessions have complete WGS data across all tables.", content_type="text/plain")
-#         return response
-
-#     # Step 3: Query only data with matched Ref_Accession values
-#     fastq_qs = FastqSummary.objects.filter(fastq_project__Ref_Accession__AccessionNo__in=matched_accessions)
-#     mlst_qs = Mlst.objects.filter(mlst_project__Ref_Accession__AccessionNo__in=matched_accessions)
-#     checkm2_qs = Checkm2.objects.filter(checkm2_project__Ref_Accession__AccessionNo__in=matched_accessions)
-#     assembly_qs = AssemblyScan.objects.filter(assembly_project__Ref_Accession__AccessionNo__in=matched_accessions)
-#     amrfinder_qs = Amrfinderplus.objects.filter(amrfinder_project__Ref_Accession__AccessionNo__in=matched_accessions)
-#     gambit_qs = Gambit.objects.filter(gambit_project__Ref_Accession__AccessionNo__in=matched_accessions)
-
-#     # Step 4: Convert each queryset into a DataFrame
-#     def qs_to_df(qs, model_name, rel_field):
-#         if not qs.exists():
-#             return pd.DataFrame()
-#         df = pd.DataFrame.from_records(qs.values())
-#         df.insert(0, "Table", model_name)
-#         df.insert(1, "Ref_Accession", [
-#             getattr(getattr(obj, rel_field).Ref_Accession, "AccessionNo", None) for obj in qs
-#         ])
-#         return df
-
-#     fastq_df = qs_to_df(fastq_qs, "FastqSummary", "fastq_project")
-#     mlst_df = qs_to_df(mlst_qs, "Mlst", "mlst_project")
-#     checkm2_df = qs_to_df(checkm2_qs, "Checkm2", "checkm2_project")
-#     assembly_df = qs_to_df(assembly_qs, "AssemblyScan", "assembly_project")
-#     amrfinder_df = qs_to_df(amrfinder_qs, "Amrfinderplus", "amrfinder_project")
-#     gambit_df = qs_to_df(gambit_qs, "Gambit", "gambit_project")
-
-#     # Step 5: Write to Excel (multi-sheet)
-#     output = io.BytesIO()
-#     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-#         fastq_df.to_excel(writer, index=False, sheet_name="FastQ")
-#         mlst_df.to_excel(writer, index=False, sheet_name="MLST")
-#         checkm2_df.to_excel(writer, index=False, sheet_name="CheckM2")
-#         assembly_df.to_excel(writer, index=False, sheet_name="Assembly")
-#         amrfinder_df.to_excel(writer, index=False, sheet_name="AMRFinder")
-#         gambit_df.to_excel(writer, index=False, sheet_name="Gambit")
-
-#     output.seek(0)
-#     response = HttpResponse(
-#         output.getvalue(),
-#         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-#     )
-#     response["Content-Disposition"] = 'attachment; filename="Matched_WGS_Data.xlsx"'
-#     return response
 
 
 
@@ -2099,15 +2273,23 @@ def download_all_wgs_data(request):
 @login_required
 def download_matched_wgs_data(request):
     """
-    Export WGS data that match Ref_Accession (Referred_Data.AccessionNo).
-    Mode: ?mode=any or ?mode=all
-    """
-    mode = request.GET.get("mode", "any").lower()  # 'any' or 'all'
+    Export Final_Data + Antibiotic results (MIC, Disk, RIS)
+    along with WGS data (FastQ, MLST, CheckM2, Assembly, AMRFinder, Gambit).
 
-    # Collect valid accessions from Referred_Data ----
+    Mode options:
+        ?mode=all  → Complete sets (present in ALL WGS tables)
+        ?mode=any  → Partial sets (present in ANY WGS table)
+    """
+    import io
+    import pandas as pd
+    from django.http import HttpResponse
+
+    mode = request.GET.get("mode", "any").lower()
+
+    # ---- Step 1: Collect valid accessions from Final_Data ----
     referred_acc = set(Final_Data.objects.values_list("f_AccessionNo", flat=True))
 
-    # Collect accessions from WGS tables ----
+    # ---- Step 2: Collect accessions from each WGS table ----
     fastq_acc = set(FastqSummary.objects.filter(FastQ_Accession__in=referred_acc)
                     .values_list("FastQ_Accession", flat=True))
     mlst_acc = set(Mlst.objects.filter(Mlst_Accession__in=referred_acc)
@@ -2121,20 +2303,29 @@ def download_matched_wgs_data(request):
     gambit_acc = set(Gambit.objects.filter(Gambit_Accession__in=referred_acc)
                     .values_list("Gambit_Accession", flat=True))
 
-    # Combine or intersect ----
+    # ---- Step 3: Combine or intersect ----
     if mode == "all":
         matched_accessions = (
             fastq_acc & mlst_acc & checkm2_acc & assembly_acc & amrfinder_acc & gambit_acc
         )
-    else:  # mode == "any"
+        filename_suffix = "Complete"
+    else:
         matched_accessions = (
             fastq_acc | mlst_acc | checkm2_acc | assembly_acc | amrfinder_acc | gambit_acc
         )
+        filename_suffix = "Partial"
 
     if not matched_accessions:
-        return HttpResponse("No matching WGS accessions found in Final Referred_Data.", content_type="text/plain")
+        return HttpResponse(
+            "No matching WGS accessions found in Final Referred_Data.",
+            content_type="text/plain"
+        )
 
-    # Filter only matched records ----
+    # ---- Step 4: Query datasets ----
+    final_qs = Final_Data.objects.filter(f_AccessionNo__in=matched_accessions)
+    abx_qs = Final_AntibioticEntry.objects.filter(
+        ab_idNum_f_referred__f_AccessionNo__in=matched_accessions
+    )
     fastq_qs = FastqSummary.objects.filter(FastQ_Accession__in=matched_accessions)
     mlst_qs = Mlst.objects.filter(Mlst_Accession__in=matched_accessions)
     checkm2_qs = Checkm2.objects.filter(Checkm2_Accession__in=matched_accessions)
@@ -2142,7 +2333,10 @@ def download_matched_wgs_data(request):
     amrfinder_qs = Amrfinderplus.objects.filter(Amrfinder_Accession__in=matched_accessions)
     gambit_qs = Gambit.objects.filter(Gambit_Accession__in=matched_accessions)
 
-    # ---- Step 5: Convert to DataFrames ----
+    # ---- Step 5: Convert querysets to DataFrames ----
+    final_df = pd.DataFrame.from_records(final_qs.values())
+    abx_df = pd.DataFrame.from_records(abx_qs.values())
+
     def qs_to_df(qs, model_name, acc_field):
         if not qs.exists():
             return pd.DataFrame()
@@ -2158,9 +2352,52 @@ def download_matched_wgs_data(request):
     amrfinder_df = qs_to_df(amrfinder_qs, "Amrfinderplus", "Amrfinder_Accession")
     gambit_df = qs_to_df(gambit_qs, "Gambit", "Gambit_Accession")
 
-    # ---- Step 6: Write to Excel ----
+    # ---- Step 6: Merge Final_Data with antibiotics ----
+    combined_df = final_df.copy()
+    if not abx_df.empty:
+        abx_df = abx_df.merge(
+            final_df[["id", "f_AccessionNo"]],
+            left_on="ab_idNum_f_referred_id",
+            right_on="id",
+            how="left"
+        )
+
+        def pivot_antibiotic(df, value_field, suffix):
+            pivot = df.pivot_table(
+                index="f_AccessionNo",
+                columns="ab_Abx_code",
+                values=value_field,
+                aggfunc="first"
+            )
+            pivot.columns = [f"{col}_{suffix}" for col in pivot.columns]
+            return pivot
+
+        abx_mic_val = pivot_antibiotic(abx_df, "ab_MIC_value", "MIC")
+        abx_mic_ris = pivot_antibiotic(abx_df, "ab_MIC_RIS", "MIC_RIS")
+        abx_disk_val = pivot_antibiotic(abx_df, "ab_Disk_value", "Disk")
+        abx_disk_ris = pivot_antibiotic(abx_df, "ab_Disk_RIS", "Disk_RIS")
+
+        abx_pivot = pd.concat(
+            [abx_mic_val, abx_mic_ris, abx_disk_val, abx_disk_ris], axis=1
+        )
+        abx_pivot.reset_index(inplace=True)
+        combined_df = final_df.merge(abx_pivot, on="f_AccessionNo", how="left")
+
+    # ---- Step 7: Make datetimes timezone-naive ----
+    def make_tz_naive(df):
+        if df.empty:
+            return df
+        for col in df.select_dtypes(include=["datetimetz", "datetime"]).columns:
+            df[col] = pd.to_datetime(df[col], errors="coerce").dt.tz_localize(None)
+            df[col] = df[col].dt.strftime("%Y-%m-%d")
+        return df
+
+    combined_df = make_tz_naive(combined_df)
+
+    # ---- Step 8: Write all to Excel ----
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        combined_df.to_excel(writer, index=False, sheet_name="Final_Data_With_Antibiotics")
         if not fastq_df.empty: fastq_df.to_excel(writer, index=False, sheet_name="FastQ")
         if not mlst_df.empty: mlst_df.to_excel(writer, index=False, sheet_name="MLST")
         if not checkm2_df.empty: checkm2_df.to_excel(writer, index=False, sheet_name="CheckM2")
@@ -2169,11 +2406,11 @@ def download_matched_wgs_data(request):
         if not gambit_df.empty: gambit_df.to_excel(writer, index=False, sheet_name="Gambit")
 
     output.seek(0)
-    filename = f"WGS_Data_{mode.title()}_{pd.Timestamp.now().date()}.xlsx"
+    filename = f"FinalData_WGS_{filename_suffix}_{pd.Timestamp.now().date()}.xlsx"
 
     response = HttpResponse(
         output.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response["Content-Disposition"] = f'attachment; filename=\"{filename}\"'
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
