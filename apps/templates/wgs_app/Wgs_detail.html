@@ -7,9 +7,9 @@
     </h5>
   </div>
   <div class="card-body p-3">
-
+    {% if entry.related_data %}
     <!-- Identification & Specimen -->
-    <div class="row mb-3">
+    <div class="row mb-2">
       <div class="col-lg-6">
         <div class="info-section" style="border-left-color: #5e72e4;">
           <h6 class="section-title mb-2">
@@ -23,7 +23,7 @@
             <div class="col-6">
               <div class="info-item mb-0">
                 <label>Referral Date:</label>
-                <p class="info-value small">{{ entry.referral_date|date:"M j, Y"|default:"N/A" }}</p>
+                <p class="info-value small">{{ entry.referral_date |date:"M j, Y"|default:"N/A" }}</p>
               </div>
             </div>
             <div class="col-6">
@@ -68,9 +68,9 @@
         </div>
       </div>
     </div>
-
+   
     <!-- Patient & Clinical -->
-    <div class="row mb-3">
+    <div class="row mb-2">
       <div class="col-lg-6">
         <div class="info-section" style="border-left-color: #11cdef;">
           <h6 class="section-title mb-2">
@@ -159,7 +159,7 @@
         </div>
       </div>
     </div>
-
+    {% endif %}
     <!-- WGS Data Sections -->
     {% if entry.related_data.fastq %}
       <div class="mt-4">

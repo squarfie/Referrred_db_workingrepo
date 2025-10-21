@@ -4,6 +4,7 @@ from io import TextIOWrapper
 import io
 import json
 import os
+import re
 from django.conf import settings
 from django.templatetags.static import static
 from django import template
@@ -1380,6 +1381,8 @@ def upload_breakpoints(request):
                         Show=bool(row.get('Show', False)),
                         Retest=bool(row.get('Retest', False)),
                         Disk_Abx=bool(row.get('Disk_Abx', False)),
+                        Year=row.get('Year', ''),
+                        Org=row.get('Org', ''),
                         Guidelines=row.get('Guidelines', ''),
                         Tier=row.get('Tier', ''),
                         Test_Method=row.get('Test_Method', ''),
@@ -2397,7 +2400,7 @@ def upload_combined_table(request):
                 df.rename(columns=user_mappings, inplace=True)
                 print(f"[UPLOAD] Applied {len(user_mappings)} user field mappings.")
             else:
-                messages.warning(request, "⚠️ No saved field mappings found. Using raw headers.")
+                messages.warning(request, " No saved field mappings found. Using raw headers.")
 
             # --- Normalize headers (fallback cleanup) ---
             def normalize_header(header):
@@ -2474,6 +2477,9 @@ def upload_combined_table(request):
                 # Keep only model fields
                 valid_fields = {k: v for k, v in cleaned_row.items() if k in model_fields}
 
+            for field_name, value in valid_fields.items():
+                if isinstance(value, str) and len(value) > 255:
+                    print(f"[WARNING] {accession} - Field '{field_name}' exceeds 255 chars ({len(value)} chars)")
                 # --- Create or update Referred_Data record ---
                 ref_obj, ref_created = Referred_Data.objects.update_or_create(
                     AccessionNo=str(accession).strip(),
@@ -2495,6 +2501,8 @@ def upload_combined_table(request):
                     mic_op, mic_val = parse_mic_value(abx_val)
                     ret_op, ret_val = parse_mic_value(abx_rt_val)
 
+
+
                     ab_entry, ab_created = AntibioticEntry.objects.update_or_create(
                         ab_idNum_referred=ref_obj,
                         ab_Abx_code=abx,
@@ -2513,7 +2521,7 @@ def upload_combined_table(request):
             # --- Success message ---
             messages.success(
                 request,
-                f"✅ Upload complete! "
+                f"Upload complete! "
                 f"{created_ref} new Referred_Data, {updated_ref} updated; "
                 f"{created_abx} new AntibioticEntry, {updated_abx} updated."
             )
@@ -2522,7 +2530,7 @@ def upload_combined_table(request):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            messages.error(request, f"⚠️ Error processing file: {e}")
+            messages.error(request, f" Error processing file: {e}")
 
     # --- Default render (GET request) ---
     return render(request, "wgs_app/Add_wgs.html", {

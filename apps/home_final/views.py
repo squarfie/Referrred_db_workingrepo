@@ -412,11 +412,175 @@ def edit_final_data(request, id):
 
 
 
+# @login_required
+# @transaction.atomic
+# def upload_final_combined_table(request):
+#     """
+#     Upload and update Final_Data records using saved field mappings from FieldMapperTool.
+#     """
+#     form = WGSProjectForm()
+#     referred_form = FinalDataUploadForm()
+
+#     if request.method == "POST" and request.FILES.get("FinalDataFile"):
+#         try:
+#             uploaded_file = request.FILES["FinalDataFile"]
+#             file_name = uploaded_file.name.lower()
+
+#             # --- Load file ---
+#             if file_name.endswith(".csv"):
+#                 wrapper = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
+#                 df = pd.read_csv(wrapper)
+#             elif file_name.endswith((".xlsx", ".xls")):
+#                 df = pd.read_excel(uploaded_file)
+#             else:
+#                 messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
+#                 return redirect("upload_final_combined_table")
+
+#             # --- Handle transposed files ---
+#             if df.shape[0] < df.shape[1] and "accession_no" not in [c.lower() for c in df.columns]:
+#                 df = df.transpose()
+#                 df.columns = df.iloc[0].astype(str)
+#                 df = df.iloc[1:].reset_index(drop=True)
+
+#             # --- Load user field mappings from FieldMapping model ---
+#             user_mappings = dict(
+#                 FieldMapping.objects.filter(user=request.user)
+#                 .values_list("raw_field", "mapped_field")
+#             )
+
+#             # --- Apply user mappings (renames columns) ---
+#             if user_mappings:
+#                 df.rename(columns=user_mappings, inplace=True)
+#                 print(f"[UPLOAD] Applied user mappings for {len(user_mappings)} fields.")
+#             else:
+#                 messages.warning(request, "No saved mappings found. Using raw headers.")
+
+#             # --- Normalize headers ---
+#             df.columns = [str(c).strip() for c in df.columns]
+#             original_columns = list(df.columns)
+#             rows = df.to_dict("records")
+
+#             # --- Setup context ---
+#             site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
+#             model_fields = {f.name for f in Final_Data._meta.get_fields()}
+#             created_ref, updated_ref = 0, 0
+
+#             # --- Date parser ---
+#             def parse_final_date(val):
+#                 if val is None:
+#                     return None
+#                 if isinstance(val, (pd.Timestamp, datetime)):
+#                     try:
+#                         return val.date()
+#                     except Exception:
+#                         return None
+#                 s = str(val).strip()
+#                 if s in ("", "nan", "NaT", "None", "none"):
+#                     return None
+#                 try:
+#                     dt = pd.to_datetime(s, errors="coerce")
+#                     if pd.isna(dt):
+#                         return None
+#                     return dt.date()
+#                 except Exception:
+#                     for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y", "%b %d, %Y", "%B %d, %Y", "%m/%d/%Y", "%Y/%m/%d"):
+#                         try:
+#                             return datetime.strptime(s, fmt).date()
+#                         except Exception:
+#                             continue
+#                 return None
+
+#             def extract_site_code_from_accession(acc):
+#                 if not acc:
+#                     return ""
+#                 s = str(acc)
+#                 for code in site_codes:
+#                     if re.search(rf"\b{re.escape(code)}\b", s, flags=re.IGNORECASE):
+#                         return code
+#                 return ""
+
+#             # --- Process each row ---
+#             for raw_row in rows:
+#                 if not any([v and str(v).strip() != "" for v in raw_row.values()]):
+#                     continue
+
+#                 cleaned_row = {k: ("" if pd.isna(v) else v) for k, v in raw_row.items()}
+#                 accession = str(cleaned_row.get("f_AccessionNo", "")).strip()
+#                 batch_code = str(cleaned_row.get("f_Batch_Code", "")).strip()
+
+#                 if not accession:
+#                     continue  # Skip blank rows
+
+#                 # --- Parse date fields ---
+#                 date_fields_to_map = {
+#                     "f_Referral_Date": cleaned_row.get("f_Referral_Date"),
+#                     "f_Spec_Date": cleaned_row.get("f_Spec_Date"),
+#                     "f_Date_Birth": cleaned_row.get("f_Date_Birth"),
+#                     "f_Date_Admis": cleaned_row.get("f_Date_Admis"),
+#                 }
+#                 parsed_dates = {k: parse_final_date(v) for k, v in date_fields_to_map.items()}
+
+#                 # --- Build defaults dict ---
+#                 defaults = {}
+#                 for k, v in cleaned_row.items():
+#                     if k not in model_fields:
+#                         continue
+#                     if k in parsed_dates:
+#                         defaults[k] = parsed_dates[k]
+#                     else:
+#                         defaults[k] = None if (v in [None, "", "nan", "NaT"]) else v
+
+#                 # --- Safety defaults ---
+#                 for req_field in ["f_Ward_Type", "f_Nosocomial", "f_Mid_Name"]:
+#                     if req_field not in defaults or defaults[req_field] in [None, "", "nan", "NaT"]:
+#                         defaults[req_field] = "Unknown"
+
+#                 # --- Add site code if missing ---
+#                 if not defaults.get("f_SiteCode"):
+#                     defaults["f_SiteCode"] = extract_site_code_from_accession(accession)
+
+#                 # --- Create or update Final_Data record ---
+#                 try:
+#                     ref_obj, created = Final_Data.objects.update_or_create(
+#                         f_AccessionNo=accession,
+#                         f_Batch_Code=batch_code,
+#                         defaults=defaults
+#                     )
+#                 except Exception as e:
+#                     print(f"[upload_final_combined_table] Failed saving accession {accession}: {e}")
+#                     continue
+
+#                 if created:
+#                     created_ref += 1
+#                     print(f"[UPLOAD] Created record for {accession}")
+#                 else:
+#                     updated_ref += 1
+#                     print(f"[UPLOAD] Updated record for {accession}")
+
+#             # --- Summary message ---
+#             messages.success(
+#                 request,
+#                 f"Upload complete! {created_ref} new records and {updated_ref} updated."
+#             )
+#             return redirect("show_final_data")
+
+#         except Exception as e:
+#             import traceback
+#             traceback.print_exc()
+#             messages.error(request, f" Error during upload: {e}")
+
+#     return render(request, "wgs_app/Add_wgs.html", {
+#         "referred_form": referred_form,
+#         "form": form,
+#     })
+
+
 @login_required
 @transaction.atomic
 def upload_final_combined_table(request):
     """
-    Upload and update Final_Data records using saved field mappings from FieldMapperTool.
+    Upload and update Final_Data records only (no antibiotic entries).
+    Works seamlessly with FieldMapper-generated Excel (model field headers).
     """
     form = WGSProjectForm()
     referred_form = FinalDataUploadForm()
@@ -436,59 +600,46 @@ def upload_final_combined_table(request):
                 messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
                 return redirect("upload_final_combined_table")
 
-            # --- Handle transposed files ---
-            if df.shape[0] < df.shape[1] and "accession_no" not in [c.lower() for c in df.columns]:
+            # --- Normalize columns while preserving model-style fields (f_ prefixes) ---
+            def normalize_header(c):
+                c = str(c).strip()
+                if c.startswith("f_"):
+                    return c  # preserve mapped model fields
+                return (
+                    c.lower()
+                    .replace(" ", "")
+                    .replace("__", "_")
+                )
+
+            df.columns = [normalize_header(c) for c in df.columns]
+
+            print("\n[DEBUG] Headers after normalization:", list(df.columns))
+
+            # --- Handle transposed sheet case ---
+            if df.shape[0] < df.shape[1] and "f_accessionno" not in df.columns:
                 df = df.transpose()
                 df.columns = df.iloc[0].astype(str)
                 df = df.iloc[1:].reset_index(drop=True)
 
-            # --- Load user field mappings from FieldMapping model ---
-            user_mappings = dict(
-                FieldMapping.objects.filter(user=request.user)
-                .values_list("raw_field", "mapped_field")
-            )
-
-            # --- Apply user mappings (renames columns) ---
-            if user_mappings:
-                df.rename(columns=user_mappings, inplace=True)
-                print(f"[UPLOAD] Applied user mappings for {len(user_mappings)} fields.")
-            else:
-                messages.warning(request, "⚠️ No saved mappings found. Using raw headers.")
-
-            # --- Normalize headers ---
-            df.columns = [str(c).strip() for c in df.columns]
-            original_columns = list(df.columns)
             rows = df.to_dict("records")
 
-            # --- Setup context ---
             site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
             model_fields = {f.name for f in Final_Data._meta.get_fields()}
-            created_ref, updated_ref = 0, 0
 
-            # --- Date parser ---
+            created_ref = updated_ref = 0
+
+            # --- Helper functions ---
             def parse_final_date(val):
-                if val is None:
-                    return None
-                if isinstance(val, (pd.Timestamp, datetime)):
-                    try:
-                        return val.date()
-                    except Exception:
-                        return None
-                s = str(val).strip()
-                if s in ("", "nan", "NaT", "None", "none"):
+                if val is None or str(val).strip().lower() in ["nan", "nat", "none", ""]:
                     return None
                 try:
-                    dt = pd.to_datetime(s, errors="coerce")
-                    if pd.isna(dt):
-                        return None
-                    return dt.date()
+                    dt = pd.to_datetime(val, errors="coerce")
+                    return None if pd.isna(dt) else dt.date()
                 except Exception:
-                    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y", "%b %d, %Y", "%B %d, %Y", "%m/%d/%Y", "%Y/%m/%d"):
-                        try:
-                            return datetime.strptime(s, fmt).date()
-                        except Exception:
-                            continue
-                return None
+                    try:
+                        return datetime.strptime(str(val), "%Y-%m-%d").date()
+                    except Exception:
+                        return None
 
             def extract_site_code_from_accession(acc):
                 if not acc:
@@ -499,80 +650,70 @@ def upload_final_combined_table(request):
                         return code
                 return ""
 
-            # --- Process each row ---
+            # --- Process each record ---
             for raw_row in rows:
-                if not any([v and str(v).strip() != "" for v in raw_row.values()]):
+                if not any(v and str(v).strip() != "" for v in raw_row.values()):
                     continue
 
-                cleaned_row = {k: ("" if pd.isna(v) else v) for k, v in raw_row.items()}
-                accession = str(cleaned_row.get("f_AccessionNo", "")).strip()
-                batch_code = str(cleaned_row.get("f_Batch_Code", "")).strip()
+                cleaned_row = {k: v for k, v in raw_row.items() if v not in [None, "nan", "NaT"]}
+                accession = str(cleaned_row.get("f_AccessionNo", "") or cleaned_row.get("f_accessionno", "")).strip()
+                batch_code = str(cleaned_row.get("f_Batch_Code", "") or cleaned_row.get("f_batch_code", "")).strip()
 
                 if not accession:
-                    continue  # Skip blank rows
+                    continue
 
-                # --- Parse date fields ---
-                date_fields_to_map = {
-                    "f_Referral_Date": cleaned_row.get("f_Referral_Date"),
-                    "f_Spec_Date": cleaned_row.get("f_Spec_Date"),
-                    "f_Date_Birth": cleaned_row.get("f_Date_Birth"),
-                    "f_Date_Admis": cleaned_row.get("f_Date_Admis"),
-                }
-                parsed_dates = {k: parse_final_date(v) for k, v in date_fields_to_map.items()}
+                # Parse date fields dynamically
+                for date_field in ["f_Referral_Date", "f_Spec_Date", "f_Date_Birth", "f_Date_Admis"]:
+                    if date_field in cleaned_row:
+                        cleaned_row[date_field] = parse_final_date(cleaned_row[date_field])
 
-                # --- Build defaults dict ---
-                defaults = {}
-                for k, v in cleaned_row.items():
-                    if k not in model_fields:
-                        continue
-                    if k in parsed_dates:
-                        defaults[k] = parsed_dates[k]
-                    else:
-                        defaults[k] = None if (v in [None, "", "nan", "NaT"]) else v
+                # Auto extract site code if missing
+                if not cleaned_row.get("f_SiteCode"):
+                    cleaned_row["f_SiteCode"] = extract_site_code_from_accession(accession)
 
-                # --- Safety defaults ---
+                # Keep only valid model fields
+                valid_fields = {k: v for k, v in cleaned_row.items() if k in model_fields}
+
+                # Fallback for required text fields
                 for req_field in ["f_Ward_Type", "f_Nosocomial", "f_Mid_Name"]:
-                    if req_field not in defaults or defaults[req_field] in [None, "", "nan", "NaT"]:
-                        defaults[req_field] = "Unknown"
+                    if req_field not in valid_fields or not valid_fields[req_field]:
+                        valid_fields[req_field] = "Unknown"
 
-                # --- Add site code if missing ---
-                if not defaults.get("f_SiteCode"):
-                    defaults["f_SiteCode"] = extract_site_code_from_accession(accession)
-
-                # --- Create or update Final_Data record ---
                 try:
                     ref_obj, created = Final_Data.objects.update_or_create(
                         f_AccessionNo=accession,
                         f_Batch_Code=batch_code,
-                        defaults=defaults
+                        defaults=valid_fields
                     )
+                    if created:
+                        created_ref += 1
+                        print(f"[UPLOAD] Created: {accession}")
+                    else:
+                        updated_ref += 1
+                        print(f"[UPLOAD] Updated: {accession}")
+
                 except Exception as e:
-                    print(f"[upload_final_combined_table] Failed saving accession {accession}: {e}")
+                    print(f"[ERROR] Failed to save accession {accession}: {e}")
                     continue
 
-                if created:
-                    created_ref += 1
-                    print(f"[UPLOAD] Created record for {accession}")
-                else:
-                    updated_ref += 1
-                    print(f"[UPLOAD] Updated record for {accession}")
-
-            # --- Summary message ---
             messages.success(
                 request,
-                f"✅ Upload complete! {created_ref} new records and {updated_ref} updated."
+                f"✅ Upload complete! {created_ref} new records, {updated_ref} updated."
             )
             return redirect("show_final_data")
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            messages.error(request, f"⚠️ Error during upload: {e}")
+            messages.error(request, f"Error during upload: {e}")
 
+    # --- Default GET render ---
     return render(request, "wgs_app/Add_wgs.html", {
         "referred_form": referred_form,
         "form": form,
     })
+
+
 
 
 

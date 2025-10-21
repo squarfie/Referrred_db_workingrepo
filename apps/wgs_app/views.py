@@ -6,7 +6,7 @@ import io
 import re
 from django.db import transaction
 import csv
-from django.db.models import Q
+from django.db.models import Q, F, Func
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from .forms import *
@@ -1936,73 +1936,223 @@ def delete_amrfinder_by_date(request):
 
 
 # view WGS overview with antibiotic entries 
+@login_required
+def view_wgs_overview(request):
+    """
+    Displays all isolates (Final_Data) with flags showing which WGS data exist
+    and antibiotic entries if available.
+    """
+    referred_list = Final_Data.objects.all().order_by("f_AccessionNo")
+
+    table_data = []
+
+    # --- Pre-fetch antibiotic entries once to avoid N+1 queries ---
+    all_antibiotics = Final_AntibioticEntry.objects.select_related("ab_idNum_f_referred").all()
+
+    # Create a dictionary mapping accession_no -> antibiotics list
+    abx_map = {}
+    for ab in all_antibiotics:
+        acc = getattr(ab.ab_idNum_f_referred, "f_AccessionNo", None)
+        if acc:
+            if acc not in abx_map:
+                abx_map[acc] = []
+            abx_map[acc].append({
+                "code": ab.ab_Abx_code,
+                "ris": ab.ab_MIC_RIS or "",
+                "disk": ab.ab_Disk_value or "",
+                "mic": ab.ab_MIC_value or "",
+            })
+
+    for referred in referred_list:
+        acc = referred.f_AccessionNo
+
+        # --- Match projects by accession (through FK or any WGS link) ---
+        projects = WGS_Project.objects.filter(
+            Q(Ref_Accession__f_AccessionNo=acc)
+            | Q(WGS_FastQ_Acc=acc)
+            | Q(WGS_Mlst_Acc=acc)
+            | Q(WGS_Checkm2_Acc=acc)
+            | Q(WGS_Assembly_Acc=acc)
+            | Q(WGS_Gambit_Acc=acc)
+            | Q(WGS_Amrfinder_Acc=acc)
+        ).distinct()
+
+        # --- Determine which WGS summaries exist ---
+        summary_flags = {
+            "fastq": projects.filter(WGS_FastqSummary=True).exists(),
+            "mlst": projects.filter(WGS_MlstSummary=True).exists(),
+            "checkm2": projects.filter(WGS_Checkm2Summary=True).exists(),
+            "assembly": projects.filter(WGS_AssemblySummary=True).exists(),
+            "gambit": projects.filter(WGS_GambitSummary=True).exists(),
+            "amrfinder": projects.filter(WGS_AmrfinderSummary=True).exists(),
+        }
+
+        # --- Collect related data if present ---
+        related_data = {}
+        if summary_flags["fastq"]:
+            related_data["fastq"] = FastqSummary.objects.filter(fastq_project__in=projects)
+        if summary_flags["mlst"]:
+            related_data["mlst"] = Mlst.objects.filter(mlst_project__in=projects)
+        if summary_flags["checkm2"]:
+            related_data["checkm2"] = Checkm2.objects.filter(checkm2_project__in=projects)
+        if summary_flags["assembly"]:
+            related_data["assembly"] = AssemblyScan.objects.filter(assembly_project__in=projects)
+        if summary_flags["gambit"]:
+            related_data["gambit"] = Gambit.objects.filter(gambit_project__in=projects)
+        if summary_flags["amrfinder"]:
+            related_data["amrfinder"] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
+
+        # --- Retrieve antibiotic data if available ---
+        abx_entries = abx_map.get(acc, [])
+
+        table_data.append({
+            "accession": acc,
+            "patient_id": referred.f_Patient_ID,
+            "patient_name": f"{referred.f_Last_Name}, {referred.f_First_Name} {referred.f_Mid_Name or ''}".strip(),
+            "age": referred.f_Age,
+            "sex": referred.f_Sex,
+            "ward": referred.f_Ward,
+            "specimen": referred.f_Spec_Type,
+            "organism": referred.f_ars_OrgCode,
+            "sitecode": referred.f_SiteCode,
+            "diagnosis": referred.f_Diagnosis_ICD10,
+            "growth": referred.f_Growth,
+            "date_collected": referred.f_Spec_Date,
+            "referral_date": referred.f_Referral_Date,
+            "summary_flags": summary_flags,
+            "related_data": related_data,
+            "antibiotics": abx_entries,  
+        })
+
+    # --- Summary counts for the page header or filters ---
+    counts = {
+        "total": len(table_data),
+        "fastq": sum(1 for e in table_data if e["summary_flags"]["fastq"]),
+        "mlst": sum(1 for e in table_data if e["summary_flags"]["mlst"]),
+        "checkm2": sum(1 for e in table_data if e["summary_flags"]["checkm2"]),
+        "assembly": sum(1 for e in table_data if e["summary_flags"]["assembly"]),
+        "gambit": sum(1 for e in table_data if e["summary_flags"]["gambit"]),
+        "amrfinder": sum(1 for e in table_data if e["summary_flags"]["amrfinder"]),
+        "with_antibiotics": sum(1 for e in table_data if e["antibiotics"]),  
+    }
+
+
+    return render(
+        request,
+        "wgs_app/Wgs_overview.html",
+        {
+            "table_data": table_data,
+            "counts": counts,
+        },
+    )
+
+
+# View WGS overview with antibiotic entries but optimized to reduce queries
+# Shows isolates that have WGS data in ANY of the WGS tables
+
 # @login_required
 # def view_wgs_overview(request):
 #     """
-#     Displays all isolates (Final_Data) with flags showing which WGS data exist
-#     and antibiotic entries if available.
+#     Displays only isolates (Final_Data) that have matched WGS data
+#     across any WGS table (FastQ, MLST, CheckM2, Assembly, Gambit, AMRFinder).
+#     Includes antibiotic entries if available.
+#     Matches even if accession formats differ (dash/underscore/case).
 #     """
-#     referred_list = Final_Data.objects.all().order_by("f_AccessionNo")
-#     table_data = []
 
-#     # --- Pre-fetch antibiotic entries once to avoid N+1 queries ---
-#     all_antibiotics = Final_AntibioticEntry.objects.select_related("ab_idNum_f_referred").all()
+#     # --- Step 1: Gather all accessions from WGS sources ---
+#     fastq_accs = list(FastqSummary.objects.values_list("fastq_project__WGS_FastQ_Acc", flat=True))
+#     mlst_accs = list(Mlst.objects.values_list("mlst_project__WGS_Mlst_Acc", flat=True))
+#     checkm2_accs = list(Checkm2.objects.values_list("checkm2_project__WGS_Checkm2_Acc", flat=True))
+#     assembly_accs = list(AssemblyScan.objects.values_list("assembly_project__WGS_Assembly_Acc", flat=True))
+#     gambit_accs = list(Gambit.objects.values_list("Gambit_Accession", flat=True))
+#     amrfinder_accs = list(Amrfinderplus.objects.values_list("amrfinder_project__WGS_Amrfinder_Acc", flat=True))
 
-#     # Create a dictionary mapping accession_no -> antibiotics list
+#     # Combine & clean
+#     wgs_accessions = set(
+#         fastq_accs + mlst_accs + checkm2_accs + assembly_accs + gambit_accs + amrfinder_accs
+#     )
+#     wgs_accessions = {re.sub(r"[^A-Za-z0-9]", "", acc).upper() for acc in wgs_accessions if acc and isinstance(acc, str)}
+
+#     print("WGS Accessions Found:", len(wgs_accessions), list(wgs_accessions)[:10])
+
+#     # --- Step 2: Annotate normalized accession and match ---
+#     referred_list = (
+#         Final_Data.objects.annotate(
+#             norm_acc=models.Func(
+#                 models.F("f_AccessionNo"),
+#                 function="REPLACE",
+#                 template="REPLACE(%(expressions)s, ' ', '')"
+#             )
+#         )
+#         .filter(norm_acc__in=wgs_accessions)
+#         .only(
+#             "f_AccessionNo", "f_Patient_ID", "f_Last_Name", "f_First_Name", "f_Mid_Name",
+#             "f_Age", "f_Sex", "f_Ward", "f_Spec_Type", "f_ars_OrgCode", "f_SiteCode",
+#             "f_Diagnosis_ICD10", "f_Growth", "f_Spec_Date", "f_Referral_Date",
+#         )
+#         .order_by("f_AccessionNo")
+#     )
+
+#     print("Matched Isolates:", referred_list.count())
+
+#     # --- Step 3: Preload antibiotic entries ---
+#     all_antibiotics = Final_AntibioticEntry.objects.select_related("ab_idNum_f_referred").only(
+#         "ab_idNum_f_referred__f_AccessionNo",
+#         "ab_Abx_code",
+#         "ab_MIC_RIS",
+#         "ab_MIC_value",
+#         "ab_Disk_value",
+#     )
+
 #     abx_map = {}
 #     for ab in all_antibiotics:
 #         acc = getattr(ab.ab_idNum_f_referred, "f_AccessionNo", None)
 #         if acc:
-#             if acc not in abx_map:
-#                 abx_map[acc] = []
-#             abx_map[acc].append({
+#             abx_map.setdefault(acc, []).append({
 #                 "code": ab.ab_Abx_code,
 #                 "ris": ab.ab_MIC_RIS or "",
 #                 "disk": ab.ab_Disk_value or "",
 #                 "mic": ab.ab_MIC_value or "",
 #             })
 
+#     # --- Step 4: Build data table ---
+#     table_data = []
 #     for referred in referred_list:
-#         acc = referred.f_AccessionNo
+#         acc = referred.f_AccessionNo.strip() if referred.f_AccessionNo else None
+#         if not acc:
+#             continue
 
-#         # --- Match projects by accession (through FK or any WGS link) ---
 #         projects = WGS_Project.objects.filter(
-#             Q(Ref_Accession__f_AccessionNo=acc)
-#             | Q(WGS_FastQ_Acc=acc)
-#             | Q(WGS_Mlst_Acc=acc)
-#             | Q(WGS_Checkm2_Acc=acc)
-#             | Q(WGS_Assembly_Acc=acc)
-#             | Q(WGS_Gambit_Acc=acc)
-#             | Q(WGS_Amrfinder_Acc=acc)
+#             Q(WGS_FastQ_Acc__iexact=acc)
+#             | Q(WGS_Mlst_Acc__iexact=acc)
+#             | Q(WGS_Checkm2_Acc__iexact=acc)
+#             | Q(WGS_Assembly_Acc__iexact=acc)
+#             | Q(WGS_Gambit_Acc__iexact=acc)
+#             | Q(WGS_Amrfinder_Acc__iexact=acc)
 #         ).distinct()
 
-#         # --- Determine which WGS summaries exist ---
 #         summary_flags = {
-#             "fastq": projects.filter(WGS_FastqSummary=True).exists(),
-#             "mlst": projects.filter(WGS_MlstSummary=True).exists(),
-#             "checkm2": projects.filter(WGS_Checkm2Summary=True).exists(),
-#             "assembly": projects.filter(WGS_AssemblySummary=True).exists(),
-#             "gambit": projects.filter(WGS_GambitSummary=True).exists(),
-#             "amrfinder": projects.filter(WGS_AmrfinderSummary=True).exists(),
+#             "fastq": FastqSummary.objects.filter(Q(fastq_project__in=projects) | Q(sample__iexact=acc)).exists(),
+#             "mlst": Mlst.objects.filter(Q(mlst_project__in=projects) | Q(mlst_project__WGS_Mlst_Acc__iexact=acc)).exists(),
+#             "checkm2": Checkm2.objects.filter(Q(checkm2_project__in=projects) | Q(checkm2_project__WGS_Checkm2_Acc__iexact=acc)).exists(),
+#             "assembly": AssemblyScan.objects.filter(Q(assembly_project__in=projects) | Q(assembly_project__WGS_Assembly_Acc__iexact=acc)).exists(),
+#             "gambit": Gambit.objects.filter(Q(gambit_project__in=projects) | Q(Gambit_Accession__iexact=acc)).exists(),
+#             "amrfinder": Amrfinderplus.objects.filter(Q(amrfinder_project__in=projects) | Q(amrfinder_project__WGS_Amrfinder_Acc__iexact=acc)).exists(),
 #         }
 
-#         # --- Collect related data if present ---
 #         related_data = {}
 #         if summary_flags["fastq"]:
-#             related_data["fastq"] = FastqSummary.objects.filter(fastq_project__in=projects)
+#             related_data["fastq"] = FastqSummary.objects.filter(Q(fastq_project__in=projects) | Q(sample__iexact=acc))
 #         if summary_flags["mlst"]:
-#             related_data["mlst"] = Mlst.objects.filter(mlst_project__in=projects)
+#             related_data["mlst"] = Mlst.objects.filter(Q(mlst_project__in=projects) | Q(mlst_project__WGS_Mlst_Acc__iexact=acc))
 #         if summary_flags["checkm2"]:
-#             related_data["checkm2"] = Checkm2.objects.filter(checkm2_project__in=projects)
+#             related_data["checkm2"] = Checkm2.objects.filter(Q(checkm2_project__in=projects) | Q(checkm2_project__WGS_Checkm2_Acc__iexact=acc))
 #         if summary_flags["assembly"]:
-#             related_data["assembly"] = AssemblyScan.objects.filter(assembly_project__in=projects)
+#             related_data["assembly"] = AssemblyScan.objects.filter(Q(assembly_project__in=projects) | Q(assembly_project__WGS_Assembly_Acc__iexact=acc))
 #         if summary_flags["gambit"]:
-#             related_data["gambit"] = Gambit.objects.filter(gambit_project__in=projects)
+#             related_data["gambit"] = Gambit.objects.filter(Q(gambit_project__in=projects) | Q(Gambit_Accession__iexact=acc))
 #         if summary_flags["amrfinder"]:
-#             related_data["amrfinder"] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
-
-#         # --- Retrieve antibiotic data if available ---
-#         abx_entries = abx_map.get(acc, [])
+#             related_data["amrfinder"] = Amrfinderplus.objects.filter(Q(amrfinder_project__in=projects) | Q(amrfinder_project__WGS_Amrfinder_Acc__iexact=acc))
 
 #         table_data.append({
 #             "accession": acc,
@@ -2020,10 +2170,9 @@ def delete_amrfinder_by_date(request):
 #             "referral_date": referred.f_Referral_Date,
 #             "summary_flags": summary_flags,
 #             "related_data": related_data,
-#             "antibiotics": abx_entries,  
+#             "antibiotics": abx_map.get(acc, []),
 #         })
 
-#     # --- Summary counts for the page header or filters ---
 #     counts = {
 #         "total": len(table_data),
 #         "fastq": sum(1 for e in table_data if e["summary_flags"]["fastq"]),
@@ -2032,237 +2181,173 @@ def delete_amrfinder_by_date(request):
 #         "assembly": sum(1 for e in table_data if e["summary_flags"]["assembly"]),
 #         "gambit": sum(1 for e in table_data if e["summary_flags"]["gambit"]),
 #         "amrfinder": sum(1 for e in table_data if e["summary_flags"]["amrfinder"]),
-#         "with_antibiotics": sum(1 for e in table_data if e["antibiotics"]),  
+#         "with_antibiotics": sum(1 for e in table_data if e["antibiotics"]),
 #     }
 
-
-#     return render(
-#         request,
-#         "wgs_app/Wgs_overview.html",
-#         {
-#             "table_data": table_data,
-#             "counts": counts,
-#         },
-#     )
-
-
-# View WGS overview with antibiotic entries but optimized to reduce queries
-# Shows isolates that have WGS data in ANY of the WGS tables
-
-
-@login_required
-def view_wgs_overview(request):
-    """
-    Displays only isolates (Final_Data) that have matched WGS data
-    across any WGS table (FastQ, MLST, CheckM2, Assembly, Gambit, AMRFinder).
-    Includes antibiotic entries if available.
-    Works even if WGS_Project or FastQ data are deleted.
-    """
-
-    # --- Step 1: Gather all accessions from any WGS table, safely ---
-    fastq_accs = list(FastqSummary.objects.values_list("sample", flat=True))
-    mlst_accs = list(Mlst.objects.values_list("mlst_project__WGS_Mlst_Acc", flat=True))
-    checkm2_accs = list(Checkm2.objects.values_list("checkm2_project__WGS_Checkm2_Acc", flat=True))
-    assembly_accs = list(AssemblyScan.objects.values_list("assembly_project__WGS_Assembly_Acc", flat=True))
-    gambit_accs = list(Gambit.objects.values_list("Gambit_Accession", flat=True))
-    amrfinder_accs = list(Amrfinderplus.objects.values_list("amrfinder_project__WGS_Amrfinder_Acc", flat=True))
-
-    # --- Combine all into one set ---
-    wgs_accessions = set(
-        fastq_accs + mlst_accs + checkm2_accs + assembly_accs + gambit_accs + amrfinder_accs
-    )
-
-    # --- Remove blanks and normalize ---
-    wgs_accessions = {acc.strip() for acc in wgs_accessions if acc and isinstance(acc, str)}
-
-    print("WGS Accessions Found:", len(wgs_accessions), list(wgs_accessions)[:10])  # Debug log
-
-    # --- Step 2: Load only matched isolates (trim fields for speed) ---
-    referred_list = Final_Data.objects.only(
-        "f_AccessionNo",
-        "f_Patient_ID",
-        "f_Last_Name",
-        "f_First_Name",
-        "f_Mid_Name",
-        "f_Age",
-        "f_Sex",
-        "f_Ward",
-        "f_Spec_Type",
-        "f_ars_OrgCode",
-        "f_SiteCode",
-        "f_Diagnosis_ICD10",
-        "f_Growth",
-        "f_Spec_Date",
-        "f_Referral_Date",
-    ).filter(f_AccessionNo__in=wgs_accessions).order_by("f_AccessionNo")
-
-    print("Matched Isolates:", referred_list.count())  # Debug log
-
-    # --- Step 3: Preload antibiotic entries ---
-    all_antibiotics = Final_AntibioticEntry.objects.select_related("ab_idNum_f_referred").only(
-        "ab_idNum_f_referred__f_AccessionNo",
-        "ab_Abx_code",
-        "ab_MIC_RIS",
-        "ab_MIC_value",
-        "ab_Disk_value",
-    )
-
-    abx_map = {}
-    for ab in all_antibiotics:
-        acc = getattr(ab.ab_idNum_f_referred, "f_AccessionNo", None)
-        if acc:
-            abx_map.setdefault(acc, []).append({
-                "code": ab.ab_Abx_code,
-                "ris": ab.ab_MIC_RIS or "",
-                "disk": ab.ab_Disk_value or "",
-                "mic": ab.ab_MIC_value or "",
-            })
-
-    table_data = []
-
-    # --- Step 4: For each referred isolate ---
-    for referred in referred_list:
-        acc = referred.f_AccessionNo.strip() if referred.f_AccessionNo else None
-        if not acc:
-            continue
-
-        # Get projects if any exist
-        projects = WGS_Project.objects.filter(
-            Q(WGS_FastQ_Acc=acc)
-            | Q(WGS_Mlst_Acc=acc)
-            | Q(WGS_Checkm2_Acc=acc)
-            | Q(WGS_Assembly_Acc=acc)
-            | Q(WGS_Gambit_Acc=acc)
-            | Q(WGS_Amrfinder_Acc=acc)
-        ).distinct()
-
-        # Determine which WGS data exist
-        summary_flags = {
-            "fastq": FastqSummary.objects.filter(Q(fastq_project__in=projects) | Q(sample=acc)).exists(),
-            "mlst": Mlst.objects.filter(Q(mlst_project__in=projects) | Q(mlst_project__WGS_Mlst_Acc=acc)).exists(),
-            "checkm2": Checkm2.objects.filter(Q(checkm2_project__in=projects) | Q(checkm2_project__WGS_Checkm2_Acc=acc)).exists(),
-            "assembly": AssemblyScan.objects.filter(Q(assembly_project__in=projects) | Q(assembly_project__WGS_Assembly_Acc=acc)).exists(),
-            "gambit": Gambit.objects.filter(Q(gambit_project__in=projects) | Q(Gambit_Accession=acc)).exists(),
-            "amrfinder": Amrfinderplus.objects.filter(Q(amrfinder_project__in=projects) | Q(amrfinder_project__WGS_Amrfinder_Acc=acc)).exists(),
-        }
-
-        # Collect related data
-        related_data = {}
-        if summary_flags["fastq"]:
-            related_data["fastq"] = FastqSummary.objects.filter(Q(fastq_project__in=projects) | Q(sample=acc))
-        if summary_flags["mlst"]:
-            related_data["mlst"] = Mlst.objects.filter(Q(mlst_project__in=projects) | Q(mlst_project__WGS_Mlst_Acc=acc))
-        if summary_flags["checkm2"]:
-            related_data["checkm2"] = Checkm2.objects.filter(Q(checkm2_project__in=projects) | Q(checkm2_project__WGS_Checkm2_Acc=acc))
-        if summary_flags["assembly"]:
-            related_data["assembly"] = AssemblyScan.objects.filter(Q(assembly_project__in=projects) | Q(assembly_project__WGS_Assembly_Acc=acc))
-        if summary_flags["gambit"]:
-            related_data["gambit"] = Gambit.objects.filter(Q(gambit_project__in=projects) | Q(Gambit_Accession=acc))
-        if summary_flags["amrfinder"]:
-            related_data["amrfinder"] = Amrfinderplus.objects.filter(Q(amrfinder_project__in=projects) | Q(amrfinder_project__WGS_Amrfinder_Acc=acc))
-
-        # Antibiotics
-        abx_entries = abx_map.get(acc, [])
-
-        # Append final table entry
-        table_data.append({
-            "accession": acc,
-            "patient_id": referred.f_Patient_ID,
-            "patient_name": f"{referred.f_Last_Name}, {referred.f_First_Name} {referred.f_Mid_Name or ''}".strip(),
-            "age": referred.f_Age,
-            "sex": referred.f_Sex,
-            "ward": referred.f_Ward,
-            "specimen": referred.f_Spec_Type,
-            "organism": referred.f_ars_OrgCode,
-            "sitecode": referred.f_SiteCode,
-            "diagnosis": referred.f_Diagnosis_ICD10,
-            "growth": referred.f_Growth,
-            "date_collected": referred.f_Spec_Date,
-            "referral_date": referred.f_Referral_Date,
-            "summary_flags": summary_flags,
-            "related_data": related_data,
-            "antibiotics": abx_entries,
-        })
-
-    counts = {
-        "total": len(table_data),
-        "fastq": sum(1 for e in table_data if e["summary_flags"]["fastq"]),
-        "mlst": sum(1 for e in table_data if e["summary_flags"]["mlst"]),
-        "checkm2": sum(1 for e in table_data if e["summary_flags"]["checkm2"]),
-        "assembly": sum(1 for e in table_data if e["summary_flags"]["assembly"]),
-        "gambit": sum(1 for e in table_data if e["summary_flags"]["gambit"]),
-        "amrfinder": sum(1 for e in table_data if e["summary_flags"]["amrfinder"]),
-        "with_antibiotics": sum(1 for e in table_data if e["antibiotics"]),
-    }
-
-    return render(request, "wgs_app/Wgs_overview.html", {
-        "table_data": table_data,
-        "counts": counts,
-    })
+#     return render(request, "wgs_app/Wgs_overview.html", {
+#         "table_data": table_data,
+#         "counts": counts,
+#     })
 
 
 ############ Show detailed WGS info for one Referred_Data AccessionNo,
-@login_required
+# @login_required
+# def get_wgs_details(request, accession):
+#     """
+#     Returns only the detailed info (HTML) for one accession.
+#     Used for AJAX lazy loading.
+#     """
+#     referred = Final_Data.objects.filter(f_AccessionNo=accession).first()
+#     if not referred:
+#         return JsonResponse({"error": "Accession not found."}, status=404)
+
+#     # Fetch antibiotic entries
+#     antibiotics = Final_AntibioticEntry.objects.filter(
+#         ab_idNum_f_referred__f_AccessionNo=accession
+#     ).values("ab_Abx_code", "ab_MIC_RIS", "ab_MIC_value", "ab_Disk_value")
+
+#     # Fetch related WGS projects
+#     projects = WGS_Project.objects.filter(
+#         Q(WGS_FastQ_Acc=accession)
+#         | Q(WGS_Mlst_Acc=accession)
+#         | Q(WGS_Checkm2_Acc=accession)
+#         | Q(WGS_Assembly_Acc=accession)
+#         | Q(WGS_Gambit_Acc=accession)
+#         | Q(WGS_Amrfinder_Acc=accession)
+#     ).distinct()
+
+#     summary_flags = {
+#         "fastq": projects.filter(WGS_FastqSummary=True).exists(),
+#         "mlst": projects.filter(WGS_MlstSummary=True).exists(),
+#         "checkm2": projects.filter(WGS_Checkm2Summary=True).exists(),
+#         "assembly": projects.filter(WGS_AssemblySummary=True).exists(),
+#         "gambit": projects.filter(WGS_GambitSummary=True).exists(),
+#         "amrfinder": projects.filter(WGS_AmrfinderSummary=True).exists(),
+#     }
+
+#     related_data = {}
+#     if summary_flags["fastq"]:
+#         related_data["fastq"] = FastqSummary.objects.filter(fastq_project__in=projects)
+#     if summary_flags["mlst"]:
+#         related_data["mlst"] = Mlst.objects.filter(mlst_project__in=projects)
+#     if summary_flags["checkm2"]:
+#         related_data["checkm2"] = Checkm2.objects.filter(checkm2_project__in=projects)
+#     if summary_flags["assembly"]:
+#         related_data["assembly"] = AssemblyScan.objects.filter(assembly_project__in=projects)
+#     if summary_flags["gambit"]:
+#         related_data["gambit"] = Gambit.objects.filter(gambit_project__in=projects)
+#     if summary_flags["amrfinder"]:
+#         related_data["amrfinder"] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
+
+#     html = render_to_string(
+#         "wgs_app/Wgs_detail.html",
+#         {
+#             "entry": {
+#                 "accession": accession,
+#                 "referred": referred,
+#                 "antibiotics": antibiotics,
+#                 "related_data": related_data,
+#                 "summary_flags": summary_flags,
+#             }
+#         },
+#         request=request,  # ✅ important for static files and context
+#     )
+
+#     return JsonResponse({"html": html})
+
+
+login_required
 def get_wgs_details(request, accession):
     """
-    Returns only the detailed info (HTML) for one accession.
-    Used for AJAX lazy loading.
+    Returns the detailed information for one accession, including:
+    - Final_Data fields
+    - Antibiotic entries
+    - Related WGS datasets
     """
-    referred = Final_Data.objects.filter(f_AccessionNo=accession).first()
+
+    # --- Normalize accession (in case format differs) ---
+    normalized_acc = re.sub(r"[^A-Za-z0-9]", "", accession).upper()
+
+    # --- Find the Final_Data record (normalized lookup) ---
+    referred = (
+        Final_Data.objects.annotate(
+            norm_acc=Func(
+                F("f_AccessionNo"),
+                function="REPLACE",
+                template="REPLACE(REPLACE(REPLACE(%(expressions)s, '-', ''), '_', ''), ' ', '')"
+            )
+        )
+        .filter(norm_acc__iexact=normalized_acc)
+        .first()
+    )
+
     if not referred:
+        print(f"[DEBUG] Accession not found: {accession}")
         return JsonResponse({"error": "Accession not found."}, status=404)
 
-    # Fetch antibiotic entries
-    antibiotics = Final_AntibioticEntry.objects.filter(
-        ab_idNum_f_referred__f_AccessionNo=accession
-    ).values("ab_Abx_code", "ab_MIC_RIS", "ab_MIC_value", "ab_Disk_value")
+    print(f"[DEBUG] Found referred record for {accession} → {referred.f_AccessionNo}")
 
-    # Fetch related WGS projects
+    # --- Antibiotic entries ---
+    antibiotics = list(
+        Final_AntibioticEntry.objects.filter(ab_idNum_f_referred=referred)
+        .values("ab_Abx_code", "ab_MIC_RIS", "ab_MIC_value", "ab_Disk_value")
+    )
+
+    # --- Related WGS Projects ---
     projects = WGS_Project.objects.filter(
-        Q(WGS_FastQ_Acc=accession)
-        | Q(WGS_Mlst_Acc=accession)
-        | Q(WGS_Checkm2_Acc=accession)
-        | Q(WGS_Assembly_Acc=accession)
-        | Q(WGS_Gambit_Acc=accession)
-        | Q(WGS_Amrfinder_Acc=accession)
+        Q(WGS_FastQ_Acc__iexact=accession)
+        | Q(WGS_Mlst_Acc__iexact=accession)
+        | Q(WGS_Checkm2_Acc__iexact=accession)
+        | Q(WGS_Assembly_Acc__iexact=accession)
+        | Q(WGS_Gambit_Acc__iexact=accession)
+        | Q(WGS_Amrfinder_Acc__iexact=accession)
     ).distinct()
 
     summary_flags = {
-        "fastq": projects.filter(WGS_FastqSummary=True).exists(),
-        "mlst": projects.filter(WGS_MlstSummary=True).exists(),
-        "checkm2": projects.filter(WGS_Checkm2Summary=True).exists(),
-        "assembly": projects.filter(WGS_AssemblySummary=True).exists(),
-        "gambit": projects.filter(WGS_GambitSummary=True).exists(),
-        "amrfinder": projects.filter(WGS_AmrfinderSummary=True).exists(),
+        "fastq": FastqSummary.objects.filter(Q(fastq_project__in=projects) | Q(sample__iexact=accession)).exists(),
+        "mlst": Mlst.objects.filter(Q(mlst_project__in=projects) | Q(mlst_project__WGS_Mlst_Acc__iexact=accession)).exists(),
+        "checkm2": Checkm2.objects.filter(Q(checkm2_project__in=projects) | Q(checkm2_project__WGS_Checkm2_Acc__iexact=accession)).exists(),
+        "assembly": AssemblyScan.objects.filter(Q(assembly_project__in=projects) | Q(assembly_project__WGS_Assembly_Acc__iexact=accession)).exists(),
+        "gambit": Gambit.objects.filter(Q(gambit_project__in=projects) | Q(Gambit_Accession__iexact=accession)).exists(),
+        "amrfinder": Amrfinderplus.objects.filter(Q(amrfinder_project__in=projects) | Q(amrfinder_project__WGS_Amrfinder_Acc__iexact=accession)).exists(),
     }
 
+    # --- Related WGS Data ---
     related_data = {}
     if summary_flags["fastq"]:
-        related_data["fastq"] = FastqSummary.objects.filter(fastq_project__in=projects)
+        related_data["fastq"] = FastqSummary.objects.filter(Q(fastq_project__in=projects) | Q(sample__iexact=accession))
     if summary_flags["mlst"]:
-        related_data["mlst"] = Mlst.objects.filter(mlst_project__in=projects)
+        related_data["mlst"] = Mlst.objects.filter(Q(mlst_project__in=projects) | Q(mlst_project__WGS_Mlst_Acc__iexact=accession))
     if summary_flags["checkm2"]:
-        related_data["checkm2"] = Checkm2.objects.filter(checkm2_project__in=projects)
+        related_data["checkm2"] = Checkm2.objects.filter(Q(checkm2_project__in=projects) | Q(checkm2_project__WGS_Checkm2_Acc__iexact=accession))
     if summary_flags["assembly"]:
-        related_data["assembly"] = AssemblyScan.objects.filter(assembly_project__in=projects)
+        related_data["assembly"] = AssemblyScan.objects.filter(Q(assembly_project__in=projects) | Q(assembly_project__WGS_Assembly_Acc__iexact=accession))
     if summary_flags["gambit"]:
-        related_data["gambit"] = Gambit.objects.filter(gambit_project__in=projects)
+        related_data["gambit"] = Gambit.objects.filter(Q(gambit_project__in=projects) | Q(Gambit_Accession__iexact=accession))
     if summary_flags["amrfinder"]:
-        related_data["amrfinder"] = Amrfinderplus.objects.filter(amrfinder_project__in=projects)
+        related_data["amrfinder"] = Amrfinderplus.objects.filter(Q(amrfinder_project__in=projects) | Q(amrfinder_project__WGS_Amrfinder_Acc__iexact=accession))
 
-    html = render_to_string(
-        "wgs_app/Wgs_detail.html",
-        {
-            "entry": {
-                "accession": accession,
-                "referred": referred,
-                "antibiotics": antibiotics,
-                "related_data": related_data,
-                "summary_flags": summary_flags,
-            }
-        },
-        request=request,  # ✅ important for static files and context
-    )
+    # --- Prepare structured data for the template ---
+    entry = {
+        "accession": referred.f_AccessionNo,
+        "patient_id": referred.f_Patient_ID,
+        "patient_name": f"{referred.f_Last_Name}, {referred.f_First_Name} {referred.f_Mid_Name or ''}".strip(),
+        "age": referred.f_Age,
+        "sex": referred.f_Sex,
+        "ward": referred.f_Ward,
+        "specimen": referred.f_Spec_Type,
+        "organism": referred.f_ars_OrgCode,
+        "sitecode": referred.f_SiteCode,
+        "diagnosis": referred.f_Diagnosis_ICD10,
+        "growth": referred.f_Growth,
+        "date_collected": referred.f_Spec_Date,
+        "referral_date": referred.f_Referral_Date,
+        "antibiotics": antibiotics,
+        "related_data": related_data,
+        "summary_flags": summary_flags,
+    }
+
+    html = render_to_string("wgs_app/Wgs_detail.html", {"entry": entry}, request=request)
 
     return JsonResponse({"html": html})
 

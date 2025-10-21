@@ -2,75 +2,281 @@
 {% load static %} 
 {% load widget_tweaks %}
 
-{% block title %} Add New Specimen Type {% endblock title %}
+{% block title %}Add New Specimen Type{% endblock title %}
 
-<!-- Specific CSS goes HERE -->
-{% block stylesheets %}{% endblock stylesheets %}
+{% block stylesheets %}
+<style>
+.specimen-header {
+  background: url("/static/assets/img/theme/microbial.jpg") no-repeat bottom center;
+  background-size: cover;
+  min-height: 200px;
+  position: relative;
+  overflow: hidden;
+}
+
+.specimen-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), 
+    radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(126, 201, 126, 0.1) 0%, transparent 40%);
+  opacity: 0.6;
+}
+
+.specimen-card {
+  border-top: 4px solid #2d9cad;
+  box-shadow: 0 4px 12px rgba(29, 156, 173, 0.15);
+  border-radius: 0.75rem;
+}
+
+.form-control-label {
+  color: #1a7a8e;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.form-control {
+  border: 2px solid #d1e8ed;
+  transition: all 0.3s ease;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+.form-control:focus {
+  border-color: #2d9cad;
+  box-shadow: 0 0 0 0.2rem rgba(45, 156, 173, 0.15);
+  background: #f8fcfd;
+}
+
+.form-section {
+  background: linear-gradient(135deg, #f8fcfd 0%, #ffffff 100%);
+  padding: 2rem;
+  border-radius: 0.75rem;
+  border: 2px solid #d1e8ed;
+  margin-bottom: 2rem;
+}
+
+.section-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #2d9cad 0%, #45b5c6 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  box-shadow: 0 4px 12px rgba(45, 156, 173, 0.25);
+}
+
+.section-icon i {
+  color: white;
+  font-size: 1.8rem;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #1a7a8e 0%, #2d9cad 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(29, 156, 173, 0.25);
+  transition: all 0.3s ease;
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #155f6f 0%, #247d8f 100%);
+  box-shadow: 0 6px 16px rgba(29, 156, 173, 0.35);
+  transform: translateY(-2px);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #7ec97e 0%, #5fb85f 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(126, 201, 126, 0.25);
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #6ab86a 0%, #4da04d 100%);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  border: none;
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+}
+
+.btn-secondary:hover {
+  transform: translateY(-2px);
+}
+
+.page-title {
+  background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border-left: 5px solid #2d9cad;
+  margin-bottom: 2rem;
+}
+
+.page-title h2 {
+  color: #1a7a8e;
+  font-weight: 700;
+  margin: 0;
+}
+
+.input-icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #2d9cad;
+  font-size: 1.2rem;
+  z-index: 10;
+}
+
+.form-group {
+  position: relative;
+}
+
+.form-control-with-icon {
+  padding-left: 45px !important;
+}
+
+.helper-text {
+  font-size: 0.8rem;
+  color: #5a6c72;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+</style>
+{% endblock stylesheets %}
 
 {% block content %}
 
-<body>
-
-  <div class="container">
-    
-    <div class="col-lg-12">
-      <div class="text-right">
-        <a href="{% url 'specimen_list' %}" class="btn btn-secondary mt-4">View all</a>
+<!-- Header Section -->
+<div class="specimen-header pb-6">
+  <div class="container-fluid" style="position: relative; z-index: 1;">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-8">
+          <h6 class="h2 d-inline-block mb-0" style="color: #155f6f;">
+            <i class="fas fa-vial mr-2"></i>Specimen Type Management
+          </h6>
+          <p class="mt-2 mb-0 opacity-8" style="color: #4c5152;">
+            <small>Add or update specimen types for laboratory testing</small>
+          </p>
+        </div>
+        <div class="col-lg-4 text-right">
+          <a href="{% url 'specimen_list' %}" class="btn btn-sm btn-neutral">
+            <i class="fas fa-table mr-1"></i>View All Specimens
+          </a>
+        </div>
       </div>
+    </div>
+  </div>
+</div>
 
+<!-- Main Content -->
+<div class="container mt--6">
+  <div class="card specimen-card">
+    <div class="card-body p-4">
+      
       <!-- Page Title -->
-      <div class="text-center text-muted mb-4">
-        <h2>Add New / Update Specimen Type</h2>
+      <div class="page-title">
+        <div class="section-icon">
+          <i class="fas fa-flask"></i>
+        </div>
+        <h2 class="text-center">Add New / Update Specimen Type</h2>
+        <p class="text-center text-muted mb-0">
+          <small>Enter specimen details below</small>
+        </p>
       </div>
 
+      <!-- Form -->
       <form method="POST" action="{% url 'add_specimen' %}" autocomplete="on" id="specimenForm">
         {% csrf_token %}
         
-        <div class="form-group">
+        <div class="form-section">
           <div class="row">
-            <div class="col-lg-12">
-              <div class="row">
-                
-                   <!-- Specimen Code -->
-                <div class="col-lg-6">
-                  <div class="form-group">
-                    <label class="form-control-label" for="Specimen_code">Specimen Code:</label> 
-                    {{ form.Specimen_code|append_attr:"class: form-control" }} 
-                  </div>
+            <!-- Specimen Code -->
+            <div class="col-lg-6">
+              <div class="form-group">
+                <label class="form-control-label" for="Specimen_code">
+                  <i class="fas fa-barcode mr-2"></i>Specimen Code
+                </label>
+                <div style="position: relative;">
+                  <i class="input-icon fas fa-hashtag"></i>
+                  {{ form.Specimen_code|add_class:"form-control form-control-with-icon"|attr:"placeholder:Enter specimen code" }}
                 </div>
-                <!-- Specimen Name -->
-                <div class="col-lg-6">
-                  <div class="form-group">                    
-                    <label class="form-control-label" for="Specimen_name">Specimen Name:</label> 
-                    {{ form.Specimen_name|append_attr:"class: form-control" }}
-                   
-                  </div>
+                <small class="helper-text">
+                  <i class="fas fa-info-circle mr-1"></i>Unique identifier for the specimen type
+                </small>
+              </div>
+            </div>
+
+            <!-- Specimen Name -->
+            <div class="col-lg-6">
+              <div class="form-group">
+                <label class="form-control-label" for="Specimen_name">
+                  <i class="fas fa-tag mr-2"></i>Specimen Name
+                </label>
+                <div style="position: relative;">
+                  <i class="input-icon fas fa-file-medical"></i>
+                  {{ form.Specimen_name|add_class:"form-control form-control-with-icon"|attr:"placeholder:Enter specimen name" }}
                 </div>
-
-             
-
+                <small class="helper-text">
+                  <i class="fas fa-info-circle mr-1"></i>Full descriptive name of the specimen
+                </small>
               </div>
             </div>
           </div>
-      </form>
+        </div>
 
-      <!-- Buttons -->
-      <div class="text-center">
-        <button type="submit" class="btn btn-primary mt-4">Submit</button>
-        <button class="btn btn-secondary mt-4" onclick="history.back()">Back </button>
-        <button type="button" class="btn btn-success mt-4" onclick="refresh()">Clear</button>
-      </div>
+        <!-- Action Buttons -->
+        <div class="text-center mt-4">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save mr-2"></i>Submit Specimen
+          </button>
+          <button type="button" class="btn btn-success btn-lg" onclick="refresh()">
+            <i class="fas fa-eraser mr-2"></i>Clear Form
+          </button>
+          <button type="button" class="btn btn-secondary btn-lg" onclick="history.back()">
+            <i class="fas fa-arrow-left mr-2"></i>Back
+          </button>
+        </div>
+      </form>
 
     </div>
   </div>
+</div>
 
-  <!-- JavaScript for Form Reset -->
-  <script>
-    function refresh() {
-      document.getElementById("specimenForm").reset();
-    }
-  </script>
+<!-- JavaScript -->
+<script>
+function refresh() {
+  if (confirm('Are you sure you want to clear all form fields?')) {
+    document.getElementById("specimenForm").reset();
+  }
+}
 
-</body>
+// Add animation on input focus
+document.addEventListener('DOMContentLoaded', function() {
+  const inputs = document.querySelectorAll('.form-control');
+  inputs.forEach(input => {
+    input.addEventListener('focus', function() {
+      this.parentElement.querySelector('.input-icon')?.classList.add('text-primary');
+    });
+    input.addEventListener('blur', function() {
+      this.parentElement.querySelector('.input-icon')?.classList.remove('text-primary');
+    });
+  });
+});
+</script>
 
 {% endblock content %}

@@ -3,8 +3,8 @@
 
 {% block content %}
 <!-- Header Section -->
-<div class="header bg-primary pb-6" style="min-height: 200px; background-image: url(/static/assets/img/theme/viruses.jpg); background-size: cover; background-position: center center;">
-  <span class="mask bg-gradient-default opacity-6"></span>
+<div class="header bg-primary pb-6" style="min-height: 200px; background-image: url(/static/assets/img/theme/microbial.jpg); background-size: cover; background-position: bottom center;">
+  <span class="mask bg-gradient-default opacity-3"></span>
   <div class="container-fluid">
     <div class="header-body">
       <div class="row align-items-center py-4">
@@ -93,7 +93,7 @@
             </tr>
           </thead>
           <tbody>
-            {% for entry in table_data %}
+            {% for entry in table_data%}
             <tr class="text-center data-row"
                 data-fastq="{{ entry.summary_flags.fastq|yesno:'true,false' }}"
                 data-gambit="{{ entry.summary_flags.gambit|yesno:'true,false' }}"

@@ -99,9 +99,9 @@ class Final_Data(models.Model):
     f_OtherResMech = models.CharField(max_length=255, blank=True, null=True, default="")
 
     # Organism Result
-    f_Site_Pre = models.CharField(max_length=255, blank=True, null=True, default="")
+    f_Site_Pre = models.TextField(blank=True, null=True, default="")
     f_Site_Org = models.CharField(max_length=255, blank=True, null=True, default="")
-    f_Site_Pos = models.CharField(max_length=255, blank=True, null=True, default="")
+    f_Site_Pos = models.TextField(blank=True, null=True, default="")
     f_OrganismCode = models.CharField(max_length=255, blank=True, null=True, default="")
     f_Comments = models.TextField(blank=True, null=True, default="")
 
@@ -117,8 +117,8 @@ class Final_Data(models.Model):
     f_ars_MR = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
     f_ars_mecA = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
     f_ars_ICR = models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
-    f_ars_Pre = models.CharField(max_length=255, blank=True, null=True, default="")
-    f_ars_Post = models.CharField(max_length=255, blank=True, null=True, default="")
+    f_ars_Pre = models.TextField(blank=True, null=True, default="")
+    f_ars_Post = models.TextField(blank=True, null=True, default="")
     f_ars_OrgCode = models.CharField(max_length=255, blank=True, null=True, default="")
     f_ars_OrgName = models.CharField(max_length=255, blank=True, null=True, default="")
     f_ars_ct_ctl = models.CharField(max_length=255, blank=True, null=True, default="")

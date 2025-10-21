@@ -7,8 +7,8 @@
 {% block content %}
 
 <!-- Header Section -->
-<div class="header bg-primary pb-6" style="min-height: 200px; background-image: url(/static/assets/img/theme/viruses.jpg); background-size: cover; background-position: center center;">
-  <span class="mask bg-gradient-default opacity-6"></span>
+<div class="header bg-primary pb-6" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
+    <span class="mask bg-gradient-default opacity-3"></span>
   <div class="container-fluid">
     <div class="header-body">
       <div class="row align-items-center py-4">
@@ -49,49 +49,47 @@
        <p class="text-center text-muted mb-4">Upload raw or final referred data</p>
     <div class="row">
   <!-- Raw referred Isolates upload -->
-    <div class="card-body">
-      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-      <div class="row justify-content-center">
-          <div class="text-center p-4">
+        <div class="col-lg-3 col-md-3 mb-4">
+          <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+            <div class="card-body text-center p-4">
             <div class="icon-circle mx-auto mb-4" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg,#eff317 0%,  #81dde0 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(129, 221, 224, 0.4);">
-              <i class="ni ni-single-copy-04 text-white" style="font-size: 2.5rem;"></i>
+              <i class="ni ni-single-copy-04 text-white" style="font-size: 2rem;"></i>
             </div>
-            <h4 class="mb-3">Upload Referred Raw Data</h4>
-            <p class="text-muted mb-4">Upload your CSV or Excel file containing referred raw data</p>
-            <div class="d-flex justify-content-center gap-3">
-              <button type="button" class="btn btn-lg" style="background: linear-gradient(135deg, #eff317  0%,#81dde0 100%); color: white; min-width: 200px;" data-toggle="modal" data-target="#UploadReferredModal">
+              <h5 class="card-title mb-2 font-weight-bold">Upload Raw Data</h5>
+               <p class="text-muted small mb-4">Upload your CSV or Excel file containing referred raw data </p>
+              <div class="d-flex flex-column gap-2" style="padding-top: 10px;">
+              <button type="button" class="btn btn-success btn-sm btn-block" style="background: linear-gradient(135deg, #eff317  0%,#81dde0 100%); color: white; min-width: 200px;" data-toggle="modal" data-target="#UploadReferredModal">
                 <i class="ni ni-cloud-upload-96 mr-2"></i>Upload Raw
               </button>
-              <a href="#" class="btn btn-outline-primary btn-lg" style="min-width: 200px;">
+              <a href="#" class="btn btn-outline-primary btn-sm" style="min-width: 200px;">
                 <i class="ni ni-folder-17 mr-2"></i>View Data
               </a>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    
   <!-- Final Referred Data Upload -->
-    <div class="card-body">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="row justify-content-center">
-          <div class="text-center p-4">
-            <div class="icon-circle mx-auto mb-4" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg,#eff317 0%,  #81dde0 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(129, 221, 224, 0.4);">
-              <i class="ni ni-single-copy-04 text-white" style="font-size: 2.5rem;"></i>
+        <div class="col-lg-4 col-md-6 mb-4">
+          <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+            <div class="card-body text-center p-4">
+                <div class="icon-circle mx-auto mb-4" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg,#eff317 0%,  #81dde0 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(129, 221, 224, 0.4);">
+              <i class="ni ni-single-copy-04 text-white" style="font-size: 2rem;"></i>
             </div>
-            <h4 class="mb-3">Upload Final Referred Data</h4>
+              <h5 class="card-title mb-2 font-weight-bold">Upload Final Referred Data</h5>
             <p class="text-muted mb-4">Upload your CSV or Excel file containing referred final data</p>
-            <div class="d-flex justify-content-center gap-3">
+              <div class="d-flex flex-column gap-2">
               <button type="button" class="btn btn-lg" style="background: linear-gradient(135deg, #eff317  0%,#81dde0 100%); color: white; min-width: 200px;" data-toggle="modal" data-target="#UploadFinalReferredModal">
                 <i class="ni ni-cloud-upload-96 mr-2"></i>Upload Final
               </button>
-              <a href="{% url 'show_final_data'%}" class="btn btn-outline-primary btn-lg" style="min-width: 200px;">
+              <a href="{% url 'show_final_data'%}" class="btn btn-outline-primary btn-sm btn-block" style="min-width: 200px;">
                 <i class="ni ni-folder-17 mr-2"></i>View Data
               </a>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+
     </div>
   </div>
   </div>

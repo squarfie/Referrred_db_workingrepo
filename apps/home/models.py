@@ -322,8 +322,10 @@ class BreakpointsTable(models.Model):
     )
 
     Guidelines = models.CharField(max_length=100, choices=GuidelineChoices, blank=True, default='')
+    Year = models.CharField(max_length=100, blank=True, default='')
+    Org = models.CharField(max_length=100, blank=True, default='')
     Test_Method = models.CharField(max_length=20, choices=TestMethodChoices, blank=True, default='')
-    Potency = models.CharField(max_length=5, blank=True, default='')
+    Potency = models.CharField(max_length=20, blank=True, default='')
     Abx_code = models.CharField(max_length=15, blank=True, default='')
     Tier = models.CharField(max_length=10, blank=True, default='')
     Show = models.BooleanField(default=True)
@@ -459,3 +461,26 @@ class FieldMapping(models.Model):
 
     def __str__(self):
         return f"{self.user.username}: {self.raw_field} → {self.mapped_field}"
+    
+
+class Antibiotic_List(models.Model):
+    Show=models.BooleanField(default=True)
+    Retest=models.BooleanField(default=True)
+    Disk_Abx=models.BooleanField(default=True)
+    Test_Method=models.CharField(max_length=100, blank=True, default="")
+    Abx_Code=models.CharField(max_length=100, blank=True, default="")
+    Whonet_Abx=models.CharField(max_length=100, blank=True, default="")
+    Antibiotic=models.CharField(max_length=100, blank=True, default="")
+    Guidelines=models.CharField(max_length=100, blank=True, default="")
+    Potency=models.CharField(max_length=100, blank=True, default="")
+    Class=models.CharField(max_length=100, blank=True, default="")
+    Subclass=models.CharField(max_length=100, blank=True, default="")
+    Date_Modified=models.DateField(auto_now_add=True)
+
+    class Meta:
+        db_table = "Antibiotic_List"
+
+
+
+
+
