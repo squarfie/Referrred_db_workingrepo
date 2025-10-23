@@ -15,8 +15,12 @@
  word-spacing: 2.7px;
  color: navy;
 }
+ .sidenav-font {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5
+        }
 </style>
-<nav class="sidenav navbar navbar-vertical  fixed-left  navbar-expand-xs navbar-light bg-white" id="sidenav-main">
+<nav class="sidenav navbar navbar-vertical  fixed-left  navbar-expand-xs navbar-light bg-white sidenav-font" id="sidenav-main">
   <div class="scrollbar-inner">
     <!-- Brand -->
     <div class="sidenav-header  align-items-center">
@@ -193,6 +197,13 @@
            <ul class="navbar-nav mb-md-3">
           <li class="nav-item">
             <a class="nav-link" 
+               href="{% url 'add_antibiotics' %}">
+              <i class="ni ni-spaceship text-info"></i>
+              <span class="nav-link-text ">Antibiotics</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" 
                href="{% url 'add_breakpoints' %}">
               <i class="ni ni-spaceship text-info"></i>
               <span class="nav-link-text ">Breakpoints</span>
@@ -235,14 +246,14 @@
             </a>
           </li>
        
-          <li class="nav-item">
+          <!-- <li class="nav-item">
             <a class="nav-link active active-pro" 
                target="_blank" 
                href="https://arsp.com.ph/">
               <i class="ni ni-send text-dark"></i>
-              <span class="nav-link-text">ARSP-DMU</span>
+              <span class="nav-link-text">ARSP-WEBSITE</span>
             </a>
-          </li>
+          </li> -->
         </ul>
       </div>
     </div>

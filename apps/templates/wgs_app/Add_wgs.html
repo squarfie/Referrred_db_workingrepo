@@ -45,21 +45,49 @@
         </div>
       </div>
     </div>
-    <div class="card-body pt-4 pb-5">
-       <p class="text-center text-muted mb-4">Upload raw or final referred data</p>
-    <div class="row">
+    <div class="card-body pt-4 pb-5" >
+      <div class="row mb-3">
+        <div class="col-lg-6" style="text-align: center;">
+        <p> <i class="fas fa-hospital text-warning"></i> &nbsp; <strong> Upload Raw Data</strong> </p> 
+        </div>
+        <div class="col-lg-6" style="text-align: center;">
+          <p> <i class="fas fa-ambulance text-warning"></i> &nbsp; <strong> Upload final Data</strong> </p> 
+        </div>
+      </div>
+    <div class="row" >
   <!-- Raw referred Isolates upload -->
         <div class="col-lg-3 col-md-3 mb-4">
           <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
             <div class="card-body text-center p-4">
-            <div class="icon-circle mx-auto mb-4" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg,#eff317 0%,  #81dde0 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(129, 221, 224, 0.4);">
-              <i class="ni ni-single-copy-04 text-white" style="font-size: 2rem;"></i>
+            <div class="icon-circle mx-auto mb-4" style="width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg,rgb(217, 255, 220) 0%,  #2b7fb8 100%); display: flex; align-items: center; justify-content: center;">
+              <i class="fas fa-user-md text-white" style="font-size: 2rem;"></i>
             </div>
-              <h5 class="card-title mb-2 font-weight-bold">Upload Raw Data</h5>
-               <p class="text-muted small mb-4">Upload your CSV or Excel file containing referred raw data </p>
-              <div class="d-flex flex-column gap-2" style="padding-top: 10px;">
-              <button type="button" class="btn btn-success btn-sm btn-block" style="background: linear-gradient(135deg, #eff317  0%,#81dde0 100%); color: white; min-width: 200px;" data-toggle="modal" data-target="#UploadReferredModal">
-                <i class="ni ni-cloud-upload-96 mr-2"></i>Upload Raw
+              <h5 class="card-title mb-2 font-weight-bold">Demographic Data</h5>
+               <p class="text-muted small mb-4">Raw Data Entries</p>
+              <div class="d-flex flex-column gap-2" style="padding-top: 3px;">
+              <button type="button" class="btn btn-success btn-sm btn-block" data-toggle="modal" data-target="#UploadReferredModal">
+                <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Raw
+              </button>
+              <a href="#" class="btn btn-outline-primary btn-sm" style="min-width: 200px;">
+                <i class="ni ni-folder-17 mr-2"></i>View Data
+              </a>
+              </div>
+            </div>
+          </div>
+        </div>
+    
+          <!-- Raw referred Isolates upload -->
+        <div class="col-lg-3 col-md-3 mb-4">
+          <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+            <div class="card-body text-center p-4">
+            <div class="icon-circle mx-auto mb-4" style="width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg,#4717f3 0%,  #cd81e0 100%); display: flex; align-items: center; justify-content: center;">
+              <i class="fas fa-heartbeat text-white" style="font-size: 2rem;"></i>
+            </div>
+              <h5 class="card-title mb-2 font-weight-bold">Antibiotic Data</h5>
+               <p class="text-muted small mb-4">Raw Antibiotic Entries </p>
+              <div class="d-flex flex-column gap-2" style="padding-top: 3px;">
+              <button type="button" class="btn btn-success btn-sm btn-block" data-toggle="modal" data-target="#UploadReferredModal">
+                <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Raw
               </button>
               <a href="#" class="btn btn-outline-primary btn-sm" style="min-width: 200px;">
                 <i class="ni ni-folder-17 mr-2"></i>View Data
@@ -70,19 +98,39 @@
         </div>
     
   <!-- Final Referred Data Upload -->
-        <div class="col-lg-4 col-md-6 mb-4">
+        <div class="col-lg-3 col-md-3 mb-4">
           <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
             <div class="card-body text-center p-4">
-                <div class="icon-circle mx-auto mb-4" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg,#eff317 0%,  #81dde0 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(129, 221, 224, 0.4);">
-              <i class="ni ni-single-copy-04 text-white" style="font-size: 2rem;"></i>
+                <div class="icon-circle mx-auto mb-4" style="width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg,#fa3c3c 0%,  #bb9755 100%); display: flex; align-items: center; justify-content: center;">
+              <i class="fas fa-users text-white" style="font-size: 2rem;"></i>
             </div>
-              <h5 class="card-title mb-2 font-weight-bold">Upload Final Referred Data</h5>
-            <p class="text-muted mb-4">Upload your CSV or Excel file containing referred final data</p>
-              <div class="d-flex flex-column gap-2">
-              <button type="button" class="btn btn-lg" style="background: linear-gradient(135deg, #eff317  0%,#81dde0 100%); color: white; min-width: 200px;" data-toggle="modal" data-target="#UploadFinalReferredModal">
-                <i class="ni ni-cloud-upload-96 mr-2"></i>Upload Final
+              <h5 class="card-title mb-2 font-weight-bold">Demographic Data</h5>
+            <p class="text-muted small mb-4">Final Data Entries</p>
+              <div class="d-flex flex-column gap-2" style="padding-top: 3px;">
+              <button type="button" class="btn btn-success btn-sm btn-block" data-toggle="modal" data-target="#UploadFinalReferredModal">
+                <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Final
               </button>
-              <a href="{% url 'show_final_data'%}" class="btn btn-outline-primary btn-sm btn-block" style="min-width: 200px;">
+              <a href="{% url 'show_final_data'%}" class="btn btn-outline-primary btn-sm" style="min-width: 200px;">
+                <i class="ni ni-folder-17 mr-2"></i>View Data
+              </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Final Antibiotic Entries -->
+        <div class="col-lg-3 col-md-3 mb-4">
+          <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+            <div class="card-body text-center p-4">
+                <div class="icon-circle mx-auto mb-4" style="width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg,#2944e0 0%,  #79d2f5 100%); display: flex; align-items: center; justify-content: center;">
+              <i class="fas fa-medkit text-white" style="font-size: 2rem;"></i>
+            </div>
+              <h5 class="card-title mb-2 font-weight-bold">Antibiotic Data</h5>
+            <p class="text-muted small mb-4">Final Antibiotic Entries</p>
+              <div class="d-flex flex-column gap-2" style="padding-top: 3px;">
+              <button type="button" class="btn btn-success btn-sm btn-block" data-toggle="modal" data-target="#UploadFinalAntibioticModal">
+                <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Final
+              </button>
+              <a href="{% url 'show_final_antibiotic'%}" class="btn btn-outline-primary btn-sm" style="min-width: 200px;">
                 <i class="ni ni-folder-17 mr-2"></i>View Data
               </a>
               </div>
@@ -290,7 +338,7 @@
       <div class="modal-content">
         <div class="modal-header text-white" style="background: linear-gradient(135deg, #81dde0 0%, #eff317 100%);">
           <h5 class="modal-title text-white" id="UploadFinalReferredLabel">
-            <i class="ni ni-single-copy-04 mr-2"></i>Upload Referred Isolates Data
+            <i class="ni ni-single-copy-04 mr-2"></i>Upload Final Isolates Data
           </h5>
           <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
             <span aria-hidden="true">&times;</span>
@@ -317,6 +365,45 @@
     </div>
   </form>
 </div>
+
+
+
+<!-- Upload Referred Final Antibiotics Modal -->
+<div class="modal fade" id="UploadFinalAntibioticModal" tabindex="-1" role="dialog" aria-labelledby="UploadFinalAntibioticLabel" aria-hidden="true">
+  <form method="POST" action="{% url 'upload_antibiotic_entries' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header text-white" style="background: linear-gradient(135deg, #81dde0 0%, #eff317 100%);">
+          <h5 class="modal-title text-white" id="UploadFinalAntibioticLabel">
+            <i class="ni ni-single-copy-04 mr-2"></i>Upload Final Antibiotic Data
+          </h5>
+          <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info" role="alert">
+            <i class="ni ni-notification-70 mr-2"></i>
+            <strong>File Format:</strong> Upload CSV or Excel file with referred isolates data.
+          </div>
+          <div class="form-group">
+            <label for="referredfile" class="form-control-label">Choose CSV/Excel File</label>
+            {{ antibiotic_form.FinalAntibioticFile|add_class:"form-control-file" }}
+            <small class="form-text text-muted">Supported formats: CSV, XLSX, XLS</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn text-white" style="background: linear-gradient(135deg, #81dde0 0%, #eff317 100%);">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
 <!-- FastQ Modal -->
 <div class="modal fade" id="UploadModal" tabindex="-1" role="dialog" aria-labelledby="UploadModalLabel" aria-hidden="true">
   <form method="POST" action="{% url 'upload_fastq' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">

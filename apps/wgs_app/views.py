@@ -54,8 +54,10 @@ def upload_wgs_view(request):
         assembly_form = AssemblyUploadForm(request.POST, request.FILES)
         amrfinder_form = AmrUploadForm(request.POST, request.FILES)
         referred_form = FinalDataUploadForm(request.POST, request.FILES)
+        antibiotic_form = FinalAntibioticUploadForm(request.POST, request.FILES)
 
-        referred_uploaded = False
+        final_data_uploaded = False
+        final_antibiotic_uploaded = False
         project_saved = False
         fastq_uploaded = False
         gambit_uploaded = False
@@ -64,10 +66,15 @@ def upload_wgs_view(request):
         assembly_uploaded = False
         amrfinder_uploaded = False
         
-         # WGS Project
+         # Final Data upload
         if referred_form.is_valid():
             form.save()
-            referred_uploaded = True
+            final_data_uploaded = True
+
+         # Final Data upload
+        if antibiotic_form.is_valid():
+            form.save()
+            final_antibiotic_uploaded = True
 
         # WGS Project
         if form.is_valid():
@@ -106,12 +113,13 @@ def upload_wgs_view(request):
             amrfinder_uploaded = True
 
         # If any form worked, refresh
-        if project_saved or referred_uploaded or fastq_uploaded or gambit_uploaded or mlst_uploaded or checkm2_uploaded or assembly_uploaded or amrfinder_uploaded:
+        if project_saved or final_data_uploaded or final_antibiotic_uploaded or fastq_uploaded or gambit_uploaded or mlst_uploaded or checkm2_uploaded or assembly_uploaded or amrfinder_uploaded:
             return redirect("upload_wgs_view")
 
     else:
         form = WGSProjectForm()
         referred_form = FinalDataUploadForm()
+        antibiotic_form = FinalAntibioticUploadForm()
         fastq_form = FastqUploadForm()
         gambit_form = GambitUploadForm()
         mlst_form = MlstUploadForm()
@@ -125,6 +133,7 @@ def upload_wgs_view(request):
         {
             "form": form,
             "referred_form": referred_form,
+            "antibiotic_form": antibiotic_form,
             "fastq_form": fastq_form,
             "gambit_form": gambit_form,
             "mlst_form": mlst_form,
@@ -208,6 +217,7 @@ def upload_fastq(request):
                     "amrfinder_form": AmrUploadForm(),
                     "assembly_form": AssemblyUploadForm(),
                     "referred_form": FinalDataUploadForm(),
+                    "antibiotic_form": FinalAntibioticUploadForm(),
                     "editing": editing,
                 })
 
@@ -358,6 +368,7 @@ def upload_fastq(request):
         "amrfinder_form": AmrUploadForm(),
         "assembly_form": AssemblyUploadForm(),
         "referred_form": FinalDataUploadForm(),
+        "antibiotic_form": FinalAntibioticUploadForm(),
         "editing": editing,
     })
 
@@ -520,6 +531,7 @@ def upload_gambit(request):
                     "amrfinder_form": AmrUploadForm(),
                     "assembly_form": AssemblyUploadForm(),
                     "referred_form": FinalDataUploadForm(),
+                    "antibiotic_form": FinalAntibioticUploadForm(),
                     "editing": editing,
                 })
 
@@ -630,6 +642,7 @@ def upload_gambit(request):
         "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": AmrUploadForm(),
         "referred_form": FinalDataUploadForm(),
+        "antibiotic_form": FinalAntibioticUploadForm(),
         "editing": editing,
     })
 
@@ -765,6 +778,7 @@ def upload_mlst(request):
                 "amrfinder_form": AmrUploadForm(),
                 "assembly_form": AssemblyUploadForm(),
                 "referred_form": FinalDataUploadForm(),
+                "antibiotic_form": FinalAntibioticUploadForm(),
                 "editing": editing,
             })
 
@@ -885,6 +899,7 @@ def upload_mlst(request):
         "amrfinder_form": AmrUploadForm(),
         "assembly_form": AssemblyUploadForm(),
         "referred_form": FinalDataUploadForm(),
+        "antibiotic_form": FinalAntibioticUploadForm(),
         "editing": editing
     })
 
@@ -1034,6 +1049,7 @@ def upload_checkm2(request):
                 "amrfinder_form": AmrUploadForm(),
                 "assembly_form": AssemblyUploadForm(),
                 "referred_form": FinalDataUploadForm(),
+                "antibiotic_form": FinalAntibioticUploadForm(),
                 "editing": editing,
             })
 
@@ -1138,6 +1154,7 @@ def upload_checkm2(request):
         "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": AmrUploadForm(),
         "referred_form": FinalDataUploadForm(),
+        "antibiotic_form": FinalAntibioticUploadForm(),
         "editing": editing,
     })
 
@@ -1289,6 +1306,7 @@ def upload_assembly(request):
                 "amrfinder_form": AmrUploadForm(),
                 "assembly_form": assembly_form,
                 "referred_form": FinalDataUploadForm(),
+                "antibiotic_form": FinalAntibioticUploadForm(),
                 "editing": editing,
             })
 
@@ -1402,6 +1420,7 @@ def upload_assembly(request):
         "amrfinder_form": AmrUploadForm(),
         "assembly_form": assembly_form,
         "referred_form": FinalDataUploadForm(),
+        "antibiotic_form": FinalAntibioticUploadForm(),
         "editing": editing,
     })
 
@@ -1533,6 +1552,7 @@ def upload_amrfinder(request):
                 "amrfinder_form": amrfinder_form,
                 "assembly_form": AssemblyUploadForm(),
                 "referred_form": FinalDataUploadForm(),
+                "antibiotic_form": FinalAntibioticUploadForm(),
                 "editing": editing,
             })
 
@@ -1684,6 +1704,7 @@ def upload_amrfinder(request):
         "assembly_form": AssemblyUploadForm(),
         "amrfinder_form": amrfinder_form,
         "referred_form": FinalDataUploadForm(),
+        "antibiotic_form": FinalAntibioticUploadForm(),
         "editing": editing,
     })
 
@@ -1977,6 +1998,8 @@ def view_wgs_overview(request):
             | Q(WGS_Amrfinder_Acc=acc)
         ).distinct()
 
+
+        
         # --- Determine which WGS summaries exist ---
         summary_flags = {
             "fastq": projects.filter(WGS_FastqSummary=True).exists(),

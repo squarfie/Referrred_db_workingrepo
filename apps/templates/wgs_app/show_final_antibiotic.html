@@ -1,0 +1,374 @@
+{% extends 'layouts/base.html' %}
+{% load custom_filters %}
+{% block title %}FastQ Summary{% endblock %}
+
+{% block content %}
+
+<!-- Header Section -->
+<div class="header bg-primary pb-6" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
+    <span class="mask bg-gradient-default opacity-3"></span>
+  <div class="container-fluid">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">Final Data Summary</h6>
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+              <li class="breadcrumb-item"><a href="{% url 'batch_create_view' %}">New Batch</a></li>
+              <li class="breadcrumb-item"><a href="{% url 'upload_wgs_view' %}">Upload Data</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Final Data</li>
+            </ol>
+          </nav>
+        </div>
+        <div class="col-lg-6 col-5 text-right">
+          <a class="btn btn-sm btn-neutral" href="{% url 'upload_wgs_view' %}">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Data
+          </a>
+          <button class="btn btn-sm btn-neutral" onclick="history.back()">Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="container-fluid mt--6">
+  <div class="card shadow">
+    <!-- Card Header -->
+    <div class="card-header border-0" style="background: linear-gradient(135deg, #2c4ebe 0%, #65e7e5 100%);">
+      <div class="row align-items-center">
+        <div class="col">
+          <h3 class="mb-0 text-white">
+            <i class="ni ni-world mr-2"></i>Final Antibiotic Records
+          </h3>
+        </div>
+        <div class="col text-right">
+          <span class="badge badge-light badge-lg">
+            <strong>{{ total_records }}</strong> Total Records
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar Section -->
+    <div class="card-body border-bottom">
+      <div class="row align-items-center">
+        <!-- Search Bar -->
+        <div class="col-md-6 mb-3 mb-md-0">
+          <div class="input-group input-group-alternative">
+            <div class="input-group-prepend">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+            </div>
+            <input id="search-input" class="form-control" placeholder="Search by sample or accession..." type="text" onkeyup="searchTable()">
+            <div class="input-group-append">
+              <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delete by Date -->
+        <div class="col-md-6">
+          <form method="POST" action="{% url 'delete_finalantibiotic_by_date' %}" class="form-inline justify-content-md-end">
+            {% csrf_token %}
+            <label class="mr-2 mb-0"><strong>Delete by Date:</strong></label>
+            <input type="date" name="upload_date" class="form-control form-control-sm mr-2" required>
+            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete all records from this date?')">
+              <i class="fa fa-trash mr-1"></i>Delete
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+        <div class="table-responsive">
+          <table class="table align-items-center table-flush" style="border-collapse: collapse; margin: 0%; padding: 0%;">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th scope="col">Accession No.</th>
+                {% for abx_code in abx_codes %}
+                  <th scope="col">{{ abx_code }}</th>
+                  <th scope="col">{{ abx_code }}_RIS</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody class="list">
+              {% for accession_no, values in abx_data.items %}
+                <tr>
+                  <td>
+                  <a href="#" class="btn btn-sm btn-danger delete-btn" 
+                    data-toggle="modal" 
+                    data-target="#deleteModal" 
+                    data-url="{% url 'delete_final_antibiotic' values.id %}"
+                    title="Delete record">
+                    <i class="fa fa-trash"></i>
+                  </a>
+                </td>
+                  <td>{{ accession_no }}</td>
+                  {% for abx_code in abx_codes %}
+                    {% with values|dict_lookup:abx_code as abx_info %}
+                      {% if abx_info %}
+                        <td style="text-align: center;">{{abx_info.Operand|default:''}}{{ abx_info.value|default:'' }}</td>
+                        <td style="text-align: center;">{{ abx_info.RIS|default:'' }}</td>
+                      {% else %}
+                        <td></td>
+                        <td></td>
+                      {% endif %}
+                    {% endwith %}
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+
+          </table>
+        </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title text-white" id="deleteModalLabel">
+          <i class="fa fa-exclamation-triangle mr-2"></i>Delete Confirmation
+        </h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form method="POST" id="deleteForm">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="text-center py-3">
+            <i class="fa fa-trash text-danger" style="font-size: 3rem;"></i>
+            <h4 class="mt-3">Are you sure?</h4>
+            <p class="text-muted">This action cannot be undone. The record will be permanently deleted.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">
+            <i class="fas fa-times mr-1"></i>Cancel
+          </button>
+          <button type="submit" class="btn btn-danger">
+            <i class="fa fa-trash mr-1"></i>Delete Record
+          </button>
+          <a href="{% url 'delete_all_final_antibiotic' %}" class="btn btn-warning" onclick="return confirm('⚠️ WARNING: This will delete ALL Final Data records. Are you absolutely sure?')">
+            <i class="fa fa-trash-alt mr-1"></i>Delete All
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+    <!-- Card Footer with Pagination -->
+    <div class="card-footer py-4 bg-white">
+      <div class="row align-items-center">
+        <!-- Go To Page Form -->
+        <div class="col-md-4">
+          <form method="get" class="form-inline">
+            <label class="mr-2 mb-0 text-primary">Go to page:</label>
+            <input type="number" name="page"
+                   min="1"
+                   max="{{ page_obj.paginator.num_pages }}"
+                   value="{{ page_obj.number }}"
+                   class="form-control form-control-sm mr-2"
+                   style="width: 70px;">
+            <button type="submit" class="btn btn-sm btn-primary">
+              <i class="fas fa-arrow-right"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Page Info -->
+        <div class="col-md-4 text-center">
+          <span class="text-primary">
+            Page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong>
+          </span>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="col-md-4">
+          <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-end mb-0">
+              <!-- First Page -->
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page=1" title="First page">
+                    <i class="fas fa-angle-double-left"></i>
+                  </a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                </li>
+              {% endif %}
+
+              <!-- Previous -->
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}" title="Previous page">
+                    <i class="fas fa-angle-left"></i>
+                  </a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                </li>
+              {% endif %}
+
+              <!-- Page Numbers -->
+              {% for num in page_obj.paginator.page_range %}
+                {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                  {% if num == page_obj.number %}
+                    <li class="page-item active">
+                      <span class="page-link">{{ num }}</span>
+                    </li>
+                  {% else %}
+                    <li class="page-item">
+                      <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+
+              <!-- Next -->
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.next_page_number }}" title="Next page">
+                    <i class="fas fa-angle-right"></i>
+                  </a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                </li>
+              {% endif %}
+
+              <!-- Last Page -->
+              {% if page_obj.number < page_obj.paginator.num_pages %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" title="Last page">
+                    <i class="fas fa-angle-double-right"></i>
+                  </a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
+                </li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Styles -->
+<style>
+.input-group-alternative {
+  box-shadow: 0 1px 3px rgba(50, 50, 93, 0.15), 0 1px 0 rgba(0, 0, 0, 0.02);
+  border: 0;
+  transition: box-shadow 0.15s ease;
+}
+
+.input-group-alternative .form-control {
+  border: 0;
+}
+
+.badge-lg {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+thead.thead-light {
+  background-color: #f6f9fc;
+}
+
+.table-hover tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+}
+
+#search-input:focus {
+  box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+</style>
+
+{% endblock content %}
+
+<!-- JavaScript -->
+{% block javascripts %}
+<script>
+$(document).ready(function(){
+  // Set delete form action when delete button clicked
+  $('.delete-btn').click(function(){
+    var url = $(this).data('url');
+    $('#deleteForm').attr('action', url);
+  });
+});
+
+// Search table function
+function searchTable() {
+  var input = document.getElementById("search-input");
+  var filter = input.value.toLowerCase();
+  var table = document.getElementById("fastq-table");
+  var rows = table.querySelectorAll("tbody tr");
+
+  rows.forEach(row => {
+    if (row.cells.length > 1) {
+      var date = row.cells[1].textContent.toLowerCase();
+      var sample = row.cells[2].textContent.toLowerCase();
+      var accession = row.cells[3].textContent.toLowerCase();
+
+      if (date.includes(filter) || sample.includes(filter) || accession.includes(filter)) {
+        row.style.display = "";
+      } else {
+        row.style.display = "none";
+      }
+    }
+  });
+}
+
+// Clear search function
+function clearSearch() {
+  document.getElementById("search-input").value = "";
+  searchTable();
+}
+
+// Enter key support for search
+document.getElementById("search-input").addEventListener("keypress", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    searchTable();
+  }
+});
+</script>
+
+
+<!-- Specific JS goes HERE --> 
+
+
+<script>
+$(document).ready(function(){
+    $('.delete-btn').click(function(){
+        var url = $(this).data('url');          // Get URL from data-url
+        $('#deleteForm').attr('action', url);    // Set form action to the delete URL
+    });
+});
+</script>
+
+
+
+
+{% endblock javascripts %}

@@ -346,3 +346,27 @@ class TAT_form(forms.ModelForm):
         fields = '__all__'  # Include the fields you want in the form
 
 
+#Breakpoints data
+class AntibioticsForm(forms.ModelForm):
+     class Meta:
+          model = Antibiotic_List
+          fields = '__all__'
+          
+     def save(self, commit=True):
+        instance = super().save(commit=False)
+        
+        # Replace None with an empty string or another default value
+        for field_name in self.fields:
+            value = getattr(instance, field_name)
+            if value is None:
+                setattr(instance, field_name, '')
+
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
+class Antibiotics_uploadForm(forms.ModelForm):
+     class Meta:
+          model = Antibiotic_upload
+          fields = ['File_uploadAbx']

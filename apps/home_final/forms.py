@@ -18,6 +18,20 @@ class FinalDataUploadForm(forms.ModelForm):
           fields = ['FinalDataFile']
 
 
+# # Final Referred Antibiotic Upload Form
+# class FinalAntibioticUploadForm(forms.ModelForm):
+#      class Meta:
+#           model = FinalAntibiotic_upload
+#           fields = ['FinalAntibioticFile']
+
+class FinalAntibioticUploadForm(forms.ModelForm):
+    class Meta:
+        model = FinalAntibiotic_upload
+        fields = ['FinalAntibioticFile']
+        widgets = {
+            'FinalAntibioticFile': forms.ClearableFileInput(attrs={'class': 'form-control-file'}),
+        }
+
 
 #### Final referred form
 class FinalReferred_Form(forms.ModelForm):

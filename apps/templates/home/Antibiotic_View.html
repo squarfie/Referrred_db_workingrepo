@@ -1,0 +1,812 @@
+{% extends 'layouts/base.html' %}
+{% load custom_filters %}
+{% block title %}Breakpoints Database{% endblock title %}
+
+{% block content %}
+<head>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+        }
+
+        .header-container {
+            position: relative;
+            overflow: hidden;
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        }
+
+        /* Animated grid background */
+        .grid-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            background-image: 
+                linear-gradient(90deg, rgba(100, 200, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(rgba(100, 200, 255, 0.1) 1px, transparent 1px);
+            background-size: 60px 60px;
+            animation: gridMove 8s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(60px, 60px); }
+        }
+
+        /* Particle system */
+        .particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(100, 200, 255, 0.6);
+            border-radius: 50%;
+            animation: particleFloat 15s infinite ease-in-out;
+            box-shadow: 0 0 10px rgba(100, 200, 255, 0.8);
+        }
+
+        @keyframes particleFloat {
+            0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
+        }
+
+        .particle:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 12s; }
+        .particle:nth-child(2) { left: 20%; animation-delay: 2s; animation-duration: 14s; }
+        .particle:nth-child(3) { left: 30%; animation-delay: 4s; animation-duration: 16s; }
+        .particle:nth-child(4) { left: 40%; animation-delay: 1s; animation-duration: 13s; }
+        .particle:nth-child(5) { left: 50%; animation-delay: 3s; animation-duration: 15s; }
+        .particle:nth-child(6) { left: 60%; animation-delay: 5s; animation-duration: 17s; }
+        .particle:nth-child(7) { left: 70%; animation-delay: 2.5s; animation-duration: 14.5s; }
+        .particle:nth-child(8) { left: 80%; animation-delay: 4.5s; animation-duration: 16.5s; }
+        .particle:nth-child(9) { left: 90%; animation-delay: 1.5s; animation-duration: 13.5s; }
+
+        /* Circular scanning animation */
+        .scanner {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border: 2px solid rgba(100, 200, 255, 0.2);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: scan 8s linear infinite;
+        }
+
+        .scanner:nth-child(10) {
+            width: 300px;
+            height: 300px;
+            border-color: rgba(100, 200, 255, 0.3);
+            animation-delay: 1s;
+            animation-duration: 10s;
+        }
+
+        .scanner:nth-child(11) {
+            width: 200px;
+            height: 200px;
+            border-color: rgba(100, 200, 255, 0.4);
+            animation-delay: 2s;
+            animation-duration: 12s;
+        }
+
+        @keyframes scan {
+            0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); opacity: 0; }
+            25% { opacity: 1; }
+            75% { opacity: 1; }
+            100% { transform: translate(-50%, -50%) rotate(360deg) scale(1); opacity: 0; }
+        }
+
+        /* Radial glow effect */
+        .glow-orb {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(100, 200, 255, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(40px);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        .glow-orb:nth-child(12) {
+            top: -50px;
+            right: -50px;
+            animation-delay: 0s;
+        }
+
+        .glow-orb:nth-child(13) {
+            bottom: -50px;
+            left: -50px;
+            animation-delay: 2s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        /* Overlay */
+        .overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(15, 12, 41, 0.5) 0%, transparent 50%, rgba(36, 36, 62, 0.5) 100%);
+            z-index: 1;
+        }
+
+        /* Header content */
+        .header-content {
+            position: relative;
+            z-index: 2;
+            flex: 1;
+            color: white;
+        }
+
+        .header-content h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #64c8ff 0%, #ffffff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(100, 200, 255, 0.3);
+            letter-spacing: 0.5px;
+        }
+
+        .header-content p {
+            font-size: 1.2rem;
+            font-weight: 300;
+            color: rgba(200, 220, 255, 0.9);
+            margin-bottom: 15px;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(100, 200, 255, 0.15);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #64c8ff;
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .badge:hover {
+            background: rgba(100, 200, 255, 0.25);
+            border-color: rgba(100, 200, 255, 0.6);
+            box-shadow: 0 0 15px rgba(100, 200, 255, 0.3);
+        }
+
+        .badge-icon {
+            margin-right: 6px;
+            font-size: 1rem;
+        }
+
+        /* Right side - Stats display */
+        .header-stats {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            gap: 30px;
+            margin-left: 60px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #64c8ff;
+            text-shadow: 0 0 20px rgba(100, 200, 255, 0.5);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: rgba(200, 220, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Button */
+        .btn-new-crf {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            z-index: 3;
+            background: linear-gradient(135deg, #64c8ff 0%, #00d4ff 100%);
+            color: #0f0c29;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 25px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(100, 200, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        .btn-new-crf:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(100, 200, 255, 0.6);
+        }
+
+        @media (max-width: 1024px) {
+            .header-stats {
+                display: none;
+            }
+
+            .header-content h1 {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-container {
+                min-height: 180px;
+                padding: 0 20px;
+                flex-direction: column;
+            }
+
+            .header-content h1 {
+                font-size: 1.6rem;
+            }
+
+            .header-content p {
+                font-size: 0.95rem;
+                margin-bottom: 10px;
+            }
+
+            .btn-new-crf {
+                right: 20px;
+                padding: 10px 20px;
+                font-size: 0.8rem;
+            }
+
+            .badge-group {
+                gap: 8px;
+            }
+
+            .badge {
+                font-size: 0.75rem;
+                padding: 6px 12px;
+            }
+        }
+    </style>
+</head>
+
+<style>
+.antibiotics-header {
+  background: linear-gradient(135deg, #1a7a8e 0%, #2d9cad 50%, #45b5c6 100%);
+  min-height: 180px;
+  position: relative;
+  overflow: hidden;
+}
+
+.antibiotics-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), 
+                    radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%);
+  opacity: 0.6;
+}
+
+.form-card {
+  border-top: 4px solid #2d9cad;
+  box-shadow: 0 4px 12px rgba(29, 156, 173, 0.15);
+}
+
+.form-control-label {
+  color: #1a7a8e;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.form-control {
+  border: 1px solid #d1e8ed;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: #2d9cad;
+  box-shadow: 0 0 0 0.2rem rgba(45, 156, 173, 0.15);
+}
+
+.section-divider {
+  background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin: 1.5rem 0 1rem 0;
+  border-left: 4px solid #2d9cad;
+}
+
+.checkbox-container {
+  background: linear-gradient(135deg, #f8fcfd 0%, #e8f5f7 100%);
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1e8ed;
+}
+
+.checkbox-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #2d9cad;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #1a7a8e 0%, #2d9cad 100%);
+  border: none;
+  box-shadow: 0 2px 8px rgba(29, 156, 173, 0.25);
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #155f6f 0%, #247d8f 100%);
+  box-shadow: 0 4px 12px rgba(29, 156, 173, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #7ec97e 0%, #5fb85f 100%);
+  border: none;
+  box-shadow: 0 2px 8px rgba(126, 201, 126, 0.25);
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #6ab86a 0%, #4da04d 100%);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  border: none;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #d97c7c 0%, #c24b4b 100%);
+  border: none;
+}
+
+</style>
+
+
+
+<body>
+<div class="header-container pb-6" style="min-height: 180px; position: relative;">
+  <!-- Animated background elements -->
+  <div class="grid-bg"></div>
+
+  <!-- Particles rising -->
+  <div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Scanning circles -->
+  <div class="scanner"></div>
+  <div class="scanner"></div>
+  <div class="scanner"></div>
+
+  <!-- Glow orbs -->
+  <div class="glow-orb"></div>
+  <div class="glow-orb"></div>
+
+  <!-- Overlay -->
+  <div class="overlay"></div>
+
+<!-- Header Section -->
+  <div class="container-fluid" style="position: relative; z-index: 2;">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">
+            <i class="fas fa-database mr-2"></i>Antibiotics
+          </h6>
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+              <li class="breadcrumb-item"><a href="{% url 'batch_create_view' %}">Create Batch</a></li>
+              <li class="breadcrumb-item"><a href="{% url 'add_antibiotics'%}">Antibiotics</a></li>
+              <li class="breadcrumb-item active" aria-current="page">View All</li>
+            </ol>
+          </nav>
+        </div>
+        <div class="col-lg-6 col-5 text-right">
+          <a class="btn btn-sm btn-neutral" href="{% url 'add_antibiotics'%}">
+            <i class="fas fa-plus mr-1"></i>Add New
+          </a>
+          <button class="btn btn-sm btn-neutral" onclick="history.back()">
+            <i class="fas fa-arrow-left mr-1"></i>Back
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+ </div>
+
+<!-- Main Content -->
+<div class="container-fluid mt--6" style="position: relative; z-index: 3;">
+  <div class="card shadow" style="border-top: 3px solid #2d9cad;">
+    
+    <!-- Card Header -->
+    <div class="card-header border-0" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h3 class="mb-0" style="color: #1a7a8e;">
+            <i class="fas fa-flask mr-2"></i>Antibiotic List
+          </h3>
+        </div>
+        <div class="col-md-6 text-right">
+          <a href="{% url 'export_antibiotics' %}" class="btn btn-sm" style="background: linear-gradient(135deg, #7ec97e 0%, #5fb85f 100%); color: white; border: none;">
+            <i class="fas fa-file-export mr-1"></i>Export/Download
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar Section -->
+    <div class="card-body border-bottom" style="background: linear-gradient(to bottom, #f8fcfd 0%, #ffffff 100%);">
+      <!-- Search Bar -->
+      <div class="row align-items-center mb-3">
+        <div class="col-md-12">
+          <div class="input-group" style="box-shadow: 0 2px 8px rgba(29, 156, 173, 0.15); border-radius: 0.5rem; border: 1px solid #d1e8ed;">
+            <div class="input-group-prepend">
+              <span class="input-group-text" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%); border: none; color: #1a7a8e;">
+                <i class="fas fa-search"></i>
+              </span>
+            </div>
+            <input id="search-input" class="form-control" placeholder="Search by antibiotic, code, guidelines, or any field..." type="text" onkeyup="searchTable()" style="border: none; background: white;">
+            <div class="input-group-append">
+              <button class="btn" type="button" onclick="clearSearch()" style="background: #e8f5f7; border: none; color: #1a7a8e;">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Important Note -->
+      <div class="alert" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%); border-left: 4px solid #2d9cad; border-radius: 0.5rem;">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-info-circle mr-3" style="font-size: 1.5rem; color: #2d9cad;"></i>
+          <div>
+            <strong style="color: #1a7a8e;">Important Note:</strong>
+            <span style="color: #5a6c72;">Activate antibiotics in STY results by setting "Show = True" and "Retest = True" for ARS Testing. </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive" style="max-height: 500px; overflow-y: auto; overflow-x: auto;">
+      <table class="table table-hover align-items-center table-flush" id="breakpoints-table">
+        <thead class="thead-light" style="position: sticky; top: 0; z-index: 10; background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);">
+          <tr>
+            <th style="min-width: 100px; color: #1a7a8e; font-weight: 600;">Actions</th>
+            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Show</th>
+            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Retest</th>
+            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Disk?</th>
+            <th style="min-width: 120px; color: #1a7a8e; font-weight: 600;">Guidelines</th>
+            <th style="min-width: 120px; color: #1a7a8e; font-weight: 600;">Test Method</th>
+            <th style="min-width: 100px; color: #1a7a8e; font-weight: 600;">Potency</th>
+            <th style="min-width: 100px; color: #1a7a8e; font-weight: 600;">Abx Code</th>
+            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Tier</th>
+            <th style="min-width: 180px; color: #1a7a8e; font-weight: 600;">Antibiotic</th>
+            <th style="min-width: 120px; color: #1a7a8e; font-weight: 600;">Whonet Abx</th>
+            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Class</th>
+            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Subclass</th>
+            <th style="min-width: 140px; color: #1a7a8e; font-weight: 600;">Date Modified</th>
+          </tr>
+        </thead>
+        <tbody class="list">
+          {% for antibiotic in antibiotics|multi_sort:"Antibiotic,Whonet_Abx" %}
+          <tr style="transition: all 0.2s ease;">
+            <td style="white-space: nowrap;">
+              <a href="{% url 'edit_antibiotics' pk=antibiotic.pk %}" class="btn btn-sm mr-1" style="background: linear-gradient(135deg, #7ec97e 0%, #5fb85f 100%); color: white; border: none;" title="Edit">
+                <i class="fa fa-pencil-alt"></i>
+              </a>
+              <a href="#" class="btn btn-sm delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'antibiotics_del' antibiotic.id %}" style="background: linear-gradient(135deg, #d97c7c 0%, #c24b4b 100%); color: white; border: none;" title="Delete">
+                <i class="fa fa-trash"></i>
+              </a>
+            </td>
+            <td>
+              {% if antiboitic.Show %}
+                <span class="badge badge-success"><i class="fas fa-check"></i></span>
+              {% else %}
+                <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
+              {% endif %}
+            </td>
+            <td>
+              {% if antibiotic.Retest %}
+                <span class="badge badge-warning"><i class="fas fa-redo"></i></span>
+              {% else %}
+                <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
+              {% endif %}
+            </td>
+            <td>
+              {% if antibiotic.Disk_Abx %}
+                <span class="badge" style="background: #7eb8d4; color: white;"><i class="fas fa-circle"></i></span>
+              {% else %}
+                <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
+              {% endif %}
+            </td>
+            <td><span style="color: #5a6c72;">{{antibiotic.Guidelines}}</span></td>
+            <td><span style="color: #5a6c72;">{{antibiotic.Test_Method}}</span></td>
+            <td><span style="color: #5a6c72;">{{antibioticPotency}}</span></td>
+            <td><strong style="color: #1a7a8e;">{{antibiotic.Abx_code}}</strong></td>
+            <td><span style="color: #5a6c72;">{{antibiotic.Tier|default_if_none:""}}</span></td>
+            <td><strong style="color: #2d9cad;">{{antibiotic.Antibiotic}}</strong></td>
+            <td><span style="color: #5a6c72;">{{breakpoint.Whonet_Abx}}</span></td>
+            <td><strong style="color: #2d9cad;">{{antibiotic.Class}}</strong></td>
+            <td><strong style="color: #2d9cad;">{{antibiotic.Subclass}}</strong></td>
+            <td><strong style="color: #5a6c72;">{{breakpoint.Date_Modified|date:"M d, Y"}}</strong></td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="17" class="text-center py-5">
+              <i class="ni ni-folder-17 text-muted" style="font-size: 3rem;"></i>
+              <p class="text-muted mt-3 mb-0">No Antibiotics found</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Card Footer with Pagination -->
+    <div class="card-footer py-4 bg-light">
+      <div class="row align-items-center">
+        <!-- Go To Page Form -->
+        <div class="col-md-4">
+          <form method="get" class="form-inline">
+            <label class="mr-2 mb-0 text-primary">Go to page:</label>
+            <input type="number" name="page"
+                   min="1"
+                   max="{{ page_obj.paginator.num_pages }}"
+                   value="{{ page_obj.number }}"
+                   class="form-control form-control-sm mr-2"
+                   style="width: 70px;">
+            <button type="submit" class="btn btn-sm btn-primary">
+              <i class="fas fa-arrow-right"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Page Info -->
+        <div class="col-md-4 text-center">
+          <span class="text-primary">
+            Page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong>
+          </span>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="col-md-4">
+          <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-end mb-0">
+              <!-- First Page -->
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page=1" title="First page">
+                    <i class="fas fa-angle-double-left"></i>
+                  </a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                </li>
+              {% endif %}
+
+              <!-- Previous -->
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}" title="Previous page">
+                    <i class="fas fa-angle-left"></i>
+                  </a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                </li>
+              {% endif %}
+
+              <!-- Page Numbers -->
+              {% for num in page_obj.paginator.page_range %}
+                {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                  {% if num == page_obj.number %}
+                    <li class="page-item active">
+                      <span class="page-link">{{ num }}</span>
+                    </li>
+                  {% else %}
+                    <li class="page-item">
+                      <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+
+              <!-- Next -->
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.next_page_number }}" title="Next page">
+                    <i class="fas fa-angle-right"></i>
+                  </a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                </li>
+              {% endif %}
+
+              <!-- Last Page -->
+              {% if page_obj.number < page_obj.paginator.num_pages %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" title="Last page">
+                    <i class="fas fa-angle-double-right"></i>
+                  </a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
+                </li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title text-white" id="deleteModalLabel">
+          <i class="fa fa-exclamation-triangle mr-2"></i>Delete Confirmation
+        </h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form method="POST" id="deleteForm">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="text-center py-3">
+            <i class="fa fa-trash text-danger" style="font-size: 3rem;"></i>
+            <h4 class="mt-3">Are you sure?</h4>
+            <p class="text-muted">This action cannot be undone. The breakpoint record will be permanently deleted.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">
+            <i class="fas fa-times mr-1"></i>Cancel
+          </button>
+          <button type="button" class="btn btn-danger" id="confirmDelete">
+            <i class="fa fa-trash mr-1"></i>Delete Record
+          </button>
+          <a href="{% url 'delete_all_breakpoints' %}" class="btn btn-warning" onclick="return confirm('⚠️ WARNING: This will delete ALL breakpoint records. Are you absolutely sure?')">
+            <i class="fa fa-trash-alt mr-1"></i>Delete All
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Styles -->
+<style>
+.table-hover tbody tr:hover {
+  background-color: #f8fcfd;
+}
+
+#search-input:focus {
+  box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+}
+</style>
+
+{% endblock content %}
+
+<!-- JavaScript -->
+{% block javascripts %}
+<script>
+$(document).ready(function(){
+  var deleteUrl; 
+  $('.delete-btn').on('click', function(){
+    deleteUrl = $(this).data('url');
+  });
+
+  $('#confirmDelete').on('click', function(){
+    window.location.href = deleteUrl;
+  });
+});
+
+// Search table function
+function searchTable() {
+  var input = document.getElementById("search-input");
+  var filter = input.value.toLowerCase();
+  var table = document.getElementById("breakpoints-table");
+  var rows = table.querySelectorAll("tbody tr");
+
+  rows.forEach(row => {
+    var text = row.textContent.toLowerCase();
+    row.style.display = text.includes(filter) ? "" : "none";
+  });
+}
+
+// Clear search function
+function clearSearch() {
+  document.getElementById("search-input").value = "";
+  searchTable();
+}
+
+// Enter key support for search
+document.getElementById("search-input").addEventListener("keypress", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    searchTable();
+  }
+});
+</script>
+{% endblock javascripts %}

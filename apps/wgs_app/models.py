@@ -1,7 +1,7 @@
 from django.db import models
 from django.apps import apps
 from apps.home.models import *
-from apps.home_final.models import *
+from apps.home_final.models import Final_Data
 # Create your models here.
 
 # Connector Table for WGS Projects

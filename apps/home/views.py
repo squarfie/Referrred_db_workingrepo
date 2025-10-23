@@ -48,25 +48,25 @@ from django.db.models import Count, Prefetch, Q
 
 ######## Updates WGS_Project summary booleans for a given Referred_Data object.
 ######  Sets FastQ, Gambit, MLST summaries to True if the accession matches.
-def update_wgs_summaries_for_referred(referred_obj):
+# def update_wgs_summaries_for_referred(referred_obj):
 
-    wgs_entries = WGS_Project.objects.filter(Ref_Accession=referred_obj)
+#     wgs_entries = WGS_Project.objects.filter(Ref_Accession=referred_obj)
 
-    for wgs in wgs_entries:
-        # FastQ summary
-        wgs.WGS_FastqSummary = bool(wgs.WGS_FastQ_Acc) and wgs.WGS_FastQ_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
-        # Gambit summary
-        wgs.WGS_GambitSummary = bool(wgs.WGS_Gambit_Acc) and wgs.WGS_Gambit_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
-        # MLST summary
-        wgs.WGS_MlstSummary = bool(wgs.WGS_Mlst_Acc) and wgs.WGS_Mlst_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
-         # Checkm2 summary
-        wgs.WGS_Checkm2Summary = bool(wgs.WGS_Checkm2_Acc) and wgs.WGS_Checkm2_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
-         # Assembly Scan
-        wgs.WGS_AssemblySummary = bool(wgs.WGS_Assembly_Acc) and wgs.WGS_Assembly_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
-         # Amr finder plus
-        wgs.WGS_AmrfinderSummary = bool(wgs.WGS_Amrfinder_Acc) and wgs.WGS_Amrfinder_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
+#     for wgs in wgs_entries:
+#         # FastQ summary
+#         wgs.WGS_FastqSummary = bool(wgs.WGS_FastQ_Acc) and wgs.WGS_FastQ_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
+#         # Gambit summary
+#         wgs.WGS_GambitSummary = bool(wgs.WGS_Gambit_Acc) and wgs.WGS_Gambit_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
+#         # MLST summary
+#         wgs.WGS_MlstSummary = bool(wgs.WGS_Mlst_Acc) and wgs.WGS_Mlst_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
+#          # Checkm2 summary
+#         wgs.WGS_Checkm2Summary = bool(wgs.WGS_Checkm2_Acc) and wgs.WGS_Checkm2_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
+#          # Assembly Scan
+#         wgs.WGS_AssemblySummary = bool(wgs.WGS_Assembly_Acc) and wgs.WGS_Assembly_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
+#          # Amr finder plus
+#         wgs.WGS_AmrfinderSummary = bool(wgs.WGS_Amrfinder_Acc) and wgs.WGS_Amrfinder_Acc.strip().upper() == referred_obj.AccessionNo.strip().upper()
         
-        wgs.save()
+#         wgs.save()
 
 
 
@@ -673,8 +673,15 @@ def delete_batch(request, batch_id):
 @login_required(login_url="/login/")
 def raw_data(request, id):
     # --- Fetch antibiotics lists ---
-    whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
-    whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
+    # whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
+    # whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
+
+    # get all show=True antibiotics
+    whonet_abx_data = BreakpointsTable.objects.filter(Antibiotic_list__Show=True)
+
+    # get all retest antibiotics
+    whonet_retest_data = BreakpointsTable.objects.filter(Antibiotic_list__Retest=True)
+
 
     # --- Get the isolate record ---
     isolates = get_object_or_404(Referred_Data, pk=id)
@@ -686,6 +693,7 @@ def raw_data(request, id):
     existing_entries = all_entries.filter(ab_Abx_code__isnull=False)  # Regular entries
     retest_entries = all_entries.filter(ab_Retest_Abx_code__isnull=False)   # Retest entries
 
+    
 
     # --- Handle GET request ---
     if request.method == "GET":
@@ -873,8 +881,14 @@ def show_data(request):
 @login_required(login_url="/login/")
 def edit_data(request, id):
     # --- Fetch antibiotics lists ---
-    whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
-    whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
+    # whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
+    # whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
+
+        # get all show=True antibiotics
+    whonet_abx_data = BreakpointsTable.objects.filter(Antibiotic_list__Show=True)
+
+    # get all retest antibiotics
+    whonet_retest_data = BreakpointsTable.objects.filter(Antibiotic_list__Retest=True)
 
     # --- Get the isolate record ---
     isolates = get_object_or_404(Referred_Data, pk=id)
@@ -2591,10 +2605,11 @@ def field_mapper_tool(request):
         # --- Get model field lists ---
         final_fields = [f.name for f in Final_Data._meta.fields if f.name != "id"]
         abx_fields = list(
-            BreakpointsTable.objects.filter(Show=True)
+            Antibiotic_List.objects.filter(Retest=True)
             .values_list("Whonet_Abx", flat=True)
-            .distinct()
+            .distinct().order_by("Whonet_Abx")
         )
+
 
         # --- Load saved mappings ---
         saved_mappings = FieldMapping.objects.filter(user=request.user)
@@ -2614,93 +2629,774 @@ def field_mapper_tool(request):
     return render(request, "home/upload_raw.html")
 
 
+
+#integreated download of demogs and antibiotic entries
+
+# @login_required
+# def generate_mapped_excel(request):
+#     """
+#     STEP 2: Apply user mappings and generate mapped Excel with:
+#       - Demogs (original mapped dataframe)
+#       - Antibiotic_Entries (Year, Accession, and for each ABX:
+#             ABX_MIC, ABX_MIC_op, ABX_Disk, ABX_Disk_op, ABX_RIS)
+#     Handles duplicates (_nm/_nd/_ris/_rt) and chooses first non-null
+#     when multiple duplicate columns exist.
+#     """
+#     if request.method != "POST":
+#         return redirect("field_mapper_tool")
+
+#     try:
+#         import re
+#         import math
+
+#         # --- load mapping JSON ---
+#         mapping_json = request.POST.get("mapping", "{}")
+#         try:
+#             mapping = json.loads(mapping_json)
+#         except Exception:
+#             mapping = {}
+
+#         # --- get temp file details from session ---
+#         temp_file_path = request.session.get("temp_file_path")
+#         temp_file_name = request.session.get("temp_file_name", "uploaded.xlsx")
+
+#         if not temp_file_path or not os.path.exists(temp_file_path):
+#             messages.error(request, "File not found. Please upload the file again.")
+#             return redirect("field_mapper_tool")
+
+#         # --- read file into dataframe ---
+#         if temp_file_name.lower().endswith(".csv"):
+#             df = pd.read_csv(temp_file_path)
+#         else:
+#             df = pd.read_excel(temp_file_path)
+
+#         # --- persist mappings to DB (optional) ---
+#         for raw_field, mapped_field in mapping.items():
+#             if mapped_field:
+#                 FieldMapping.objects.update_or_create(
+#                     user=request.user,
+#                     raw_field=raw_field,
+#                     defaults={"mapped_field": mapped_field},
+#                 )
+
+#         # --- apply mapping rename if provided ---
+#         mapped_cols = {r: m for r, m in mapping.items() if m}
+#         if mapped_cols:
+#             df.rename(columns=mapped_cols, inplace=True)
+
+#         # normalize columns (strip & lower)
+#         df.columns = [str(c).strip() for c in df.columns]
+
+#         # --- detect accession & year columns (prefer mapped f_ names) ---
+#         lower_cols = [c.lower() for c in df.columns]
+#         acc_candidates = [c for c in df.columns if re.search(r"accession", c, re.IGNORECASE)]
+#         acc_col = acc_candidates[0] if acc_candidates else None
+
+#         # If there's a explicit year column chosen by mapping, prefer it
+#         year_candidates = [c for c in df.columns if re.fullmatch(r"year", c, flags=re.IGNORECASE)]
+#         year_col = year_candidates[0] if year_candidates else None
+
+#         # --- identify antibiotic-like columns (exclude accession/year) ---
+#         # We'll treat any remaining column as potential ABX if it matches *_nm*, *_nd*, *_ris*, *_rt*
+#         abx_candidate_cols = []
+#         for c in df.columns:
+#             lc = c.lower()
+#             if acc_col and c == acc_col:
+#                 continue
+#             if year_col and c == year_col:
+#                 continue
+#             # common patterns in your dataset:
+#             if re.search(r'_(nm|nd)\d*(_rt|_ris)?$', lc) or re.search(r'_(nm|nd)(_rt|_ris)?$', lc) or lc.endswith('_ris') or lc.endswith('_rt'):
+#                 abx_candidate_cols.append(c)
+
+#         # If none matched with those patterns, fallback: treat any non acc/year column as abx columns
+#         if not abx_candidate_cols:
+#             abx_candidate_cols = [c for c in df.columns if c not in ([acc_col] if acc_col else []) + ([year_col] if year_col else [])]
+
+#         # --- group columns by antibiotic base name ---
+#         # base extraction:
+#         # examples:
+#         # gen_nm -> base gen
+#         # gen_nm_ris -> base gen
+#         # gen_nd -> base gen
+#         # gen_nd_ris -> base gen
+#         def get_base(colname):
+#             c = colname.strip()
+#             # remove trailing suffix patterns like _nm, _nd, optional digits, then optional _ris/_rt
+#             m = re.match(r'^(?P<base>.+?)(?:_(nm|nd)\d*)(?:_(rt|ris))?$', c, flags=re.IGNORECASE)
+#             if m:
+#                 return m.group('base')
+#             m2 = re.match(r'^(?P<base>.+?)_(rt|ris)$', c, flags=re.IGNORECASE)
+#             if m2:
+#                 return m2.group('base')
+#             # fallback: if ends with _nm/_nd/_ris/_rt without digits
+#             m3 = re.match(r'^(?P<base>.+?)_(nm|nd|ris|rt)$', c, flags=re.IGNORECASE)
+#             if m3:
+#                 return m3.group('base')
+#             # fallback: use entire name as base
+#             return c
+
+#         grouped = {}
+#         for col in abx_candidate_cols:
+#             base = get_base(col)
+#             entry = grouped.setdefault(base, {"mic": [], "disk": [], "ris": [], "rt": [], "other": []})
+#             lc = col.lower()
+#             if re.search(r'_(nm)\d*(_rt|_ris)?$', lc):
+#                 # mic (nm)
+#                 entry["mic"].append(col)
+#                 if lc.endswith("_ris"):
+#                     entry["ris"].append(col)
+#             elif re.search(r'_(nd)\d*(_rt|_ris)?$', lc):
+#                 # disk (nd)
+#                 entry["disk"].append(col)
+#                 if lc.endswith("_ris"):
+#                     entry["ris"].append(col)
+#             elif lc.endswith("_ris"):
+#                 entry["ris"].append(col)
+#             elif lc.endswith("_rt") or lc.endswith("_rt") or "_retest" in lc:
+#                 entry["rt"].append(col)
+#             else:
+#                 entry["other"].append(col)
+
+#         # --- Build antibiotic output dataframe ---
+#         abx_out = None
+#         if acc_col:
+#             abx_out = pd.DataFrame()
+#             abx_out[acc_col] = df[acc_col].astype(str)
+#             # Year extraction from accession if no explicit year column
+#             if year_col:
+#                 abx_out["Year"] = df[year_col].astype(str)
+#             else:
+#                 def extract_year_from_acc(a):
+#                     if pd.isna(a):
+#                         return ""
+#                     s = str(a).upper()
+#                     m = re.match(r'(\d{2})ARS', s)
+#                     return f"20{m.group(1)}" if m else ""
+#                 abx_out["Year"] = df[acc_col].apply(extract_year_from_acc)
+
+#             # for each base create MIC, MIC_op, Disk, Disk_op, RIS
+#             for base, parts in grouped.items():
+#                 safe_base = re.sub(r'\W+', '_', base).upper()  # column-friendly name
+
+#                 # ---- MIC (nm) ----
+#                 # combine candidate mic columns (first non-null across duplicates)
+#                 mic_cols = parts["mic"] + parts["other"]  # extras in other may actually be mic-like
+#                 mic_series = None
+#                 if mic_cols:
+#                     if len(mic_cols) == 1:
+#                         mic_series = df[mic_cols[0]].copy()
+#                     else:
+#                         # handle duplicated-named columns or multiple variants: pick first non-null across them
+#                         # create temp df with those columns, forward/backfill per row to get first non-null
+#                         tmp = df[mic_cols].copy()
+#                         # ensure we can bfill across columns and take first non-null
+#                         mic_series = tmp.bfill(axis=1).iloc[:, 0]
+#                 else:
+#                     mic_series = pd.Series([""] * len(df))
+
+#                 # split operand and numeric part
+#                 def split_operand_value(v):
+#                     if pd.isna(v):
+#                         return ("", "")
+#                     s = str(v).strip()
+#                     if s == "":
+#                         return ("", "")
+#                     # common operand patterns
+#                     m = re.match(r'^(<=|>=|<|>|=|≤|≥)\s*([\d\.]+)$', s)
+#                     if m:
+#                         return (m.group(1), m.group(2))
+#                     # sometimes operand is trailing or embedded, try to find numeric part
+#                     m2 = re.search(r'([\d]+(?:\.[\d]+)?)', s)
+#                     if m2:
+#                         # find operand if any
+#                         op_m = re.match(r'^(<=|>=|<|>|=|≤|≥)', s)
+#                         op = op_m.group(1) if op_m else ""
+#                         return (op, m2.group(1))
+#                     # fallback: non-numeric (store as-is in value)
+#                     return ("", s)
+
+#                 mic_split = [split_operand_value(x) for x in mic_series.tolist()]
+#                 mic_ops = [t[0] for t in mic_split]
+#                 mic_vals = [t[1] for t in mic_split]
+
+#                 abx_out[f"{safe_base}_MIC_op"] = mic_ops
+#                 abx_out[f"{safe_base}_MIC"] = mic_vals
+
+#                 # ---- Disk (nd) ----
+#                 disk_cols = parts["disk"]
+#                 disk_series = None
+#                 if disk_cols:
+#                     if len(disk_cols) == 1:
+#                         disk_series = df[disk_cols[0]].copy()
+#                     else:
+#                         tmpd = df[disk_cols].copy()
+#                         disk_series = tmpd.bfill(axis=1).iloc[:, 0]
+#                 else:
+#                     # If there is no explicit nd but the mic column might actually be disk, leave blank
+#                     disk_series = pd.Series([""] * len(df))
+
+#                 # For disk, extract possible operand? usually disks are integers — but handle like mic
+#                 disk_split = [split_operand_value(x) for x in disk_series.tolist()]
+#                 disk_ops = [t[0] for t in disk_split]
+#                 disk_vals = [t[1] for t in disk_split]
+
+#                 abx_out[f"{safe_base}_Disk_op"] = disk_ops
+#                 abx_out[f"{safe_base}_Disk"] = disk_vals
+
+#                 # ---- RIS (explicit RIS column or _ris suffix) ----
+#                 # ris_cols = parts["ris"]
+#                 # ris_series = None
+#                 # if ris_cols:
+#                 #     if len(ris_cols) == 1:
+#                 #         ris_series = df[ris_cols[0]].copy().astype(str)
+#                 #     else:
+#                 #         tmpr = df[ris_cols].copy()
+#                 #         ris_series = tmpr.bfill(axis=1).iloc[:, 0].astype(str)
+#                 # else:
+#                 #     # maybe there's a ris variant with _nm_ris or _nd_ris not captured? We included those earlier
+#                 #     ris_series = pd.Series([""] * len(df))
+
+
+#                 # ---- RIS (explicit RIS column or _ris suffix) ----
+#                 ris_cols = parts["ris"]
+#                 ris_series = None
+#                 if ris_cols:
+#                     if len(ris_cols) == 1:
+#                         ris_series = df[ris_cols[0]].copy().astype(str)
+#                     else:
+#                         tmpr = df[ris_cols].copy()
+#                         ris_series = tmpr.bfill(axis=1).iloc[:, 0].astype(str)
+#                 else:
+#                     # No explicit RIS columns found - leave blank
+#                     ris_series = pd.Series([""] * len(df))
+
+#                 # normalize ris to single character uppercase or blank
+#                 # IMPORTANT: Only accept R, I, S - reject everything else including "N"
+#                 def norm_ris(x):
+#                     if pd.isna(x) or x == "":
+#                         return ""
+#                     s = str(x).strip().upper()
+#                     # STRICT: Only accept exact R, I, or S values
+#                     if s in ("R", "I", "S"):
+#                         return s
+#                     # Reject everything else (including "N", numbers, etc.)
+#                     return ""
+
+#                 abx_out[f"{safe_base}_RIS"] = [norm_ris(x) for x in ris_series.tolist()]
+
+
+#                 # normalize ris to single character uppercase or blank
+#                 def norm_ris(x):
+#                     if pd.isna(x):
+#                         return ""
+#                     s = str(x).strip().upper()
+#                     if s in ("R", "I", "S"):
+#                         return s
+#                     # Sometimes "resistant" etc. take first letter
+#                     return s[:1] if s else ""
+
+#                 abx_out[f"{safe_base}_RIS"] = [norm_ris(x) for x in ris_series.tolist()]
+
+#             # ensure same index ordering as original df
+#             abx_out.index = df.index
+
+#         # --- Write Excel ---
+#         output = io.BytesIO()
+#         with pd.ExcelWriter(output, engine="openpyxl") as writer:
+#             # Demographics (full mapped DF)
+#             df.to_excel(writer, index=False, sheet_name="Demogs")
+#             # Antibiotics
+#             if abx_out is not None:
+#                 abx_out.to_excel(writer, index=False, sheet_name="Antibiotic_Entries")
+
+#         output.seek(0)
+
+#         # cleanup temp file (assumes you have this helper)
+#         try:
+#             cleanup_temp_file(temp_file_path, request)
+#         except Exception:
+#             # non-fatal
+#             pass
+
+#         response = HttpResponse(
+#             output.getvalue(),
+#             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+#         )
+#         base_name = os.path.splitext(temp_file_name)[0]
+#         response["Content-Disposition"] = f'attachment; filename="{base_name}_Mapped.xlsx"'
+#         messages.success(request, "Mapped Excel with Antibiotic sheet generated successfully!")
+#         return response
+
+#     except Exception as exc:
+#         import traceback
+#         traceback.print_exc()
+#         messages.error(request, f"Error generating mapped file: {exc}")
+#         return redirect("field_mapper_tool")
+
+
+# @login_required
+# def generate_mapped_excel(request):
+#     """
+#     Generate mapped Excel with:
+#       - Demogs sheet (main mapped data)
+#       - Antibiotic_Entries sheet (AccessionNo, Year, and for each antibiotic):
+#             <ABX>_ND         (disk value)
+#             <ABX>_ND_RIS     (disk interpretation)
+#             <ABX>_NM         (MIC value)
+#             <ABX>_NM_RIS     (MIC interpretation)
+#             <ABX>_MIC_op     (MIC operand: ≤, ≥, <, >, etc.)
+#     """
+#     if request.method != "POST":
+#         return redirect("field_mapper_tool")
+
+#     try:
+#         import re
+
+#         # --- Load mapping JSON ---
+#         mapping_json = request.POST.get("mapping", "{}")
+#         try:
+#             mapping = json.loads(mapping_json)
+#         except Exception:
+#             mapping = {}
+
+#         # --- Get file info from session ---
+#         temp_file_path = request.session.get("temp_file_path")
+#         temp_file_name = request.session.get("temp_file_name", "uploaded.xlsx")
+
+#         if not temp_file_path or not os.path.exists(temp_file_path):
+#             messages.error(request, "File not found. Please upload again.")
+#             return redirect("field_mapper_tool")
+
+#         # --- Read Excel or CSV ---
+#         if temp_file_name.lower().endswith(".csv"):
+#             df = pd.read_csv(temp_file_path)
+#         else:
+#             df = pd.read_excel(temp_file_path)
+
+#         # --- Apply saved mappings ---
+#         for raw_field, mapped_field in mapping.items():
+#             if mapped_field:
+#                 FieldMapping.objects.update_or_create(
+#                     user=request.user,
+#                     raw_field=raw_field,
+#                     defaults={"mapped_field": mapped_field},
+#                 )
+
+#         mapped_cols = {r: m for r, m in mapping.items() if m}
+#         if mapped_cols:
+#             df.rename(columns=mapped_cols, inplace=True)
+
+#         df.columns = [str(c).strip() for c in df.columns]
+
+#         # --- Detect accession column ---
+#         acc_col_candidates = [c for c in df.columns if re.search(r"accession", c, re.IGNORECASE)]
+#         acc_col = acc_col_candidates[0] if acc_col_candidates else None
+
+#         if not acc_col:
+#             messages.error(request, "No accession number column found.")
+#             return redirect("field_mapper_tool")
+
+#         # --- Detect antibiotic columns ---
+#         abx_columns = [c for c in df.columns if re.search(r"_(nd|nm)", c, re.IGNORECASE)]
+#         abx_bases = sorted(set(re.sub(r"_(nd|nm).*", "", c, flags=re.IGNORECASE) for c in abx_columns))
+
+#         # --- Create Antibiotic Entries DataFrame ---
+#         abx_df = pd.DataFrame()
+#         abx_df[acc_col] = df[acc_col].astype(str)
+
+#         # --- Extract Year from accession ---
+#         def extract_year(acc):
+#             if pd.isna(acc):
+#                 return ""
+#             acc = str(acc).strip().upper()
+#             m = re.match(r"(\d{2})ARS", acc)
+#             return f"20{m.group(1)}" if m else ""
+
+#         abx_df["Year"] = df[acc_col].apply(extract_year)
+
+#         # --- Helper: Split operand from MIC value ---
+#         def split_operand(val):
+#             if pd.isna(val):
+#                 return "", ""
+#             val = str(val).strip()
+#             if not val:
+#                 return "", ""
+#             m = re.match(r"^(<=|>=|<|>|=|≤|≥)?\s*([\d\.]+)$", val)
+#             if m:
+#                 return m.group(1) or "", m.group(2) or ""
+#             return "", val
+
+#         # --- Process each antibiotic base ---
+#         for base in abx_bases:
+#             base_upper = base.upper()
+
+#             mic_col = next((c for c in df.columns if re.fullmatch(fr"{base}_NM\d*", c, flags=re.IGNORECASE)), None)
+#             mic_ris_col = next((c for c in df.columns if re.fullmatch(fr"{base}_NM\d*_RIS", c, flags=re.IGNORECASE)), None)
+#             disk_col = next((c for c in df.columns if re.fullmatch(fr"{base}_ND\d*", c, flags=re.IGNORECASE)), None)
+#             disk_ris_col = next((c for c in df.columns if re.fullmatch(fr"{base}_ND\d*_RIS", c, flags=re.IGNORECASE)), None)
+
+#             # --- MIC values + operands ---
+#             mic_operand, mic_value = [], []
+#             if mic_col in df.columns:
+#                 for v in df[mic_col]:
+#                     op, num = split_operand(v)
+#                     mic_operand.append(op)
+#                     mic_value.append(num)
+#             else:
+#                 mic_operand = ["" for _ in df.index]
+#                 mic_value = ["" for _ in df.index]
+
+#             abx_df[f"{base_upper}_NM"] = mic_value
+#             abx_df[f"{base_upper}_NM_RIS"] = (
+#                 df[mic_ris_col].replace("N", "").replace("n", "").fillna("")
+#                 if mic_ris_col in df.columns else ""
+#             )
+#             abx_df[f"{base_upper}_MIC_op"] = mic_operand
+
+#             # --- Disk values (no operand column) ---
+#             abx_df[f"{base_upper}_ND"] = df[disk_col] if disk_col in df.columns else ""
+#             abx_df[f"{base_upper}_ND_RIS"] = (
+#                 df[disk_ris_col].replace("N", "").replace("n", "").fillna("")
+#                 if disk_ris_col in df.columns else ""
+#             )
+
+#         # --- Write to Excel with two sheets ---
+#         output = io.BytesIO()
+#         with pd.ExcelWriter(output, engine="openpyxl") as writer:
+#             df.to_excel(writer, index=False, sheet_name="Demogs")
+#             abx_df.to_excel(writer, index=False, sheet_name="Antibiotic_Entries")
+
+#         output.seek(0)
+
+#         cleanup_temp_file(temp_file_path, request)
+#         response = HttpResponse(
+#             output.getvalue(),
+#             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+#         )
+#         base_name = os.path.splitext(temp_file_name)[0]
+#         response["Content-Disposition"] = f'attachment; filename="{base_name}_Mapped.xlsx"'
+
+#         messages.success(request, "✅ Mapped Excel (no disk operand, clean RIS) generated successfully!")
+#         return response
+
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         messages.error(request, f"⚠️ Error generating mapped file: {e}")
+#         return redirect("field_mapper_tool")
+
+
+
+
+
+# @login_required
+# def generate_mapped_excel(request):
+#     """
+#     Generate mapped Excel with:
+#       - Demogs sheet (non-antibiotic fields only)
+#       - Antibiotic_Entries sheet (AccessionNo, Year, and for each antibiotic):
+#             <ABX>_ND         (disk value)
+#             <ABX>_ND_RIS     (disk interpretation)
+#             <ABX>_NM         (MIC value)
+#             <ABX>_NM_RIS     (MIC interpretation)
+#             <ABX>_MIC_op     (MIC operand: ≤, ≥, <, >)
+#     """
+#     if request.method != "POST":
+#         return redirect("field_mapper_tool")
+
+#     try:
+#         import re
+
+#         # --- Load mapping JSON ---
+#         mapping_json = request.POST.get("mapping", "{}")
+#         try:
+#             mapping = json.loads(mapping_json)
+#         except Exception:
+#             mapping = {}
+
+#         # --- Get temp file info from session ---
+#         temp_file_path = request.session.get("temp_file_path")
+#         temp_file_name = request.session.get("temp_file_name", "uploaded.xlsx")
+
+#         if not temp_file_path or not os.path.exists(temp_file_path):
+#             messages.error(request, "File not found. Please upload again.")
+#             return redirect("field_mapper_tool")
+
+#         # --- Read file ---
+#         if temp_file_name.lower().endswith(".csv"):
+#             df = pd.read_csv(temp_file_path)
+#         else:
+#             df = pd.read_excel(temp_file_path)
+
+#         # --- Apply saved mappings ---
+#         for raw_field, mapped_field in mapping.items():
+#             if mapped_field:
+#                 FieldMapping.objects.update_or_create(
+#                     user=request.user,
+#                     raw_field=raw_field,
+#                     defaults={"mapped_field": mapped_field},
+#                 )
+
+#         mapped_cols = {r: m for r, m in mapping.items() if m}
+#         if mapped_cols:
+#             df.rename(columns=mapped_cols, inplace=True)
+
+#         df.columns = [str(c).strip() for c in df.columns]
+
+#         # --- Detect accession column ---
+#         acc_col_candidates = [c for c in df.columns if re.search(r"accession", c, re.IGNORECASE)]
+#         acc_col = acc_col_candidates[0] if acc_col_candidates else None
+
+#         if not acc_col:
+#             messages.error(request, "No accession number column found.")
+#             return redirect("field_mapper_tool")
+
+#         # --- Identify antibiotic columns ---
+#         abx_columns = [c for c in df.columns if re.search(r"_(nd|nm)", c, re.IGNORECASE)]
+#         abx_bases = sorted(set(re.sub(r"_(nd|nm).*", "", c, flags=re.IGNORECASE) for c in abx_columns))
+
+#         # --- Create Antibiotic Entries DataFrame ---
+#         abx_df = pd.DataFrame()
+#         abx_df[acc_col] = df[acc_col].astype(str)
+
+#         # --- Extract Year from accession ---
+#         def extract_year(acc):
+#             if pd.isna(acc):
+#                 return ""
+#             acc = str(acc).strip().upper()
+#             m = re.match(r"(\d{2})ARS", acc)
+#             return f"20{m.group(1)}" if m else ""
+
+#         abx_df["Year"] = df[acc_col].apply(extract_year)
+
+#         # --- Helper: Split operand from MIC value ---
+#         def split_operand(val):
+#             if pd.isna(val):
+#                 return "", ""
+#             val = str(val).strip()
+#             if not val:
+#                 return "", ""
+#             m = re.match(r"^(<=|>=|<|>|=|≤|≥)?\s*([\d\.]+)$", val)
+#             if m:
+#                 return m.group(1) or "", m.group(2) or ""
+#             return "", val
+
+#         # --- Process each antibiotic base ---
+#         for base in abx_bases:
+#             base_upper = base.upper()
+
+#             mic_col = next((c for c in df.columns if re.fullmatch(fr"{base}_NM\d*", c, flags=re.IGNORECASE)), None)
+#             mic_ris_col = next((c for c in df.columns if re.fullmatch(fr"{base}_NM\d*_RIS", c, flags=re.IGNORECASE)), None)
+#             disk_col = next((c for c in df.columns if re.fullmatch(fr"{base}_ND\d*", c, flags=re.IGNORECASE)), None)
+#             disk_ris_col = next((c for c in df.columns if re.fullmatch(fr"{base}_ND\d*_RIS", c, flags=re.IGNORECASE)), None)
+
+#             # --- MIC values + operands ---
+#             mic_operand, mic_value = [], []
+#             if mic_col in df.columns:
+#                 for v in df[mic_col]:
+#                     op, num = split_operand(v)
+#                     mic_operand.append(op)
+#                     mic_value.append(num)
+#             else:
+#                 mic_operand = ["" for _ in df.index]
+#                 mic_value = ["" for _ in df.index]
+
+#             abx_df[f"{base_upper}_NM"] = mic_value
+#             abx_df[f"{base_upper}_NM_RIS"] = (
+#                 df[mic_ris_col].replace("N", "").replace("n", "").fillna("")
+#                 if mic_ris_col in df.columns else ""
+#             )
+#             abx_df[f"{base_upper}_MIC_op"] = mic_operand
+
+#             # --- Disk values (no operand column) ---
+#             abx_df[f"{base_upper}_ND"] = df[disk_col] if disk_col in df.columns else ""
+#             abx_df[f"{base_upper}_ND_RIS"] = (
+#                 df[disk_ris_col].replace("N", "").replace("n", "").fillna("")
+#                 if disk_ris_col in df.columns else ""
+#             )
+
+#         # --- Remove antibiotic columns from Demogs ---
+#         demogs_df = df.drop(columns=[c for c in df.columns if c in abx_columns or re.search(r"_(nd|nm|ris|mic_op)$", c, re.IGNORECASE)], errors="ignore")
+
+#         # --- Write Excel with two sheets ---
+#         output = io.BytesIO()
+#         with pd.ExcelWriter(output, engine="openpyxl") as writer:
+#             demogs_df.to_excel(writer, index=False, sheet_name="Demogs")
+#             abx_df.to_excel(writer, index=False, sheet_name="Antibiotic_Entries")
+
+#         output.seek(0)
+
+#         # --- Clean up temp file and return file ---
+#         cleanup_temp_file(temp_file_path, request)
+#         response = HttpResponse(
+#             output.getvalue(),
+#             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+#         )
+#         base_name = os.path.splitext(temp_file_name)[0]
+#         response["Content-Disposition"] = f'attachment; filename="{base_name}_Mapped.xlsx"'
+
+#         messages.success(request, "✅ Mapped Excel created — Demogs cleaned, Antibiotic sheet generated!")
+#         return response
+
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         messages.error(request, f"⚠️ Error generating mapped file: {e}")
+#         return redirect("field_mapper_tool")
+
+
+
+
+
 @login_required
 def generate_mapped_excel(request):
     """
-    STEP 2: Apply user mappings and generate the mapped Excel file.
+    Generate mapped Excel with:
+      - Demogs sheet (non-antibiotic fields only)
+      - Antibiotic_Entries sheet (AccessionNo, Year, and for each antibiotic):
+            <ABX>_ND, <ABX>_ND_RIS, <ABX>_NM, <ABX>_NM_RIS, <ABX>_MIC_op
     """
-    if request.method == "POST":
+    if request.method != "POST":
+        return redirect("field_mapper_tool")
+
+    try:
+        import re
+
+        # --- Load mapping JSON ---
+        mapping_json = request.POST.get("mapping", "{}")
         try:
-            # Get mapping from POST data
-            mapping_json = request.POST.get("mapping", "{}")
             mapping = json.loads(mapping_json)
+        except Exception:
+            mapping = {}
 
-            # Get file from session
-            temp_file_path = request.session.get('temp_file_path')
-            temp_file_name = request.session.get('temp_file_name', 'output.xlsx')
+        # --- Get file info from session ---
+        temp_file_path = request.session.get("temp_file_path")
+        temp_file_name = request.session.get("temp_file_name", "uploaded.xlsx")
 
-            if not temp_file_path or not os.path.exists(temp_file_path):
-                messages.error(request, "File not found. Please upload the file again.")
-                return redirect("field_mapper_tool")
-
-            # Read the file
-            try:
-                if temp_file_name.endswith(".csv"):
-                    df = pd.read_csv(temp_file_path)
-                else:
-                    df = pd.read_excel(temp_file_path)
-            except Exception as e:
-                messages.error(request, f"Error reading file: {e}")
-                return redirect("field_mapper_tool")
-
-            # Save mappings to database
-            for raw_field, mapped_field in mapping.items():
-                if mapped_field:
-                    FieldMapping.objects.update_or_create(
-                        user=request.user,
-                        raw_field=raw_field,
-                        defaults={"mapped_field": mapped_field},
-                    )
-
-            # Apply mappings
-            mapped_cols = {r: m for r, m in mapping.items() if m}
-
-            if not mapped_cols:
-                # Export raw file if no mapping
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                    df.to_excel(writer, index=False, sheet_name="Raw_Data")
-                output.seek(0)
-                
-                # Clean up temp file
-                cleanup_temp_file(temp_file_path, request)
-                
-                response = HttpResponse(
-                    output.getvalue(),
-                    content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-                response["Content-Disposition"] = 'attachment; filename="Raw_Data.xlsx"'
-                return response
-
-            # Rename columns and export
-            df.rename(columns=mapped_cols, inplace=True)
-            
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                df.to_excel(writer, index=False, sheet_name="Mapped_Data")
-            output.seek(0)
-
-            # Clean up temp file
-            cleanup_temp_file(temp_file_path, request)
-
-            response = HttpResponse(
-                output.getvalue(),
-                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-            
-            # Generate output filename
-            base_name = os.path.splitext(temp_file_name)[0]
-            response["Content-Disposition"] = f'attachment; filename="{base_name}_Mapped.xlsx"'
-            
-            messages.success(request, "Mapped file generated successfully!")
-            return response
-
-        except Exception as e:
-            print(f"[ERROR] generate_mapped_excel: {e}")
-            messages.error(request, f"Error generating mapped file: {e}")
+        if not temp_file_path or not os.path.exists(temp_file_path):
+            messages.error(request, "File not found. Please upload again.")
             return redirect("field_mapper_tool")
 
-    return redirect("field_mapper_tool")
+        # --- Read file ---
+        if temp_file_name.lower().endswith(".csv"):
+            df = pd.read_csv(temp_file_path)
+        else:
+            df = pd.read_excel(temp_file_path)
+
+        # --- Apply saved mappings ---
+        for raw_field, mapped_field in mapping.items():
+            if mapped_field:
+                FieldMapping.objects.update_or_create(
+                    user=request.user,
+                    raw_field=raw_field,
+                    defaults={"mapped_field": mapped_field},
+                )
+
+        mapped_cols = {r: m for r, m in mapping.items() if m}
+        if mapped_cols:
+            df.rename(columns=mapped_cols, inplace=True)
+
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # --- Detect accession column ---
+        acc_col_candidates = [c for c in df.columns if re.search(r"accession", c, re.IGNORECASE)]
+        acc_col = acc_col_candidates[0] if acc_col_candidates else None
+
+        if not acc_col:
+            messages.error(request, "No accession number column found.")
+            return redirect("field_mapper_tool")
+
+        # --- Identify antibiotic columns ---
+        abx_columns = [c for c in df.columns if re.search(r"_(nd|nm)", c, re.IGNORECASE)]
+        abx_bases = sorted(set(re.sub(r"_(nd|nm).*", "", c, flags=re.IGNORECASE) for c in abx_columns))
+
+        # --- Create Antibiotic Entries DataFrame ---
+        abx_df = pd.DataFrame()
+        abx_df[acc_col] = df[acc_col].astype(str)
+
+        # --- Extract Year from accession ---
+        def extract_year(acc):
+            if pd.isna(acc):
+                return ""
+            acc = str(acc).strip().upper()
+            m = re.match(r"(\d{2})ARS", acc)
+            return f"20{m.group(1)}" if m else ""
+
+        abx_df["Year"] = df[acc_col].apply(extract_year)
+
+        # --- Helper: Split operand from MIC value ---
+        def split_operand(val):
+            if pd.isna(val):
+                return "", ""
+            val = str(val).strip()
+            if not val:
+                return "", ""
+            m = re.match(r"^(<=|>=|<|>|=|≤|≥)?\s*([\d\.]+)$", val)
+            if m:
+                return m.group(1) or "", m.group(2) or ""
+            return "", val
+
+        # --- Safely get column data as Series of correct length ---
+        def safe_get_series(colname):
+            if colname in df.columns:
+                s = df[colname]
+                if isinstance(s, pd.Series):
+                    return s
+            return pd.Series(["" for _ in range(len(df))])
+
+        # --- Process each antibiotic base ---
+        for base in abx_bases:
+            base_upper = base.upper()
+
+            mic_col = next((c for c in df.columns if re.fullmatch(fr"{base}_NM\d*", c, flags=re.IGNORECASE)), None)
+            mic_ris_col = next((c for c in df.columns if re.fullmatch(fr"{base}_NM\d*_RIS", c, flags=re.IGNORECASE)), None)
+            disk_col = next((c for c in df.columns if re.fullmatch(fr"{base}_ND\d*", c, flags=re.IGNORECASE)), None)
+            disk_ris_col = next((c for c in df.columns if re.fullmatch(fr"{base}_ND\d*_RIS", c, flags=re.IGNORECASE)), None)
+
+            # --- MIC values + operands ---
+            mic_series = safe_get_series(mic_col)
+            mic_operands, mic_values = zip(*[split_operand(v) for v in mic_series])
+            abx_df[f"{base_upper}_NM"] = list(mic_values)
+            abx_df[f"{base_upper}_NM_RIS"] = safe_get_series(mic_ris_col).replace(["N", "n"], "").fillna("")
+            abx_df[f"{base_upper}_MIC_op"] = list(mic_operands)
+
+            # --- Disk values (no operand) ---
+            abx_df[f"{base_upper}_ND"] = safe_get_series(disk_col)
+            abx_df[f"{base_upper}_ND_RIS"] = safe_get_series(disk_ris_col).replace(["N", "n"], "").fillna("")
+
+        # --- Remove antibiotic columns from Demogs ---
+        pattern = re.compile(r"_(nd|nm|ris|mic_op)$", re.IGNORECASE)
+        demogs_df = df[[c for c in df.columns if not pattern.search(c)]]
+
+        # --- Write Excel with two sheets ---
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            demogs_df.to_excel(writer, index=False, sheet_name="Demogs")
+            abx_df.to_excel(writer, index=False, sheet_name="Antibiotic_Entries")
+
+        output.seek(0)
+
+        # --- Clean up and return response ---
+        cleanup_temp_file(temp_file_path, request)
+        response = HttpResponse(
+            output.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        base_name = os.path.splitext(temp_file_name)[0]
+        response["Content-Disposition"] = f'attachment; filename="{base_name}_Mapped.xlsx"'
+
+        messages.success(request, "✅ Mapped Excel created — clean Demogs + Antibiotic sheet!")
+        return response
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        messages.error(request, f"⚠️ Error generating mapped file: {e}")
+        return redirect("field_mapper_tool")
+
+
+
 
 
 @login_required
@@ -2720,3 +3416,177 @@ def cleanup_temp_file(file_path, request):
     """
     if file_path and os.path.exists(file_path):
             os.remove(file_path)
+
+
+
+
+
+
+#Antiboitic List
+
+@login_required(login_url="/login/")
+def add_antibiotics(request, pk=None):
+    antibiotic = None  # Initialize breakpoint to avoid UnboundLocalError
+    upload_form = Antibiotics_uploadForm()
+
+    if pk:  # Editing an existing breakpoint
+        antibiotic = get_object_or_404(Antibiotic_List, pk=pk)
+        form = AntibioticsForm(request.POST or None, instance=antibiotic)
+        editing = True
+    else:  # Adding a new breakpoint
+        form = AntibioticsForm(request.POST or None)
+        editing = False
+
+    if request.method == "POST":
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Update Successful")
+            return redirect('antibiotics_view')  # Redirect to avoid form resubmission
+
+    return render(request, 'home/Antibiotic_list.html', {
+        'form': form,
+        'editing': editing,  # Pass editing flag to template
+        'antibiotic': antibiotic,  # Pass breakpoint even if None
+        'upload_form': upload_form,
+    })
+
+
+@login_required(login_url="/login/")
+#View existing breakpoints
+def antibiotics_view(request):
+    antibiotics = Antibiotic_List.objects.all().order_by('-Date_Modified')
+    paginator = Paginator(antibiotics, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'home/Antibiotic_View.html',{ 'antibiotics':antibiotics,  'page_obj': page_obj})
+
+
+
+@login_required(login_url="/login/")
+#Delete breakpoints
+def antibiotics_del(request, id):
+    antibiotics = get_object_or_404(Antibiotic_List, pk=id)
+    antibiotics.delete()
+    return redirect('antibiotics_view')
+
+
+
+@login_required(login_url="/login/")
+# for uploading and replacing existing breakpoints data
+def upload_antibiotics(request):
+    if request.method == "POST":
+        upload_form = Antibiotics_uploadForm(request.POST, request.FILES)
+        if upload_form.is_valid():
+            # Save the uploaded file instance
+            uploaded_file = upload_form.save()
+            file = uploaded_file.File_uploadAbx  # Get the actual file field
+            print("Uploaded file:", file)  # Debugging statement
+            try:
+                # Load file into a DataFrame using file's temporary path
+                if file.name.endswith('.csv'):
+                    df = pd.read_csv(file)  # For CSV files
+                    
+                elif file.name.endswith('.xlsx'):
+                    df = pd.read_excel(file)  # For Excel files
+
+                else:
+                    messages.error(request, messages.INFO, 'Unsupported file format. Please upload a CSV or Excel file.')
+                    return redirect('upload_antibiotics')
+
+                # Check the DataFrame for debugging
+                print(df)
+                
+                # Check the DataFrame for debugging
+                print("DataFrame contents:\n", df.head())  # Print the first few rows
+
+                # Check column and Replace NaN values with empty strings to avoid validation errors
+                df.fillna(value={col: "" for col in df.columns}, inplace=True)
+
+
+                 # Use this to Clear existing records with matching Whonet_Abx values
+                whonet_abx_values = df['Whonet_Abx'].unique()
+                Antibiotic_List.objects.filter(Whonet_Abx__in=whonet_abx_values).delete()
+
+
+                # Insert rows into BreakpointsTable
+                for _, row in df.iterrows():
+                    # Parse Date_Modified if it's present and valid
+                    date_modified = None
+                    if row.get('Date_Modified'):
+                        date_modified = pd.to_datetime(row['Date_Modified'], errors='coerce')
+                        if pd.isna(date_modified):
+                            date_modified = None
+
+                    # Create a new instance of BreakpointsTable
+                    Antibiotic_List.objects.update_or_create(
+                        Whonet_Abx=row.get('Whonet_Abx', ''),   # lookup field
+                        defaults={
+                            'Show': bool(row.get('Show', False)),
+                            'Retest': bool(row.get('Retest', False)),
+                            'Disk_Abx': bool(row.get('Disk_Abx', False)),
+                            'Guidelines': row.get('Guidelines', ''),
+                            'Tier': row.get('Tier', ''),
+                            'Test_Method': row.get('Test_Method', ''),
+                            'Potency': row.get('Potency', ''),
+                            'Abx_code': row.get('Abx_code', ''),
+                            'Antibiotic': row.get('Antibiotic', ''),
+                            'Class': row.get('Class', ''),
+                            'Subclass': row.get('Subclass', ''),
+                            'Date_Modified': date_modified,
+                        }
+                    )
+
+                
+                messages.success(request, messages.INFO, 'File uploaded and data was updated successfully!')
+                return redirect('antibiotics_view')
+
+            except Exception as e:
+                print("Error during processing:", e)  # Debug statement
+                messages.error(request, f"Error processing file: {e}")
+                return redirect('add_antibiotics')
+        else:
+            messages.error(request, messages.INFO, "Form is not valid.")
+
+    else:
+        upload_form = Breakpoint_uploadForm()
+
+    return render(request, 'home/Antibiotic_list.html', {'upload_form': upload_form})
+
+@login_required(login_url="/login/")
+#for exporting into excel
+def export_antibiotics(request):
+    objects = Antibiotic_List.objects.all()
+    data = []
+
+    for obj in objects:
+        data.append({
+            "Show": obj.Show,
+            "Retest": obj.Retest,
+            "Disk_Abx": obj.Disk_Abx,
+            "Guidelines": obj.Guidelines,
+            "Tier": obj.Tier,
+            "Test_Method": obj.Test_Method,
+            "Potency": obj.Potency,
+            "Abx_code": obj.Abx_code,
+            "Whonet_Abx": obj.Whonet_Abx,
+            "Antibiotic": obj.Antibiotic,
+            "Class": obj.Class,
+            "Subclass": obj.Subclass,
+            "Date_Modified": obj.Date_Modified,
+        })
+    
+    # Define file path
+    file_path = "Antibiotic_list.xlsx"
+
+    # Convert data to DataFrame and save as Excel
+    df = pd.DataFrame(data)
+    df.to_excel(file_path, index=False)
+
+    # Return the file as a response
+    return FileResponse(open(file_path, "rb"), as_attachment=True, filename="Antibiotic_list.xlsx")
+
+@login_required(login_url="/login/")
+def delete_all_antibiotics(request):
+    Antibiotic_List.objects.all().delete()
+    messages.success(request, "All records have been deleted successfully.")
+    return redirect('antibiotics_view')  # Redirect to the table view

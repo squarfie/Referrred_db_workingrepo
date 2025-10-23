@@ -320,7 +320,15 @@ class BreakpointsTable(models.Model):
     GuidelineChoices = (
         ('CLSI', 'CLSI'),        
     )
-
+    Antibiotic_list = models.ForeignKey(
+        'Antibiotic_List',
+        on_delete=models.CASCADE,
+        related_name='breakpoints',
+        to_field='Whonet_Abx',   # this tells Django to link by the Whonet_Abx field
+        db_column='Abx_List_Whonet_Abx',  # keeps database column name clear
+        null=True,
+        blank=True
+    )
     Guidelines = models.CharField(max_length=100, choices=GuidelineChoices, blank=True, default='')
     Year = models.CharField(max_length=100, blank=True, default='')
     Org = models.CharField(max_length=100, blank=True, default='')
@@ -464,18 +472,27 @@ class FieldMapping(models.Model):
     
 
 class Antibiotic_List(models.Model):
+    TestMethodChoices =(
+        ('DISK', 'DISK'),
+        ('MIC','MIC'),
+    )
+    
+    GuidelineChoices = (
+        ('CLSI', 'CLSI'),        
+    )
     Show=models.BooleanField(default=True)
     Retest=models.BooleanField(default=True)
     Disk_Abx=models.BooleanField(default=True)
-    Test_Method=models.CharField(max_length=100, blank=True, default="")
-    Abx_Code=models.CharField(max_length=100, blank=True, default="")
-    Whonet_Abx=models.CharField(max_length=100, blank=True, default="")
+    Tier = models.CharField(max_length=10, blank=True, default='')
+    Test_Method=models.CharField(max_length=100, choices=TestMethodChoices, blank=True, default="")
+    Abx_code=models.CharField(max_length=100, blank=True, default="")
+    Whonet_Abx=models.CharField(max_length=100, blank=True, default="", unique=True)
     Antibiotic=models.CharField(max_length=100, blank=True, default="")
-    Guidelines=models.CharField(max_length=100, blank=True, default="")
+    Guidelines=models.CharField(max_length=100, choices=GuidelineChoices, blank=True, default="")
     Potency=models.CharField(max_length=100, blank=True, default="")
     Class=models.CharField(max_length=100, blank=True, default="")
     Subclass=models.CharField(max_length=100, blank=True, default="")
-    Date_Modified=models.DateField(auto_now_add=True)
+    Date_Modified=models.DateField(auto_now_add=True, null=True)
 
     class Meta:
         db_table = "Antibiotic_List"
@@ -483,4 +500,9 @@ class Antibiotic_List(models.Model):
 
 
 
+class Antibiotic_upload(models.Model):
+    File_uploadAbx = models.FileField(upload_to='uploads/breakpoints/', null=True, blank=True)
+
+    class Meta:
+        db_table = "Antibiotic_upload"
 

@@ -51,8 +51,15 @@ from django.db.models import Count, Prefetch, Q
 @login_required(login_url="/login/")
 def edit_final_data(request, id):
     # --- Fetch antibiotics lists ---
-    whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
-    whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
+    # whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
+    # whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
+
+
+            # get all show=True antibiotics
+    whonet_abx_data = BreakpointsTable.objects.filter(Antibiotic_list__Show=True)
+
+    # get all retest antibiotics
+    whonet_retest_data = BreakpointsTable.objects.filter(Antibiotic_list__Retest=True)
 
     # --- Get the isolate record ---
     isolates = get_object_or_404(Final_Data, pk=id)
@@ -710,232 +717,9 @@ def upload_final_combined_table(request):
     # --- Default GET render ---
     return render(request, "wgs_app/Add_wgs.html", {
         "referred_form": referred_form,
+        "antibiotic_form": FinalAntibioticUploadForm(),
         "form": form,
     })
-
-
-
-
-
-
-#uploading antibiotic entries
-# @login_required
-# @transaction.atomic
-# def upload_antibiotic_entries(request):
-#     """
-#     Upload antibiotic results (wide format: accession_no + antibiotic columns with RIS values).
-#     Automatically matches BreakpointsTable using Whonet_Abx + Year + Org,
-#     but does NOT compute or use breakpoints — only links to the correct one.
-#     """
-#     form = WGSProjectForm()
-#     antibiotic_form = FinalDataUploadForm()
-
-#     if request.method == "POST" and request.FILES.get("AntibioticFile"):
-#         try:
-#             uploaded_file = request.FILES["AntibioticFile"]
-#             file_name = uploaded_file.name.lower()
-
-#             # Load file
-#             if file_name.endswith(".csv"):
-#                 wrapper = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
-#                 df = pd.read_csv(wrapper)
-#             elif file_name.endswith((".xlsx", ".xls")):
-#                 df = pd.read_excel(uploaded_file)
-#             else:
-#                 messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
-#                 return redirect("upload_antibiotic_entries")
-
-#             df.columns = df.columns.str.strip().str.lower()
-
-#             # --- Check required columns ---
-#             for col in ["accession_no", "year", "organismcode"]:
-#                 if col not in df.columns:
-#                     messages.error(request, f"Missing required column: {col}")
-#                     return redirect("upload_antibiotic_entries")
-
-#             created_count = updated_count = skipped = 0
-
-#             # Identify antibiotic columns (everything except accession/year/org)
-#             abx_columns = [c for c in df.columns if c not in ["accession_no", "year", "organismcode"]]
-
-#             for _, row in df.iterrows():
-#                 accession = str(row.get("accession_no", "")).strip()
-#                 year = str(row.get("year", "")).strip()
-#                 org = str(row.get("organismcode", "")).strip().upper()
-
-#                 if not accession:
-#                     continue
-
-#                 ref = Final_Data.objects.filter(f_AccessionNo=accession).first()
-#                 if not ref:
-#                     skipped += 1
-#                     continue
-
-#                 for abx_code in abx_columns:
-#                     ris_value = str(row.get(abx_code, "")).strip().upper()
-#                     if ris_value not in ["R", "I", "S"]:
-#                         continue  # skip blanks or invalid RIS
-
-#                     # --- Find the matching breakpoint by Abx + Year + Org ---
-#                     bp = BreakpointsTable.objects.filter(
-#                         Whonet_Abx__iexact=abx_code,
-#                         Year=str(year),
-#                         Org__iexact=org
-#                     ).first()
-
-#                     # --- Create or update the antibiotic entry ---
-#                     ab_entry, created = Final_AntibioticEntry.objects.update_or_create(
-#                         ab_idNum_f_referred=ref,
-#                         ab_Abx_code=abx_code,
-#                         defaults={
-#                             "ab_Antibiotic": abx_code,
-#                             "ab_AccessionNo": accession,
-#                             "ab_MIC_RIS": ris_value,   # store the R/I/S directly
-#                         },
-#                     )
-
-#                     # Link breakpoint if matched
-#                     if bp:
-#                         ab_entry.ab_breakpoints_id.set([bp])
-
-#                     if created:
-#                         created_count += 1
-#                     else:
-#                         updated_count += 1
-
-#             messages.success(
-#                 request,
-#                 f"✅ Antibiotic upload complete! {created_count} new, {updated_count} updated, {skipped} skipped."
-#             )
-#             return redirect("show_final_data")
-
-#         except Exception as e:
-#             import traceback
-#             traceback.print_exc()
-#             messages.error(request, f"⚠️ Error during antibiotic upload: {e}")
-
-#     return render(request, "wgs_app/Add_wgs.html", {
-#         "form": form,
-#         "referred_form": antibiotic_form,
-#     })
-
-
-@login_required
-@transaction.atomic
-def upload_antibiotic_entries(request):
-    """
-    Upload antibiotic results (wide format: accession_no + antibiotic columns with RIS values).
-    Automatically applies saved user-defined mappings from FieldMapping.
-    Matches BreakpointsTable using Whonet_Abx + Year (no organism filter).
-    """
-    form = WGSProjectForm()
-    antibiotic_form = FinalDataUploadForm()
-
-    if request.method == "POST" and request.FILES.get("AntibioticFile"):
-        try:
-            uploaded_file = request.FILES["AntibioticFile"]
-            file_name = uploaded_file.name.lower()
-
-            # --- Load file ---
-            if file_name.endswith(".csv"):
-                wrapper = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
-                df = pd.read_csv(wrapper)
-            elif file_name.endswith((".xlsx", ".xls")):
-                df = pd.read_excel(uploaded_file)
-            else:
-                messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
-                return redirect("upload_antibiotic_entries")
-
-            # --- Apply user-defined mappings ---
-            user_mappings = dict(
-                FieldMapping.objects.filter(user=request.user)
-                .values_list("raw_field", "mapped_field")
-            )
-
-            if user_mappings:
-                df.rename(columns=user_mappings, inplace=True)
-                print(f"[UPLOAD] Applied {len(user_mappings)} field mappings.")
-            else:
-                messages.warning(request, "⚠️ No saved field mappings found. Using raw headers.")
-
-            # --- Normalize headers ---
-            df.columns = df.columns.str.strip().str.lower()
-
-            # --- Check required mapped columns ---
-            required_cols = ["f_accessionno", "year"]
-            missing = [col for col in required_cols if col not in df.columns]
-
-            if missing:
-                messages.error(request, f"Missing required columns after mapping: {', '.join(missing)}")
-                return redirect("upload_antibiotic_entries")
-
-            created_count = updated_count = skipped = 0
-
-            # --- Identify antibiotic columns (not accession/year) ---
-            abx_columns = [c for c in df.columns if c not in ["f_accessionno", "year"]]
-
-            for _, row in df.iterrows():
-                accession = str(row.get("f_accessionno", "")).strip()
-                year = str(row.get("year", "")).strip()
-
-                if not accession:
-                    continue
-
-                ref = Final_Data.objects.filter(f_AccessionNo=accession).first()
-                if not ref:
-                    skipped += 1
-                    continue
-
-                for abx_code in abx_columns:
-                    ris_value = str(row.get(abx_code, "")).strip().upper()
-                    if ris_value not in ["R", "I", "S"]:
-                        continue  # skip blanks or invalid RIS
-
-                    # --- Find the matching breakpoint by Abx + Year only ---
-                    bp = BreakpointsTable.objects.filter(
-                        Whonet_Abx__iexact=abx_code,
-                        Year=str(year)
-                    ).first()
-
-                    # --- Create or update the antibiotic entry ---
-                    ab_entry, created = Final_AntibioticEntry.objects.update_or_create(
-                        ab_idNum_f_referred=ref,
-                        ab_Abx_code=abx_code,
-                        defaults={
-                            "ab_Antibiotic": abx_code,
-                            "ab_AccessionNo": accession,
-                            "ab_MIC_RIS": ris_value,
-                        },
-                    )
-
-                    # Link breakpoint if matched
-                    if bp:
-                        ab_entry.ab_breakpoints_id.set([bp])
-
-                    if created:
-                        created_count += 1
-                    else:
-                        updated_count += 1
-
-            # --- Summary ---
-            messages.success(
-                request,
-                f"✅ Antibiotic upload complete! "
-                f"{created_count} new, {updated_count} updated, {skipped} skipped."
-            )
-            return redirect("show_final_data")
-
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            messages.error(request, f"⚠️ Error during antibiotic upload: {e}")
-
-    # --- Default render ---
-    return render(request, "wgs_app/Add_wgs.html", {
-        "form": form,
-        "referred_form": antibiotic_form,
-    })
-
 
 
 
@@ -1007,3 +791,565 @@ def delete_finaldata_by_date(request):
 
     messages.error(request, "Invalid request method.")
     return redirect("show_final_data")
+
+
+
+
+
+#uploading antibiotic entries
+
+# @login_required
+# @transaction.atomic
+# def upload_antibiotic_entries(request):
+#     """
+#     Upload antibiotic results (wide format: accession_no + antibiotic columns with and without RIS).
+#     Automatically applies saved user-defined mappings from FieldMapping.
+#     Matches BreakpointsTable using Whonet_Abx + Year (no organism filter).
+#     """
+#     form = WGSProjectForm()
+#     antibiotic_form = FinalDataUploadForm()
+
+#     if request.method == "POST" and request.FILES.get("FinalAntibioticFile"):
+#         try:
+#             uploaded_file = request.FILES["FinalAntibioticFile"]
+#             file_name = uploaded_file.name.lower()
+
+#             # --- Load file ---
+#             if file_name.endswith(".csv"):
+#                 wrapper = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
+#                 df = pd.read_csv(wrapper)
+#             elif file_name.endswith((".xlsx", ".xls")):
+#                 df = pd.read_excel(uploaded_file)
+#             else:
+#                 messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
+#                 return redirect("upload_antibiotic_entries")
+
+#             # --- Apply user-defined mappings ---
+#             user_mappings = dict(
+#                 FieldMapping.objects.filter(user=request.user)
+#                 .values_list("raw_field", "mapped_field")
+#             )
+
+#             if user_mappings:
+#                 df.rename(columns=user_mappings, inplace=True)
+#                 print(f"[UPLOAD] Applied {len(user_mappings)} field mappings.")
+#             else:
+#                 messages.warning(request, "No saved field mappings found. Using raw headers.")
+
+#             # --- Normalize headers ---
+#             df.columns = df.columns.str.strip().str.lower()
+
+#             # --- Check required columns ---
+#             required_cols = ["f_accessionno", "year"]
+#             missing = [col for col in required_cols if col not in df.columns]
+
+#             if missing:
+#                 messages.error(request, f"Missing required columns after mapping: {', '.join(missing)}")
+#                 return redirect("upload_antibiotic_entries")
+
+#             created_count = updated_count = skipped = 0
+
+#             # --- Identify antibiotic columns ---
+#             abx_columns = [c for c in df.columns if c not in ["f_accessionno", "year"]]
+
+#             # --- Build a pairing dictionary ---
+#             abx_pairs = {}
+#             for col in abx_columns:
+#                 if col.endswith("_ris"):
+#                     base = col.replace("_ris", "")
+#                     abx_pairs.setdefault(base, {})["ris"] = col
+#                 else:
+#                     abx_pairs.setdefault(col, {})["value"] = col
+
+#             print(f"[UPLOAD] Found {len(abx_pairs)} antibiotic pairs.")
+
+#             # --- Process each record ---
+#             for _, row in df.iterrows():
+#                 accession = str(row.get("f_accessionno", "")).strip()
+#                 year = str(row.get("year", "")).strip()
+
+#                 if not accession:
+#                     continue
+
+#                 ref = Final_Data.objects.filter(f_AccessionNo=accession).first()
+#                 if not ref:
+#                     skipped += 1
+#                     continue
+
+#                 for abx_code, pair in abx_pairs.items():
+#                     ris_value = str(row.get(pair.get("ris", ""), "")).strip().upper()
+#                     numeric_value = str(row.get(pair.get("value", ""), "")).strip()
+
+#                     # Skip empty rows
+#                     if not ris_value and not numeric_value:
+#                         continue
+
+#                     # --- Find breakpoint by Abx + Year ---
+#                     bp = BreakpointsTable.objects.filter(
+#                         Whonet_Abx__iexact=abx_code,
+#                         Year=str(year)
+#                     ).first()
+
+#                     # --- Create or update antibiotic entry ---
+#                     ab_entry, created = Final_AntibioticEntry.objects.update_or_create(
+#                         ab_idNum_f_referred=ref,
+#                         ab_Abx_code=abx_code,
+#                         defaults={
+#                             "ab_Antibiotic": abx_code,
+#                             "ab_AccessionNo": accession,
+#                             "ab_MIC_RIS": ris_value or "",
+#                             "ab_Disk_value": numeric_value or "",
+#                         },
+#                     )
+
+#                     # Link breakpoint if found
+#                     if bp:
+#                         ab_entry.ab_breakpoints_id.set([bp])
+
+#                     if created:
+#                         created_count += 1
+#                     else:
+#                         updated_count += 1
+
+#             messages.success(
+#                 request,
+#                 f"✅ Antibiotic upload complete! {created_count} new, {updated_count} updated, {skipped} skipped."
+#             )
+#             return redirect("show_final_data")
+
+#         except Exception as e:
+#             import traceback
+#             traceback.print_exc()
+#             messages.error(request, f" Error during antibiotic upload: {e}")
+
+#     return render(request, "wgs_app/Add_wgs.html", {
+#         "form": form,
+#         "referred_form": antibiotic_form,
+#     })
+
+
+#Smart upload antibiotics function
+# @login_required
+# @transaction.atomic
+# def upload_antibiotic_entries(request):
+#     """
+#     Upload antibiotic results (mapped Excel) where antibiotics may appear twice (one for numeric/MIC and one for RIS).
+#     Automatically distinguishes MIC vs Disk values (_NM vs _ND).
+#     Pairs duplicates, extracts values, and links to BreakpointsTable using Whonet_Abx + Year.
+#     """
+#     form = WGSProjectForm()
+#     antibiotic_form = FinalAntibioticUploadForm()
+
+#     if request.method == "POST" and request.FILES.get("FinalAntibioticFile"):
+#         try:
+#             uploaded_file = request.FILES["FinalAntibioticFile"]
+#             file_name = uploaded_file.name.lower()
+
+#             # --- Load file ---
+#             if file_name.endswith(".csv"):
+#                 wrapper = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
+#                 df = pd.read_csv(wrapper)
+#             elif file_name.endswith((".xlsx", ".xls")):
+#                 df = pd.read_excel(uploaded_file)
+#             else:
+#                 messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
+#                 return redirect("upload_antibiotic_entries")
+
+#             # --- Apply user-defined mappings ---
+#             user_mappings = dict(
+#                 FieldMapping.objects.filter(user=request.user)
+#                 .values_list("raw_field", "mapped_field")
+#             )
+#             if user_mappings:
+#                 df.rename(columns=user_mappings, inplace=True)
+#                 print(f"[UPLOAD] Applied {len(user_mappings)} field mappings.")
+#             else:
+#                 messages.warning(request, " No saved field mappings found. Using raw headers.")
+
+#             # --- Normalize headers ---
+#             df.columns = df.columns.str.strip().str.lower()
+
+#             # --- Check required columns ---
+#             required_cols = ["f_accessionno", "year"]
+#             missing = [col for col in required_cols if col not in df.columns]
+#             if missing:
+#                 messages.error(request, f"Missing required columns: {', '.join(missing)}")
+#                 return redirect("upload_antibiotic_entries")
+
+#             created_count = updated_count = skipped = 0
+
+#             # --- Detect duplicate antibiotics (paired columns) ---
+#             col_counts = df.columns.value_counts()
+#             duplicates = [col for col, count in col_counts.items() if count > 1 and col not in ["f_accessionno", "year"]]
+
+#             abx_pairs = {}
+#             for abx in duplicates:
+#                 abx_indices = [i for i, c in enumerate(df.columns) if c == abx]
+#                 if len(abx_indices) >= 2:
+#                     abx_pairs[abx] = {
+#                         "value_idx": abx_indices[0],
+#                         "ris_idx": abx_indices[1],
+#                     }
+
+#             # --- Include non-duplicates too ---
+#             for c in df.columns:
+#                 if c not in ["f_accessionno", "year"] and c not in abx_pairs:
+#                     abx_pairs[c] = {"value_idx": df.columns.get_loc(c)}
+
+#             print(f"[UPLOAD] Found {len(abx_pairs)} antibiotic pairs (disk+MIC combined).")
+
+#             # --- Process each isolate row ---
+#             for _, row in df.iterrows():
+#                 accession = str(row.get("f_accessionno", "")).strip()
+#                 year = str(row.get("year", "")).strip()
+#                 if not accession:
+#                     continue
+
+#                 ref = Final_Data.objects.filter(f_AccessionNo=accession).first()
+#                 if not ref:
+#                     skipped += 1
+#                     continue
+
+#                 for abx_code, cols in abx_pairs.items():
+#                     numeric_value = ""
+#                     ris_value = ""
+
+#                     # --- Get numeric/MIC value ---
+#                     if "value_idx" in cols:
+#                         numeric_value = str(row.iloc[cols["value_idx"]]).strip()
+
+#                     # --- Get RIS ---
+#                     if "ris_idx" in cols:
+#                         ris_value = str(row.iloc[cols["ris_idx"]]).strip().upper()
+
+#                     # Skip if both blank
+#                     if not numeric_value and not ris_value:
+#                         continue
+
+#                     # --- Match breakpoint ---
+#                     bp = BreakpointsTable.objects.filter(
+#                         Whonet_Abx__iexact=abx_code,
+#                         Year=str(year)
+#                     ).first()
+
+#                     # --- Classify antibiotic type (ND = Disk, NM = MIC) ---
+#                     abx_upper = abx_code.upper()
+#                     if "_ND" in abx_upper:
+#                         disk_value = numeric_value
+#                         mic_value = ""
+#                     elif "_NM" in abx_upper:
+#                         mic_value = numeric_value
+#                         disk_value = ""
+#                     else:
+#                         # Fallback for unspecified types
+#                         disk_value = numeric_value 
+#                         mic_value = ""
+
+#                     # --- Save or update entry ---
+#                     ab_entry, created = Final_AntibioticEntry.objects.update_or_create(
+#                         ab_idNum_f_referred=ref,
+#                         ab_Abx_code=abx_code,
+#                         defaults={
+#                             "ab_Antibiotic": abx_code,
+#                             "ab_AccessionNo": accession,
+#                             "ab_MIC_value": mic_value or "",
+#                             "ab_Disk_value": disk_value or "",
+#                             "ab_MIC_RIS": ris_value or "",
+#                         },
+#                     )
+
+#                     # --- Link breakpoint if found ---
+#                     if bp:
+#                         ab_entry.ab_breakpoints_id.set([bp])
+
+#                     if created:
+#                         created_count += 1
+#                     else:
+#                         updated_count += 1
+
+#             messages.success(
+#                 request,
+#                 f"✅ Antibiotic upload complete! {created_count} new, {updated_count} updated, {skipped} skipped."
+#             )
+#             return redirect("show_final_data")
+
+#         except Exception as e:
+#             import traceback
+#             traceback.print_exc()
+#             messages.error(request, f"Error during antibiotic upload: {e}")
+
+#     # --- Default render ---
+#     return render(request, "wgs_app/Add_wgs.html", {
+#         "form": form,
+#         "antibiotic_form": antibiotic_form,
+#         "referred_form": FinalDataUploadForm(),
+#     })
+
+
+@login_required
+@transaction.atomic
+def upload_antibiotic_entries(request):
+    """
+    Smart upload: Handles duplicate antibiotic columns (value + RIS),
+    distinguishes between MIC (_NM) and Disk (_ND) values,
+    and safely handles NaN and empty fields.
+    """
+    form = WGSProjectForm()
+    antibiotic_form = FinalAntibioticUploadForm()
+
+    if request.method == "POST" and request.FILES.get("FinalAntibioticFile"):
+        try:
+            uploaded_file = request.FILES["FinalAntibioticFile"]
+            file_name = uploaded_file.name.lower()
+
+            # --- Load file ---
+            if file_name.endswith(".csv"):
+                wrapper = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
+                df = pd.read_csv(wrapper)
+            elif file_name.endswith((".xlsx", ".xls")):
+                df = pd.read_excel(uploaded_file)
+            else:
+                messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
+                return redirect("upload_antibiotic_entries")
+
+            # --- Apply user-defined mappings ---
+            user_mappings = dict(
+                FieldMapping.objects.filter(user=request.user)
+                .values_list("raw_field", "mapped_field")
+            )
+            if user_mappings:
+                df.rename(columns=user_mappings, inplace=True)
+                print(f"[UPLOAD] Applied {len(user_mappings)} field mappings.")
+            else:
+                messages.warning(request, "No saved field mappings found. Using raw headers.")
+
+            # --- Normalize headers ---
+            df.columns = df.columns.str.strip().str.lower()
+
+            # --- Check required columns ---
+            required_cols = ["f_accessionno", "year"]
+            missing = [col for col in required_cols if col not in df.columns]
+            if missing:
+                messages.error(request, f"Missing required columns: {', '.join(missing)}")
+                return redirect("upload_antibiotic_entries")
+
+            created_count = updated_count = skipped = 0
+
+            # --- Detect duplicate antibiotics (paired columns) ---
+            col_counts = df.columns.value_counts()
+            duplicates = [col for col, count in col_counts.items() if count > 1 and col not in ["f_accessionno", "year"]]
+
+            abx_pairs = {}
+            for abx in duplicates:
+                abx_indices = [i for i, c in enumerate(df.columns) if c == abx]
+                if len(abx_indices) >= 2:
+                    abx_pairs[abx] = {
+                        "value_idx": abx_indices[0],
+                        "ris_idx": abx_indices[1],
+                    }
+
+            # --- Include non-duplicates ---
+            for c in df.columns:
+                if c not in ["f_accessionno", "year"] and c not in abx_pairs:
+                    abx_pairs[c] = {"value_idx": df.columns.get_loc(c)}
+
+            print(f"[UPLOAD] Found {len(abx_pairs)} antibiotic pairs (disk+MIC combined).")
+
+            # --- Helper: safely clean numeric fields --
+            def clean_numeric(value):
+                if pd.isna(value) or str(value).strip().lower() in ["nan", "none", ""]:
+                    return None
+                try:
+                    num = float(value)
+                    # Cap it safely if it's too large
+                    if abs(num) > 99999:
+                        print(f"[WARN] Skipping large numeric value: {value}")
+                        return None
+                    return round(num, 3)
+                except ValueError:
+                    return None
+
+
+            # --- Process each row ---
+            for _, row in df.iterrows():
+                accession = str(row.get("f_accessionno", "")).strip()
+                year = str(row.get("year", "")).strip()
+                if not accession:
+                    continue
+
+                ref = Final_Data.objects.filter(f_AccessionNo=accession).first()
+                if not ref:
+                    skipped += 1
+                    continue
+
+                for abx_code, cols in abx_pairs.items():
+                    numeric_value = ""
+                    ris_value = ""
+
+                    if "value_idx" in cols:
+                        numeric_value = row.iloc[cols["value_idx"]]
+                    if "ris_idx" in cols:
+                        ris_value = str(row.iloc[cols["ris_idx"]]).strip().upper()
+
+                    if pd.isna(numeric_value) and not ris_value:
+                        continue
+
+                    # --- Match breakpoint ---
+                    bp = BreakpointsTable.objects.filter(
+                        Whonet_Abx__iexact=abx_code,
+                        Year=str(year)
+                    ).first()
+
+                    abx_upper = abx_code.upper()
+                    disk_value = mic_value = None
+
+                    # --- Classify & clean ---
+                    if "_ND" in abx_upper:
+                        disk_value = clean_numeric(numeric_value)
+                    elif "_NM" in abx_upper:
+                        mic_value = clean_numeric(numeric_value)
+                    else:
+                        # fallback: assume disk if not labeled
+                        disk_value = clean_numeric(numeric_value)
+
+                    ris_value = ris_value if ris_value in ["R", "I", "S"] else ""
+
+                    # --- Create or update entry ---
+                    ab_entry, created = Final_AntibioticEntry.objects.update_or_create(
+                        ab_idNum_f_referred=ref,
+                        ab_Abx_code=abx_code,
+                        defaults={
+                            "ab_Antibiotic": abx_code,
+                            "ab_AccessionNo": accession,
+                            "ab_MIC_value": mic_value,
+                            "ab_Disk_value": disk_value,
+                            "ab_MIC_enRIS": ris_value,
+                        },
+                    )
+
+                    if bp:
+                        ab_entry.ab_breakpoints_id.set([bp])
+
+                    if created:
+                        created_count += 1
+                    else:
+                        updated_count += 1
+
+            messages.success(
+                request,
+                f"✅ Antibiotic upload complete! {created_count} new, {updated_count} updated, {skipped} skipped."
+            )
+            return redirect("show_final_data")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f" Error during antibiotic upload: {e}")
+
+    return render(request, "wgs_app/Add_wgs.html", {
+        "form": form,
+        "antibiotic_form": antibiotic_form,
+        "referred_form": FinalDataUploadForm(),
+    })
+
+
+### final antibiotic entries
+# @login_required
+# def show_final_antibiotic(request):
+#     finalantibiotic_summaries = Final_AntibioticEntry.objects.all().order_by("ab_AccessionNo")  # optional ordering
+
+#     total_records = Final_Data.objects.count()
+#      # Paginate the queryset to display 20 records per page
+#     paginator = Paginator(finalantibiotic_summaries, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+
+#     # Render the template with paginated data
+#     return render(
+#         request,
+#         "wgs_app/show_final_antibiotic.html",
+#         {"page_obj": page_obj,
+#          "total_records": total_records,
+#          },  # only send page_obj
+#     )
+
+
+
+
+@login_required(login_url="/login/")
+def show_final_antibiotic(request):
+    entries = Final_AntibioticEntry.objects.filter(ab_Retest_Abx_code__isnull=True)
+    abx_data = {}
+    abx_codes = set()
+
+    for entry in entries:
+        accession_no = entry.ab_AccessionNo
+        abx_code = entry.ab_Abx_code  # Only ordinary antibiotic (excluding retest antibiotics)
+
+        # Get all values and interpretations for ordinary antibiotics
+        value = entry.ab_Disk_value or entry.ab_MIC_value
+        RIS = entry.ab_Disk_RIS or entry.ab_MIC_RIS
+        Operand = entry.ab_MIC_operand or None
+
+        if accession_no not in abx_data:
+            abx_data[accession_no] = {}
+
+        # Store only **ordinary** antibiotic values
+        if abx_code:  
+            abx_data[accession_no][abx_code] = {'value': value, 'RIS': RIS, 'Operand': Operand}
+            abx_codes.add(abx_code)  # Add only ordinary antibiotics
+
+    context = {
+        'abx_data': abx_data,
+        'abx_codes': sorted(abx_codes),  # Sorted list of ordinary antibiotics
+    }
+    
+    return render(request, 'wgs_app/show_final_antibiotic.html', context)
+
+
+
+@login_required
+def delete_final_antibiotic(request, pk):
+    final_antibiotic_item = get_object_or_404(Final_AntibioticEntry, pk=pk)
+
+    if request.method == "POST":
+        final_antibiotic_item.delete()
+        messages.success(request, f"Record {final_antibiotic_item.ab_AccessionNo} deleted successfully!")
+        return redirect('show_final_antibiotic')  # <-- Correct URL name
+
+    messages.error(request, "Invalid request for deletion.")
+    return redirect('show_final_antibiotic')  # <-- Correct URL name
+
+
+@login_required
+def delete_all_final_antibiotic(request):
+    Final_AntibioticEntry.objects.all().delete()
+    messages.success(request, "Final Referred Isolates have been deleted successfully.")
+    return redirect('show_final_antibiotic')  # Redirect to the table view
+
+
+
+
+@login_required
+def delete_finalantibiotic_by_date(request):
+    if request.method == "POST":
+        upload_date_str = request.POST.get("upload_date")
+        print(" Received upload_date_str:", upload_date_str)
+
+        if not upload_date_str:
+            messages.error(request, "Please select an upload date to delete.")
+            return redirect("show_final_antitbiotic")
+
+        # Use Django’s date parser
+        upload_date = parse_date(upload_date_str)
+
+        if not upload_date:
+            messages.error(request, f"Invalid date format: {upload_date_str}")
+            return redirect("show_final_antibiotic")
+
+        deleted_count, _ = Final_AntibioticEntry.objects.filter(ab_Date_uploaded_fd=upload_date).delete()
+        messages.success(request, f" Deleted {deleted_count} Final Antibiotic entries uploaded on {upload_date}.")
+        return redirect("show_final_antibiotic")
+
+    messages.error(request, "Invalid request method.")
+    return redirect("show_final_antibiotic")

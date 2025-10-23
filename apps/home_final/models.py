@@ -181,12 +181,13 @@ class FinalData_upload(models.Model):
 #for final antibiotic test entries
 class Final_AntibioticEntry(models.Model):
 #  links to main and breakpoints table
+    
     ab_idNum_f_referred = models.ForeignKey(Final_Data, on_delete=models.CASCADE, null=True, related_name='final_entries', to_field='f_AccessionNo')
     ab_AccessionNo= models.CharField(max_length=100, blank=True, null=True)
     ab_RefNo = models.CharField(max_length=100, blank=True, null=True)
     ab_breakpoints_id = models.ManyToManyField('home.BreakpointsTable', max_length=6)
     
-    ab_Antibiotic = models.CharField(max_length=100, blank=True, null=True)
+    ab_Antibiotic = models.CharField(max_length=255, blank=True, null=True)
     ab_Abx_code= models.CharField(max_length=100, blank=True, null=True)
     ab_Abx=models.CharField(max_length=100, blank=True, null=True)
 
@@ -209,7 +210,7 @@ class Final_AntibioticEntry(models.Model):
     ab_S_breakpoint = models.CharField(max_length=10, blank=True, null=True)
     
     #arsrl results
-    ab_Retest_Antibiotic = models.CharField(max_length=100, blank=True, null=True)
+    ab_Retest_Antibiotic = models.CharField(max_length=255, blank=True, null=True)
     ab_Retest_Abx_code = models.CharField(max_length=100, blank=True, null=True)
     ab_Retest_Abx = models.CharField(max_length=100, blank=True, null=True)
     
@@ -228,6 +229,7 @@ class Final_AntibioticEntry(models.Model):
     ab_Ret_I_breakpoint = models.CharField(max_length=10, blank=True, null=True)
     ab_Ret_SDD_breakpoint = models.CharField(max_length=10, blank=True, null=True)
     ab_Ret_S_breakpoint = models.CharField(max_length=10, blank=True, null=True)    
+    ab_Date_uploaded_fd = models.DateField(auto_now_add=True)
 
     ab_MICJoined = models.CharField(max_length=7, blank=True, null=True)
     def __str__(self):
