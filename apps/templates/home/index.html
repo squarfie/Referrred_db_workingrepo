@@ -315,6 +315,196 @@
                 padding: 6px 12px;
             }
         }
+
+
+/* Preview Cards Styling */
+.preview-card-link {
+  text-decoration: none;
+  display: block;
+  height: 100%;
+}
+
+.preview-card {
+  position: relative;
+  height: 220px;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.preview-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* Card Background with gradient */
+.card-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--card-color);
+  z-index: 0;
+  transition: all 0.4s ease;
+}
+
+.preview-card:hover .card-background {
+  filter: brightness(1.1);
+}
+
+/* Shine effect overlay */
+.card-shine {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+  animation: shine 3s infinite;
+  z-index: 2;
+}
+
+@keyframes shine {
+  0% {
+    transform: translate(-100%, -100%) rotate(45deg);
+  }
+  100% {
+    transform: translate(100%, 100%) rotate(45deg);
+  }
+}
+
+/* Card Content */
+.card-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.5rem;
+  color: white;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.card-icon {
+  font-size: 2.5rem;
+  opacity: 0.95;
+  transition: all 0.3s ease;
+}
+
+.preview-card:hover .card-icon {
+  transform: scale(1.1) rotate(5deg);
+  opacity: 1;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.preview-card:hover .card-title {
+  transform: translateX(4px);
+}
+
+.card-description {
+  font-size: 0.875rem;
+  font-weight: 400;
+  opacity: 0.95;
+  margin: 0.5rem 0 0 0;
+  letter-spacing: 0.3px;
+}
+
+.card-arrow {
+  font-size: 1.2rem;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: all 0.3s ease;
+  align-self: flex-end;
+}
+
+.preview-card:hover .card-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .preview-card {
+    height: 180px;
+  }
+
+  .card-content {
+    padding: 1.2rem;
+  }
+
+  .card-icon {
+    font-size: 2rem;
+  }
+
+  .card-title {
+    font-size: 1.1rem;
+  }
+
+  .card-description {
+    font-size: 0.8rem;
+  }
+
+  .preview-card:hover {
+    transform: translateY(-4px);
+  }
+}
+
+@media (max-width: 576px) {
+  .preview-card {
+    height: 160px;
+  }
+
+  .card-content {
+    padding: 1rem;
+  }
+
+  .card-icon {
+    font-size: 1.75rem;
+  }
+
+  .card-title {
+    font-size: 1rem;
+  }
+
+  .card-description {
+    font-size: 0.75rem;
+  }
+
+  .col-lg-3 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .preview-card {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .preview-card:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  }
+}
     </style>
 </head>
 <body>
@@ -380,123 +570,115 @@
         </div>
 
         <!-- New CRF Button -->
-        <!-- <button class="btn-new-crf">+ New CRF</button> -->
         <a href="{% url 'batch_create_view' %}" class="btn-new-crf index-font">+ Add New</a>
     </div>
 
     <!-- Header -->
-    <div class="header bg-primary pb-6 g-gradient-default align-items-center index-font">
-      <span class="mask bg-gradient-default opacity-3"></span>
+    <div id="slideshow-header" class="header bg-primary pb-6 g-gradient-default align-items-center index-font" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/resistance2.jpg); background-position: center center;">
+      <span class="mask bg-gradient-default opacity-4"></span>
       <div class="container-fluid">
         <div class="header-body">
           <div class="row align-items-center py-4">
-            <div class="col-lg-6 col-7">
-              <h6 class="h2 text-white d-inline-block mb-0">Home</h6>
-              <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
-                <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
-                  <li class="breadcrumb-item"><a href="#"><i class="fas fa-home"></i></a></li>
-                  <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
-                  
-                </ol>
-              </nav>
-            </div>
-          </div>
-          <!-- Card stats -->
-          
-            <!-- Record Count -->
-             <!-- <div class="row">
-            <div class="col-xl-3 col-md-6">
-                <div class="card card-stats" style="height: 80%;">
-                    <div class="card-body d-flex flex-column justify-content-between">
-                        <div class="row">
-                            <div class="col">
-                                <h5 class="card-title text-uppercase text-muted mb-0">Total Records</h5>
-                                <span class="h2 text-muted mb-0"></span>
-                            </div>
-                            <div class="col-auto">
-                                <div class="icon icon-shape bg-gradient-orange text-white rounded-circle shadow">
-                                    <i class="ni ni-world"></i>
-                                </div>
-                            </div>
-                        </div>
+                  <div class="col-lg-6 col-7">
+                    <h6 class="h2 text-white d-inline-block mb-0">Home</h6>
+                    <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+                      <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+                        <li class="breadcrumb-item"><a href="#"><i class="fas fa-home"></i></a></li>
+                        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                        
+                      </ol>
+                    </nav>
+                  </div>
+                    <div class="col-lg-6 col-12 text-right">
+                        <span style="color: rgba(255, 255, 255, 0.7); font-size: 1.0rem; font-weight: 500;">
+                            <i class="ni ni-calendar-grid-58 mr-2"></i>
+                            <span id="current-date"></span>
+                        </span>
                     </div>
-                </div>
-            </div> -->
-        
-            <!-- Per Clinic Count -->
-            <!-- <div class="col-xl-3 col-md-6">
-                <div class="card card-stats" style="height: 80%;">
-                    <div class="card-body d-flex flex-column justify-content-between">
-                        <div class="row">
-                            <div class="col">
-                                <h5 class="card-title text-uppercase text-muted mb-0">Count per Site</h5>
-                                <span class="h2 text-muted mb-0"></span>
+               </div>
+                  <!-- Animated Preview Cards Section -->
+
+                  <div class="row g-3 mb-6">
+                    <!-- WGS Overview Card -->
+                    <div class="col-lg-3 col-md-6 col-sm-12">
+                      <a href="{% url 'view_wgs_overview' %}" class="preview-card-link">
+                        <div class="preview-card">
+                          <div class="card-background" style="--card-color: linear-gradient(135deg, #2dce89 0%, #11cdef 100%);"></div>
+                          <div class="card-content">
+                            <div class="card-icon">
+                              <i class="ni ni-atom"></i>
                             </div>
-                            <div class="col-auto">
-                                <div class="icon icon-shape bg-gradient-red text-white rounded-circle shadow">
-                                    <i class="ni ni-building"></i>
-                                </div>
+                            <h5 class="card-title">WGS Overview</h5>
+                            <p class="card-description">Whole Genome Sequencing Results</p>
+                            <div class="card-arrow">
+                              <i class="ni ni-curved-next"></i>
                             </div>
+                          </div>
+                          <div class="card-shine"></div>
                         </div>
+                      </a>
                     </div>
-                </div>
-            </div>
-         -->
-            <!-- Per Sex Count -->
-            <!-- <div class="col-xl-3 col-md-6">
-                <div class="card card-stats" style="height: 80%;">
-                    <div class="card-body d-flex flex-column justify-content-between">
-                        <div class="row">
-                            <div class="col">
-                                <h5 class="card-title text-uppercase text-muted mb-0">Gender Count</h5>
-                                <span class="fs-6 text-muted d-block">Male: {{ male_count }}</span>
-                                <span class="fs-6 text-muted d-block">Female: {{ female_count }}</span>
+
+                    <!-- Antibiotics Management Card -->
+                    <div class="col-lg-3 col-md-6 col-sm-12">
+                      <a href="{% url 'antibiotics_view' %}" class="preview-card-link">
+                        <div class="preview-card">
+                          <div class="card-background" style="--card-color: linear-gradient(135deg, #11cdef 0%, #64c8ff 100%);"></div>
+                          <div class="card-content">
+                            <div class="card-icon">
+                              <i class="fas fa-medkit"></i>
                             </div>
-                            <div class="col-auto">
-                                <div class="icon icon-shape bg-gradient-green text-white rounded-circle shadow">
-                                    <i class="ni ni-single-02"></i>
-                                </div>
+                            <h5 class="card-title">Antibiotics</h5>
+                            <p class="card-description">View All Antibiotic Data</p>
+                            <div class="card-arrow">
+                              <i class="ni ni-curved-next"></i>
                             </div>
+                          </div>
+                          <div class="card-shine"></div>
                         </div>
+                      </a>
                     </div>
-                </div>
-            </div>
-         -->
-            <!-- Age Groups -->
-            <!-- <div class="col-xl-3 col-md-6">
-                <div class="card card-stats" style="height: 80%;">
-                    <div class="card-body d-flex flex-column justify-content">
-                        <div class="row">
-                            <div class="col">
-                                <h5 class="card-title text-uppercase text-muted mb-0">Count per Age</h5>
-                                <div class="d-flex justify-content">
-                                    <span class="text-muted">0-18:</span>&nbsp;&nbsp;
-                                    <span class="text-muted">{{ age_0_18 }}</span>
-                                </div>
-                                <div class="d-flex justify-content">
-                                    <span class="text-muted">19-35:</span>&nbsp;&nbsp;
-                                    <span class="text-muted">{{ age_19_35 }}</span>
-                                </div>
-                                <div class="d-flex justify-content">
-                                    <span class="text-muted">36-60:</span>&nbsp;&nbsp;
-                                    <span class="text-muted">{{ age_36_60 }}</span>
-                                </div>
-                                <div class="d-flex justify-content">
-                                    <span class="text-muted">60+:</span>&nbsp;&nbsp;
-                                    <span class="text-muted">{{ age_60_plus }}</span>
-                                </div>
+
+                    <!-- Batch Management Card -->
+                    <div class="col-lg-3 col-md-6 col-sm-12">
+                      <a href="{% url 'show_batches' %}" class="preview-card-link">
+                        <div class="preview-card">
+                          <div class="card-background" style="--card-color: linear-gradient(135deg, #64c8ff 0%, #5e72e4 100%);"></div>
+                          <div class="card-content">
+                            <div class="card-icon">
+                              <i class="fa fa-cubes"></i>
                             </div>
-                            <div class="col-auto">
-                                <div class="icon icon-shape bg-gradient-purple text-white rounded-circle shadow">
-                                    <i class="ni ni-hat-3"></i>
-                                </div>
+                            <h5 class="card-title">Batches</h5>
+                            <p class="card-description">Batch Management System</p>
+                            <div class="card-arrow">
+                              <i class="ni ni-curved-next"></i>
                             </div>
+                          </div>
+                          <div class="card-shine"></div>
                         </div>
+                      </a>
                     </div>
-                </div>
-            </div>
-        </div>
-         -->
+
+                    <!-- Reports Card -->
+                    <div class="col-lg-3 col-md-6 col-sm-12">
+                      <a href="#" class="preview-card-link">
+                        <div class="preview-card">
+                          <div class="card-background" style="--card-color: linear-gradient(135deg, #fb6340 0%, #fbc658 100%);"></div>
+                          <div class="card-content">
+                            <div class="card-icon">
+                              <i class="ni ni-chart-pie-35"></i>
+                            </div>
+                            <h5 class="card-title">Reports</h5>
+                            <p class="card-description">Generate Reports</p>
+                            <div class="card-arrow">
+                              <i class="ni ni-curved-next"></i>
+                            </div>
+                          </div>
+                          <div class="card-shine"></div>
+                        </div>
+                      </a>
+                    </div>
+                  </div>
           
 
           </div>
@@ -687,6 +869,41 @@
       });
     }
   </script>
-  
+  <script>
+  // List of background images
+  const images = [
+    '/static/assets/img/theme/resistance1.jpg',
+    '/static/assets/img/theme/resistance3.jpg',
+    '/static/assets/img/theme/resistance4.jpg',
+    '/static/assets/img/theme/resistance5.jpg',
+    '/static/assets/img/theme/viruses.jpg',
+    '/static/assets/img/theme/microbial.jpg'
+  ];
+
+  let index = 0;
+  const header = document.getElementById('slideshow-header');
+
+  function changeBackground() {
+    header.style.backgroundImage = `url(${images[index]})`;
+    index = (index + 1) % images.length;
+  }
+
+  // Initialize immediately
+  changeBackground();
+
+  // Change every 15 seconds
+  setInterval(changeBackground, 15000);
+</script>
+
+
+<script>
+      // Display current date in header
+    document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+</script>
 
 {% endblock javascripts %}
