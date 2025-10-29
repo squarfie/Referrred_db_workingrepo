@@ -94,6 +94,12 @@ def determine_ris(value, r_breakpoint, i_breakpoint, s_breakpoint, sdd_breakpoin
         return None  # Return None if no valid interpretation can be made
 
 
+
+
+
+
+
+
 @receiver(post_save, sender=AntibioticEntry)
 def update_ris_interpretation(sender, instance, **kwargs):
     updated_fields = []
@@ -132,3 +138,9 @@ def update_ris_interpretation(sender, instance, **kwargs):
     # Only save if there are updates
     if updated_fields:
         instance.save(update_fields=updated_fields)
+
+
+
+
+
+

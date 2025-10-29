@@ -410,113 +410,126 @@ label.form-control-label{
             <div class="pl-lg-12">
                 <div class="row"> 
 
-                <div class="col-lg-12">
-                  <div class="row">
-                  <div class="col-lg-5">
-                  <h6 class="heading-small text-muted mb-4">DISK DIFFUSSION</h6>
-                  <div class="card border-info mb-3">
-                    <div class="card-body  text-info">
-                  <div class="row">
+<div id="antibiotic-container">
+  <div class="col-lg-12">
+    <div class="row">
 
-                          <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
-                            <table class="table align-items-center text-center table-sm table-responsive" style="padding: 1em; border-width: 0; border-collapse: collapse; height: auto; width: 100%;">
-                              <thead class="thead-light" style="text-align: center; width: 100%;">
-                                <tr style="line-height: 15px;">
-                                  <th scope="col"  >ANTIBIOTIC</th>
-                                  <th scope="col" >TEST METHOD</th>
-                                  <th scope="col" >WHONET CODE</th>
-                                  <th scope="col" style="text-align: center;">TEST RESULT</th>
-                                  <th scope="col">RIS</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {% if whonet_abx_data %}
-                                {% for entry in whonet_abx_data|dictsort:"Whonet_Abx" %}
-                                <tr>
-                                  {% if entry.Disk_Abx %}
-                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Antibiotic }}</td>
-                                  <td>Disk</td>
-                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Whonet_Abx }}</td>
-                                       <td>
-                                                <input name="disk_{{ entry.id }}" 
-                                                       value="{% get_existing_value existing_entries entry.id 'disk' %}" 
-                                                       type="number" min="0" style="width: 70px;"/>
-                                            </td>
-                                            <td>
-                                              <input type="text" style="width: 50px;" name="disk_enris_{{ entry.id }}"
-                                                     value="{% get_existing_value existing_entries entry.id 'disk_enris' %}" >
-                                            </td>
-
-                                  {% endif %}
-                                  </tr>
-                                {% endfor %}
-                                {% endif %}
-                              </tbody>
-                            </table>
-                          </div> 
-                      </div>
-                    </div>
-                </div>
-              </div>
-                <div class="col-lg-7">
-                  <h6 class="heading-small text-muted mb-4">MIC RESULTS</h6>
-                  <div class="card border-info mb-3">
-                    <div class="card-body  text-info">
-                  <div class="row">
-
-                          <div class="table-responsive">
-                            <table class="table align-items-center text-center table-sm table-responsive" style="padding: 1em; border-width: 0; border-collapse: collapse; height: auto; width: 100%;">
-                              <thead class="thead-light" style="text-align: center; width: 100%;">
-                                <tr style="line-height: 15px;">
-                                  <th scope="col"  >ANTIBIOTIC</th>
-                                  <th scope="col" >TEST METHOD</th>
-                                  <th scope="col" >WHONET CODE</th>
-                                  <th scope="col" >Operand</th>
-                                  <th scope="col" style="text-align: center; width: 98px;">TEST RESULT</th>
-                                  <th scope="col" >RIS</th>
-                                  <th scope="col" style="text-align: center; width: 98px;">Alert MIC</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {% if whonet_abx_data %}
-                                {% for entry in whonet_abx_data|dictsort:"Whonet_Abx" %}
-                                <tr>
-                                  {% if not entry.Disk_Abx %}
-                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Antibiotic }}</td>
-                                  <td>MIC</td>
-                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ entry.Whonet_Abx }}</td>
-                                   <td><input type="text" style="width: 50px;" name="mic_operand_{{ entry.id }}" value="{% get_existing_value existing_entries entry.id 'mic_operand' %}"></td> 
-                                            <td>
-                                                <input name="mic_{{ entry.id }}" 
-                                                       value="{% get_existing_value existing_entries entry.id 'mic' %}" 
-                                                       type="number" min="0" step="0.001" style="width: 70px;"/>
-                                            </td>
-                                            <td>
-                                              <input name="mic_enris_{{ entry.id }}"
-                                                     value="{% get_existing_value existing_entries entry.id 'mic_enris' %}" type="text" style="width: 50px;"  >
-                                            </td>
-                                            <td>
-                                              {% get_existing_value existing_entries entry.id 'alert_mic' as alert_mic_checked %}
-                                            <input type="checkbox" style="transform: scale(1.5); margin: 4px;"  name="alert_mic_{{ entry.id }}"
-                                                  {% if alert_mic_checked %}checked{% endif %}>
-                                            </td>
-                                  {% endif %}
-                                  </tr>
-                                {% endfor %}
-                                {% endif %}
-                              </tbody>
-                            </table>
-                          </div> 
-                      </div>
-                    </div>
-                </div>
-              </div>
-
-
-
-
-              </div>
+      <!-- 🧫 DISK DIFFUSION -->
+      <div class="col-lg-5">
+        <h6 class="heading-small text-muted mb-4">DISK DIFFUSION</h6>
+        <div class="card border-info mb-3">
+          <div class="card-body text-info">
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto; overflow-x: auto;">
+              <table class="table align-items-center text-center table-sm table-responsive" style="width: 100%;">
+                <thead class="thead-light">
+                  <tr style="line-height: 15px;">
+                    <th>ANTIBIOTIC</th>
+                    <th>TEST METHOD</th>
+                    <th>WHONET CODE</th>
+                    <th>TEST RESULT</th>
+                    <th>RIS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if antibiotics_main %}
+                    {% for entry in antibiotics_main|dictsort:"Whonet_Abx" %}
+                      {% if entry.Disk_Abx %}
+                        <tr>
+                          <td>{{ entry.Antibiotic }}</td>
+                          <td>Disk</td>
+                          <td>{{ entry.Whonet_Abx }}</td>
+                          <td>
+                            <input name="disk_{{ entry.Whonet_Abx }}" 
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk' %}" 
+                                   type="number" min="0" style="width: 70px;">
+                          </td>
+                          <td>
+                            <input name="disk_enris_{{ entry.Whonet_Abx }}" 
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk_enris' %}" 
+                                   type="text" style="width: 50px;">
+                          </td>
+                        </tr>
+                      {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <tr><td colspan="5">No antibiotics available</td></tr>
+                  {% endif %}
+                </tbody>
+              </table>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 💧 MIC RESULTS -->
+      <div class="col-lg-7">
+        <h6 class="heading-small text-muted mb-4">MIC RESULTS</h6>
+        <div class="card border-info mb-3">
+          <div class="card-body text-info">
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+              <table class="table align-items-center text-center table-sm table-responsive" style="width: 100%;">
+                <thead class="thead-light">
+                  <tr style="line-height: 15px;">
+                    <th>ANTIBIOTIC</th>
+                    <th>TEST METHOD</th>
+                    <th>WHONET CODE</th>
+                    <th>OPERAND</th>
+                    <th>TEST RESULT</th>
+                    <th>RIS</th>
+                    <th>ALERT MIC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if antibiotics_main %}
+                    {% for entry in antibiotics_main|dictsort:"Whonet_Abx" %}
+                      {% if not entry.Disk_Abx %}
+                        <tr>
+                          <td>{{ entry.Antibiotic }}</td>
+                          <td>MIC</td>
+                          <td>{{ entry.Whonet_Abx }}</td>
+                          <td>
+                            <input type="text" name="mic_operand_{{ entry.Whonet_Abx }}"
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_operand' %}"
+                                   style="width: 50px;">
+                          </td>
+                          <td>
+                            <input name="mic_{{ entry.Whonet_Abx }}" 
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic' %}" 
+                                   type="number" min="0" step="0.001" style="width: 70px;">
+                          </td>
+                          <td>
+                            <input name="mic_enris_{{ entry.Whonet_Abx }}"
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_enris' %}" 
+                                   type="text" style="width: 50px;">
+                          </td>
+                          <td>
+                            {% get_existing_value existing_entries entry.Whonet_Abx 'alert_mic' as alert_mic_checked %}
+                            <input type="checkbox" 
+                                   name="alert_mic_{{ entry.Whonet_Abx }}" 
+                                   style="transform: scale(1.5); margin: 4px;"
+                                   {% if alert_mic_checked %}checked{% endif %}>
+                          </td>
+                        </tr>
+                      {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <tr><td colspan="7">No antibiotics available</td></tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
           </div> 
                 <!-- end of table for antibiotics -->
 
@@ -624,105 +637,121 @@ label.form-control-label{
               <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
               </div>
 
+<div id="retest-container">
+<div class="col-lg-12">
+  <div class="row">
 
-               <div class="col-lg-12">
-               <div class="row">
-                    <!-- Paste here start of antiboitic entry -->
-                     <div class="col-lg-5">
-                        <h6 class="heading-small text-muted mb-4">DISK DIFFUSSION</h6>
-                        <div class="card border-info mb-3">
-                          <div class="card-body  text-info">
-                        <div class="row">
-                          <div class="col-lg-12">
-                            <div class="row">
-                              <div class="col-lg-12">
-                            <table class="table align-items-center text-center table-sm table-responsive" style="padding: 1em; border-width: 0; border-collapse: collapse; height: auto; width: 100%;">
-                            <thead class="thead-light" style="text-align: center; width: 100%;">
-                              <tr style="line-height: 15px;">
-                                <th scope="col" >ANTIBIOTIC</th>
-                                <th scope="col">Test Method</th>
-                                <th scope="col" >WHONET CODE</th>
-                                <th scope="col">Test Result</th>
-                                <th scope="col">RIS</th>
-                              </tr>
-                            </thead>
-                              <tbody>
-                                {% if whonet_retest_data %}
-                                {% for retest in whonet_retest_data|dictsort:"Whonet_Abx" %}
-                                <tr>
-                                  {% if retest.Disk_Abx %}
-                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Antibiotic }}</td>
-                                  <td>Disk</td>
-                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Whonet_Abx }}</td>
-                                   <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_disk_{{retest.id}}" value= "{% get_existing_value retest_entries retest.id 'retest_disk' %}" type="number" style="width: 50px;" min="0"/></td>
-                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_disk_enris_{{retest.id}}" value="{% get_existing_value retest_entries retest.id 'retest_disk_enris' %}" type="text" style="width: 50px;"/></td>
-                                  {% endif %}
-                                </tr>
-                              {% endfor %}
-                              {% endif %}
-                              </tbody>
-                            </table>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                       </div>
-                       <div class="col-lg-7">
-                        <h6 class="heading-small text-muted mb-4">MIC RESULTS</h6>
-                        <div class="card border-info mb-3">
-                          <div class="card-body  text-info">
-                        <div class="row">
-                          <div class="col-lg-12">
-                            <div class="row">
-                              <div class="col-lg-12">
-                            <table class="table align-items-center text-center table-sm table-responsive" style="padding: 1em; border-width: 0; border-collapse: collapse; height: auto; width: 100%;">
-                            <thead class="thead-light" style="text-align: center; width: 100%;">
-                              <tr style="line-height: 15px;">
-                                <th scope="col" >ANTIBIOTIC</th>
-                                <th scope="col">Test Method</th>
-                                <th scope="col" >WHONET CODE</th>
-                                <th scope="col" >Operand</th>
-                                <th scope="col">Test Result</th>
-                                <th scope="col">RIS</th>
-                                <th scope="col" style="text-align: center; width: 98px;">Alert MIC</th>
-                              </tr>
-                            </thead>
-                              <tbody>
-                                {% if whonet_retest_data %}
-                                {% for retest in whonet_retest_data|dictsort:"Whonet_Abx" %}
-                                <tr>
-                                  {% if not retest.Disk_Abx %}
-                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Antibiotic }}</td>
-                                  <td>MIC</td>
-                                  <td scope="row" style="border-spacing: 0; border-collapse: collapse;">{{ retest.Whonet_Abx }}</td>
-                                 <td style="border-spacing: 0; border-collapse: collapse;"><input name="retest_mic_operand_{{retest.id}}" value= "{% get_existing_value retest_entries retest.id 'retest_mic_operand' %}" type="text" style="width: 50px;"/></td>
-                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_mic_{{retest.id}}" value="{% get_existing_value retest_entries retest.id 'retest_mic' %}" type="number" style="width: 50px;" min="0" step="0.001"/></td>
-                                  <td style="border-spacing: 0; border-collapse: collapse; width: 70px;"><input name="retest_mic_enris_{{retest.id}}" value="{% get_existing_value retest_entries retest.id 'retest_mic_enris' %}" type="text" style="width: 50px;"/></td>
-                                   <td>
-                                    {% get_existing_value retest_entries retest.id 'retest_alert_mic' as retest_alert_mic_checked %}
-                                    <input type="checkbox" style="transform: scale(1.5); margin: 4px;"  name="retest_alert_mic_{{ retest.id }}"
-                                    {% if retest_alert_mic_checked %}checked{% endif %}>
-                                  </input></td>
-                                  {% endif %}
-                                </tr>
-                              {% endfor %}
-                              {% endif %}
-                              </tbody>
-                            </table>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                       </div>
+    <!-- 🧫 RETEST DISK DIFFUSION -->
+    <div class="col-lg-5">
+      <h6 class="heading-small text-muted mb-4">RETEST - DISK DIFFUSION</h6>
+      <div class="card border-info mb-3">
+        <div class="card-body text-info">
+          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table align-items-center text-center table-sm table-responsive" style="width: 100%;">
+              <thead class="thead-light">
+                <tr style="line-height: 15px;">
+                  <th scope="col">ANTIBIOTIC</th>
+                  <th scope="col">TEST METHOD</th>
+                  <th scope="col">WHONET CODE</th>
+                  <th scope="col">TEST RESULT</th>
+                  <th scope="col">RIS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if antibiotics_retest%}
+                  {% for retest in antibiotics_retest|dictsort:"Whonet_Abx" %}
+                    {% if retest.Disk_Abx %}
+                      <tr>
+                        <td>{{ retest.Antibiotic }}</td>
+                        <td>Disk</td>
+                        <td>{{ retest.Whonet_Abx }}</td>
+                        <td>
+                          <input name="retest_disk_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk' %}"
+                                 type="number" min="0" style="width: 70px;">
+                        </td>
+                        <td>
+                          <input name="retest_disk_enris_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk_enris' %}"
+                                 type="text" style="width: 50px;">
+                        </td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="5">No retest disk antibiotics available</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
 
-                  <!-- end of antiboitic entry -->
-                </div>
-               </div>
-            
+    <!-- 💧 RETEST MIC RESULTS -->
+    <div class="col-lg-7">
+      <h6 class="heading-small text-muted mb-4">RETEST - MIC RESULTS</h6>
+      <div class="card border-info mb-3">
+        <div class="card-body text-info">
+          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table align-items-center text-center table-sm table-responsive" style="width: 100%;">
+              <thead class="thead-light">
+                <tr style="line-height: 15px;">
+                  <th scope="col">ANTIBIOTIC</th>
+                  <th scope="col">TEST METHOD</th>
+                  <th scope="col">WHONET CODE</th>
+                  <th scope="col">OPERAND</th>
+                  <th scope="col">TEST RESULT</th>
+                  <th scope="col">RIS</th>
+                  <th scope="col" style="width: 98px;">ALERT MIC</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if antibiotics_retest %}
+                  {% for retest in antibiotics_retest|dictsort:"Whonet_Abx" %}
+                    {% if not retest.Disk_Abx %}
+                      <tr>
+                        <td>{{ retest.Antibiotic }}</td>
+                        <td>MIC</td>
+                        <td>{{ retest.Whonet_Abx }}</td>
+                        <td>
+                          <input name="retest_mic_operand_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_operand' %}"
+                                 type="text" style="width: 50px;">
+                        </td>
+                        <td>
+                          <input name="retest_mic_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic' %}"
+                                 type="number" min="0" step="0.001" style="width: 70px;">
+                        </td>
+                        <td>
+                          <input name="retest_mic_enris_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_enris' %}"
+                                 type="text" style="width: 50px;">
+                        </td>
+                        <td>
+                          {% get_existing_value retest_entries retest.Whonet_Abx 'retest_alert_mic' as retest_alert_mic_checked %}
+                          <input type="checkbox" 
+                                 name="retest_alert_mic_{{ retest.Whonet_Abx }}"
+                                 style="transform: scale(1.5); margin: 4px;"
+                                 {% if retest_alert_mic_checked %}checked{% endif %}>
+                        </td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="7">No retest MIC antibiotics available</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
             <div class="pl-lg-12">
               <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ARSRL PERSONNEL PROVIDING INFORMATION</h6>
               <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
@@ -1011,6 +1040,71 @@ label.form-control-label{
     bindStaffField('#id_arsp_LabManager','#id_arsp_Lab_Lic',  'arsp_Lab_Lic');
     bindStaffField('#id_arsp_Head',      '#id_arsp_Head_Lic', 'arsp_Head_Lic');
   });
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const siteOrgInput = document.querySelector("[name='Site_Org']");
+  const arsOrgInput = document.querySelector("[name='ars_OrgCode']");
+  const specimenDateInput = document.querySelector("[name='Specimen_Date']");
+  const antibioticContainer = document.getElementById("antibiotic-container");
+
+  function reloadAntibiotics() {
+    const site_org = siteOrgInput ? siteOrgInput.value : "";
+    const ars_orgcode = arsOrgInput ? arsOrgInput.value : "";
+    const specimen_date = specimenDateInput ? specimenDateInput.value : "";
+
+    fetch(`/reload-antibiotics/?site_org=${encodeURIComponent(site_org)}&ars_orgcode=${encodeURIComponent(ars_orgcode)}&specimen_date=${encodeURIComponent(specimen_date)}`)
+      .then(response => response.json())
+      .then(data => {
+        antibioticContainer.innerHTML = data.html;
+      })
+      .catch(err => console.error("Error loading antibiotics:", err));
+  }
+
+  // Event listeners for changes
+  [siteOrgInput, arsOrgInput, specimenDateInput].forEach(input => {
+    if (input) {
+      input.addEventListener("change", reloadAntibiotics);
+    }
+  });
+});
+</script>
+
+<script>
+  
+// Improved: Separate handling for main and retest antibiotics
+document.addEventListener("DOMContentLoaded", function() {
+  const siteOrgInput = document.querySelector("[name='Site_Org']");
+  const arsOrgInput = document.querySelector("[name='ars_OrgCode']");
+  const specimenDateInput = document.querySelector("[name='Spec_Date']");
+  const antibioticContainer = document.getElementById("antibiotic-container");
+
+  function reloadAntibiotics() {
+    const site_org = siteOrgInput?.value || "";
+    const ars_orgcode = arsOrgInput?.value || "";
+    const specimen_date = specimenDateInput?.value || "";
+
+    fetch(`/reload-antibiotics/?site_org=${encodeURIComponent(site_org)}&ars_orgcode=${encodeURIComponent(ars_orgcode)}&specimen_date=${encodeURIComponent(specimen_date)}`)
+      .then(response => response.json())
+      .then(data => {
+        // Update main antibiotics section
+        antibioticContainer.innerHTML = data.main_html;
+
+        // If your retest section is on another tab:
+        const retestSection = document.querySelector("#retest-container");
+        if (retestSection) {
+          retestSection.innerHTML = data.retest_html;
+        }
+      })
+      .catch(err => console.error("Error loading antibiotics:", err));
+  }
+
+  // Watch for changes
+  [siteOrgInput, arsOrgInput, specimenDateInput].forEach(input => {
+    if (input) input.addEventListener("change", reloadAntibiotics);
+  });
+});
 </script>
 
   

@@ -1,0 +1,115 @@
+{% load custom_filters %}
+
+<div class="col-lg-12">
+  <div class="row">
+
+    <!-- 🧫 DISK DIFFUSION -->
+    <div class="col-lg-5">
+      <h6 class="heading-small text-muted mb-4">DISK DIFFUSION ({{ breakpoint_year|default:"Latest" }})</h6>
+      <div class="card border-info mb-3">
+        <div class="card-body text-info">
+          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table align-items-center text-center table-sm table-responsive" style="width: 100%;">
+              <thead class="thead-light">
+                <tr style="line-height: 15px;">
+                  <th>ANTIBIOTIC</th>
+                  <th>TEST METHOD</th>
+                  <th>WHONET CODE</th>
+                  <th>TEST RESULT</th>
+                  <th>RIS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if antibiotics_main %}
+                  {% for entry in antibiotics_main|dictsort:"Whonet_Abx" %}
+                    {% if entry.Disk_Abx %}
+                      <tr>
+                        <td>{{ entry.Antibiotic }}</td>
+                        <td>Disk</td>
+                        <td>{{ entry.Whonet_Abx }}</td>
+                        <td>
+                          <input name="disk_{{ entry.Whonet_Abx }}"
+                                 value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk' %}"
+                                 type="number" min="0" style="width: 70px;">
+                        </td>
+                        <td>
+                          <input name="disk_enris_{{ entry.Whonet_Abx }}"
+                                 value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk_enris' %}"
+                                 type="text" style="width: 50px;">
+                        </td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="5">No antibiotics available</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 💧 MIC RESULTS -->
+    <div class="col-lg-7">
+      <h6 class="heading-small text-muted mb-4">MIC RESULTS ({{ breakpoint_year|default:"Latest" }})</h6>
+      <div class="card border-info mb-3">
+        <div class="card-body text-info">
+          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table align-items-center text-center table-sm table-responsive" style="width: 100%;">
+              <thead class="thead-light">
+                <tr style="line-height: 15px;">
+                  <th>ANTIBIOTIC</th>
+                  <th>TEST METHOD</th>
+                  <th>WHONET CODE</th>
+                  <th>OPERAND</th>
+                  <th>TEST RESULT</th>
+                  <th>RIS</th>
+                  <th>ALERT MIC</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if antibiotics_main %}
+                  {% for entry in antibiotics_main|dictsort:"Whonet_Abx" %}
+                    {% if not entry.Disk_Abx %}
+                      <tr>
+                        <td>{{ entry.Antibiotic }}</td>
+                        <td>MIC</td>
+                        <td>{{ entry.Whonet_Abx }}</td>
+                        <td>
+                          <input type="text" name="mic_operand_{{ entry.Whonet_Abx }}"
+                                 value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_operand' %}"
+                                 style="width: 50px;">
+                        </td>
+                        <td>
+                          <input name="mic_{{ entry.Whonet_Abx }}"
+                                 value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic' %}"
+                                 type="number" min="0" step="0.001" style="width: 70px;">
+                        </td>
+                        <td>
+                          <input name="mic_enris_{{ entry.Whonet_Abx }}"
+                                 value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_enris' %}"
+                                 type="text" style="width: 50px;">
+                        </td>
+                        <td>
+                          {% get_existing_value existing_entries entry.Whonet_Abx 'alert_mic' as alert_mic_checked %}
+                          <input type="checkbox"
+                                 name="alert_mic_{{ entry.Whonet_Abx }}"
+                                 style="transform: scale(1.5); margin: 4px;"
+                                 {% if alert_mic_checked %}checked{% endif %}>
+                        </td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="7">No MIC antibiotics available</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -95,8 +95,6 @@
         <thead class="thead-light" style="position: sticky; top: 0; z-index: 10; background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);">
           <tr>
             <th style="min-width: 100px; color: #1a7a8e; font-weight: 600;">Actions</th>
-            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Show</th>
-            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Retest</th>
             <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Disk?</th>
             <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Year</th>
             <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Org</th>
@@ -125,20 +123,6 @@
               <a href="#" class="btn btn-sm delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'breakpoints_del' breakpoint.id %}" style="background: linear-gradient(135deg, #d97c7c 0%, #c24b4b 100%); color: white; border: none;" title="Delete">
                 <i class="fa fa-trash"></i>
               </a>
-            </td>
-            <td>
-              {% if breakpoint.Show %}
-                <span class="badge badge-success"><i class="fas fa-check"></i></span>
-              {% else %}
-                <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
-              {% endif %}
-            </td>
-            <td>
-              {% if breakpoint.Retest %}
-                <span class="badge badge-warning"><i class="fas fa-redo"></i></span>
-              {% else %}
-                <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
-              {% endif %}
             </td>
             <td>
               {% if breakpoint.Disk_Abx %}

@@ -133,3 +133,8 @@ if not DEBUG:
     STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 TIME_ZONE = "Asia/Manila"
+
+
+# Allow more form fields for large antibiotic datasets
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 20000
+PHONENUMBER_DEFAULT_REGION = 'PH'

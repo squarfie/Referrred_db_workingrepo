@@ -65,6 +65,7 @@ urlpatterns = [
     path('download_combined_table/', views.download_combined_table, name='download_combined_table'),
     path('generate-pdf/<int:id>/', views.generate_pdf, name='generate_pdf'),
     path("delete_batch/<int:batch_id>/", views.delete_batch, name="delete_batch"),
+    path("delete_record/<int:id>/", views.delete_record_in_batch, name="delete_record_in_batch"),
     path("review_batches/", views.review_batches, name="review_batches"),
     path("clean_batch/<int:batch_id>/", views.clean_batch, name="clean_batch"),
     path('upload-sitecode/', views.upload_sitecode, name='site_upload'),
@@ -80,7 +81,7 @@ urlpatterns = [
     path('upload/', include('apps.wgs_app.urls')),
     path('final/', include('apps.home_final.urls')),
 
-
+    path('reload_antibiotics/', views.reload_antibiotics, name='reload_antibiotics'),
     # path('batch/', views.show_accession, name="show_accession"),
  
 
