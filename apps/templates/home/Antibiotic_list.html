@@ -52,39 +52,53 @@
       <div class="col-lg-8">
         <h6 class="h2 text-white d-inline-block mb-0">
           <i class="fas fa-flask mr-2"></i>
-          {% if editing %}Edit{% else %}Add{% endif %} Antibiotics
+          Edit Antibiotic List
         </h6>
         <p class="text-white mt-2 mb-0 opacity-8">
-          <strong><small>Configure Antibiotic List</small></strong>
+          <strong><small>Define and update antibiotics used for ARS testing</small></strong>
         </p>
-      </div>
-      <div class="col-lg-4 text-right">
-        <a href="{% url 'antibiotics_view' %}" class="btn btn-sm btn-neutral">
-          <i class="fas fa-table mr-1"></i>View All
-        </a>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Main Content -->
-<div class="container-fluid mt--6" style="position: relative; z-index: 3;">
+<div class="container-fluid" style="position: relative; z-index: 3; margin-top: 20px;">
   <div class="card shadow form-card">
     <div class="card-body p-4">
       {% if form %}
-      <form method="POST" action="{% if editing %}{% url 'edit_antibiotics' pk=form.instance.pk %}{% else %}{% url 'add_antibiotics' %}{% endif %}" id="antibioticsform">
+            <form method="POST"
+            action="{% url 'edit_antibiotics' pk=form.instance.pk %}"
+            id="antibioticsform">
         {% csrf_token %}
         
-        <!-- Upload Button -->
-        <div class="mb-4">
+
+        <div class="row align-items-center mb-4">
+
+            <!-- LEFT: Upload -->
+            <div class="col-md-6">
           <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#UploadModal">
             <i class="fas fa-file-upload mr-2"></i>Upload Antibiotics CSV/Excel
           </button>
-        </div>
+            </div>
+
+            <!-- RIGHT: Actions -->
+            <div class="col-md-6 text-md-right mt-3 mt-md-0">
+                <a href="{% url 'antibiotics_view' %}" class="btn btn-sm btn-neutral">
+                  <i class="fas fa-table mr-1"></i>View All
+                </a>
+              <a href="{% url 'add_antibiotics' %}" class="btn btn-sm btn-success">
+                <i class="fa fa-plus-square" aria-hidden="true"> </i> Add New
+              </a>
+            </div>
+
+          </div>
+
+
 
         <!-- Checkbox Section -->
         <div class="checkbox-container mb-4">
-          <div class="row">
+          <div class="row mt-3">
             <div class="col-md-4">
               <div class="checkbox-wrapper">
                 <label class="form-control-label mb-2" for="Show">
@@ -114,11 +128,9 @@
 
         <!-- Guidelines and Test Method -->
         <div class="section-divider">
-          <h5 class="mb-0" style="color: #1a7a8e;">
             <i class="fas fa-book-medical mr-2"></i>Guidelines & Methods
-          </h5>
         </div>
-        <div class="row">
+        <div class="row mt-3">
           <div class="col-md-6">
             <div class="form-group">
               <label class="form-control-label" for="Guidelines">
@@ -153,11 +165,9 @@
 
         <!-- Antibiotic Information -->
         <div class="section-divider">
-          <h5 class="mb-0" style="color: #1a7a8e;">
             <i class="fas fa-pills mr-2"></i>Antibiotic Information
-          </h5>
         </div>
-        <div class="row">
+        <div class="row mt-3">
           <div class="col-md-6">
             <div class="form-group">
               <label class="form-control-label" for="Antibiotic">
@@ -176,7 +186,7 @@
           </div>
         </div>
 
-        <div class="row">
+        <div class="row mt-3">
           <div class="col-md-4">
             <div class="form-group">
               <label class="form-control-label" for="Potency">
@@ -205,12 +215,12 @@
 
         <!-- Classes and Subclassess -->
 
-          <div class="row text-center">
+          <div class="row mt-3">
             <div class="col-md-4">
               <label class="form-control-label" for="Class">
                 <i class="fas fa-times-circle mr-1"></i>Class
               </label>
-              <input id="Class" class="form-control" value="{{antiboitic.Class}}" type="text" name="Class" />
+              <input id="Class" class="form-control" value="{{antibiotic.Class}}" type="text" name="Class" />
             </div>
             <div class="col-md-4">
               <label class="form-control-label" for="Subclass">
@@ -269,7 +279,7 @@
               <i class="fas fa-file-csv mr-1"></i>Select CSV/Excel File
             </label>
             <div>
-            {{ upload_form.File_uploadAbx }}
+            {{ abx_upload_form.File_uploadAbx }}
             </div>
           </div>
         </div>

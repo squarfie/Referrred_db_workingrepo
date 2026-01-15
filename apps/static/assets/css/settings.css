@@ -57,7 +57,12 @@
     border-radius: 8px !important;
     padding: 0 !important;
     margin-top: 10px;
-    animation: fadein 0.3s ease;
+}
+
+#settings-page .settings-tab-content,
+.settings-container .settings-tab-content {
+    position: relative;
+    overflow: hidden;
 }
 
 /******************************************************

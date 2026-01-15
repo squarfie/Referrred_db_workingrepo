@@ -248,6 +248,7 @@ class BatchTable_form(forms.ModelForm):
         def clean_bat_Head(self):
             head = self.cleaned_data.get("bat_Head")
             return head.Staff_Name if head else ""
+
         
 #for adding of site code
 class SiteCode_Form(forms.ModelForm):

@@ -1,127 +1,144 @@
 {% load static %}
 {% load widget_tweaks %}
 
-{% block stylesheets %}
-<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
-<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
-<link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
-{% endblock stylesheets %}
-
 {% block settings_content %}
-
-<div class="settings-page-tab">
 
 <div class="card shadow-sm">
 
-    <!-- TAB HEADER -->
-    <div class="card-header d-flex justify-content-between align-items-center"
-         style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
-                border-bottom: 2px solid #d1e8ed;">
+  <!-- HEADER -->
+  <div class="card-header d-flex justify-content-between align-items-center"
+       style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+              border-bottom: 2px solid #d1e8ed;">
 
-        <h5 class="card-title mb-0">
-            <i class="fas fa-hospital mr-2"></i>
-            {% if editing %}Edit{% else %}Add{% endif %} Site Code
-        </h5>
+    <h5 class="card-title mb-0">
+      <i class="fas fa-hospital mr-2"></i>
+      Add Site Code
+    </h5>
 
-        <span class="d-flex gap-2">
-            <a href="{% url 'site_view' %}" class="btn btn-sm btn-primary">
-                <i class="fas fa-table mr-1"></i> View All
-            </a>
-            <button type="button" class="btn btn-sm btn-secondary" data-toggle="modal" data-target="#UploadModal">
-                <i class="ni ni-cloud-upload-96"></i> Upload Site
-            </button>
-        </span>
-    </div>
+    <a href="{% url 'site_view' %}" class="btn btn-sm btn-primary">
+      <i class="fas fa-table mr-1"></i> View All
+    </a>
+  </div>
 
-    <!-- TAB BODY -->
-    <div class="card-body">
+  <!-- BODY -->
+  <div class="card-body">
 
-        <form method="POST" action="{% url 'add_dropdown' %}" id="dropdownform" autocomplete="on">
-            {% csrf_token %}
+    {% if site_form %}
+    <form method="POST"
+          action="{% url 'add_dropdown' %}"
+          id="siteform"
+          autocomplete="on">
 
-            <div class="row">
+      {% csrf_token %}
 
-                <!-- Site Code -->
-                <div class="col-md-6 mb-3">
-                    <label class="form-control-label">Site Code</label>
-                    {{ site_form.SiteCode|append_attr:"class: form-control rounded-pill" }}
-                </div>
-
-                <!-- Hospital Name -->
-                <div class="col-md-6 mb-3">
-                    <label class="form-control-label">Hospital Name</label>
-                    {{ site_form.SiteName|append_attr:"class: form-control rounded-pill" }}
-                </div>
-
-            </div>
-
-            <!-- Buttons -->
-            <div class="d-flex justify-content-end gap-3 mt-4">
-
-                <button type="submit" class="btn btn-primary rounded-pill px-4">
-                    <i class="ni ni-check-bold mr-2"></i> Save
-                </button>
-
-                <button type="button" onclick="history.back()" class="btn btn-secondary rounded-pill px-4">
-                    <i class="ni ni-bold-left mr-2"></i> Back
-                </button>
-
-                <button type="button" onclick="refresh()" class="btn btn-success rounded-pill px-4">
-                    <i class="ni ni-refresh-02 mr-2"></i> Clear
-                </button>
-
-            </div>
-
-        </form>
-
-    </div>
-</div>
-</div>
-
-<!-- UPLOAD MODAL -->
-<div class="modal fade" id="UploadModal" tabindex="-1">
-  <form method="POST" action="{% url 'site_upload' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
-    {% csrf_token %}
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content" style="border-top: 4px solid #2d9cad;">
-
-        <div class="modal-header"
-             style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
-                    border-bottom: 2px solid #d1e8ed;">
-
-          <h5 class="modal-title" style="color:#1a7a8e;">
-            <i class="fas fa-file-upload mr-2"></i> Upload Site Code
-          </h5>
-
-          <button type="button" class="close" data-dismiss="modal">
-            <span>&times;</span>
+      <!-- Upload  -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <button type="button"
+                  class="btn btn-secondary"
+                  data-toggle="modal"
+                  data-target="#UploadModalSite">
+            <i class="fas fa-file-upload mr-1"></i> Upload CSV / Excel
           </button>
         </div>
+      </div>
 
-        <div class="modal-body">
+      <!-- FORM FIELDS -->
+      <div class="row pt-3">
 
-          <label><strong>Select CSV/Excel File</strong></label>
-          {{ site_upload_form.File_uploadSite|add_class:"form-control-file" }}
-
+        <div class="col-md-6 mb-3">
+          <label>
+            <i class="fas fa-tag mr-2"></i> Site Code
+          </label>
+          {{ site_form.SiteCode|append_attr:"class:form-control" }}
+          <small class="helper-text">
+            <i class="fas fa-info-circle mr-1"></i>
+            Unique laboratory code
+          </small>
         </div>
 
-        <div class="modal-footer" style="background:#f8fcfd;">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Upload</button>
+        <div class="col-md-6 mb-3">
+          <label>
+            <i class="fas fa-hospital mr-2"></i> Hospital Name
+          </label>
+          {{ site_form.SiteName|append_attr:"class:form-control" }}
+          <small class="helper-text">
+            <i class="fas fa-info-circle mr-1"></i>
+            Complete laboratory name
+          </small>
         </div>
 
       </div>
-    </div>
-  </form>
+
+      <!-- ACTION BUTTONS -->
+      <div class="d-flex justify-content-end gap-3 mt-4 flex-wrap">
+
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save mr-2"></i>
+          {% if editing %}Update{% else %}Save{% endif %} Site
+        </button>
+
+        <button type="button"
+                onclick="document.getElementById('siteform').reset()"
+                class="btn btn-secondary">
+          Clear
+        </button>
+
+      </div>
+
+    </form>
+    {% endif %}
+
+  </div>
 </div>
+
+
+<!-- UPLOAD MODAL -->
+<div class="modal fade" id="UploadModalSite" tabindex="-1">
+    <form method="POST"
+          action="{% url 'site_upload' %}"
+          enctype="multipart/form-data"
+          onsubmit="return confirmOverwrite();">
+
+        {% csrf_token %}
+
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-top:4px solid #2d9cad;">
+                <div class="modal-header"
+                     style="background: linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
+                            border-bottom:2px solid #d1e8ed;">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-upload mr-2"></i> Upload Site Code
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    {{ site_upload_form.File_uploadSite }}
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+function confirmOverwrite() {
+  return confirm("WARNING: Uploading will overwrite existing Site Code data. Continue?");
+}
+</script>
+
 
 <script>
 function refresh() {
-    document.getElementById('dropdownform').reset();
-}
-
-function confirmOverwrite() {
-    return confirm("WARNING: Uploading will overwrite existing Site Code data. Continue?");
+  if (confirm('Are you sure you want to clear all form fields?')) {
+    document.getElementById("siteform").reset();
+  }
 }
 </script>
 

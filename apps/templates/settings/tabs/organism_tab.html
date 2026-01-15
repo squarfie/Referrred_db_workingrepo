@@ -1,0 +1,201 @@
+{% load static %}
+{% load widget_tweaks %}
+
+{% block settings_content %}
+
+<div class="card shadow-sm">
+
+    <!-- HEADER -->
+    <div class="card-header d-flex justify-content-between align-items-center"
+         style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+                border-bottom: 2px solid #d1e8ed;">
+
+        <h5 class="card-title mb-0">
+            <i class="fas fa-microscope mr-2"></i>
+            Add Organism
+        </h5>
+
+        <a href="{% url 'view_organism' %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-table mr-1"></i> View All
+        </a>
+    </div>
+
+    <!-- BODY -->
+    <div class="card-body">
+
+        {% if org_form %}
+        <form method="POST" action="{% url 'add_organism' %}">
+            {% csrf_token %}
+
+
+            <!-- Upload -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-toggle="modal"
+                            data-target="#UploadModalOrg">
+                        <i class="fas fa-file-upload mr-1"></i> Upload CSV / Excel
+                    </button>
+                </div>
+            </div>
+
+            <!-- WHONET -->
+            <div class="section-divider">WHONET Information</div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label>WHONET Organism Code</label>
+                    {{ org_form.Whonet_Org_Code|append_attr:"class: form-control" }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label>Replaced By</label>
+                    {{ org_form.Replaced_by|append_attr:"class: form-control" }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label>Organism Name</label>
+                    {{ org_form.Organism|append_attr:"class: form-control" }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label>Organism Type</label>
+                    {{ org_form.Organism_Type|append_attr:"class: form-control" }}
+                </div>
+
+            </div>
+            <!-- CLASSIFICATION CODES -->
+            <div class="section-divider">Classification Codes</div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label>Family Code</label>
+                    {{ org_form.Family_Code|append_attr:"class: form-control" }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label>Genus Code</label>
+                    {{ org_form.Genus_Code|append_attr:"class: form-control" }}
+                </div>
+            </div>
+
+            <!-- GROUP CLASSIFICATION -->
+            <div class="section-divider">Group Classification</div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label>Genus Group</label>
+                    {{ org_form.Genus_Group|append_attr:"class: form-control" }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label>Species Group</label>
+                    {{ org_form.Species_Group|append_attr:"class: form-control" }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label>Serovar Group</label>
+                    {{ org_form.Serovar_Group|append_attr:"class: form-control" }}
+                </div>
+            </div>
+
+            <!-- TAXONOMY -->
+            <div class="section-divider">Taxonomic Classification</div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label>Kingdom</label>
+                    {{ org_form.Kingdom|append_attr:"class: form-control" }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label>Phylum</label>
+                    {{ org_form.Phylum|append_attr:"class: form-control" }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label>Class</label>
+                    {{ org_form.Class|append_attr:"class: form-control" }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label>Order</label>
+                    {{ org_form.Order|append_attr:"class: form-control" }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label>Family</label>
+                    {{ org_form.Family|append_attr:"class: form-control" }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label>Genus</label>
+                    {{ org_form.Genus|append_attr:"class: form-control" }}
+                </div>
+            </div>
+
+
+            <!-- BUTTONS -->
+            <div class="d-flex justify-content-end gap-3 mt-4 flex-wrap">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save mr-2"></i>
+                    {% if editing %}Update{% else %}Save{% endif %} Organism
+                </button>
+
+                <button type="button"
+                        onclick="document.getElementById('organismform').reset()"
+                        class="btn btn-secondary">
+                    Clear
+                </button>
+            </div>
+
+        </form>
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="modal fade" id="UploadModalOrg" tabindex="-1">
+    <form method="POST"
+          action="{% url 'upload_organisms' %}"
+          enctype="multipart/form-data"
+          onsubmit="return confirmOverwrite();">
+
+        {% csrf_token %}
+
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-top:4px solid #2d9cad;">
+                <div class="modal-header"
+                     style="background: linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
+                            border-bottom:2px solid #d1e8ed;">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-upload mr-2"></i> Upload Organisms
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    {{ org_upload_form.File_uploadOrg }}
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function confirmOverwrite() {
+    return confirm("⚠️ Uploading will replace all existing organisms. Continue?");
+}
+</script>
+
+{% endblock settings_content %}

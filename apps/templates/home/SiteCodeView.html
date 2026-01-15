@@ -2,13 +2,10 @@
 
 {% block title %} Tables {% endblock title %}
 
-
-
-
 {% block content %}
 
-<div class="header bg-primary pb-6" style="min-height: 200px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
-    <span class="mask bg-gradient-default opacity-3"></span>
+<div class="header pb-6" style="height: 180px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%); opacity: 0.6;"></div>
     <div class="container-fluid">
       <div class="header-body">
         <div class="row align-items-center py-4">
@@ -24,6 +21,9 @@
           </div>
           <div class="col-lg-6 col-5 text-right">
             <a class="btn btn-sm btn-neutral" href="{% url 'add_dropdown' %}">Add Dropdown</a>
+            <button class="btn btn-sm btn-secondary" onclick="history.back()">
+            <i class="fas fa-arrow-left mr-1"></i>Back
+          </button>
           </div>
         </div>
       </div>
@@ -46,7 +46,7 @@
                       <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                       </div>
-                      <input class="form-control" placeholder="Search" type="text">
+                      <input class="form-control" placeholder="Search" type="text" id="searchInput">
                     </div>
                   </div>
                   <button type="button" class="close" data-action="search-close" data-target="#navbar-search-main" aria-label="Close">
@@ -59,7 +59,7 @@
           </div>
           <!-- Light table -->
           <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
-            <table class="table align-items-center table-flush" style="border-collapse: collapse; margin: 0%; padding: 0%;">
+            <table class="table align-items-center table-flush" id="siteCodeTable" style="border-collapse: collapse; margin: 0%; padding: 0%;">
               <thead class="thead-light">
                 <tr>
                   <th scope="col" ></th>
@@ -68,16 +68,19 @@
                  
                 </tr>
               </thead>
-              <tbody class="list">
+              <tbody class="list" id="tableBody">
                 {% for site_item in page_obj %}
                <tr>
                 
                     
-                    <td><a href="#" class="text-danger delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'delete_dropdown' site_item.id %}">
-                      <i class="fa fa-trash" aria-hidden="true"></i> &nbspDelete</a></td>
+                    <td>
+                       <a href="{% url 'edit_sitecode' site_item.pk %}" class="btn btn-sm mr-1"> <i class="fa fa-pencil-alt"></i>&nbsp;Edit</a>
+                      <a href="#" class="btn btn-sm delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'delete_dropdown' site_item.id %}">
+                      <i class="fa fa-trash" aria-hidden="true"></i> &nbsp; Delete</a>
+                    </td>
           
-                <td>{{site_item.SiteCode}}</td>
-                <td>{{site_item.SiteName}}</td>
+                <td class="site-code">{{site_item.SiteCode}}</td>
+                <td class="site-name">{{site_item.SiteName}}</td>
                 
         
               </tr>
@@ -178,20 +181,36 @@
 
 <script>
   $(document).ready(function(){
+      // Delete functionality
       var deleteUrl; 
       $('.delete-btn').on('click', function(){
           deleteUrl = $(this).data('url');
-          
       });
   
       $('#confirmDelete').on('click', function(){
           window.location.href = deleteUrl;
       });
+
+      // Search functionality
+      $('#searchInput').on('keyup', function(){
+          var searchValue = $(this).val().toLowerCase();
+          
+          $('#tableBody tr').filter(function(){
+              var siteCode = $(this).find('.site-code').text().toLowerCase();
+              var siteName = $(this).find('.site-name').text().toLowerCase();
+              
+              // Show row if search value is found in either site code or site name
+              var match = siteCode.indexOf(searchValue) > -1 || siteName.indexOf(searchValue) > -1;
+              $(this).toggle(match);
+          });
+      });
+
+      // Clear search on close button click
+      $('[data-action="search-close"]').on('click', function(){
+          $('#searchInput').val('');
+          $('#tableBody tr').show();
+      });
   });
-  </script>
-
-
-
-
+</script>
 
 {% endblock javascripts %}

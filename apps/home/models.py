@@ -45,6 +45,7 @@ class Batch_Table(models.Model):
     bat_Head_Lic = models.CharField(max_length=100,blank=True, default='')
 
 
+
 class Meta:
     db_table ="Batch_Table"
     constraints = [
@@ -100,6 +101,7 @@ class Referred_Data(models.Model):
     )
    
     #isolates
+    bat_seq = models.PositiveIntegerField(null=True, blank=True, help_text="Auto sequence number per batch")
     Batch_id = models.ForeignKey(Batch_Table, on_delete=models.CASCADE, related_name='Batch_isolates', null=True,)
     Hide=models.BooleanField(default=False)
     Copy_data=models.BooleanField(default=False)
@@ -376,6 +378,8 @@ class Breakpoint_upload(models.Model):
 class AntibioticEntry(models.Model):
 #  links to main and breakpoints table
     ab_idNum_referred = models.ForeignKey(Referred_Data, on_delete=models.CASCADE, null=True, related_name='antibiotic_entries', to_field='AccessionNo')
+    ab_Disk_Abx = models.BooleanField(default=False)
+    ab_Ret_Disk_Abx= models.BooleanField(default=False)
     ab_AccessionNo= models.CharField(max_length=100, blank=True, null=True)
     ab_RefNo = models.CharField(max_length=100, blank=True, null=True)
     ab_breakpoints_id = models.ManyToManyField(BreakpointsTable, max_length=6)
@@ -492,6 +496,7 @@ class Antibiotic_List(models.Model):
         ('CLSI', 'CLSI'),        
     )
     Show=models.BooleanField(default=True)
+    Show_Final = models.BooleanField(default=True)
     Retest=models.BooleanField(default=True)
     Disk_Abx=models.BooleanField(default=True)
     Tier = models.CharField(max_length=10, blank=True, default='')

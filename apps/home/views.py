@@ -45,6 +45,9 @@ from collections import defaultdict
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.template.loader import render_to_string
+from django.db.models import Max
+from itertools import islice
+
 
 
 @login_required
@@ -52,13 +55,15 @@ def settings_page(request):
 
     context = {
         "antibiotic_form": AntibioticsForm(),
-        "organism_form": OrganismForm(),
+        "org_form": OrganismForm(),
         "breakpoint_form": BreakpointsForm(),
-        "sitecode_form": SiteCode_Form(),
+        "site_form": SiteCode_Form(),
         "specimen_form": SpecimenTypeForm(),
-        "staff_form":ContactForm(),
+        "contact_form":ContactForm(),
         "abx_upload_form": Antibiotics_uploadForm(),
         'bp_upload_form': Breakpoint_uploadForm(),
+        "site_upload_form": SiteCode_uploadForm(),
+        "org_upload_form": Organism_uploadForm(),
         "editing": False,  # default state
     }
 
@@ -103,7 +108,7 @@ def index(request):
 
 
 
-
+##### helper for loading pages, 
 @login_required(login_url="/login/")
 def pages(request):
     context = {}
@@ -128,6 +133,7 @@ def pages(request):
         print(f"Error: {e}")
         # Redirect to a different view or render a different template
         return redirect('home')  # Redirect to the home view or any other view
+
 
 
 @login_required(login_url="/login/")
@@ -261,11 +267,18 @@ def batch_create_view(request):
                 # Step 2.5: Re-link all existing isolates with the new batch
                 Referred_Data.objects.filter(AccessionNo__in=accession_numbers).update(Batch_id=batch_obj)
 
+                last_seq = (
+                    Referred_Data.objects
+                    .filter(Batch_id=batch_obj)
+                    .aggregate(Max("bat_seq"))
+                    .get("bat_seq__max") or 0
+                )
                 # Step 2.6: Create missing accessions (if new range includes more)
                 for acc_no in accession_numbers:
                     Referred_Data.objects.update_or_create(
                         AccessionNo=acc_no,
                         defaults={
+                            "bat_seq": last_seq + 1,
                             "Batch_id": batch_obj,
                             "Batch_Code": batch_codegen,
                             "Referral_Date": referral_date_obj,
@@ -449,15 +462,17 @@ def raw_data(request, id):
 
     # --- Get isolate record ---
     isolates = get_object_or_404(Referred_Data, pk=id)
-
+    
     # --- Determine year and organism codes ---
     specimen_year = isolates.Spec_Date.year if isolates.Spec_Date else None
     site_org = isolates.Site_Org.strip().lower() if isolates.Site_Org else ""
     ars_org = isolates.ars_OrgCode.strip().lower() if isolates.ars_OrgCode else ""
 
+
     # --- Get all antibiotics (from Antibiotic_List) ---
     antibiotics_main = Antibiotic_List.objects.filter(Show=True)
     antibiotics_retest = Antibiotic_List.objects.filter(Retest=True)
+
 
     # --- Determine closest breakpoint year ---
     if specimen_year:
@@ -600,18 +615,23 @@ def raw_data(request, id):
                         "ab_Antibiotic": abx.Antibiotic,
                         "ab_Abx": abx.Abx_code,
                         "ab_Disk_value": disk_value or None,
-                        "ab_Disk_enRIS": disk_enris,
+                        "ab_Disk_enRIS": disk_enris or "",
                         "ab_MIC_value": mic_value or None,
-                        "ab_MIC_enRIS": mic_enris,
+                        "ab_MIC_enRIS": mic_enris or "",
                         "ab_MIC_operand": mic_operand,
-                        "ab_R_breakpoint": bp.R_val if bp else None,
-                        "ab_I_breakpoint": bp.I_val if bp else None,
-                        "ab_SDD_breakpoint": bp.SDD_val if bp else None,
-                        "ab_S_breakpoint": bp.S_val if bp else None,
+                        "ab_R_breakpoint": bp.R_val if bp else "",
+                        "ab_I_breakpoint": bp.I_val if bp else "",
+                        "ab_SDD_breakpoint": bp.SDD_val if bp else "",
+                        "ab_S_breakpoint": bp.S_val if bp else "",
                         "ab_AlertMIC": alert_mic,
                         "ab_Alert_val": bp.Alert_val if alert_mic and bp else "",
+                        "ab_Disk_Abx": abx.Disk_Abx,  
                     },
                 )
+
+                if bp is None:
+                    print("NO BREAKPOINT:", abx_code, breakpoint_year, site_org)
+
 
                 if bp:
                     antibiotic_entry.ab_breakpoints_id.set([bp])
@@ -662,6 +682,7 @@ def raw_data(request, id):
                         "ab_Ret_I_breakpoint": bp_retest.I_val if bp_retest else None,
                         "ab_Retest_AlertMIC": retest_alert_mic,
                         "ab_Retest_Alert_val": bp_retest.Alert_val if retest_alert_mic and bp_retest else "",
+                        "ab_Retest_Disk_Abx": abx.Disk_Abx,
                     },
                 )
 
@@ -699,7 +720,10 @@ def show_data(request):
     sort_field = f"-{sort_by}" if order == 'desc' else sort_by
 
     isolates = Referred_Data.objects.prefetch_related(
-        'antibiotic_entries'
+        Prefetch(
+            'antibiotic_entries',
+            queryset=AntibioticEntry.objects.order_by('ab_Antibiotic')
+        )
     ).order_by(sort_field)
 
     if query:
@@ -912,11 +936,17 @@ def show_data(request):
 @login_required(login_url="/login/")
 def edit_data(request, id):
     # --- Fetch antibiotic lists ---
-    whonet_abx_data = BreakpointsTable.objects.filter(Antibiotic_list__Show=True)
-    whonet_retest_data = BreakpointsTable.objects.filter(Antibiotic_list__Retest=True)
+    # whonet_abx_data = BreakpointsTable.objects.filter(Antibiotic_list__Show=True)
+    # whonet_retest_data = BreakpointsTable.objects.filter(Antibiotic_list__Retest=True)
+
+          # ALWAYS drive the form from Antibiotic_List
+    antibiotics_main = Antibiotic_List.objects.filter(Show=True).order_by("Whonet_Abx")
+    antibiotics_retest = Antibiotic_List.objects.filter(Retest=True).order_by("Whonet_Abx")
+
 
     # --- Get the isolate record ---
     isolates = get_object_or_404(Referred_Data, pk=id)
+
 
     # --- Get existing antibiotic entries ---
     all_entries = AntibioticEntry.objects.filter(ab_idNum_referred=isolates)
@@ -928,8 +958,8 @@ def edit_data(request, id):
         form = Referred_Form(instance=isolates)
         return render(request, "home/Referred_form.html", {
             "form": form,
-            "whonet_abx_data": whonet_abx_data,
-            "whonet_retest_data": whonet_retest_data,
+            "antibiotics_main": antibiotics_main,
+            "antibiotics_retest": antibiotics_retest,
             "edit_mode": True,
             "isolates": isolates,
             "existing_entries": existing_entries,
@@ -944,7 +974,7 @@ def edit_data(request, id):
             isolates.save()
 
             # --- Handle main antibiotics ---
-            for entry in whonet_abx_data:
+            for entry in antibiotics_main:
                 abx_code = (entry.Whonet_Abx or "").strip().upper()
 
                 # match field names in your form (Whonet_Abx-based)
@@ -979,12 +1009,13 @@ def edit_data(request, id):
                         "ab_S_breakpoint": entry.S_val or None,
                         "ab_AlertMIC": alert_mic,
                         "ab_Alert_val": entry.Alert_val if alert_mic else '',
+                        "ab_Disk_Abx": entry.Disk_Abx
                     }
                 )
                 antibiotic_entry.ab_breakpoints_id.set([entry])
 
             # --- Handle retest antibiotics ---
-            for retest in whonet_retest_data:
+            for retest in antibiotics_retest:
                 retest_abx_code = (retest.Whonet_Abx or "").strip().upper()
 
                 if retest.Disk_Abx:
@@ -1026,6 +1057,7 @@ def edit_data(request, id):
                         "ab_Ret_S_breakpoint": retest.S_val or None,
                         "ab_Retest_AlertMIC": retest_alert_mic,
                         "ab_Retest_Alert_val": retest.Alert_val if retest_alert_mic else "",
+                        "ab_Ret_Disk_Abx": retest.Disk_Abx,
                     }
                 )
                 retest_entry.ab_breakpoints_id.set([retest])
@@ -1041,8 +1073,8 @@ def edit_data(request, id):
     form = Referred_Form(instance=isolates)
     return render(request, "home/Referred_form.html", {
         "form": form,
-        "whonet_abx_data": whonet_abx_data,
-        "whonet_retest_data": whonet_retest_data,
+        "antibiotics_main": antibiotics_main,
+        "antibiotics_retest": antibiotics_retest,
         "edit_mode": True,
         "isolates": isolates,
         "existing_entries": existing_entries,
@@ -1084,57 +1116,200 @@ def link_callback(uri, rel):
     return path
 
 
+
+
 @login_required(login_url="/login/")
 def generate_pdf(request, id):
-    # Get the record from the database using the provided ID
+
+    # ======================================================
+    # ISOLATE
+    # ======================================================
     isolate = get_object_or_404(Referred_Data, pk=id)
-    
-    # Fetch related antibiotic entries
-    antibiotic_entries = AntibioticEntry.objects.filter(ab_idNum_referred=isolate)
 
-    # Debugging: Print antibiotic entries to verify data
-    print("Antibiotic Entries Count:", antibiotic_entries.count())
-    for entry in antibiotic_entries:
-        print("Antibiotic Entry:", entry.ab_Abx_code, entry.ab_Disk_value, entry.ab_MIC_value, entry.ab_Retest_MICValue)
+    # ======================================================
+    # MASTER ANTIBIOTIC LISTS
+    # ======================================================
 
-    # Use the static URL for the logo
-    logo_path = static("assets/img/brand/arsplogo.jpg")
+    # Sentinel Site / Main panel
+    antibiotic_list = list(
+        Antibiotic_List.objects
+        .filter(Show=True)
+        .order_by("Abx_code")
+        .values_list("Abx_code", flat=True)
+    )
 
-    # Debugging: Check if the logo file exists
-    absolute_logo_path = os.path.join(settings.STATIC_ROOT, "assets/img/brand/arsplogo.jpg").replace("\\", "/").strip()
-    if not os.path.exists(absolute_logo_path):
-        print(f"Logo file not found at: {absolute_logo_path}")
-        logo_path = ""  # Set to None if the file does not exist
+    # Retest / ARSRL panel
+    antibiotic_retest = list(
+        Antibiotic_List.objects
+        .filter(Show=True, Retest=True)
+        .order_by("Abx_code")
+        .values_list("Abx_code", flat=True)
+    )
 
-    context = {
-        'isolate': isolate,
-        'antibiotic_entries': antibiotic_entries,
-        'now': timezone.now(),  # Add current time to context
-        'logo_path': logo_path,  # Use the static URL
+    # ======================================================
+    # ANTIBIOTIC ENTRIES (same isolate)
+    # ======================================================
+    antibiotic_entries = AntibioticEntry.objects.filter(
+        ab_idNum_referred=isolate
+    )
+
+    # ======================================================
+    # GROUP SENTINEL SITE RESULTS
+    # ======================================================
+    grouped_entries = {
+        code: {"disk": None, "mic": None}
+        for code in antibiotic_list
     }
-    
-    # Create a Django response object, and specify content_type as pdf
-    response = HttpResponse(content_type='application/pdf')
-    
-    # Name the PDF for download or preview
-    response['Content-Disposition'] = 'filename="Lab_Result_Report.pdf"'
-    
-    # Find the template and render it
-    template_path = 'home/Lab_result.html'
-    template = get_template(template_path)
+
+    for entry in antibiotic_entries:
+        code = entry.ab_Abx
+        if code not in grouped_entries:
+            continue
+
+        if entry.ab_Disk_Abx:
+            grouped_entries[code]["disk"] = entry
+        else:
+            grouped_entries[code]["mic"] = entry
+
+    # ======================================================
+    # GROUP RETEST / ARSRL RESULTS
+    # ======================================================
+    grouped_retest = {
+        code: {"disk": None, "mic": None}
+        for code in antibiotic_retest
+    }
+
+    for ret in antibiotic_entries:
+        code = ret.ab_Abx
+        if code not in grouped_retest:
+            continue
+
+        if ret.ab_Disk_Abx:
+            grouped_retest[code]["disk"] = ret
+        else:
+            grouped_retest[code]["mic"] = ret
+
+    # ======================================================
+    # LAYOUT LIMITS (KEPT AS REQUESTED)
+    # ======================================================
+    MAX_COLS_SS = 32
+    MAX_ROWS_SS = 2
+
+    MAX_COLS_AR = 32
+    MAX_ROWS_AR = 2
+
+    # ======================================================
+    # CHUNK HELPER
+    # ======================================================
+    def chunked(iterable, size):
+        for i in range(0, len(iterable), size):
+            yield iterable[i:i + size]
+
+    # ======================================================
+    # APPLY CHUNKING + ROW LIMITS
+    # ======================================================
+    grouped_list = sorted(grouped_entries.items(), key=lambda x: x[0])
+    grouped_rows = list(
+        chunked(grouped_list, MAX_COLS_SS)
+    )[:MAX_ROWS_SS]
+
+    grouped_ars = sorted(grouped_retest.items(), key=lambda x: x[0])
+    grouped_ars_rows = list(
+        chunked(grouped_ars, MAX_COLS_AR)
+    )[:MAX_ROWS_AR]
+
+    # ======================================================
+    # CONTEXT
+    # ======================================================
+    context = {
+        "isolate": isolate,
+        "grouped_rows": grouped_rows,              # Sentinel Site
+        "grouped_ars_rows": grouped_ars_rows,      # Retest / ARSRL
+        "now": timezone.now(),
+        "logo_path": static("assets/img/brand/arsplogo.jpg"),
+    }
+
+    # ======================================================
+    # PDF GENERATION
+    # ======================================================
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'filename="Lab_Result_Report.pdf"'
+
+    template = get_template("home/Lab_result.html")
     html = template.render(context)
 
-    # Debugging: Print rendered HTML to verify template rendering
-    print("Rendered HTML:", html[:500])  # Print the first 500 characters of the rendered HTML
+    pisa_status = pisa.CreatePDF(
+        html,
+        dest=response,
+        link_callback=link_callback
+    )
 
-    # Generate PDF using Pisa
-    pisa_status = pisa.CreatePDF(html, dest=response, link_callback=link_callback)
-
-    # Check for errors during PDF generation
     if pisa_status.err:
-        print("Pisa Error:", pisa_status.err)
-        return HttpResponse(f'Error in generating PDF: {html}')
-    
+        return HttpResponse("Error generating PDF")
+
+    return response
+
+
+
+
+# Generate batch PDF two isolates per page
+@login_required(login_url="/login/")
+def generate_batch_pdf(request):
+    batch_code = request.GET.get("batch_code")
+
+    if not batch_code:
+        return HttpResponse("Batch code is required.", status=400)
+
+    # Fetch isolates in this batch
+    isolates = (
+        Referred_Data.objects
+        .filter(Batch_Code=batch_code)
+        .order_by("AccessionNo")
+        .prefetch_related("antibiotic_entries")
+    )
+
+    if not isolates.exists():
+        return HttpResponse("No isolates found for this batch.", status=404)
+
+    # Group isolates into pairs (2 per page)
+    isolate_pairs = []
+    temp = []
+
+    for isolate in isolates:
+        temp.append(isolate)
+        if len(temp) == 2:
+            isolate_pairs.append(temp)
+            temp = []
+
+    if temp:  # leftover isolate (odd count)
+        isolate_pairs.append(temp)
+
+    logo_path = static("assets/img/brand/arsplogo.jpg")
+
+    context = {
+        "batch_code": batch_code,
+        "isolate_pairs": isolate_pairs,
+        "now": timezone.now(),
+        "logo_path": logo_path,
+    }
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'filename="Batch_{batch_code}_Results.pdf"'
+    )
+
+    template = get_template("home/Lab_result_batch.html")
+    html = template.render(context)
+
+    pisa_status = pisa.CreatePDF(
+        html,
+        dest=response,
+        link_callback=link_callback
+    )
+
+    if pisa_status.err:
+        return HttpResponse("Error generating PDF", status=500)
+
     return response
 
 
@@ -1184,27 +1359,73 @@ def search(request):
 
 ###################### done  edited start #################
 
-@login_required(login_url="/login/")
-# FOR DROPDOWN ITEMS (Site Code)  
-def add_dropdown(request):
-    if request.method == "POST":
-        site_form = SiteCode_Form(request.POST)  
-        if site_form.is_valid():           
-            site_form.save()  
-            messages.success(request, 'Added Successfully')
-            return redirect('add_dropdown')  # Redirect after successful POST
+# @login_required(login_url="/login/")
+# # FOR DROPDOWN ITEMS (Site Code)  
+# def add_dropdown(request):
+#     if request.method == "POST":
+#         site_form = SiteCode_Form(request.POST)  
+#         if site_form.is_valid():      
+#             site_form.save()  
+#             messages.success(request, 'Added Successfully')
+#             return redirect('add_dropdown')  # Redirect after successful POST
             
             
-        else:
-            messages.error(request, 'Error / Adding Unsuccessful')
-            print(site_form.errors)
-    else:
-        site_form = SiteCode_Form()  # Show an empty form for GET request
+#         else:
+#             messages.error(request, 'Error / Adding Unsuccessful')
+#             print(site_form.errors)
+#     else:
+#         site_form = SiteCode_Form()  # Show an empty form for GET request
 
-    # Fetch clinic data from the database for dropdown options
-    site_items = SiteData.objects.all()
+#     # Fetch clinic data from the database for dropdown options
+#     site_items = SiteData.objects.all()
     
-    return render(request, 'settings/tabs/sitecode_tab.html', {'site_form': site_form, 'site_items': site_items, 'site_upload_form': SiteCode_uploadForm()})
+#     return render(request, 'settings/tabs/sitecode_tab.html', {'site_form': site_form, 'site_items': site_items, 'site_upload_form': SiteCode_uploadForm()})
+
+
+@login_required(login_url="/login/")
+def add_dropdown(request):
+    if request.method != "POST":
+        return redirect("/settings/?tab=sitecode")
+
+    site_form = SiteCode_Form(request.POST)
+
+    if site_form.is_valid():
+        site_form.save()
+        messages.success(request, "Site code added successfully.")
+    else:
+        messages.error(request, "Failed to add site code. Please check the form.")
+        print(site_form.errors)
+
+    return redirect("/settings/?tab=sitecode")
+
+
+@login_required(login_url="/login/")
+def edit_sitecode(request, pk):
+    site = get_object_or_404(SiteData, pk=pk)
+
+    if request.method == "POST":
+        site_form = SiteCode_Form(request.POST, instance=site)
+
+        if site_form.is_valid():
+            site_form.save()
+            messages.success(request, "Site code updated successfully.")
+            return redirect("site_view")
+        else:
+            messages.error(request, "Failed to update site code.")
+            print(site_form.errors)
+
+    else:
+        site_form = SiteCode_Form(instance=site)
+
+    return render(
+        request,
+        "home/SiteCodeForm.html",   # ✅ SEPARATE FULL PAGE
+        {
+            "site_form": site_form,
+            "site": site,
+            "editing": True,
+        },
+    )
 
 
 @login_required(login_url="/login/")
@@ -1227,63 +1448,140 @@ def site_view(request):
 
     return render(request, 'home/SiteCodeView.html', {'page_obj': page_obj})
 
+
+# @login_required(login_url="/login/")
+# def upload_sitecode(request):
+#     if request.method == "POST":
+#         site_upload_form = SiteCode_uploadForm(request.POST, request.FILES)
+
+#         if site_upload_form.is_valid():
+#             site_uploaded_file = site_upload_form.save()
+#             file = site_uploaded_file.File_uploadSite
+
+#             try:
+#                 # Ensure file pointer is at start
+#                 file.open()
+
+#                 # Load file
+#                 if file.name.lower().endswith(".csv"):
+#                     df = pd.read_csv(file, dtype=str)
+#                 elif file.name.lower().endswith((".xlsx", ".xls")):
+#                     df = pd.read_excel(file, dtype=str)
+#                 else:
+#                     messages.error(request, "Unsupported file format.")
+#                     return redirect("add_dropdown")
+
+#                 # Normalize columns
+#                 df.columns = (
+#                     df.columns
+#                     .str.strip()
+#                     .str.replace(" ", "_")
+#                     .str.lower()
+#                 )
+
+#                 df.fillna("", inplace=True)
+
+#                 success = 0
+
+#                 for _, row in df.iterrows():
+#                     site_code = str(row.get("sitecode", "")).strip().upper()
+#                     site_name = str(row.get("sitename", "")).strip()
+
+#                     if not site_code or not site_name:
+#                         continue
+
+#                     SiteData.objects.update_or_create(
+#                         SiteCode=site_code,
+#                         defaults={"SiteName": site_name}
+#                     )
+#                     success += 1
+
+#                 messages.success(
+#                     request,
+#                     f"Upload successful. {success} site codes processed."
+#                 )
+#                 return redirect("site_view")
+
+#             except Exception as e:
+#                 messages.error(request, f"Error processing file: {e}")
+#                 return redirect("add_dropdown")
+
+#         else:
+#             messages.error(request, "Invalid form submission.")
+
+#     else:
+#         site_upload_form = SiteCode_uploadForm()
+
+#     return render(
+#         request,
+#         "settings/tabs/sitecode_tab.html",
+#         {
+#             "site_upload_form": SiteCode_uploadForm,
+#             "site_form": SiteCode_Form,
+#         },
+#     )
+
+
+@login_required(login_url="/login/")
 def upload_sitecode(request):
-    if request.method == "POST":
-        site_upload_form = SiteCode_uploadForm(request.POST, request.FILES)
-        
-        if site_upload_form.is_valid():
-            site_uploaded_file = site_upload_form.save()
-            file = site_uploaded_file.File_uploadSite  # Get the uploaded file
-            
-            print("Uploaded file:", file)  # Debugging statement
+    if request.method != "POST":
+        return redirect("/settings/?tab=sitecode")
 
-            try:
-                # Load file into a DataFrame based on file type
-                if file.name.endswith('.csv'):
-                    df = pd.read_csv(file)
-                elif file.name.endswith('.xlsx'):
-                    df = pd.read_excel(file)
-                else:
-                    messages.error(request, 'Unsupported file format. Please upload a CSV or Excel file.')
-                    return redirect('add_dropdown')
+    site_upload_form = SiteCode_uploadForm(request.POST, request.FILES)
 
-                print("DataFrame contents:\n", df.head())  # Debugging statement
+    if not site_upload_form.is_valid():
+        messages.error(request, "Invalid upload form.")
+        return redirect("/settings/?tab=sitecode")
 
-                # Fill NaN values to avoid errors
-                df.fillna("", inplace=True)
+    site_uploaded_file = site_upload_form.save()
+    file = site_uploaded_file.File_uploadSite
 
-                # Loop through rows and save Site Codes
-                for _, row in df.iterrows():
-                    site_code = row.get('SiteCode', '').strip()
-                    site_name = row.get('SiteName', '').strip()
+    try:
+        file.open()
 
-                    if not site_code or not site_name:
-                        continue  # Skip empty rows
-
-                    # Create or update SiteData entry
-                    SiteData.objects.update_or_create(
-                        SiteCode=site_code,
-                        defaults={'SiteName': site_name}
-                    )
-
-                messages.success(request, "File uploaded successfully and data added!")
-                return redirect('site_view')
-
-            except Exception as e:
-                print("Error:", e)
-                messages.error(request, f"Error processing file: {e}")
-                return redirect('add_dropdown')
+        # Load file
+        if file.name.lower().endswith(".csv"):
+            df = pd.read_csv(file, dtype=str)
+        elif file.name.lower().endswith((".xlsx", ".xls")):
+            df = pd.read_excel(file, dtype=str)
         else:
-            messages.error(request, "Invalid form submission.")
+            messages.error(request, "Unsupported file format.")
+            return redirect("/settings/?tab=sitecode")
 
-    else:
-        site_upload_form = SiteCode_uploadForm()
+        # Normalize columns
+        df.columns = (
+            df.columns
+            .str.strip()
+            .str.replace(" ", "_")
+            .str.lower()
+        )
 
-    return render(request, 'settings/tabs/sitecode_tab.html', {'site_upload_form': site_upload_form, 'site_form': SiteCode_Form()})
+        df.fillna("", inplace=True)
 
-################## done edited finish  ##########################
+        success = 0
 
+        for _, row in df.iterrows():
+            site_code = str(row.get("sitecode", "")).strip().upper()
+            site_name = str(row.get("sitename", "")).strip()
 
+            if not site_code or not site_name:
+                continue
+
+            SiteData.objects.update_or_create(
+                SiteCode=site_code,
+                defaults={"SiteName": site_name}
+            )
+            success += 1
+
+        messages.success(
+            request,
+            f"Upload successful. {success} site codes processed."
+        )
+
+    except Exception as e:
+        messages.error(request, f"Error processing file: {e}")
+
+    return redirect("/settings/?tab=sitecode")
 
 
 
@@ -1295,41 +1593,118 @@ def get_clinic_code(request):
     return JsonResponse({'site_name': site_name})
 
 
-@login_required(login_url="/login/")
-def add_breakpoints(request, pk=None):
-    breakpoint = None  # Initialize breakpoint to avoid UnboundLocalError
-    bp_upload_form = Breakpoint_uploadForm()
+# @login_required(login_url="/login/")
+# def add_breakpoints(request, pk=None):
+#     breakpoint = None  # Initialize breakpoint to avoid UnboundLocalError
+#     bp_upload_form = Breakpoint_uploadForm()
 
-    if pk:  # Editing an existing breakpoint
-        breakpoint = get_object_or_404(BreakpointsTable, pk=pk)
-        breakpoint_form = BreakpointsForm(request.POST or None, instance=breakpoint)
-        editing = True
-    else:  # Adding a new breakpoint
-        breakpoint_form = BreakpointsForm(request.POST or None)
-        editing = False
+#     if pk:  # Editing an existing breakpoint
+#         breakpoint = get_object_or_404(BreakpointsTable, pk=pk)
+#         breakpoint_form = BreakpointsForm(request.POST or None, instance=breakpoint)
+#         editing = True
+#     else:  # Adding a new breakpoint
+#         breakpoint_form = BreakpointsForm(request.POST or None)
+#         editing = False
+
+#     if request.method == "POST":
+#         if breakpoint_form.is_valid():
+#             breakpoint_form.save()
+#             messages.success(request, "Update Successful")
+#             return redirect('breakpoints_view')  # Redirect to avoid form resubmission
+
+#     return render(request, 'home/Breakpoints.html', {
+#         'form': breakpoint_form,
+#         'editing': editing,  # Pass editing flag to template
+#         'breakpoint': breakpoint,  # Pass breakpoint even if None
+#         'bp_upload_form': bp_upload_form,
+#     })
+
+
+
+
+@login_required(login_url="/login/")
+def add_breakpoints(request):
+    if request.method == "POST":
+        form = BreakpointsForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Breakpoint added successfully.")
+        else:
+            messages.error(request, "Please correct the errors below.")
+
+    # ALWAYS redirect back to settings tab
+    return redirect("/settings/?tab=breakpoints")
+
+
+@login_required(login_url="/login/")
+def edit_breakpoints(request, pk):
+    breakpoint = get_object_or_404(BreakpointsTable, pk=pk)
+    bp_upload_form = Breakpoint_uploadForm()  # keep upload support
 
     if request.method == "POST":
-        if breakpoint_form.is_valid():
-            breakpoint_form.save()
-            messages.success(request, "Update Successful")
-            return redirect('breakpoints_view')  # Redirect to avoid form resubmission
+        form = BreakpointsForm(request.POST, instance=breakpoint)
 
-    return render(request, 'home/Breakpoints.html', {
-        'form': breakpoint_form,
-        'editing': editing,  # Pass editing flag to template
-        'breakpoint': breakpoint,  # Pass breakpoint even if None
-        'bp_upload_form': bp_upload_form,
-    })
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Breakpoint updated successfully.")
+            return redirect("/settings/?tab=breakpoints")
+
+        messages.error(request, "Please correct the errors below.")
+    else:
+        form = BreakpointsForm(instance=breakpoint)
+
+    return render(
+        request,
+        "home/Breakpoints.html",   # ✅ SEPARATE EDIT PAGE
+        {
+            "breakpoint_form": form,
+            "breakpoint": breakpoint,
+            "editing": True,
+            "bp_upload_form": bp_upload_form,
+        },
+    )
+
+
 
 
 @login_required(login_url="/login/")
-#View existing breakpoints
 def breakpoints_view(request):
+    q = request.GET.get('q', '').strip()
     breakpoints = BreakpointsTable.objects.all().order_by('-Date_Modified')
-    paginator = Paginator(breakpoints, 20)
+
+    if q:
+        breakpoints = breakpoints.filter(
+            Q(Antibiotic__icontains=q) |
+            Q(Whonet_Abx__icontains=q) |
+            Q(Abx_code__icontains=q) |
+            Q(Guidelines__icontains=q) |
+            Q(Year__icontains=q) |
+            Q(Org__icontains=q) |
+            Q(Org_Grp__icontains=q) |
+            Q(Test_Method__icontains=q) |
+            Q(Potency__icontains=q) |
+            Q(Tier__icontains=q) |
+            Q(R_val__icontains=q) |
+            Q(I_val__icontains=q) |
+            Q(SDD_val__icontains=q) |
+            Q(S_val__icontains=q) |
+            Q(Alert_val__icontains=q)
+        ).distinct()
+
+    paginator = Paginator(breakpoints, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'home/BreakpointsView.html',{ 'breakpoints':breakpoints,  'page_obj': page_obj})
+
+    return render(
+        request,
+        'home/BreakpointsView.html',
+        {
+            'breakpoints': breakpoints,
+            'page_obj': page_obj,
+            'q': q,
+        }
+    )
 
 
 
@@ -1568,22 +1943,6 @@ def export_breakpoints(request):
     return FileResponse(open(file_path, "rb"), as_attachment=True, filename="Breakpoints_egasp.xlsx")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @login_required(login_url="/login/")
 def delete_all_breakpoints(request):
     BreakpointsTable.objects.all().delete()
@@ -1630,18 +1989,40 @@ def specimen_list(request):
     specimen_items = SpecimenTypeModel.objects.all()
     return render(request, 'home/SpecimenView.html', {'specimen_items': specimen_items})
 
-@login_required(login_url="/login/")
-# View to add or edit a specimen type
-def add_specimen(request):
-    if request.method == 'POST':
-        form = SpecimenTypeForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('add_specimen')  # Redirect after saving
-    else:
-        form = SpecimenTypeForm()  # Empty form for new specimen
+
+# @login_required(login_url="/login/")
+# # View to add or edit a specimen type
+# def add_specimen(request):
+#     if request.method == 'POST':
+#         specimen_form = SpecimenTypeForm(request.POST)
+#         if specimen_form.is_valid():
+#             specimen_form.save()
+#             return redirect('add_specimen')  # Redirect after saving
+#     else:
+#         form = SpecimenTypeForm()  # Empty form for new specimen
     
-    return render(request, 'home/Specimentype.html', {'form': form})
+#     return render(request, 'settings/tabs/specimen_tab.html', {'specimen_form': specimen_form})
+
+
+
+@login_required(login_url="/login/")
+def add_specimen(request):
+    if request.method != "POST":
+        return redirect("/settings/?tab=specimen")
+
+    specimen_form = SpecimenTypeForm(request.POST)
+
+    if specimen_form.is_valid():
+        specimen_form.save()
+        messages.success(request, "Specimen added successfully.")
+    else:
+        messages.error(request, "Failed to add specimen. Please check the form.")
+        print(specimen_form.errors)
+
+    return redirect("/settings/?tab=specimen")
+
+
+
 
 @login_required(login_url="/login/")
 # Edit an existing specimen
@@ -1707,28 +2088,47 @@ def export_Antibioticentry(request):
     return FileResponse(open(file_path, "rb"), as_attachment=True, filename="AntibioticEntry_referred.xlsx")
 
 
-@login_required(login_url="/login/")
-#Address Book
-#Contact Form not working
-def add_contact(request):
-    if request.method == "POST":
-        form = ContactForm(request.POST)  
-        if form.is_valid():           
-            form.save()  
-            messages.success(request, 'Added Successfully')
-            return redirect('add_contact')  # Redirect after successful POST
+# @login_required(login_url="/login/")
+# #Address Book
+# #Contact Form not working
+# def add_contact(request):
+#     if request.method == "POST":
+#         contact_form = ContactForm(request.POST)  
+#         if contact_form.is_valid():           
+#             contact_form.save()  
+#             messages.success(request, 'Added Successfully')
+#             return redirect('add_contact')  # Redirect after successful POST
             
             
-        else:
-            messages.error(request, 'Error / Adding Unsuccessful')
-            print(form.errors)
-    else:
-        form = ContactForm()  # Show an empty form for GET request
+#         else:
+#             messages.error(request, 'Error / Adding Unsuccessful')
+#             print(contact_form.errors)
+#     else:
+#         contact_form = ContactForm()  # Show an empty form for GET request
 
-    # Fetch clinic data from the database for dropdown options
-    contacts = arsStaff_Details.objects.all()
+#     # Fetch clinic data from the database for dropdown options
+#     contacts = arsStaff_Details.objects.all()
     
-    return render(request, 'home/Contact_Form.html', {'form': form, 'contacts': contacts})
+#     return render(request, 'settings/tab/contact_tab.html', {'contact_form': contact_form, 'contacts': contacts})
+
+
+
+@login_required(login_url="/login/")
+def add_contact(request):
+    if request.method != "POST":
+        return redirect("/settings/?tab=contact")
+
+    contact_form = ContactForm(request.POST)
+
+    if contact_form.is_valid():
+        contact_form.save()
+        messages.success(request, "Contact added successfully.")
+    else:
+        messages.error(request, "Failed to add contact. Please check the form.")
+        print(contact_form.errors)
+
+    return redirect("/settings/?tab=contact")
+
 
 
 @login_required(login_url="/login/")
@@ -1838,21 +2238,6 @@ def add_location(request, id=None):
 
 
 
-def TAT_process(request, id=None):
-    process = TATprocess.objects.all()  # Renamed 'province' to 'provinces' for clarity
-    upload_form = TATUploadForm()  
-    if request.method == "POST":
-        form = TAT_form(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Location added successfully!")
-            return redirect("TAT_process")  # Use the correct URL name
-        else:
-            messages.error(request, "Please correct the errors below.")
-    else:
-        form = TAT_form()
-
-    return render(request, "home/Add_TAT.html", {"form": form, "process": process, "upload_form": upload_form})
 
 
 
@@ -3252,55 +3637,138 @@ def generate_mapped_excel(request):
 
 ############# Antibiotics Configuration
 
+# @login_required(login_url="/login/")
+# def add_antibiotics(request, pk=None):
+#     """
+#     Add or edit antibiotic entries.
+#     - If pk provided: edit mode
+#     - Otherwise: add new
+#     """
+#     antibiotic = None
+#     abx_upload_form = Antibiotics_uploadForm()
+
+#     # --- Determine form mode ---
+#     if pk:
+#         antibiotic = get_object_or_404(Antibiotic_List, pk=pk)
+#         antibiotic_form = AntibioticsForm(request.POST or None, instance=antibiotic)
+#         editing = True
+#     else:
+#         antibiotic_form = AntibioticsForm(request.POST or None)
+#         editing = False
+
+#     # --- Handle POST ---
+#     if request.method == "POST":
+#         if antibiotic_form.is_valid():
+#             saved_antibiotic = antibiotic_form.save(commit=False)
+#             saved_antibiotic.save()
+#             if editing:
+#                 messages.success(request, f"Antibiotic '{saved_antibiotic.Antibiotic}' updated successfully.")
+#             else:
+#                 messages.success(request, f"Antibiotic '{saved_antibiotic.Antibiotic}' added successfully.")
+#             return redirect('antibiotics_view')
+#         else:
+#             messages.error(request, "Form validation failed. Please check your inputs.")
+
+#     # --- Render template ---
+#     return render(request, '/settings/#antibiotics_tab', {
+#         'form':  antibiotic_form,
+#         'editing': editing,
+#         'antibiotic': antibiotic,
+#         'abx_upload_form': abx_upload_form,
+#     })
+
+
 @login_required(login_url="/login/")
-def add_antibiotics(request, pk=None):
+def add_antibiotics(request):
     """
-    Add or edit antibiotic entries.
-    - If pk provided: edit mode
-    - Otherwise: add new
+    Add antibiotics only (no edit).
+    Upload form remains on settings page.
     """
-    antibiotic = None
-    abx_upload_form = Antibiotics_uploadForm()
 
-    # --- Determine form mode ---
-    if pk:
-        antibiotic = get_object_or_404(Antibiotic_List, pk=pk)
-        antibiotic_form = AntibioticsForm(request.POST or None, instance=antibiotic)
-        editing = True
-    else:
-        antibiotic_form = AntibioticsForm(request.POST or None)
-        editing = False
-
-    # --- Handle POST ---
     if request.method == "POST":
-        if antibiotic_form.is_valid():
-            saved_antibiotic = antibiotic_form.save(commit=False)
-            saved_antibiotic.save()
-            if editing:
-                messages.success(request, f"Antibiotic '{saved_antibiotic.Antibiotic}' updated successfully.")
-            else:
-                messages.success(request, f"Antibiotic '{saved_antibiotic.Antibiotic}' added successfully.")
-            return redirect('antibiotics_view')
+        form = AntibioticsForm(request.POST)
+
+        if form.is_valid():
+            antibiotic = form.save()
+            messages.success(
+                request,
+                f"Antibiotic '{antibiotic.Antibiotic}' added successfully."
+            )
         else:
             messages.error(request, "Form validation failed. Please check your inputs.")
 
-    # --- Render template ---
-    return render(request, 'settings/tabs/antibiotics_tab.html', {
-        'form':  antibiotic_form,
-        'editing': editing,
-        'antibiotic': antibiotic,
-        'abx_upload_form': abx_upload_form,
-    })
+    # Always go back to Settings → Antibiotics tab
+    return redirect("/settings/?tab=antibiotics")
 
 
 @login_required(login_url="/login/")
-#View existing breakpoints
+def edit_antibiotics(request, pk):
+    antibiotic = get_object_or_404(Antibiotic_List, pk=pk)
+    abx_upload_form = Antibiotics_uploadForm()  # kept, as requested
+
+    if request.method == "POST":
+        form = AntibioticsForm(request.POST, instance=antibiotic)
+
+        if form.is_valid():
+            form.save()
+            messages.success(
+                request,
+                f"Antibiotic '{antibiotic.Antibiotic}' updated successfully."
+            )
+            # Go back to settings, antibiotics tab
+            return redirect("/settings/?tab=antibiotics")
+
+        messages.error(request, "Form validation failed. Please check your inputs.")
+    else:
+        form = AntibioticsForm(instance=antibiotic)
+
+    return render(
+        request,
+        "home/Antibiotic_list.html",   # ✅ SEPARATE EDIT PAGE
+        {
+            "form": form,
+            "antibiotic": antibiotic,
+            "abx_upload_form": abx_upload_form,
+            "editing": True,        # optional, but fine for template labels
+        },
+    )
+
+
+
+
+
+@login_required(login_url="/login/")
 def antibiotics_view(request):
-    antibiotics = Antibiotic_List.objects.all().order_by('-Date_Modified')
-    paginator = Paginator(antibiotics, 20)
-    page_number = request.GET.get('page')
+    q = request.GET.get("q", "").strip()
+
+    antibiotics = Antibiotic_List.objects.all().order_by("-Date_Modified")
+
+    if q:
+        antibiotics = antibiotics.filter(
+            Q(Antibiotic__icontains=q) |
+            Q(Whonet_Abx__icontains=q) |
+            Q(Abx_code__icontains=q) |
+            Q(Guidelines__icontains=q) |
+            Q(Test_Method__icontains=q) |
+            Q(Potency__icontains=q) |
+            Q(Tier__icontains=q) |
+            Q(Class__icontains=q) |
+            Q(Subclass__icontains=q)
+        )
+
+    paginator = Paginator(antibiotics, 25)
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
-    return render(request, 'home/Antibiotic_View.html',{ 'antibiotics':antibiotics,  'page_obj': page_obj})
+
+    return render(
+        request,
+        "home/Antibiotic_View.html",
+        {
+            "antibiotics": antibiotics,
+            "page_obj": page_obj,
+            "q": q,
+        },
+    )
 
 
 
@@ -3431,6 +3899,9 @@ def export_antibiotics(request):
     # Return the file as a response
     return FileResponse(open(file_path, "rb"), as_attachment=True, filename="Antibiotic_list.xlsx")
 
+
+
+
 @login_required(login_url="/login/")
 def delete_all_antibiotics(request):
     Antibiotic_List.objects.all().delete()
@@ -3442,42 +3913,94 @@ def delete_all_antibiotics(request):
 
 ######################## Organism 
 
-@login_required(login_url="/login/")
-def add_organism(request, pk=None):
-    organism = None  # Initialize organism to avoid UnboundLocalError
-    upload_form = Organism_uploadForm()
 
-    if pk:  # Editing an existing organism
-        organism = get_object_or_404(Organism_List, pk=pk)
-        form = OrganismForm(request.POST or None, instance=organism)
-        editing = True
-    else:  # Adding a new organism
-        form = OrganismForm(request.POST or None)
-        editing = False
+@login_required(login_url="/login/")
+def add_organism(request):
 
     if request.method == "POST":
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Update Successful")
-            return redirect('organism_view')  # Redirect to avoid form resubmission
+        org_form = OrganismForm(request.POST)
 
-    return render(request, 'home/Organism.html', {
-        'form': form,
-        'editing': editing,  # Pass editing flag to template
-        'organism': organism,  
-        'upload_form': upload_form,
+        if org_form.is_valid():
+            org_form.save()
+            messages.success(request, "Organism added successfully.")
+        else:
+            messages.error(request, "Form validation failed. Please check your inputs.")
+
+    # Always return to Settings → Organisms tab
+    return redirect("/settings/?tab=organisms")
+
+
+
+@login_required(login_url="/login/")
+def edit_organism(request, pk):
+    organism = get_object_or_404(Organism_List, pk=pk)
+    org_upload_form = Organism_uploadForm()  # keep upload support
+
+    if request.method == "POST":
+        org_form = OrganismForm(request.POST, instance=organism)
+
+        if org_form.is_valid():
+            org_form.save()
+            messages.success(request, "Organism updated successfully.")
+            return redirect("/settings/?tab=organisms")
+
+        messages.error(request, "Form validation failed. Please check your inputs.")
+    else:
+        org_form = OrganismForm(instance=organism)
+
+    return render(request, "home/Organism.html", {
+        "org_form": org_form,
+        "organism": organism,
+        "org_upload_form": org_upload_form,
     })
 
 
 
+# @login_required(login_url="/login/")
+# #View existing breakpoints
+# def view_organism(request):
+#     organism = Organism_List.objects.all().order_by('Whonet_Org_Code')
+#     paginator = Paginator(organism, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+#     return render(request, 'home/Organism_view.html',{ 'organisms':organism,  'page_obj': page_obj})
+
+
+
 @login_required(login_url="/login/")
-#View existing breakpoints
 def view_organism(request):
-    organism = Organism_List.objects.all().order_by('Whonet_Org_Code')
-    paginator = Paginator(organism, 20)
-    page_number = request.GET.get('page')
+    q = request.GET.get("q", "").strip()
+
+    organisms = Organism_List.objects.all()
+
+    if q:
+        organisms = organisms.filter(
+            Q(Organism__icontains=q) |
+            Q(Whonet_Org_Code__icontains=q) |
+            Q(Genus_Group__icontains=q) |
+            Q(Genus_Code__icontains=q) |
+            Q(Species_Group__icontains=q) |
+            Q(Serovar_Group__icontains=q) |
+            Q(Organism_Type__icontains=q) |
+            Q(Kingdom__icontains=q) |
+            Q(Phylum__icontains=q) |
+            Q(Class__icontains=q) |
+            Q(Order__icontains=q) |
+            Q(Family_Code__icontains=q)
+        )
+
+    paginator = Paginator(organisms, 25)
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
-    return render(request, 'home/Organism_view.html',{ 'organisms':organism,  'page_obj': page_obj})
+
+    return render(request, "home/Organism_view.html", {
+        "page_obj": page_obj,
+        "organisms": organisms,
+        "search_query": q,
+    })
+
+
+
 
 
 @login_required(login_url="/login/")
@@ -3501,10 +4024,10 @@ def del_all_organism(request):
 def upload_organisms(request):
 
     if request.method == "POST":
-        upload_form = Organism_uploadForm(request.POST, request.FILES)
+        org_upload_form = Organism_uploadForm(request.POST, request.FILES)
 
-        if upload_form.is_valid():
-            uploaded_file = upload_form.save()
+        if org_upload_form.is_valid():
+            uploaded_file = org_upload_form.save()
             file = uploaded_file.File_uploadOrg
 
             try:
@@ -3563,12 +4086,52 @@ def upload_organisms(request):
             messages.error(request, "Upload form is not valid.")
 
     else:
-        upload_form = Organism_uploadForm()
+        org_upload_form = Organism_uploadForm()
 
-    return render(request, "home/Organism.html", {
-        "upload_form": upload_form
+    return render(request, "Settings.html", {
+        "org_upload_form": org_upload_form
     })
 
+
+
+
+@login_required(login_url="/login/")
+#for exporting into excel
+def export_organisms(request):
+    objects = Organism_List.objects.all()
+    data = []
+
+    for obj in objects:
+        data.append({
+            "Whonet_Org_Code": obj.Whonet_Org_Code or "",
+            "Organism": obj.Organism or "",
+            "Organism_Type": obj.Organism_Type or "",
+            "Replaced_by": obj.Replaced_by or "",
+
+            "Family_Code": obj.Family_Code or "",
+            "Genus_Group": obj.Genus_Group or "",
+            "Genus_Code": obj.Genus_Code or "",
+            "Species_Group": obj.Species_Group or "",
+            "Serovar_Group": obj.Serovar_Group or "",
+
+            "Kingdom": obj.Kingdom or "",
+            "Phylum": obj.Phylum or "",
+            "Class": obj.Class or "",
+            "Order": obj.Order or "",
+            "Family": obj.Family or "",
+            "Genus": obj.Genus or "",
+        })
+
+    
+    # Define file path
+    file_path = "Organism_list.xlsx"
+
+    # Convert data to DataFrame and save as Excel
+    df = pd.DataFrame(data)
+    df.to_excel(file_path, index=False)
+
+    # Return the file as a response
+    return FileResponse(open(file_path, "rb"), as_attachment=True, filename="Organism_list.xlsx")
 
 
 @login_required(login_url="/login/")
@@ -3592,3 +4155,20 @@ def get_organism_name(request):
     return JsonResponse({field_key: org[field_key]})
 
 
+############ TAT Process Configuration
+@login_required(login_url="/login/")
+def TAT_process(request, id=None):
+    process = TATprocess.objects.all()  # Renamed 'province' to 'provinces' for clarity
+    upload_form = TATUploadForm()  
+    if request.method == "POST":
+        form = TAT_form(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Location added successfully!")
+            return redirect("TAT_process")  # Use the correct URL name
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = TAT_form()
+
+    return render(request, "home/Add_TAT.html", {"form": form, "process": process, "upload_form": upload_form})

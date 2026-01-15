@@ -1,288 +1,241 @@
 {% load static %}
 {% load widget_tweaks %}
 
-{% block stylesheets %}
-<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
-<link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
-<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
-{% endblock stylesheets %}
-
 {% block settings_content %}
 
-<div class="settings-page-tab">   <!-- NEW wrapper to avoid CSS bleed -->
+<!--
+  IMPORTANT RULES FOLLOWED:
+  - No page-level wrapper
+  - No settings-page-tab
+  - No container / tab-content
+  - Bootstrap-5 grid only (row, col-*)
+-->
 
-    <div class="card shadow-sm">
+<div class="card shadow-sm">
 
-        <!-- HEADER – keep original colors -->
-        <div class="card-header d-flex justify-content-between align-items-center"
-             style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
-                    border-bottom: 2px solid #d1e8ed;">
+    <!-- HEADER -->
+    <div class="card-header d-flex justify-content-between align-items-center"
+         style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+                border-bottom: 2px solid #d1e8ed;">
 
-            <h5 class="card-title" >
-                <i class="fas fa-chart-line mr-2"></i>
-                {% if editing %}Edit{% else %}Create New{% endif %} Breakpoint
-            </h5>
+        <h5 class="card-title mb-0">
+            <i class="fas fa-chart-line mr-2"></i>
+            {% if editing %}Edit{% else %}Create New{% endif %} Breakpoint
+        </h5>
 
-            <a href="{% url 'breakpoints_view' %}" class="btn btn-sm btn-primary">
-                <i class="fas fa-table mr-1"></i> View All
-            </a>
-        </div>
+        <a href="{% url 'breakpoints_view' %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-table mr-1"></i> View All
+        </a>
+    </div>
 
-        <div class="card-body">
+    <!-- BODY -->
+    <div class="card-body">
 
             <form method="POST"
-                  action="{% if editing %}{% url 'edit_breakpoints' pk=breakpoint_form.instance.pk %}
-                         {% else %}{% url 'add_breakpoints' %}{% endif %}"
-                  id="breakpointsform">
+                action="{% if editing and breakpoint %}
+                            {% url 'edit_breakpoints' pk=breakpoint.pk %}
+                        {% else %}
+                            {% url 'add_breakpoints' %}
+                        {% endif %}">
 
-                {% csrf_token %}
+            {% csrf_token %}
 
-                <!-- Upload & Disk Method -->
-                <div class="form-row mb-4">
+            <!-- Upload + Disk -->
+            <div class="row mb-4">
 
-                    <div class="col-md-6">
-                        <button type="button" class="btn btn-secondary"
-                                data-toggle="modal" data-target="#UploadBreakpointsModal">
-                            <i class="fas fa-file-upload mr-1"></i> Upload CSV/Excel
-                        </button>
-                    </div>
-
-                    <div class="col-md-6 text-right">
-                        <label class="font-weight-bold">
-                            <input type="checkbox" name="Disk_Abx"
-                                   {% if breakpoint_form.Disk_Abx.value %}checked{% endif %}
-                                   class="mr-2">
-                            Disk Diffusion Method
-                        </label>
-                    </div>
-
-                </div>
-
-                <!-- Guidelines section -->
-                <div class="section-divider">Guidelines & Methods</div>
-
-                <div class="form-row">
-                    <div class="form-group col-md-4">
-                        <label class="form-control-label">Guidelines</label>
-                        {{ breakpoint_form.Guidelines|append_attr:"class: form-control" }}
-                    </div>
-
-                    <div class="form-group col-md-4">
-                        <label class="form-control-label">Year</label>
-                        {{ breakpoint_form.Year|append_attr:"class: form-control"|attr:"placeholder:e.g. 2024" }}
-                    </div>
-
-                    <div class="form-group col-md-4">
-                        <label class="form-control-label">Test Method</label>
-                        {{ breakpoint_form.Test_Method|append_attr:"class: form-control" }}
-                    </div>
-                </div>
-
-                <!-- Organism section -->
-                <div class="section-divider">Organism Assignment</div>
-
-                <div class="form-row">
-                    <div class="form-group col-md-6">
-                        <label>Organism Code</label>
-                        {{ breakpoint_form.Org|append_attr:"class: form-control" }}
-                    </div>
-
-                    <div class="form-group col-md-6">
-                        <label>Organism Group</label>
-                        {{ breakpoint_form.Org_Grp|append_attr:"class: form-control" }}
-                    </div>
-                </div>
-
-                <!-- Antibiotic section -->
-                <div class="section-divider">Antibiotic Information</div>
-
-                <div class="form-row">
-                    
-                    <div class="form-group col-md-6">
-                        <label>Antibiotic Code</label>
-                        {{ breakpoint_form.Abx_code|append_attr:"class: form-control"|attr:"placeholder:e.g. CFM" }}
-                    </div>
-
-                    <div class="form-group col-md-6">
-                        <label>Antibiotic Name</label>
-                        {{ breakpoint_form.Antibiotic|append_attr:"class: form-control"|attr:"placeholder:e.g. Cefixime" }}
-                    </div>
-
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group col-md-4">
-                        <label>Potency</label>
-                        {{ breakpoint_form.Potency|append_attr:"class: form-control"|attr:"placeholder:e.g. 30µg" }}
-                    </div>
-
-                    <div class="form-group col-md-4">
-                        <label>WHONET Code</label>
-                        {{ breakpoint_form.Whonet_Abx|append_attr:"class: form-control"|attr:"placeholder:e.g. CFM_ND30" }}
-                    </div>
-
-                    <div class="form-group col-md-4">
-                        <label>Tier</label>
-                        {{ breakpoint_form.Tier|append_attr:"class: form-control" }}
-                    </div>
-                </div>
-
-                <!-- Alert Value -->
-                <div class="form-group">
-                    <label>Alert Value</label>
-                    {{ breakpoint_form.Alert_val|append_attr:"class: form-control" }}
-                </div>
-
-                <!-- Breakpoint Values -->
-                <div class="section-divider">Breakpoint Values</div>
-
-                <div class="form-row">
-
-                    <div class="form-group col-md-3">
-                        <label class="text-danger font-weight-bold">Resistant (≤)</label>
-                        {{ breakpoint_form.R_val|append_attr:"class: form-control"|attr:"style:border-color:#d97c7c;" }}
-                    </div>
-
-                    <div class="form-group col-md-3">
-                        <label class="text-warning font-weight-bold">Intermediate</label>
-                        {{ breakpoint_form.I_val|append_attr:"class: form-control"|attr:"style:border-color:#e6c86b;" }}
-                    </div>
-
-                    <div class="form-group col-md-3">
-                        <label class="text-info font-weight-bold">SDD</label>
-                        {{ breakpoint_form.SDD_val|append_attr:"class: form-control"|attr:"style:border-color:#7eb8d4;" }}
-                    </div>
-
-                    <div class="form-group col-md-3">
-                        <label class="text-success font-weight-bold">Susceptible (≥)</label>
-                        {{ breakpoint_form.S_val|append_attr:"class: form-control"|attr:"style:border-color:#7ec97e;" }}
-                    </div>
-
-                </div>
-
-                <!-- Buttons -->
-                <div class="d-flex justify-content-end gap-3 mt-4 flex-wrap">
-
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save mr-2"></i>
-                        {% if editing %}Update{% else %}Save{% endif %} Breakpoint
+                <div class="col-md-6">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-toggle="modal"
+                            data-target="#UploadBreakpointsModal">
+                        <i class="fas fa-file-upload mr-1"></i> Upload CSV / Excel
                     </button>
-                            
-                <button type="button"
-                        onclick="document.getElementById('breakpointsform').reset()"
-                        class="btn btn-secondary px-4 ml-2">
-                    Clear Form
+                </div>
+
+                <div class="col-md-6 text-md-right mt-3 mt-md-0">
+                    <label class="font-weight-bold mb-0">
+                        <input type="checkbox"
+                               name="Disk_Abx"
+                               class="mr-2"
+                               {% if breakpoint_form.Disk_Abx.value %}checked{% endif %}>
+                        Disk Diffusion Method
+                    </label>
+                </div>
+
+            </div>
+
+            <!-- Guidelines -->
+            <div class="section-divider">Guidelines & Methods</div>
+
+            <div class="row">
+
+                <div class="col-md-4 mb-3">
+                    <label>Guidelines</label>
+                    {{ breakpoint_form.Guidelines|append_attr:"class: form-control" }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label>Year</label>
+                    {{ breakpoint_form.Year|append_attr:"class: form-control"|attr:"placeholder:e.g. 2024" }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label>Test Method</label>
+                    {{ breakpoint_form.Test_Method|append_attr:"class: form-control" }}
+                </div>
+
+            </div>
+
+            <!-- Organism -->
+            <div class="section-divider">Organism Assignment</div>
+
+            <div class="row">
+
+                <div class="col-md-6 mb-3">
+                    <label>Organism Code</label>
+                    {{ breakpoint_form.Org|append_attr:"class: form-control" }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label>Organism Group</label>
+                    {{ breakpoint_form.Org_Grp|append_attr:"class: form-control" }}
+                </div>
+
+            </div>
+
+            <!-- Antibiotic -->
+            <div class="section-divider">Antibiotic Information</div>
+
+            <div class="row">
+
+                <div class="col-md-6 mb-3">
+                    <label>Antibiotic Code</label>
+                    {{ breakpoint_form.Abx_code|append_attr:"class: form-control"|attr:"placeholder:e.g. CFM" }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label>Antibiotic Name</label>
+                    {{ breakpoint_form.Antibiotic|append_attr:"class: form-control"|attr:"placeholder:e.g. Cefixime" }}
+                </div>
+
+            </div>
+
+            <div class="row">
+
+                <div class="col-md-4 mb-3">
+                    <label>Potency</label>
+                    {{ breakpoint_form.Potency|append_attr:"class: form-control"|attr:"placeholder:e.g. 30" }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label>WHONET Code</label>
+                    {{ breakpoint_form.Whonet_Abx|append_attr:"class: form-control"|attr:"placeholder:e.g. CFM_ND30" }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label>Tier</label>
+                    {{ breakpoint_form.Tier|append_attr:"class: form-control" }}
+                </div>
+
+            </div>
+
+            <!-- Alert -->
+            <div class="mb-3">
+                <label>Alert Value</label>
+                {{ breakpoint_form.Alert_val|append_attr:"class: form-control" }}
+            </div>
+
+            <!-- Breakpoints -->
+            <div class="section-divider">Breakpoint Values</div>
+
+            <div class="row">
+
+                <div class="col-md-3 mb-3">
+                    <label class="text-danger font-weight-bold">Resistant (≤)</label>
+                    {{ breakpoint_form.R_val|append_attr:"class: form-control"|attr:"style:border-color:#d97c7c;" }}
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="text-warning font-weight-bold">Intermediate</label>
+                    {{ breakpoint_form.I_val|append_attr:"class: form-control"|attr:"style:border-color:#e6c86b;" }}
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="text-info font-weight-bold">SDD</label>
+                    {{ breakpoint_form.SDD_val|append_attr:"class: form-control"|attr:"style:border-color:#7eb8d4;" }}
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="text-success font-weight-bold">Susceptible (≥)</label>
+                    {{ breakpoint_form.S_val|append_attr:"class: form-control"|attr:"style:border-color:#7ec97e;" }}
+                </div>
+
+            </div>
+
+            <!-- Buttons -->
+            <div class="d-flex justify-content-end gap-3 mt-4 flex-wrap">
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save mr-2"></i>
+                    {% if editing %}Update{% else %}Save{% endif %} Breakpoint
                 </button>
 
+                <button type="button"
+                        onclick="document.getElementById('breakpointsform').reset()"
+                        class="btn btn-secondary">
+                    Clear
+                </button>
 
+            </div>
 
-                </div>
+        </form>
 
-            </form>
-        </div>
     </div>
 </div>
-
-
-<!-- BACK TO TOP -->
-<div class="float-right mt-3">
-    <button type="button" onclick="topFunction()" id="myBtn" class="btn btn-primary btn-sm">
-        <i class="fas fa-arrow-up mr-1"></i>Back to Top
-    </button>
-</div>
-
 
 <!-- UPLOAD MODAL -->
 <div class="modal fade" id="UploadBreakpointsModal" tabindex="-1">
-  <form method="POST" action="{% url 'upload_breakpoints' %}" enctype="multipart/form-data"
-        onsubmit="return confirmOverwrite();">
+    <form method="POST"
+          action="{% url 'upload_breakpoints' %}"
+          enctype="multipart/form-data"
+          onsubmit="return confirmOverwrite();">
 
-    {% csrf_token %}
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content" style="border-top:4px solid #2d9cad;">
+        {% csrf_token %}
 
-        <div class="modal-header"
-             style="background:linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
-                    border-bottom:2px solid #d1e8ed;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-top:4px solid #2d9cad;">
 
-          <h5 class="modal-title" style="color:#1a7a8e;font-weight:600;">
-            <i class="fas fa-file-upload mr-2"></i>Upload Breakpoints
-          </h5>
+                <div class="modal-header"
+                     style="background: linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
+                            border-bottom:2px solid #d1e8ed;">
 
-          <button type="button" class="close" data-dismiss="modal">
-            <span>&times;</span>
-          </button>
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-upload mr-2"></i> Upload Breakpoints
+                    </h5>
+
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    {{ bp_upload_form.File_uploadBP }}
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+
+            </div>
         </div>
-
-        <div class="modal-body">
-          <div class="alert"
-              style="background:linear-gradient(135deg,#fff3cd 0%,#ffeaa7 100%);
-                     border-left:4px solid #e6c86b; color:#856404;">
-            <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>Warning:</strong> Uploading will replace all existing breakpoints.
-          </div>
-
-        <label> <i class="fas fa-file-csv mr-1"></i><strong>Select CSV/Excel File</strong></label>
-
-          {{ bp_upload_form.File_uploadBP }}
-        </div>
-
-        <div class="modal-footer" style="background:#f8fcfd;">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-upload mr-1"></i> Upload File
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </form>
+    </form>
 </div>
 
-
 <script>
-
 function confirmOverwrite() {
-  return confirm("⚠️ WARNING: Uploading will replace all existing breakpoints. Are you sure you want to proceed?");
+    return confirm("⚠️ Uploading will replace all existing breakpoints. Continue?");
 }
-
-
-</script>
-
-<script>
-      // Scroll to top functionality
-  const mybutton = document.getElementById("myBtn");
-  window.onscroll = function() {
-    mybutton.style.display = (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) ? "block" : "none";
-  };
-
-  function topFunction() {
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-  }
-
-</script>
-
-<script>
-$(document).ready(function () {
-    $("#id_Abx_code").change(function () {
-        var selectedWhonetCode = $(this).val();
-
-        if (selectedWhonetCode) {
-            $.ajax({
-                url: "{% url 'get_antibiotic_name' %}",
-                data: { whonet: selectedWhonetCode },
-                success: function (data) {
-                    $("#id_Antibiotic").val(data.name);
-                }
-            });
-        } else {
-            $("#id_Antibiotic").val("");
-        }
-    });
-});
 </script>
 
 {% endblock settings_content %}
-
-

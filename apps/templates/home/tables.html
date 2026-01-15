@@ -1,6 +1,7 @@
 {% extends 'layouts/base.html' %}
 {% load static %}
 {% load widget_tweaks %}
+{% load custom_filters %}
 
 {% block title %} View Records {% endblock title %}
 
@@ -64,7 +65,7 @@
 </div>
 
 <!-- Page Content -->
-<div class="container-fluid mt-5">
+<div class="container-fluid" style="padding-top: 20px;">
   <div class="row justify-content-center">
     <div class="col-lg-12 col-md-12">
       <!-- Main Card -->
@@ -180,7 +181,7 @@
                 </tr>
               </thead>
 
-              <tbody class="list">
+              <tbody class="list table" >
                 {% for isolate in page_obj %}
                 <tr class="searchable-row"
                     data-search-text="{{ isolate.AccessionNo }} {{ isolate.First_Name }} {{ isolate.Last_Name }} {{ isolate.Spec_Type }}">
@@ -249,64 +250,94 @@
 
                   <!-- DATE COLUMN -->
                   <td class="text-center">
-                    <small class="text-muted">{{ isolate.Date_of_Entry|date:"M d, Y" }}</small>
+                    <medium class="text-muted">{{ isolate.Date_of_Entry|date:"M d, Y" }}</medium>
                   </td>
+                      <td colspan="4">
+                        {% for antibiotic_entry in isolate.antibiotic_entries.all %}
+                          {% if antibiotic_entry.ab_Disk_value or antibiotic_entry.ab_MIC_value %}
+                                  
+                                  <strong>{{ antibiotic_entry.ab_Antibiotic }}</strong> (
 
-                  <!-- ANTIBIOTICS COLUMN -->
-                  <td colspan="4">
-                    <div class="antibiotic-results small">
-                      {% for antibiotic_entry in isolate.antibiotic_entries.all %}
-                          {% if antibiotic_entry.ab_Disk_value %}
-                            <div class="result-item">
-                              <strong>{{ antibiotic_entry.ab_Antibiotic }}</strong>
-                              <span class="text-muted">(Disk: {{ antibiotic_entry.ab_Disk_value }} {{ antibiotic_entry.ab_Disk_enRIS }})</span>
-                              <span class="badge badge-danger">{{ antibiotic_entry.ab_Disk_RIS }}</span>
-                            </div>
-                          {% endif %}
+                                  {# ---------- DISK BLOCK ---------- #}
+                                  {% if antibiotic_entry.ab_Disk_value %}
+                                      Disk: <strong>{{ antibiotic_entry.ab_Disk_value }}</strong>
+                                  {% endif %}
+                                  {% if antibiotic_entry.ab_Disk_enRIS%}
+                                    <strong>{{ antibiotic_entry.ab_Disk_enRIS }}</strong> ) &nbsp;
+                                      <strong class="text-danger">{{ antibiotic_entry.ab_Disk_RIS }}</strong>
+                                  {% endif %}
+                                  {# Add comma if both Disk & MIC exist #}
+                                  {% if antibiotic_entry.ab_Disk_value and antibiotic_entry.ab_MIC_value %}
+                                      , 
+                                  {% endif %}
+                            
 
-                          {% if antibiotic_entry.ab_MIC_value %}
-                            <div class="result-item">
-                              <strong>{{ antibiotic_entry.ab_Antibiotic }}</strong>
-                              <span class="text-muted">(MIC: {{ antibiotic_entry.ab_MIC_operand }} {{ antibiotic_entry.ab_MIC_value }} {{ antibiotic_entry.ab_MIC_enRIS }})</span>
-                              <span class="badge badge-danger">{{ antibiotic_entry.ab_MIC_RIS }}</span>
-                              {% if antibiotic_entry.ab_AlertMIC %}
-                                <span class="badge badge-warning">Alert: {{ antibiotic_entry.ab_Alert_val }}</span>
+                                  {# ---------- MIC BLOCK ---------- #}
+                                  {% if antibiotic_entry.ab_MIC_value %}
+                                      MIC: 
+                                      <strong>
+                                          {% if antibiotic_entry.ab_MIC_operand %}
+                                              {{ antibiotic_entry.ab_MIC_operand }}
+                                          {% endif %}
+                                          {% if antibiotic_entry.ab_MIC_value %}
+                                          {{ antibiotic_entry.ab_MIC_value }}
+                                           {% endif %}
+                                      </strong>
+                                      {% if antibiotic_entry.ab_MIC_enRIS %}
+                                      <strong>{{ antibiotic_entry.ab_MIC_enRIS }}</strong> )
+                                      &nbsp;<strong class="text-danger">{{ antibiotic_entry.ab_MIC_RIS }}</strong>
+                                      {% endif %}
+                                      {% if antibiotic_entry.ab_AlertMIC %}
+                                          &nbsp; <strong class="text-info">Alert:</strong>
+                                          {{ antibiotic_entry.ab_Alert_val }}
+                                      {% endif %}
+                                  {% endif %}
+                                  <br>
                               {% endif %}
-                            </div>
-                          {% endif %}
-                      {% empty %}
-                        <small class="text-muted"><em>No Site Result</em>&nbsp;</small>
-                      {% endfor %}
+                          {% empty %}
+                              No Antibiotic Data
+                          {% endfor %}
 
-                      {% for retest_entry in isolate.antibiotic_entries.all %}
-                          {% if retest_entry.ab_Retest_DiskValue %}
-                            <div class="result-item">
-                              <strong class="text-info">{{ retest_entry.ab_Retest_Antibiotic }}</strong>
-                              <span class="text-muted">(ARS Disk: {{ retest_entry.ab_Retest_DiskValue }} {{ retest_entry.ab_Retest_Disk_enRIS }})</span>
-                              <span class="badge badge-danger">{{ retest_entry.ab_Retest_Disk_RIS }}</span>
-                            </div>
-                          {% endif %}
+                         <!-- Retest section -->
+                          {% for retest in isolate.antibiotic_entries.all %}
+                              {% if retest.ab_Retest_DiskValue or retest.ab_Retest_MICValue %}
 
-                          {% if retest_entry.ab_Retest_MICValue %}
-                            <div class="result-item">
-                              <strong class="text-info">{{ retest_entry.ab_Retest_Antibiotic }}</strong>
-                              <span class="text-muted">(ARS MIC: {{ retest_entry.ab_Retest_MIC_operand }} {{ retest_entry.ab_Retest_MICValue }} {{ retest_entry.ab_Retest_MIC_enRIS }})</span>
-                              <span class="badge badge-danger">{{ retest_entry.ab_Retest_MIC_RIS }}</span>
-                              {% if retest_entry.ab_Retest_AlertMIC %}
-                                <span class="badge badge-warning">Alert: {{ retest_entry.ab_Retest_Alert_val }}</span>
+                                  <strong>{{ retest.ab_Retest_Antibiotic }}</strong> (
+
+                                  {% if retest.ab_Retest_DiskValue %}
+                                      Retest Disk: <strong>{{ retest.ab_Retest_DiskValue }}</strong>
+                                      <strong class="text-danger">{{ retest.ab_Retest_Disk_RIS }}</strong>
+                                  {% endif %}
+
+                                  {% if retest.ab_Retest_DiskValue and retest.ab_Retest_MICValue %}, {% endif %}
+
+                                  {% if retest.ab_Retest_MICValue %}
+                                      Retest MIC:
+                                      <strong>
+                                          {% if retest.ab_Retest_MIC_operand %}
+                                              {{ retest.ab_Retest_MIC_operand }}
+                                          {% endif %}
+                                          {{ retest.ab_Retest_MICValue }}
+                                      </strong>
+                                      <strong class="text-danger">{{ retest.ab_Retest_MIC_RIS }}</strong>
+
+                                      {% if retest.ab_Retest_AlertMIC %}
+                                          &nbsp; <strong class="text-info">Alert:</strong>
+                                          {{ retest.ab_Retest_Alert_val }}
+                                      {% endif %}
+                                  {% endif %}
+                                  )
+                                  <br>
                               {% endif %}
-                            </div>
-                          {% endif %}
-                      {% empty %}
-                        <small class="text-muted"><em>No ARS Result</em></small>
-                      {% endfor %}
-                    </div>
-                  </td>
+                          {% empty %}
+                              No Retest Done
+                          {% endfor %}
+                        </td>
 
                   <!-- PRINT COLUMN -->
                   <td class="text-center">
                     <div class="btn-group btn-group-sm" role="group">
-                      <a href="{% url 'generate_pdf' isolate.id %}" class="btn btn-outline-info" title="Generate Lab Result PDF">
+                      <a href="{% url 'generate_pdf' isolate.id %}" class="btn btn-outline-info" title="Generate Lab Result PDF" target="_blank">
                         <i class="fa fa-file-pdf"></i>
                       </a>
                       <a href="{% url 'generate_gs' isolate.id %}" class="btn btn-outline-success" title="Generate Gram Stain">

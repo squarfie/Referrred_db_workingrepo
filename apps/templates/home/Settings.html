@@ -25,44 +25,45 @@
                     <h5 class="card-title mb-0" >Configuration Menu</h5>
                 </div>
 
-                <div class="list-group list-group-flush" role="tablist">
+                        <div class="list-group list-group-flush" role="tablist">
 
-                    <a class="list-group-item list-group-item-action active"
-                       data-toggle="list" href="#organism_tab" role="tab">
-                        <i class="fa fa-bug mr-2"></i> Organisms
-                    </a>
+                        <a class="list-group-item list-group-item-action active"
+                            data-toggle="list" href="#organism_tab" role="tab">
+                            <i class="fa fa-bug mr-2"></i> Organisms
+                        </a>
 
-                    <a class="list-group-item list-group-item-action"
-                       data-toggle="list" href="#antibiotics_tab" role="tab">
-                        <i class="fas fa-pills mr-2"></i> Antibiotics
-                    </a>
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#antibiotics_tab" role="tab">
+                            <i class="fas fa-pills mr-2"></i> Antibiotics
+                        </a>
 
-                    <a class="list-group-item list-group-item-action"
-                       data-toggle="list" href="#breakpoints_tab" role="tab">
-                        <i class="fas fa-chart-line mr-2"></i> Breakpoints
-                    </a>
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#breakpoints_tab" role="tab">
+                            <i class="fas fa-chart-line mr-2"></i> Breakpoints
+                        </a>
 
-                    <a class="list-group-item list-group-item-action"
-                       data-toggle="list" href="#sitecode_tab" role="tab">
-                        <i class="fas fa-hospital mr-2"></i> Site Code
-                    </a>
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#sitecode_tab" role="tab">
+                            <i class="fas fa-hospital mr-2"></i> Site Code
+                        </a>
 
-                    <a class="list-group-item list-group-item-action"
-                       data-toggle="list" href="#specimen_tab" role="tab">
-                        <i class="fas fa-vial mr-2"></i> Specimen Types
-                    </a>
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#specimen_tab" role="tab">
+                            <i class="fas fa-vial mr-2"></i> Specimen Types
+                        </a>
 
-                    <a class="list-group-item list-group-item-action"
-                       data-toggle="list" href="#contact_tab" role="tab">
-                        <i class="fas fa-user-md mr-2"></i> ARSP Staff
-                    </a>
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#contact_tab" role="tab">
+                            <i class="fas fa-user-md mr-2"></i> ARSP Staff
+                        </a>
 
-                    <a class="list-group-item list-group-item-action"
-                       data-toggle="list" href="#tat_tab" role="tab">
-                        <i class="fas fa-clock mr-2"></i> TAT Process
-                    </a>
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#tat_tab" role="tab">
+                            <i class="fas fa-clock mr-2"></i> TAT Process
+                        </a>
 
-                </div>
+                        </div>
+
             </div>
 
         </div>
@@ -70,7 +71,10 @@
         <!-- RIGHT CONTENT AREA -->
         <div class="col-md-8 col-lg-9">
 
-              <div class="tab-content settings-tab-content">
+        <div id="settings-page" class="settings-container">
+
+            <div class="tab-content settings-tab-content">
+
 
                 <!-- Organisms -->
                 <div class="tab-pane fade show active" id="organism_tab" role="tabpanel">
@@ -109,10 +113,25 @@
                 </div>
 
             </div>
+        </div>
 
         </div>
 
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+
+    if (tab) {
+        const trigger = document.querySelector(
+            `a[data-toggle="list"][href="#${tab}_tab"]`
+        );
+        if (trigger) trigger.click();
+    }
+});
+</script>
 
 {% endblock %}

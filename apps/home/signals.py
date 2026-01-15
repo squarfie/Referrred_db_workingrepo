@@ -3,97 +3,182 @@ from django.dispatch import receiver
 from .models import AntibioticEntry, Referred_Data
 import re
 
+# def determine_ris(value, r_breakpoint, i_breakpoint, s_breakpoint, sdd_breakpoint, is_disk=False):
+
+
+#     # Ensure value and at least one of the breakpoints are provided
+#     if value is not None and (r_breakpoint is not None or s_breakpoint is not None or i_breakpoint is not None or sdd_breakpoint is not None):
+#          # Convert breakpoint values from string to numbers
+#         try:
+#             value = int(value) if is_disk else float(value)  # Convert to int for disk, float otherwise
+#         except ValueError:
+#             return None  # Handle cases where the value cannot be converted
+
+#         # Check if the intermediate breakpoint is a range (e.g., "24-27")
+#         if i_breakpoint is not None:
+#             try:
+#                 if "-" in str(i_breakpoint):
+#                     lower, upper = map(int if is_disk else float, str(i_breakpoint).split("-"))
+#                     if lower <= value <= upper:
+#                         return "I"
+#                 else:
+#                     i_breakpoint = int(i_breakpoint) if is_disk and i_breakpoint and i_breakpoint.strip().isdigit() else float(i_breakpoint) if i_breakpoint else None
+#                     if value == i_breakpoint:
+#                         return "I"
+#             except ValueError:
+#                 pass
+
+#       # For SDD breakpoint
+#         if sdd_breakpoint is not None:
+#             try:
+#                 sdd_breakpoint = int(sdd_breakpoint) if is_disk and sdd_breakpoint and sdd_breakpoint.strip().isdigit() else float(sdd_breakpoint) if sdd_breakpoint else None
+#             except ValueError:
+#                 return None  # Return None if conversion fails
+            
+#             if value == sdd_breakpoint:
+#                 return "SDD"
+
+            
+#         # If both r_breakpoint and s_breakpoint are provided, compare the value
+#         if r_breakpoint is not None and s_breakpoint is not None:
+#             try:
+#                 r_breakpoint = int(r_breakpoint) if is_disk and r_breakpoint and r_breakpoint.strip().isdigit() else float(r_breakpoint) if r_breakpoint else None
+#                 s_breakpoint = int(s_breakpoint) if is_disk and s_breakpoint and s_breakpoint.strip().isdigit() else float(s_breakpoint) if s_breakpoint else None
+#             except ValueError:
+#                 return None  # Handle cases where the breakpoints cannot be converted
+#             if is_disk:
+#                 if value <= r_breakpoint:
+#                     return "R"  
+#                 elif value >= s_breakpoint:
+#                     return "S" 
+#                 else:
+#                     return "I"  # Intermediate if value is between the two breakpoints
+#             else:
+#                 if value >= r_breakpoint: # if MIC antibiotic
+#                     return "R"
+#                 elif value <= s_breakpoint:
+#                     return "S"
+#                 else:
+#                     return "I"
+            
+#         # If only s_breakpoint is provided, use it for comparison
+#         if s_breakpoint is not None:
+#             try:
+#                  s_breakpoint = int(s_breakpoint) if is_disk and s_breakpoint and s_breakpoint.strip().isdigit() else float(s_breakpoint) if s_breakpoint else None
+#             except ValueError:
+#                 return None  # Handle cases where the breakpoint cannot be converted
+#             if is_disk:
+#                 if value >= s_breakpoint:
+#                     return "S"  
+#                 else:
+#                     return "R"
+#             else:
+#                 if value <= s_breakpoint: #if MIC antibiotic
+#                     return "S"
+#                 else:
+#                     return "R"
+#         # If only r_breakpoint is provided, use it for comparison
+#         if r_breakpoint is not None:
+#             try:
+#                  r_breakpoint = int(r_breakpoint) if is_disk and r_breakpoint and r_breakpoint.strip().isdigit() else float(r_breakpoint) if r_breakpoint else None
+#             except ValueError:
+#                 return None  # Handle cases where the breakpoint cannot be converted
+#             if is_disk:
+#                 if value <= r_breakpoint:
+#                     return "R"  
+#                 else:
+#                     return "S"
+#             else:
+#                 if value >= r_breakpoint: #if MIC antibiotic
+#                     return "R"
+#                 else:
+#                     return "S"
+#         return None  # Return None if no valid interpretation can be made
+
+
 def determine_ris(value, r_breakpoint, i_breakpoint, s_breakpoint, sdd_breakpoint, is_disk=False):
-    # Ensure value and at least one of the breakpoints are provided
-    if value is not None and (r_breakpoint is not None or s_breakpoint is not None or i_breakpoint is not None or sdd_breakpoint is not None):
-         # Convert breakpoint values from string to numbers
+    """
+    Safely determine RIS interpretation for Disk or MIC results.
+    Returns "" if interpretation cannot be determined.
+    """
+
+    # --- Guard: value must exist ---
+    if value in ("", None):
+        return ""
+
+    # --- Convert value ---
+    try:
+        value = int(value) if is_disk else float(value)
+    except (TypeError, ValueError):
+        return ""
+
+    # --- Helper to convert breakpoint safely ---
+    def to_number(bp):
+        if bp in ("", None):
+            return None
         try:
-            value = int(value) if is_disk else float(value)  # Convert to int for disk, float otherwise
-        except ValueError:
-            return None  # Handle cases where the value cannot be converted
+            return int(bp) if is_disk else float(bp)
+        except (TypeError, ValueError):
+            return None
 
-        # Check if the intermediate breakpoint is a range (e.g., "24-27")
-        if i_breakpoint is not None:
-            try:
-                if "-" in str(i_breakpoint):
-                    lower, upper = map(int if is_disk else float, str(i_breakpoint).split("-"))
-                    if lower <= value <= upper:
-                        return "I"
-                else:
-                    i_breakpoint = int(i_breakpoint) if is_disk and i_breakpoint and i_breakpoint.strip().isdigit() else float(i_breakpoint) if i_breakpoint else None
-                    if value == i_breakpoint:
-                        return "I"
-            except ValueError:
-                pass
+    r = to_number(r_breakpoint)
+    s = to_number(s_breakpoint)
+    sdd = to_number(sdd_breakpoint)
 
-      # For SDD breakpoint
-        if sdd_breakpoint is not None:
-            try:
-                sdd_breakpoint = int(sdd_breakpoint) if is_disk and sdd_breakpoint and sdd_breakpoint.strip().isdigit() else float(sdd_breakpoint) if sdd_breakpoint else None
-            except ValueError:
-                return None  # Return None if conversion fails
-            
-            if value == sdd_breakpoint:
-                return "SDD"
-
-            
-        # If both r_breakpoint and s_breakpoint are provided, compare the value
-        if r_breakpoint is not None and s_breakpoint is not None:
-            try:
-                r_breakpoint = int(r_breakpoint) if is_disk and r_breakpoint and r_breakpoint.strip().isdigit() else float(r_breakpoint) if r_breakpoint else None
-                s_breakpoint = int(s_breakpoint) if is_disk and s_breakpoint and s_breakpoint.strip().isdigit() else float(s_breakpoint) if s_breakpoint else None
-            except ValueError:
-                return None  # Handle cases where the breakpoints cannot be converted
-            if is_disk:
-                if value <= r_breakpoint:
-                    return "R"  
-                elif value >= s_breakpoint:
-                    return "S" 
-                else:
-                    return "I"  # Intermediate if value is between the two breakpoints
-            else:
-                if value >= r_breakpoint: # if MIC antibiotic
-                    return "R"
-                elif value <= s_breakpoint:
-                    return "S"
-                else:
+    # --- INTERMEDIATE (range support) ---
+    if i_breakpoint not in ("", None):
+        try:
+            if "-" in str(i_breakpoint):
+                low, high = str(i_breakpoint).split("-")
+                low = to_number(low)
+                high = to_number(high)
+                if low is not None and high is not None and low <= value <= high:
                     return "I"
-            
-        # If only s_breakpoint is provided, use it for comparison
-        if s_breakpoint is not None:
-            try:
-                 s_breakpoint = int(s_breakpoint) if is_disk and s_breakpoint and s_breakpoint.strip().isdigit() else float(s_breakpoint) if s_breakpoint else None
-            except ValueError:
-                return None  # Handle cases where the breakpoint cannot be converted
-            if is_disk:
-                if value >= s_breakpoint:
-                    return "S"  
-                else:
-                    return "R"
             else:
-                if value <= s_breakpoint: #if MIC antibiotic
-                    return "S"
-                else:
-                    return "R"
-        # If only r_breakpoint is provided, use it for comparison
-        if r_breakpoint is not None:
-            try:
-                 r_breakpoint = int(r_breakpoint) if is_disk and r_breakpoint and r_breakpoint.strip().isdigit() else float(r_breakpoint) if r_breakpoint else None
-            except ValueError:
-                return None  # Handle cases where the breakpoint cannot be converted
-            if is_disk:
-                if value <= r_breakpoint:
-                    return "R"  
-                else:
-                    return "S"
+                i = to_number(i_breakpoint)
+                if i is not None and value == i:
+                    return "I"
+        except Exception:
+            pass
+
+    # --- SDD ---
+    if sdd is not None:
+        if value == sdd:
+            return "SDD"
+
+    # --- BOTH R AND S EXIST ---
+    if r is not None and s is not None:
+        if is_disk:
+            if value <= r:
+                return "R"
+            elif value >= s:
+                return "S"
             else:
-                if value >= r_breakpoint: #if MIC antibiotic
-                    return "R"
-                else:
-                    return "S"
-        return None  # Return None if no valid interpretation can be made
+                return "I"
+        else:  # MIC
+            if value >= r:
+                return "R"
+            elif value <= s:
+                return "S"
+            else:
+                return "I"
 
+    # --- ONLY S EXISTS ---
+    if s is not None:
+        if is_disk:
+            return "S" if value >= s else "R"
+        else:
+            return "S" if value <= s else "R"
 
+    # --- ONLY R EXISTS ---
+    if r is not None:
+        if is_disk:
+            return "R" if value <= r else "S"
+        else:
+            return "R" if value >= r else "S"
+
+    # --- No interpretation possible ---
+    return ""
 
 
 

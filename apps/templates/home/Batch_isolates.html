@@ -110,7 +110,7 @@ td a:hover {
  </div>
  
   <!-- Page content -->
-  <div class="container-fluid mt--6">
+  <div class="container-fluid" style="padding-top: 20px;">
     <div class="row">
       <div class="col">
         <div class="card">
@@ -138,17 +138,17 @@ td a:hover {
           <!-- Light table -->
           <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
             <table class="table table-flush" style="border-collapse: collapse; margin: 0%; padding: 0%;">
-              <thead class="thead-light" style="text-align: center;">
+              <thead class="thead-dark" style="text-align: center;">
                 <tr>
-                  <th scope="col" style="text-align: center;"> ACTIONS</th>
+                  <th class="text-white"  scope="col" style="text-align: center;"> <i class="fa fa-magic" aria-hidden="true"></i> &nbsp;ACTIONS</th>
                   
-                  <th colspan="2"  scope="col" class="sort" data-sort="AccessionNo">Identification</th>
-                  <th scope="col">Date Encoded</th>
-                  <th colspan="2" scope="col" class="sort" data-sort="arsp_Encoder">ARSP Staff</th>
-                  <th> PRINT</th>
+                  <th colspan="2"  scope="col" class="sort text-white" data-sort="AccessionNo"><i class="fa fa-id-card" aria-hidden="true"></i> &nbsp;Identification</th>
+                  <th scope="col" class="text-white"><i class="fa fa-calendar" aria-hidden="true"></i> &nbsp;Date Encoded</th>
+                  <th colspan="2" scope="col" class="sort text-white" data-sort="arsp_Encoder"> <i class="fa fa-address-book" aria-hidden="true"></i> &nbsp;ARSP Staff</th>
+                  <th class="text-white"> <i class="fa fa-print" aria-hidden="true"></i>&nbsp;PRINT</th>
                 </tr>
               </thead>
-              <tbody class="list">
+              <tbody class="list table">
                 {% for isolate in page_obj %}
                <tr>
                   <td >
@@ -175,10 +175,9 @@ td a:hover {
                   </td>
                   
                   <td>
-                    <a href="{%url 'generate_pdf' isolate.id %}" class="text-info"> <i class="fa fa-print" aria-hidden="true"></i> Lab Result </a><span style="display: block; line-height: 8px;"><br></span>
+                    <a href="{%url 'generate_pdf' isolate.id %}" class="text-info" target="_blank"> <i class="fa fa-print" aria-hidden="true"></i> Lab Result </a><span style="display: block; line-height: 8px;"><br></span>
                     <a href="{% url 'generate_gs' isolate.id %}"  class="text-info"> <i class="fa fa-heartbeat"></i> Gram Stain
                     </a>
-                  
                   </td>
                 </tr>
                 {% endfor %}
@@ -186,11 +185,6 @@ td a:hover {
               
               </tbody>
             </table>
-
-
-
-
-
           </div>
           <!-- Card footer -->
           <div class="card-footer py-4">

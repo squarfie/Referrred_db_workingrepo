@@ -1,21 +1,17 @@
 {% extends 'layouts/base.html' %}
-{% load static %} 
+{% load static %}
 {% load widget_tweaks %}
 
-{% block title %}Add / Update Organism{% endblock title %}
-
-{% block stylesheets %}
-
-{% endblock stylesheets %}
+{% block title %}Edit Organism{% endblock title %}
 
 {% block content %}
-<head>
-  <link rel="stylesheet" href="{% static 'css/arsp.css' %}">
-  <link rel="stylesheet" href="{% static 'css/header.css' %}">
-</head>
-<body>
-<div class="header-container pb-6" style="min-height: 180px; position: relative;">
-  <!-- Animated background elements -->
+
+<link rel="stylesheet" href="{% static 'css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'css/header.css' %}">
+
+<!-- HEADER -->
+<div class="header-container pb-6" style="min-height: 110px; position:relative;">
+    <!-- Animated background elements -->
   <div class="grid-bg"></div>
 
   <!-- Particles rising -->
@@ -43,288 +39,188 @@
   <!-- Overlay -->
   <div class="overlay"></div>
 
-  <!-- Header content wrapper with relative positioning for content -->
-  <div class="container-fluid" style="position: relative; z-index: 2;">
-    <div class="row align-items-center justify-content-between py-4">
+  <div class="container-fluid">
+    <div class="row align-items-center py-4">
       <div class="col-lg-8">
-        <h6 class="h2 text-white d-inline-block mb-0">
-          <i class="fas fa-microscope mr-2"></i>
-          {% if editing %}Edit{% else %}Add{% endif %} Organism
+        <h6 class="h2 text-white mb-0">
+          <i class="fas fa-microscope mr-2"></i> Edit Organism
         </h6>
-        <p class="text-white mt-2 mb-0 opacity-8">
-          <strong><small>Configure Organism Classification</small></strong>
+        <p class="text-white opacity-8">
+          <small>Configure Organism Classification</small>
         </p>
       </div>
-      <div class="col-lg-4 text-right">
-        <a href="{% url 'view_organism' %}" class="btn btn-sm btn-neutral">
-          <i class="fas fa-table mr-1"></i>View All
-        </a>
-      </div>
     </div>
   </div>
 </div>
 
-<!-- Main Content -->
-<div class="container-fluid mt--6" style="position: relative; z-index: 3;">
+<!-- FORM -->
+<div class="container-fluid" style="z-index: 2; margin-top: 20px;">
   <div class="card shadow form-card">
     <div class="card-body p-4">
-      {% if form %}
-      <form method="POST" action="{% if editing %}{% url 'edit_organism' pk=form.instance.pk %}{% else %}{% url 'add_organism' %}{% endif %}" id="organismform">
+
+      <form method="POST"
+            action="{% url 'edit_organism' pk=org_form.instance.pk %}"
+            id="organismform">
+
         {% csrf_token %}
-        
-        <!-- Upload Button -->
-        <div class="mb-4">
-          <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#UploadModal">
-            <i class="fas fa-file-upload mr-2"></i>Upload Organism CSV/Excel
-          </button>
-        </div>
 
-        <!-- WHONET Information Section -->
-        <div class="section-divider">
-          <h5 class="mb-0" style="color: #1a7a8e;">
-            <i class="fas fa-globe mr-2"></i>WHONET Information
-          </h5>
+
+          <div class="row align-items-center mb-4">
+
+            <!-- LEFT: Upload -->
+            <div class="col-md-6">
+              <button type="button"
+                      class="btn btn-secondary"
+                      data-toggle="modal"
+                      data-target="#UploadModal">
+                <i class="fas fa-file-upload mr-2"></i> Upload CSV / Excel
+              </button>
+            </div>
+
+            <!-- RIGHT: Actions -->
+            <div class="col-md-6 text-md-right mt-3 mt-md-0">
+              <a href="{% url 'view_organism' %}" class="btn btn-sm btn-primary mr-2">
+                <i class="fa fa-table" aria-hidden="true"> </i> View All
+              </a>
+
+              <a href="{% url 'add_organism' %}" class="btn btn-sm btn-success">
+                <i class="fa fa-plus-square" aria-hidden="true"> </i> Add New
+              </a>
+            </div>
+
+          </div>
+
+
+        <!-- WHONET -->
+        <div class="section-divider">WHONET Information</div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label>WHONET Organism Code</label>
+            {{ org_form.Whonet_Org_Code|append_attr:"class:form-control" }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label>Replaced By</label>
+            {{ org_form.Replaced_by|append_attr:"class:form-control" }}
+          </div>
         </div>
         <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-              <label class="form-control-label" for="Whonet_Org_Code">
-                <i class="fas fa-code mr-1"></i>WHONET Organism Code (Unique)
-              </label>
-              <input id="Whonet_Org_Code" class="form-control" value="{{organism.Whonet_Org_Code}}" type="text" name="Whonet_Org_Code" placeholder="e.g. GPC" required/>
-            </div>
+          <div class="col-md-6 mb-3">
+            <label>Organism Name</label>
+            {{ org_form.Organism|append_attr:"class:form-control" }}
           </div>
-          <div class="col-md-6">
-            <div class="form-group">
-              <label class="form-control-label" for="Replaced_by">
-                <i class="fas fa-exchange-alt mr-1"></i>Replaced By
-              </label>
-              <input id="Replaced_by" class="form-control" value="{{organism.Replaced_by}}" type="text" name="Replaced_by" placeholder="Leave blank if not replaced"/>
-            </div>
-          </div>
-        </div>
-
-        <!-- Basic Information -->
-        <div class="section-divider">
-          <h5 class="mb-0" style="color: #1a7a8e;">
-            <i class="fas fa-info-circle mr-2"></i>Basic Information
-          </h5>
-        </div>
-        <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-              <label class="form-control-label" for="Organism">
-                <i class="fas fa-dna mr-1"></i>Organism Name
-              </label>
-              <input id="Organism" class="form-control" value="{{organism.Organism}}" type="text" name="Organism" placeholder="e.g. Staphylococcus aureus" required/>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="form-group">
-              <label class="form-control-label" for="Organism_Type">
-                <i class="fas fa-tag mr-1"></i>Organism Type
-              </label>
-              <input id="Organism_Type" class="form-control" value="{{organism.Organism_Type}}" type="text" name="Organism_Type" placeholder="e.g. Bacterium"/>
-            </div>
+          <div class="col-md-6 mb-3">
+            <label>Organism Type</label>
+            {{ org_form.Organism_Type|append_attr:"class:form-control" }}
           </div>
         </div>
 
-        <!-- Codes Section -->
-        <div class="section-divider">
-          <h5 class="mb-0" style="color: #1a7a8e;">
-            <i class="fas fa-layer-group mr-2"></i>Classification Codes
-          </h5>
-        </div>
+
+        <!-- CODES -->
+        <div class="section-divider">Classification Codes</div>
         <div class="row">
-          <div class="col-md-4">
-            <div class="form-group">
-              <label class="form-control-label" for="Subkingdom_Code">
-                <i class="fas fa-sitemap mr-1"></i>Subkingdom Code
-              </label>
-              <input id="Subkingdom_Code" class="form-control" value="{{organism.Subkingdom_Code}}" type="text" name="Subkingdom_Code" placeholder="e.g. +"/>
-            </div>
+          <div class="col-md-6 mb-3">
+            <label>Family Code</label>
+            {{ org_form.Family_Code|append_attr:"class:form-control" }}
           </div>
-          <div class="col-md-4">
-            <div class="form-group">
-              <label class="form-control-label" for="Family_Code">
-                <i class="fas fa-sitemap mr-1"></i>Family Code
-              </label>
-              <input id="Family_Code" class="form-control" value="{{organism.Family_Code}}" type="text" name="Family_Code" placeholder="e.g. 80000"/>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="form-group">
-              <label class="form-control-label" for="Genus_Code">
-                <i class="fas fa-sitemap mr-1"></i>Genus Code
-              </label>
-              <input id="Genus_Code" class="form-control" value="{{organism.Genus_Code}}" type="text" name="Genus_Code" placeholder="e.g. 82000"/>
-            </div>
+          <div class="col-md-6 mb-3">
+            <label>Genus Code</label>
+            {{ org_form.Genus_Code|append_attr:"class:form-control" }}
           </div>
         </div>
 
-        <!-- Group Classifications -->
-        <div class="section-divider">
-          <h5 class="mb-0" style="color: #1a7a8e;">
-            <i class="fas fa-object-group mr-2"></i>Group Classifications
-          </h5>
-        </div>
+        <!-- GROUPS -->
+        <div class="section-divider">Group Classification</div>
         <div class="row">
-          <div class="col-md-4">
-            <div class="form-group">
-              <label class="form-control-label" for="Genus_Group">
-                <i class="fas fa-square mr-1"></i>Genus Group
-              </label>
-              <input id="Genus_Group" class="form-control" value="{{organism.Genus_Group}}" type="text" name="Genus_Group" placeholder="e.g. Staphylococcus"/>
-            </div>
+          <div class="col-md-4 mb-3">
+            <label>Genus Group</label>
+            {{ org_form.Genus_Group|append_attr:"class:form-control" }}
           </div>
-          <div class="col-md-4">
-            <div class="form-group">
-              <label class="form-control-label" for="Species_Group">
-                <i class="fas fa-square mr-1"></i>Species Group
-              </label>
-              <input id="Species_Group" class="form-control" value="{{organism.Species_Group}}" type="text" name="Species_Group" placeholder="e.g. aureus"/>
-            </div>
+          <div class="col-md-4 mb-3">
+            <label>Species Group</label>
+            {{ org_form.Species_Group|append_attr:"class:form-control" }}
           </div>
-          <div class="col-md-4">
-            <div class="form-group">
-              <label class="form-control-label" for="Serovar_Group">
-                <i class="fas fa-square mr-1"></i>Serovar Group
-              </label>
-              <input id="Serovar_Group" class="form-control" value="{{organism.Serovar_Group}}" type="text" name="Serovar_Group" placeholder="Leave blank if not applicable"/>
-            </div>
+          <div class="col-md-4 mb-3">
+            <label>Serovar Group</label>
+            {{ org_form.Serovar_Group|append_attr:"class:form-control" }}
           </div>
         </div>
 
-        <!-- Taxonomic Classification -->
-        <div class="section-divider">
-          <h5 class="mb-0" style="color: #1a7a8e;">
-            <i class="fas fa-tree mr-2"></i>Taxonomic Classification
-          </h5>
-        </div>
+        <!-- TAXONOMY -->
+        <div class="section-divider">Taxonomic Classification</div>
         <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-              <label class="form-control-label" for="Kingdom">
-                <i class="fas fa-sitemap mr-1"></i>Kingdom
-              </label>
-              <input id="Kingdom" class="form-control" value="{{organism.Kingdom}}" type="text" name="Kingdom" placeholder="e.g. Bacteria"/>
-            </div>
+          <div class="col-md-6 mb-3">
+            <label>Kingdom</label>
+            {{ org_form.Kingdom|append_attr:"class:form-control" }}
           </div>
-          <div class="col-md-6">
-            <div class="form-group">
-              <label class="form-control-label" for="Phylum">
-                <i class="fas fa-sitemap mr-1"></i>Phylum
-              </label>
-              <input id="Phylum" class="form-control" value="{{organism.Phylum}}" type="text" name="Phylum" placeholder="e.g. Firmicutes"/>
-            </div>
+          <div class="col-md-6 mb-3">
+            <label>Phylum</label>
+            {{ org_form.Phylum|append_attr:"class:form-control" }}
           </div>
         </div>
 
         <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-              <label class="form-control-label" for="Class">
-                <i class="fas fa-sitemap mr-1"></i>Class
-              </label>
-              <input id="Class" class="form-control" value="{{organism.Class}}" type="text" name="Class" placeholder="e.g. Bacilli"/>
-            </div>
+          <div class="col-md-6 mb-3">
+            <label>Class</label>
+            {{ org_form.Class|append_attr:"class:form-control" }}
           </div>
-          <div class="col-md-6">
-            <div class="form-group">
-              <label class="form-control-label" for="Order">
-                <i class="fas fa-sitemap mr-1"></i>Order
-              </label>
-              <input id="Order" class="form-control" value="{{organism.Order}}" type="text" name="Order" placeholder="e.g. Bacillales"/>
-            </div>
+          <div class="col-md-6 mb-3">
+            <label>Order</label>
+            {{ org_form.Order|append_attr:"class:form-control" }}
           </div>
         </div>
 
         <div class="row">
-          <div class="col-md-4">
-            <div class="form-group">
-              <label class="form-control-label" for="Family">
-                <i class="fas fa-sitemap mr-1"></i>Family
-              </label>
-              <input id="Family" class="form-control" value="{{organism.Family}}" type="text" name="Family" placeholder="e.g. Staphylococcaceae"/>
-            </div>
+          <div class="col-md-6 mb-3">
+            <label>Family</label>
+            {{ org_form.Family|append_attr:"class:form-control" }}
           </div>
-          <div class="col-md-4">
-            <div class="form-group">
-              <label class="form-control-label" for="Genus">
-                <i class="fas fa-sitemap mr-1"></i>Genus
-              </label>
-              <input id="Genus" class="form-control" value="{{organism.Genus}}" type="text" name="Genus" placeholder="e.g. Staphylococcus"/>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="form-group">
-              <label class="form-control-label" for="Date_Modified">
-                <i class="fas fa-calendar mr-1"></i>Date Modified
-              </label>
-              <input id="Date_Modified" class="form-control" type="date" name="Date_Modified" />
-            </div>
+          <div class="col-md-6 mb-3">
+            <label>Genus</label>
+            {{ org_form.Genus|append_attr:"class:form-control" }}
           </div>
         </div>
 
-        <br>
-        <!-- Action Buttons -->
+        <!-- ACTIONS -->
         <div class="text-center mt-4">
           <button type="submit" class="btn btn-primary btn-lg px-5">
-            <i class="fas fa-save mr-2"></i>{% if editing %}Update{% else %}Add{% endif %} Organism
+            <i class="fas fa-save mr-2"></i> Update Organism
           </button>
-          <button type="button" class="btn btn-success btn-lg px-4" onclick="refresh()">
-            <i class="fas fa-eraser mr-2"></i>Clear Form
-          </button>
-          <button type="button" class="btn btn-secondary btn-lg px-4" onclick="history.back()">
-            <i class="fas fa-arrow-left mr-2"></i>Back
+          <button type="button" class="btn btn-secondary btn-lg px-4"
+                  onclick="history.back()">
+            <i class="fas fa-arrow-left mr-2"></i> Back
           </button>
         </div>
+
       </form>
-      {% endif %}
     </div>
   </div>
 </div>
 
-<!-- Upload Modal -->
-<div class="modal fade" id="UploadModal" tabindex="-1" role="dialog" aria-labelledby="UploadModalLabel" aria-hidden="true">
-  <form method="POST" action="{% url 'upload_organisms' %}" autocomplete="on" enctype="multipart/form-data" onsubmit="return confirmOverwrite();" id="uploadorganismform">
+<!-- UPLOAD MODAL (UNCHANGED) -->
+<div class="modal fade" id="UploadModal" tabindex="-1">
+  <form method="POST"
+        action="{% url 'upload_organisms' %}"
+        enctype="multipart/form-data"
+        onsubmit="return confirmOverwrite();">
     {% csrf_token %}
-    <div class="modal-dialog modal-dialog-centered" role="document">
-      <div class="modal-content" style="border-top: 4px solid #2d9cad;">
-        <div class="modal-header" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%); border-bottom: 2px solid #d1e8ed;">
-          <h5 class="modal-title" style="color: #1a7a8e; font-weight: 600;">
-            <i class="fas fa-file-upload mr-2"></i>Upload Organism
-          </h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Upload Organisms</h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
         </div>
         <div class="modal-body">
-          <div class="alert" style="background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-left: 4px solid #e6c86b; color: #856404;">
-            <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>Warning:</strong> Uploading will replace all existing organisms.
-          </div>
-          <div class="form-group">
-            <label for="File_uploadOrg" class="form-control-label">
-              <i class="fas fa-file-csv mr-1"></i>Select CSV/Excel File
-            </label>
-            <div>
-            {{ upload_form.File_uploadOrg }}
-            </div>
-          </div>
+          {{ org_upload_form.File_uploadOrg }}
         </div>
-        <div class="modal-footer" style="background: #f8fcfd;">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">
-            <i class="fas fa-times mr-1"></i>Cancel
-          </button>
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-upload mr-1"></i>Upload File
-          </button>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary">Upload</button>
         </div>
       </div>
     </div>
   </form>
 </div>
+
 
 <script>
 function refresh() {

@@ -24,6 +24,8 @@ urlpatterns = [
     path('site-add/', views.add_dropdown,name='add_dropdown'),
     path('site-view', views.site_view,name='site_view'),
     path('site-delete/<int:id>/',views.delete_dropdown,name='delete_dropdown'),
+    path('upload-sitecode/', views.upload_sitecode, name='site_upload'),
+    path("sitecode/edit/<int:pk>/", views.edit_sitecode, name="edit_sitecode"),
     
     path("search/", views.search, name="search"),
 
@@ -31,7 +33,7 @@ urlpatterns = [
     path('breakpoints-view/', views.breakpoints_view, name='breakpoints_view'),
     path('breakpoints-delete/<int:id>', views.breakpoints_del, name='breakpoints_del'),
     path('breakpoints-add/', views.add_breakpoints, name='add_breakpoints'), 
-    path('breakpoints-edit/<int:pk>/', views.add_breakpoints, name='edit_breakpoints'),  
+    path('breakpoints-edit/<int:pk>/', views.edit_breakpoints, name='edit_breakpoints'),  
     path('breakpoints-upload/', views.upload_breakpoints, name='upload_breakpoints'),
     path('breakpoints-delete-all/', views.delete_all_breakpoints, name='delete_all_breakpoints'),
     path('breakpoints-export/', views.export_breakpoints, name='export_breakpoints'),
@@ -40,20 +42,19 @@ urlpatterns = [
     path('antibiotics-view/', views.antibiotics_view, name='antibiotics_view'),
     path('antibiotics-delete/<int:id>', views.antibiotics_del, name='antibiotics_del'),
     path('antibiotics-add/', views.add_antibiotics, name='add_antibiotics'), 
-    path('antibiotics-edit/<int:pk>/', views.add_antibiotics, name='edit_antibiotics'),  
+    path('antibiotics-edit/<int:pk>/', views.edit_antibiotics, name='edit_antibiotics'),  
     path('antibiotics-upload/', views.upload_antibiotics, name='upload_antibiotics'),
     path('antibiotics-delete-all/', views.delete_all_antibiotics, name='delete_all_antibiotics'),
     path('antibiotics-export/', views.export_antibiotics, name='export_antibiotics'),
 
     path('organism-add/', views.add_organism, name='add_organism'),
     path('organism-view/', views.view_organism, name='view_organism'),
-    path('organism-edit/<int:pk>/', views.add_organism, name='edit_organism'),  
+    path('organism-edit/<int:pk>/', views.edit_organism, name='edit_organism'),  
     path('organism-delete/<int:id>', views.del_organism, name='del_organism'),
     path('organism-delete-all/', views.del_all_organism, name='del_all_organism'),
     path('organism-upload/', views.upload_organisms, name='upload_organisms'),
+    path('organism-export/', views.export_organisms, name='export_organisms'),
     path("get_organism_name/", views.get_organism_name, name="get_organism_name"),
-
-
 
     path('test_results-view/', views.abxentry_view, name='abxentry_view'),
     path('specimens/', views.specimen_list, name='specimen_list'),
@@ -77,7 +78,7 @@ urlpatterns = [
     path("delete_record/<int:id>/", views.delete_record_in_batch, name="delete_record_in_batch"),
     path("review_batches/", views.review_batches, name="review_batches"),
     path("clean_batch/<int:batch_id>/", views.clean_batch, name="clean_batch"),
-    path('upload-sitecode/', views.upload_sitecode, name='site_upload'),
+
     path('delete_all_dropdown/', views.delete_all_dropdown, name='delete_all_dropdown'),
 
     path("copy_to_final/<int:id>/", views.copy_data_to_final, name="copy_data_to_final"),

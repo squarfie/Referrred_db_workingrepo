@@ -4,44 +4,11 @@
 {% load custom_filters %}
 
 {% block title %} View Antibiotics {% endblock title %}
-
-{% block stylesheets %}
-  <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
-  <link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
-{% endblock stylesheets %}
-
-
 {% block content %}
 
 <body>
-<div class="header-container pb-6" style="min-height: 180px; position: relative;">
-  <!-- Animated background elements -->
-  <div class="grid-bg"></div>
-
-  <!-- Particles rising -->
-  <div class="particles">
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-  </div>
-
-  <!-- Scanning circles -->
-  <div class="scanner"></div>
-  <div class="scanner"></div>
-  <div class="scanner"></div>
-
-  <!-- Glow orbs -->
-  <div class="glow-orb"></div>
-  <div class="glow-orb"></div>
-
-  <!-- Overlay -->
-  <div class="overlay"></div>
+<div class="header pb-6" style="height: 100px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%); opacity: 0.6;"></div>
 
 <!-- Header Section -->
   <div class="container-fluid" style="position: relative; z-index: 2;">
@@ -60,21 +27,13 @@
             </ol>
           </nav>
         </div>
-        <div class="col-lg-6 col-5 text-right">
-          <a class="btn btn-sm btn-neutral" href="{% url 'settings_page'%}">
-            <i class="fas fa-plus mr-1"></i>Add New
-          </a>
-          <button class="btn btn-sm btn-neutral" onclick="history.back()">
-            <i class="fas fa-arrow-left mr-1"></i>Back
-          </button>
-        </div>
       </div>
     </div>
   </div>
  </div>
 
 <!-- Main Content -->
-<div class="container-fluid mt--6" style="position: relative; z-index: 3;">
+<div class="container-fluid" style="position: relative; z-index: 3; margin-top: 20px;">
   <div class="card shadow" style="border-top: 3px solid #2d9cad;">
     
     <!-- Card Header -->
@@ -82,37 +41,73 @@
       <div class="row align-items-center">
         <div class="col-md-6">
           <h3 class="mb-0" style="color: #1a7a8e;">
-            <i class="fas fa-flask mr-2"></i>Antibiotics List
+            <i class="fas fa-flask mr-2"></i>Antibiotic Listing
           </h3>
         </div>
         <div class="col-md-6 text-right">
           <a href="{% url 'export_antibiotics' %}" class="btn btn-sm btn-primary">
             <i class="fas fa-file-export mr-1"></i>Export/Download
           </a>
+          <a class="btn btn-sm btn-success" href="{% url 'add_antibiotics'%}">
+            <i class="fas fa-plus mr-1"></i>Add New
+          </a>
+          <button class="btn btn-sm btn-secondary" onclick="history.back()">
+            <i class="fas fa-arrow-left mr-1"></i>Back
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Toolbar Section -->
     <div class="card-body border-bottom" style="background: linear-gradient(to bottom, #f8fcfd 0%, #ffffff 100%);">
-      <!-- Search Bar -->
-      <div class="row align-items-center mb-3">
-        <div class="col-md-12">
-          <div class="input-group" style="box-shadow: 0 2px 8px rgba(29, 156, 173, 0.15); border-radius: 0.5rem; border: 1px solid #d1e8ed;">
-            <div class="input-group-prepend">
-              <span class="input-group-text" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%); border: none; color: #1a7a8e;">
-                <i class="fas fa-search"></i>
-              </span>
-            </div>
-            <input id="search-input" class="form-control" placeholder="Search by antibiotic, code, guidelines, or any field..." type="text" onkeyup="searchTable()" style="border: none; background: white;">
-            <div class="input-group-append">
-              <button class="btn" type="button" onclick="clearSearch()" style="background: #e8f5f7; border: none; color: #1a7a8e;">
-                <i class="fas fa-times"></i>
-              </button>
+
+          <!-- Search Bar (SERVER-SIDE) -->
+          <div class="row justify-content-left mb-3">
+            <div class="col-xl-6 col-lg-7 col-md-9 col-sm-12">
+              <form method="get" class="w-100">
+                <div class="input-group"
+                    style="box-shadow: 0 2px 8px rgba(29,156,173,0.15);
+                            border-radius: .5rem;
+                            border: 1px solid #d1e8ed;">
+
+                  <div class="input-group-prepend">
+                    <span class="input-group-text"
+                          style="background: linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
+                                border:none; color:#1a7a8e;">
+                      <i class="fas fa-search"></i>
+                    </span>
+                  </div>
+
+                  <input
+                    name="q"
+                    value="{{ q }}"
+                    class="form-control"
+                    placeholder="Search antibiotic, WHONET code, class, guidelines, or any field…"
+                    type="text"
+                    style="border:none; background:white;"
+                  >
+
+                  <div class="input-group-append">
+                    <button class="btn"
+                            type="submit"
+                            style="background:#e8f5f7; border:none; color:#1a7a8e;">
+                      <i class="fas fa-search"></i>
+                    </button>
+
+                    {% if q %}
+                    <a href="{% url 'antibiotics_view' %}"
+                      class="btn"
+                      style="background:#e8f5f7; border:none; color:#1a7a8e;"
+                      title="Clear search">
+                      <i class="fas fa-times"></i>
+                    </a>
+                    {% endif %}
+                  </div>
+
+                </div>
+              </form>
             </div>
           </div>
-        </div>
-      </div>
 
       <!-- Important Note -->
       <div class="alert" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%); border-left: 4px solid #2d9cad; border-radius: 0.5rem;">
@@ -128,7 +123,7 @@
 
     <!-- Table -->
     <div class="table-responsive" style="max-height: 500px; overflow-y: auto; overflow-x: auto;">
-      <table class="table table-hover align-items-center table-flush" id="breakpoints-table">
+      <table class="table table-hover align-items-center table-flush" id="antibiotics-table">
         <thead class="thead-light" style="position: sticky; top: 0; z-index: 10; background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);">
           <tr>
             <th style="min-width: 100px; color: #1a7a8e; font-weight: 600;">Actions</th>
@@ -154,6 +149,7 @@
               <a href="{% url 'edit_antibiotics' pk=antibiotic.pk %}" class="btn btn-sm mr-1" style="background: linear-gradient(135deg, #7ec97e 0%, #5fb85f 100%); color: white; border: none;" title="Edit">
                 <i class="fa fa-pencil-alt"></i>
               </a>
+
               <a href="#" class="btn btn-sm delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'antibiotics_del' antibiotic.id %}" style="background: linear-gradient(135deg, #d97c7c 0%, #c24b4b 100%); color: white; border: none;" title="Delete">
                 <i class="fa fa-trash"></i>
               </a>
@@ -267,7 +263,7 @@
                     </li>
                   {% else %}
                     <li class="page-item">
-                      <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                      <a class="page-link" href="?page={{ num }}{% if q %}&q={{ q }}{% endif %}">{{ num }}</a>
                     </li>
                   {% endif %}
                 {% endif %}
@@ -334,7 +330,7 @@
           <button type="button" class="btn btn-danger" id="confirmDelete">
             <i class="fa fa-trash mr-1"></i>Delete Record
           </button>
-          <a href="{% url 'delete_all_breakpoints' %}" class="btn btn-warning" onclick="return confirm('⚠️ WARNING: This will delete ALL breakpoint records. Are you absolutely sure?')">
+          <a href="{% url 'delete_all_antibiotics' %}" class="btn btn-warning" onclick="return confirm('⚠️ WARNING: This will delete ALL antibiotics records. Are you absolutely sure?')">
             <i class="fa fa-trash-alt mr-1"></i>Delete All
           </a>
         </div>
@@ -376,30 +372,70 @@ $(document).ready(function(){
 });
 
 // Search table function
+// function searchTable() {
+//   var input = document.getElementById("search-input");
+//   var filter = input.value.toLowerCase();
+//   var table = document.getElementById("antibiotics-table");
+//   var rows = table.querySelectorAll("tbody tr");
+
+//   rows.forEach(row => {
+//     var text = row.textContent.toLowerCase();
+//     row.style.display = text.includes(filter) ? "" : "none";
+//   });
+// }
+
+// // Clear search function
+// function clearSearch() {
+//   document.getElementById("search-input").value = "";
+//   searchTable();
+// }
+
+// // Enter key support for search
+// document.getElementById("search-input").addEventListener("keypress", function(event) {
+//   if (event.key === "Enter") {
+//     event.preventDefault();
+//     searchTable();
+//   }
+// });
+</script>
+
+
+
+<script>
+// SERVER-SIDE SEARCH HANDLER
 function searchTable() {
-  var input = document.getElementById("search-input");
-  var filter = input.value.toLowerCase();
-  var table = document.getElementById("breakpoints-table");
-  var rows = table.querySelectorAll("tbody tr");
+  const input = document.getElementById("search-input");
+  const query = input.value.trim();
 
-  rows.forEach(row => {
-    var text = row.textContent.toLowerCase();
-    row.style.display = text.includes(filter) ? "" : "none";
-  });
+  const params = new URLSearchParams(window.location.search);
+
+  if (query) {
+    params.set("q", query);
+    params.delete("page"); // reset pagination on new search
+  } else {
+    params.delete("q");
+    params.delete("page");
+  }
+
+  window.location.search = params.toString();
 }
 
-// Clear search function
+// CLEAR SEARCH (RELOAD ALL RECORDS)
 function clearSearch() {
-  document.getElementById("search-input").value = "";
-  searchTable();
+  const params = new URLSearchParams(window.location.search);
+  params.delete("q");
+  params.delete("page");
+
+  window.location.search = params.toString();
 }
 
-// Enter key support for search
-document.getElementById("search-input").addEventListener("keypress", function(event) {
+// ENTER KEY SUPPORT
+document.getElementById("search-input").addEventListener("keydown", function (event) {
   if (event.key === "Enter") {
     event.preventDefault();
     searchTable();
   }
 });
 </script>
+
 {% endblock javascripts %}

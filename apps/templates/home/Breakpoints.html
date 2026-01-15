@@ -11,47 +11,84 @@
 
 {% endblock stylesheets %}
 {% block content %}
+<div class="header-container pb-6" style="min-height: 180px; position: relative;">
+  <!-- Animated background elements -->
+  <div class="grid-bg"></div>
 
-<!-- Header Section -->
-<div class="breakpoints-header pb-6">
-  <span class="mask bg-gradient-default opacity-5"></span>
-  <div class="container-fluid" style="position: relative; z-index: 1;">
-    <div class="header-body">
-      <div class="row align-items-center py-4">
-        <div class="col-lg-8">
-          <h6 class="h2 text-white d-inline-block mb-0">
-            <i class="fas fa-flask mr-2"></i>
-            {% if editing %}Edit{% else %}Add{% endif %} Breakpoint
-          </h6>
-          <p class="text-white mt-2 mb-0 opacity-8">
-            <strong><small>Configure antimicrobial susceptibility testing breakpoints</small></strong>
-          </p>
-        </div>
-        <div class="col-lg-4 text-right">
-          <a href="{% url 'breakpoints_view' %}" class="btn btn-sm btn-neutral">
-            <i class="fas fa-table mr-1"></i>View All
-          </a>
-        </div>
+  <!-- Particles rising -->
+  <div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Scanning circles -->
+  <div class="scanner"></div>
+  <div class="scanner"></div>
+  <div class="scanner"></div>
+
+  <!-- Glow orbs -->
+  <div class="glow-orb"></div>
+  <div class="glow-orb"></div>
+
+  <!-- Overlay -->
+  <div class="overlay"></div>
+
+  <!-- Header content wrapper with relative positioning for content -->
+  <div class="container-fluid" style="position: relative; z-index: 2;">
+    <div class="row align-items-center justify-content-between py-4">
+      <div class="col-lg-8">
+        <h6 class="h2 text-white d-inline-block mb-0">
+          <i class="fas fa-flask mr-2"></i>
+          Edit Breakpoints
+        </h6>
+        <p class="text-white mt-2 mb-0 opacity-8">
+          <strong><small>Configure antimicrobial susceptibility testing breakpoints</small></strong>
+        </p>
       </div>
     </div>
   </div>
-</div>
+ </div>
 
 <!-- Main Content -->
-<div class="container-fluid mt--6">
+<div class="container-fluid" style="position: relative; z-index: 3; margin-top: 20px;">
   <div class="card shadow form-card">
     <div class="card-body p-4">
-      {% if form %}
-      <form method="POST" action="{% if editing %}{% url 'edit_breakpoints' pk=form.instance.pk %}{% else %}{% url 'add_breakpoints' %}{% endif %}" id="breakpointsform">
+      {% if breakpoint_form %}
+      <form method="POST"
+            action="{% url 'edit_breakpoints' pk=breakpoint_form.instance.pk %}"
+            id="breakpointsform">
+
         {% csrf_token %}
         
         <!-- Upload Button -->
-        <div class="mb-4">
+         <div class="row align-items-center mb-4">
+            <!-- LEFT: Upload -->
+            <div class="col-md-6">
           <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#UploadModal">
             <i class="fas fa-file-upload mr-2"></i>Upload Breakpoints CSV/Excel
           </button>
+            </div>
+
+            <!-- RIGHT: Actions -->
+            <div class="col-md-6 text-md-right mt-3 mt-md-0">
+                <a href="{% url 'breakpoints_view' %}" class="btn btn-sm btn-neutral">
+                  <i class="fas fa-table mr-1"></i>View All
+                </a>
+              <a href="{% url 'add_breakpoints' %}" class="btn btn-sm btn-success">
+                <i class="fa fa-plus-square" aria-hidden="true"> </i> Add New
+              </a>
+            </div>
+
         </div>
 
+        <div class="mb-4">
         <!-- Checkbox Section -->
         <div class="checkbox-container mb-4">
           <div class="row">
@@ -60,7 +97,7 @@
                 <label class="form-control-label mb-2" for="Disk_Abx">
                   <i class="fas fa-circle mr-1" style="color: #2d9cad;"></i>Disk Diffusion Method
                 </label>
-                <input id="Disk_Abx" type="checkbox" name="Disk_Abx" {% if form.Disk_Abx.value %}checked{% endif %} />
+                <input id="Disk_Abx" type="checkbox" name="Disk_Abx" {% if breakpoint_form.Disk_Abx.value %}checked{% endif %} />
               </div>
             </div>
           </div>
@@ -279,7 +316,7 @@
             <label for="File_uploadBP" class="form-control-label">
               <i class="fas fa-file-csv mr-1"></i>Select CSV/Excel File
             </label>
-            {{ upload_form.File_uploadBP }}
+            {{ bp_upload_form.File_uploadBP }}
           </div>
         </div>
         <div class="modal-footer" style="background: #f8fcfd;">

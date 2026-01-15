@@ -5,35 +5,8 @@
 {% block content %}
 
 <body>
-<div class="header-container pb-6" style="min-height: 180px; position: relative;">
-  <!-- Animated background elements -->
-  <div class="grid-bg"></div>
-
-  <!-- Particles rising -->
-  <div class="particles">
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-  </div>
-
-  <!-- Scanning circles -->
-  <div class="scanner"></div>
-  <div class="scanner"></div>
-  <div class="scanner"></div>
-
-  <!-- Glow orbs -->
-  <div class="glow-orb"></div>
-  <div class="glow-orb"></div>
-
-  <!-- Overlay -->
-  <div class="overlay"></div>
-
+<div class="header pb-6" style="height: 100px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%); opacity: 0.6;"></div>
 <!-- Header Section -->
   <div class="container-fluid" style="position: relative; z-index: 2;">
     <div class="header-body">
@@ -51,23 +24,15 @@
             </ol>
           </nav>
         </div>
-        <div class="col-lg-6 col-5 text-right">
-          <a class="btn btn-sm btn-neutral" href="{% url 'add_organism'%}">
-            <i class="fas fa-plus mr-1"></i>Add New
-          </a>
-          <button class="btn btn-sm btn-neutral" onclick="history.back()">
-            <i class="fas fa-arrow-left mr-1"></i>Back
-          </button>
-        </div>
+
       </div>
     </div>
   </div>
  </div>
 
 <!-- Main Content -->
-<div class="container-fluid mt--6" style="position: relative; z-index: 3;">
+<div class="container-fluid" style="position: relative; z-index: 3; margin-top: 20px;">
   <div class="card shadow" style="border-top: 3px solid #2d9cad;">
-    
     <!-- Card Header -->
     <div class="card-header border-0" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);">
       <div class="row align-items-center">
@@ -77,45 +42,92 @@
           </h3>
         </div>
         <div class="col-md-6 text-right">
-          <a href="#" class="btn btn-sm btn-primary">
+          <a href="{% url 'export_organisms' %}" class="btn btn-sm btn-primary">
             <i class="fas fa-file-export mr-1"></i>Export/Download
           </a>
+            <a class="btn btn-sm btn-success" href="{% url 'add_organism'%}">
+            <i class="fas fa-plus mr-1"></i>Add New
+          </a>
+          <button class="btn btn-sm btn-secondary" onclick="history.back()">
+            <i class="fas fa-arrow-left mr-1"></i>Back
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Toolbar Section -->
-    <div class="card-body border-bottom" style="background: linear-gradient(to bottom, #f8fcfd 0%, #ffffff 100%);">
-      <!-- Search Bar -->
-      <div class="row align-items-center mb-3">
-        <div class="col-md-12">
-          <div class="input-group" style="box-shadow: 0 2px 8px rgba(29, 156, 173, 0.15); border-radius: 0.5rem; border: 1px solid #d1e8ed;">
-            <div class="input-group-prepend">
-              <span class="input-group-text" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%); border: none; color: #1a7a8e;">
-                <i class="fas fa-search"></i>
-              </span>
-            </div>
-            <input id="search-input" class="form-control" placeholder="Search by organism name, WHONET code, genus, species, or any field..." type="text" onkeyup="searchTable()" style="border: none; background: white;">
-            <div class="input-group-append">
-              <button class="btn" type="button" onclick="clearSearch()" style="background: #e8f5f7; border: none; color: #1a7a8e;">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+        <!-- Toolbar Section -->
+        <div class="card-body border-bottom"
+            style="background: linear-gradient(to bottom, #f8fcfd 0%, #ffffff 100%);">
 
-      <!-- Important Note -->
-      <div class="alert" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%); border-left: 4px solid #2d9cad; border-radius: 0.5rem;">
-        <div class="d-flex align-items-center">
-          <i class="fas fa-info-circle mr-3" style="font-size: 1.5rem; color: #2d9cad;"></i>
-          <div>
-            <strong style="color: #1a7a8e;">Important Note:</strong>
-            <span style="color: #5a6c72;">Configure organism taxonomic classifications and WHONET codes for proper reporting and surveillance data management.</span>
+          <!-- Search Bar (SERVER-SIDE) -->
+          <div class="row justify-content-left mb-3">
+            <div class="col-xl-6 col-lg-7 col-md-9 col-sm-12">
+
+              <form method="get" class="w-100">
+                <div class="input-group shadow-sm"
+                    style="border-radius: 0.5rem;
+                            border: 1px solid #d1e8ed;
+                            background: white;">
+
+                  <div class="input-group-prepend">
+                    <span class="input-group-text"
+                          style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+                                border: none;
+                                color: #1a7a8e;">
+                      <i class="fas fa-search"></i>
+                    </span>
+                  </div>
+
+                  <input
+                    name="q"
+                    value="{{ search_query }}"
+                    class="form-control"
+                    placeholder="Search organism name, WHONET code, genus, species, or any field…"
+                    type="text"
+                    style="border:none; background:white;"
+                  >
+
+                  <div class="input-group-append">
+                    <button class="btn"
+                            type="submit"
+                            style="background:#e8f5f7; border:none; color:#1a7a8e;">
+                      <i class="fas fa-search"></i>
+                    </button>
+
+                    {% if search_query %}
+                    <a href="{% url 'view_organism' %}"
+                      class="btn"
+                      style="background:#e8f5f7; border:none; color:#1a7a8e;"
+                      title="Clear search">
+                      <i class="fas fa-times"></i>
+                    </a>
+                    {% endif %}
+                  </div>
+
+                </div>
+              </form>
+
+            </div>
           </div>
+
+          <!-- Important Note -->
+          <div class="alert"
+              style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+                      border-left: 4px solid #2d9cad;
+                      border-radius: 0.5rem;">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-info-circle mr-3"
+                style="font-size: 1.5rem; color: #2d9cad;"></i>
+              <div>
+                <strong style="color: #1a7a8e;">Important Note:</strong>
+                <span style="color: #5a6c72;">
+                  Configure organism taxonomic classifications and WHONET codes for proper reporting and surveillance data management.
+                </span>
+              </div>
+            </div>
+          </div>
+
         </div>
-      </div>
-    </div>
 
     <!-- Table -->
     <div class="table-responsive" style="max-height: 600px; overflow-y: auto; overflow-x: auto;">
@@ -145,6 +157,7 @@
               <a href="{% url 'edit_organism' pk=organism.pk %}" class="btn btn-sm mr-1" style="background: linear-gradient(135deg, #7ec97e 0%, #5fb85f 100%); color: white; border: none;" title="Edit">
                 <i class="fa fa-pencil-alt"></i>
               </a>
+              
               <a href="#" class="btn btn-sm delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'del_organism' organism.id %}" style="background: linear-gradient(135deg, #d97c7c 0%, #c24b4b 100%); color: white; border: none;" title="Delete">
                 <i class="fa fa-trash"></i>
               </a>
@@ -247,7 +260,7 @@
                     </li>
                   {% else %}
                     <li class="page-item">
-                      <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                      <a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}">{{ num }}</a>
                     </li>
                   {% endif %}
                 {% endif %}
@@ -355,31 +368,72 @@ $(document).ready(function(){
   });
 });
 
-// Search table function
+// // Search table function
+// function searchTable() {
+//   var input = document.getElementById("search-input");
+//   var filter = input.value.toLowerCase();
+//   var table = document.getElementById("organism-table");
+//   var rows = table.querySelectorAll("tbody tr");
+
+//   rows.forEach(row => {
+//     var text = row.textContent.toLowerCase();
+//     row.style.display = text.includes(filter) ? "" : "none";
+//   });
+// }
+
+// // Clear search function
+// function clearSearch() {
+//   document.getElementById("search-input").value = "";
+//   searchTable();
+// }
+
+// // Enter key support for search
+// document.getElementById("search-input").addEventListener("keypress", function(event) {
+//   if (event.key === "Enter") {
+//     event.preventDefault();
+//     searchTable();
+//   }
+// });
+// </script>
+
+
+<script>
+// SERVER-SIDE SEARCH HANDLER
 function searchTable() {
-  var input = document.getElementById("search-input");
-  var filter = input.value.toLowerCase();
-  var table = document.getElementById("organism-table");
-  var rows = table.querySelectorAll("tbody tr");
+  const input = document.getElementById("search-input");
+  const query = input.value.trim();
 
-  rows.forEach(row => {
-    var text = row.textContent.toLowerCase();
-    row.style.display = text.includes(filter) ? "" : "none";
-  });
+  const params = new URLSearchParams(window.location.search);
+
+  if (query) {
+    params.set("q", query);
+    params.delete("page"); // reset pagination on new search
+  } else {
+    params.delete("q");
+    params.delete("page");
+  }
+
+  window.location.search = params.toString();
 }
 
-// Clear search function
+// CLEAR SEARCH (RELOAD ALL RECORDS)
 function clearSearch() {
-  document.getElementById("search-input").value = "";
-  searchTable();
+  const params = new URLSearchParams(window.location.search);
+  params.delete("q");
+  params.delete("page");
+
+  window.location.search = params.toString();
 }
 
-// Enter key support for search
-document.getElementById("search-input").addEventListener("keypress", function(event) {
+// ENTER KEY SUPPORT
+document.getElementById("search-input").addEventListener("keydown", function (event) {
   if (event.key === "Enter") {
     event.preventDefault();
     searchTable();
   }
 });
 </script>
+
+
+
 {% endblock javascripts %}
