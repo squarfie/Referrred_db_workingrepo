@@ -30,7 +30,7 @@ th, td {
     text-align: center;
     vertical-align: middle;
     padding: 0.8px;
-    line-height: 1.06;
+    line-height: .96;
 }
 
 .gray-background {
@@ -118,23 +118,16 @@ th, td {
                     </td>
 
                     <!-- Sentinel Site Results spans 2 rows -->
-                    <td rowspan="2"
-                        colspan="4"
+                    <td colspan="4"
                         style="font-size:9px; text-align:center; border-right:1px solid black; border-bottom:0;">
                         <strong>Sentinel Site Results</strong>
-                        <div style="padding-top:3px; text-align: left; font-size: 8px;">
-                            
+                        <div style="padding-top:3px; text-align: left; font-size: 8px;">  
                         </div>
-                        <div style="padding-top:3px; text-align: left; font-size: 8px;">
-                            {{ isolate.Site_Pre }}
-                        </div>
-
-
                     </td>
                 {% else %}
                     <!-- keep grid for next blocks -->
                      <td colspan="4" style="border-top: 0; border-bottom: 0; border-right:1px solid black;"></td>
-                    <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">{{ isolate.Site_Pos }}</td>
+                    <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"></td>
                 {% endif %}
 
                 <!-- spacer -->
@@ -143,25 +136,37 @@ th, td {
                 {% for abx, data in row %}
                     <th style="padding: 2px;">{{ abx }}</th>
                 {% endfor %}
+                
+                {% if forloop.first %}
+                    <th colspan="3" style="border-bottom: 0;">Remarks</th>
+                {% endif%}
             </tr>
 
             <!-- DISK ROW -->
             <tr>
-                
+                {% if forloop.first %}
+                <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: le;">{{ isolate.Site_Pre }}</td>
+                <td><strong>DISK</strong></td>
+                {% endif%}
 
                 {% if not forloop.first %}
                     <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black;"></td>
-                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: left;"> Remarks:</td>
+                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: left;">{{isolate.Site_Pos}}</td>
+                    <td><strong>DISK</strong></td>
                 {% endif %}
 
-                <td><strong>DISK</strong></td>
-
+            
                 {% for abx, data in row %}
                     <td style="font-size:7px;">
                         {{ data.disk.ab_Disk_value|default_if_none:"&nbsp;"|safe }} <br>
                         {{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe}}
                     </td>
                 {% endfor %}
+                {% if forloop.first %}
+                <td colspan="3" rowspan="5" style="border-top:0; border-bottom:1px solid black; border-right:1px solid black; text-align: left; vertical-align: top;">{{isolate.Comments}}</td>
+
+                {% endif%}
+
             </tr>
 
             <!-- MIC ROW -->
@@ -209,7 +214,7 @@ th, td {
                             {% else %}
                                 <!-- empty cells to keep column alignment -->
                                 <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
-                                <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"> {{isolate.ars_Post}}</td>
+                                <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"></td>
                             {% endif %}
 
                             <!-- spacer before antibiotics -->
@@ -218,7 +223,16 @@ th, td {
                             {% for abx, data in row %}
                                 <th>{{ abx }}</th>
                             {% endfor %}
+                                {% if forloop.first %}
+                                <th colspan="3" style="border-bottom: 0;">Confirmatory Tests:</th>
+                                {% endif%}
+                                {%if not forloop.first %}
+                               <td style="font-size: 7px;">ampC</td>
+                               <td style="font-size: 7px;">CN/CNI</td>
+                               <td style="font-size: 7px;">{{isolate.ars_cn_cni|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
                         </tr>
+
 
                         <!-- DISK ROW -->
                         <tr>
@@ -231,7 +245,7 @@ th, td {
 
                             {% if not forloop.first %}
                             <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
-                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">Confirmatory Tests:</td>
+                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"> {{isolate.ars_Post}}</td>
                             <td><strong>DISK</strong></td>
                             {% endif %}
 
@@ -240,6 +254,19 @@ th, td {
                                     {{ data.disk.ab_Retest_DiskValue|default_if_none:"&nbsp;"|default:"&nbsp;"|safe }}
                                 </td>
                             {% endfor %}
+
+                            {%if forloop.first %}
+                               <td style="font-size: 7px; border-bottom: 0;">ESBL</td>
+                               <td style="font-size: 7px;">CT/CTL</td>
+                               <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
+                            {%if not forloop.first %}
+                               <td style="font-size: 7px;">MBL</td>
+                               <td style="font-size: 7px;">IP/IPI</td>
+                               <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
+
+
                         </tr>
 
                         <!-- MIC ROW -->
@@ -262,6 +289,17 @@ th, td {
                                     {{ data.mic.ab_Retest_MICValue|floatformat:2|default_if_none:"&nbsp;"|default:"&nbsp;"|safe }}
                                 </td>
                             {% endfor %}
+
+                            {% if forloop.first %}
+                            <td style="border-top: 0;">&nbsp;</td>
+                            <td style="font-size: 7px;">TZ/TZL</td>
+                            <td style="font-size: 7px;">{{isolate.ars_tz_tzl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
+                            {% if not forloop.first %}
+                            <td style="border-top: 0;" colspan="3">&nbsp;</td>
+                       
+                            {% endif %}
+
                         </tr>
 
                         {% endfor %}
@@ -276,7 +314,7 @@ th, td {
             </tr>
                     
 
-                        {% for row in grouped_rows %}
+     {% for row in grouped_rows %}
 
             <!-- ANTIBIOTIC HEADER ROW -->
             <tr>
@@ -295,23 +333,16 @@ th, td {
                     </td>
 
                     <!-- Sentinel Site Results spans 2 rows -->
-                    <td rowspan="2"
-                        colspan="4"
+                    <td colspan="4"
                         style="font-size:9px; text-align:center; border-right:1px solid black; border-bottom:0;">
                         <strong>Sentinel Site Results</strong>
-                        <div style="padding-top:3px; text-align: left; font-size: 8px;">
-                            
+                        <div style="padding-top:3px; text-align: left; font-size: 8px;">  
                         </div>
-                        <div style="padding-top:3px; text-align: left; font-size: 8px;">
-                            {{ isolate.Site_Pre }}
-                        </div>
-
-
                     </td>
                 {% else %}
                     <!-- keep grid for next blocks -->
                      <td colspan="4" style="border-top: 0; border-bottom: 0; border-right:1px solid black;"></td>
-                    <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">{{ isolate.Site_Pos }}</td>
+                    <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"></td>
                 {% endif %}
 
                 <!-- spacer -->
@@ -320,25 +351,37 @@ th, td {
                 {% for abx, data in row %}
                     <th style="padding: 2px;">{{ abx }}</th>
                 {% endfor %}
+                
+                {% if forloop.first %}
+                    <th colspan="3" style="border-bottom: 0;">Remarks</th>
+                {% endif%}
             </tr>
 
             <!-- DISK ROW -->
             <tr>
-                
+                {% if forloop.first %}
+                <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: le;">{{ isolate.Site_Pre }}</td>
+                <td><strong>DISK</strong></td>
+                {% endif%}
 
                 {% if not forloop.first %}
                     <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black;"></td>
-                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: left;"> Remarks:</td>
+                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: left;">{{isolate.Site_Pos}}</td>
+                    <td><strong>DISK</strong></td>
                 {% endif %}
 
-                <td><strong>DISK</strong></td>
-
+            
                 {% for abx, data in row %}
                     <td style="font-size:7px;">
                         {{ data.disk.ab_Disk_value|default_if_none:"&nbsp;"|safe }} <br>
                         {{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe}}
                     </td>
                 {% endfor %}
+                {% if forloop.first %}
+                <td colspan="3" rowspan="5" style="border-top:0; border-bottom:1px solid black; border-right:1px solid black; text-align: left; vertical-align: top;">{{isolate.Comments}}</td>
+
+                {% endif%}
+
             </tr>
 
             <!-- MIC ROW -->
@@ -386,7 +429,7 @@ th, td {
                             {% else %}
                                 <!-- empty cells to keep column alignment -->
                                 <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
-                                <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"> {{isolate.ars_Post}}</td>
+                                <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"></td>
                             {% endif %}
 
                             <!-- spacer before antibiotics -->
@@ -395,7 +438,16 @@ th, td {
                             {% for abx, data in row %}
                                 <th>{{ abx }}</th>
                             {% endfor %}
+                                {% if forloop.first %}
+                                <th colspan="3" style="border-bottom: 0;">Confirmatory Tests:</th>
+                                {% endif%}
+                                {%if not forloop.first %}
+                               <td style="font-size: 7px;">ampC</td>
+                               <td style="font-size: 7px;">CN/CNI</td>
+                               <td style="font-size: 7px;">{{isolate.ars_cn_cni|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
                         </tr>
+
 
                         <!-- DISK ROW -->
                         <tr>
@@ -408,7 +460,7 @@ th, td {
 
                             {% if not forloop.first %}
                             <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
-                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">Confirmatory Tests:</td>
+                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"> {{isolate.ars_Post}}</td>
                             <td><strong>DISK</strong></td>
                             {% endif %}
 
@@ -417,6 +469,19 @@ th, td {
                                     {{ data.disk.ab_Retest_DiskValue|default_if_none:"&nbsp;"|default:"&nbsp;"|safe }}
                                 </td>
                             {% endfor %}
+
+                            {%if forloop.first %}
+                               <td style="font-size: 7px; border-bottom: 0;">ESBL</td>
+                               <td style="font-size: 7px;">CT/CTL</td>
+                               <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
+                            {%if not forloop.first %}
+                               <td style="font-size: 7px;">MBL</td>
+                               <td style="font-size: 7px;">IP/IPI</td>
+                               <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
+
+
                         </tr>
 
                         <!-- MIC ROW -->
@@ -439,17 +504,31 @@ th, td {
                                     {{ data.mic.ab_Retest_MICValue|floatformat:2|default_if_none:"&nbsp;"|default:"&nbsp;"|safe }}
                                 </td>
                             {% endfor %}
+
+                            {% if forloop.first %}
+                            <td style="border-top: 0;">&nbsp;</td>
+                            <td style="font-size: 7px;">TZ/TZL</td>
+                            <td style="font-size: 7px;">{{isolate.ars_tz_tzl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
+                            {% if not forloop.first %}
+                            <td style="border-top: 0;" colspan="3">&nbsp;</td>
+                       
+                            {% endif %}
+
                         </tr>
 
                         {% endfor %}
+
 
 
             <tr>
                  <th colspan="41" style="font-size: 10px; text-align: left; vertical-align: top; padding: 2px; border-bottom: 0;"><strong>Recommendation</strong></th>
             </tr>
             <tr>
-                 <td colspan="41" style="height: 60px; font-size: 10px; text-align: left; vertical-align: top; padding: 2px; border-top: 0;"><br> {{isolate.Recommendation}}</td>
+                 <td colspan="41" style="font-size: 10px; text-align: left; vertical-align: top; padding: 2px; border-top: 0;"><br> {{isolate.Recommendation}}</td>
             </tr>
+
+            
             <tr>
                 <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0;"> <strong>Date:</strong></td>
                 <td colspan="4" style="border-left: 0; border-right: 0;"> </td>
@@ -482,40 +561,6 @@ th, td {
         
         </tbody>
         </table>
-        <div class="header-container">
-            <table>
-                <tr>
-                <th style="width:40%; text-align:right;">
-                
-                    {% if logo_path %}
-                    <img src="{{ logo_path }}"  style="width: 200px; height: auto;" />
-                    {% else %}
-                    <p>Logo not available</p>
-                    {% endif %}
-                </th>
-                <th style="padding-left: 5px; text-align: left; font-size: 10px;" colspan="8">
-                    <p style="text-align: center;">
-                    <strong>Research Institute for Tropical Medicine - Department of Health </strong>
-                    <br><strong>Antimicrobial Resistance Surveillance Reference Laboratory</strong>
-                    <br > <span style="font-size: 8px;">9002 Research Drive, Filinvest Corporate City, Alabang, Muntinlupa City 1781 Philippines</span> 
-                    <br> <span style="font-size: 8px;">T: (632) 809-9763 / 807-2628 to 32 loc. 243 | F: (632) 809-9763</span>
-                    <br><span style="font-size: 8px;"><a href="http://www.ritm.gov.ph/"><strong>www.ritm.gov.ph</strong></a> <strong>| ISO 9001:2008 Certified</strong> </span>
-                    </p>
-            </th>
-                        <th style="padding-left: 5px; text-align: left; font-size: 10px;" colspan="8">
-                    <p>
-                    </p>
-            </th>
-            </tr>
-        </table>
-    </div>
-            
-        <table>
-            <tbody>
-
-            </tbody>
-        </table>
-        <div class="page-break"></div>
-</body>
+  </body>
 
 </html>

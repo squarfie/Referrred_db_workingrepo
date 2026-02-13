@@ -1,79 +1,185 @@
 {% extends 'layouts/base.html' %}
-{% load static %} 
+{% load static %}
 {% load widget_tweaks %}
 
-{% block title %} Add New Specimen Type {% endblock title %}
+{% block title %} Edit Specimen Type {% endblock title %}
 
-<!-- Specific CSS goes HERE -->
-{% block stylesheets %}{% endblock stylesheets %}
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+{% endblock stylesheets %}
 
 {% block content %}
 
-<body>
-  <div class="header bg-primary pb-6" style="min-height: 200px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
-    <span class="mask bg-gradient-default opacity-3"></span>
+<div class="header pb-6" style="height: 180px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%); opacity: 0.6;"></div>
+  <div class="container-fluid" style="position: relative; z-index: 1;">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">
+            <i class="fas fa-database mr-2"></i>Specimen Type Database
+          </h6>
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+              <li class="breadcrumb-item"><a href="{% url 'settings_page' %}">Settings</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Edit Specimen</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="container">
-    
-    <div class="col-lg-12">
-      <div class="text-right">
-        <a href="{% url 'specimen_list' %}" class="btn btn-secondary mt-4">View all</a>
-      </div>
+</div>
 
-      <!-- Page Title -->
-      <div class="text-center text-muted mb-4">
-        <h2>Add New / Update Specimen Type</h2>
-      </div>
 
-      <form method="POST" action="{% url 'edit_specimen' specimen.id %}" autocomplete="on" id="specimenForm">
-        {% csrf_token %}
-        
-        <div class="form-group">
-          <div class="row">
-            <div class="col-lg-12">
-              <div class="row">
-                
-                   <!-- Specimen Code -->
-                <div class="col-lg-6">
-                  <div class="form-group">
-                    <label class="form-control-label" for="Specimen_code">Specimen Code:</label> 
-                    {{ form.Specimen_code|append_attr:"class: form-control" }} 
+<div class="container-fluid mt-4">
+
+  <div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+
+      <div class="card shadow-sm">
+
+        <!-- HEADER -->
+        <div class="card-header d-flex justify-content-between align-items-center"
+             style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+                    border-bottom: 2px solid #d1e8ed;">
+
+          <h5 class="card-title mb-0">
+            <i class="fas fa-vial mr-2"></i>
+            {% if editing %}Edit{% else %}Add{% endif %} Specimen Type
+          </h5>
+
+          <a href="{% url 'specimen_list' %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-table mr-1"></i> View All
+          </a>
+          
+        </div>
+
+        <!-- BODY -->
+        <div class="card-body">
+
+          <form method="POST"
+                action="{% if editing %}{% url 'edit_specimen' specimen.id %}{% else %}{% url 'add_specimen' %}{% endif %}"
+                autocomplete="on"
+                id="specimenForm">
+
+            {% csrf_token %}
+
+            <!-- EMERGING FLAG -->
+            <div class="row mb-4">
+              <div class="col-12">
+
+                <div class="p-3 rounded"
+                     style="background: linear-gradient(135deg, #eef7fa 0%, #e3f1f5 100%);
+                            border: 1px solid #d1e8ed;">
+
+                  <div class="form-check d-flex align-items-center">
+                    {{ form.Emerging_Spec_Flag|add_class:"form-check-input" }}
+                    <label class="form-check-label ml-3">
+                      <i class="fas fa-eye mr-1 text-info"></i>
+                      Monitor this specimen for Emerging Resistance
+                    </label>
                   </div>
-                </div>
-                <!-- Specimen Name -->
-                <div class="col-lg-6">
-                  <div class="form-group">                    
-                    <label class="form-control-label" for="Specimen_name">Specimen Name:</label> 
-                    {{ form.Specimen_name|append_attr:"class: form-control" }}
-                   
-                  </div>
-                </div>
 
-             
+                </div>
 
               </div>
             </div>
-          </div>
-      </form>
 
-      <!-- Buttons -->
-      <div class="text-center">
-        <button type="submit" class="btn btn-primary mt-4">Submit</button>
-        <button class="btn btn-secondary mt-4" onclick="history.back()">Back </button>
-        <button type="button" class="btn btn-success mt-4" onclick="refresh()">Clear</button>
+            <!-- MAIN FIELDS -->
+            <div class="row">
+
+              <div class="col-md-6 mb-3">
+                <label>
+                  <i class="fas fa-barcode mr-1"></i> Specimen Code
+                </label>
+                {{ form.Specimen_code|add_class:"form-control"|attr:"placeholder:Enter specimen code" }}
+                <small class="helper-text">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  Unique identifier for the specimen type
+                </small>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label>
+                  <i class="fas fa-file-medical mr-1"></i> Specimen Name
+                </label>
+                {{ form.Specimen_name|add_class:"form-control"|attr:"placeholder:Enter specimen name" }}
+                <small class="helper-text">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  Descriptive name of the specimen
+                </small>
+              </div>
+
+            </div>
+
+            <!-- GROUPING -->
+            <div class="row">
+
+              <div class="col-md-6 mb-3">
+                <label>
+                  <i class="ni ni-archive-2 mr-1"></i> Specimen Group Code
+                </label>
+                {{ form.Specimen_Code_Grp|add_class:"form-control" }}
+                <small class="helper-text">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  Used to group specimen codes (e.g. PF, AB → FL)
+                </small>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label>
+                  <i class="ni ni-badge mr-1"></i> Specimen Group Name
+                </label>
+                {{ form.Specimen_Grp_Name|add_class:"form-control"|attr:"placeholder:e.g. Fluid" }}
+                <small class="helper-text">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  Human-readable group name
+                </small>
+              </div>
+
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="fas fa-save mr-2"></i>
+                {% if editing %}Update{% else %}Submit{% endif %} Specimen
+              </button>
+
+              <button type="button"
+                      class="btn btn-success px-4"
+                      onclick="refresh()">
+                <i class="fas fa-eraser mr-2"></i> Clear
+              </button>
+
+              <button type="button"
+                      class="btn btn-secondary px-4"
+                      onclick="history.back()">
+                <i class="fas fa-arrow-left mr-2"></i> Back
+              </button>
+
+            </div>
+
+          </form>
+
+        </div>
       </div>
 
     </div>
   </div>
+</div>
 
-
-  <!-- JavaScript for Form Reset -->
-  <script>
-    function refresh() {
-      document.getElementById("specimenForm").reset();
-    }
-  </script>
-
-</body>
+<script>
+function refresh() {
+  if (confirm("Clear all form fields?")) {
+    document.getElementById("specimenForm").reset();
+  }
+}
+</script>
 
 {% endblock content %}

@@ -1,18 +1,23 @@
 {% extends 'layouts/base.html' %}
-
+{% load static %}
 {% load widget_tweaks %}
 {% load custom_filters %}
 
-
 {% block title %} Demographic Data {% endblock title %}
+
+
+ 
+
 
 {% block content %}
 
 <!-- Specific CSS goes HERE -->
 {% block stylesheets %}
 
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
 <!-- style for back to top button -->
 <style>
+
 #myBtn {
   display: none;
   position: fixed;
@@ -46,6 +51,17 @@ label.form-control-label{
 .fontlarge{
   font-size: large;
 }
+
+#greetingText {
+  font-weight: 600;
+}
+
+#currentTime {
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+
 </style>
 {% endblock stylesheets %}
 
@@ -56,31 +72,27 @@ label.form-control-label{
   <!-- Mask -->
   <span class="mask bg-gradient-default opacity-6"></span>
   <!-- Header container -->
-  <div class="container-fluid d-flex flex-column align-items-right">
-    <div class="row">
-      <div class="col-lg-10 col-md-4">
-        <!-- <h6 class="display-2 text-white align=text-right"> 
-          Hello {{ request.user.username }}
-        </h6>
-        <p class="text-white mt-0 mb-5"></p> --> 
-        <!-- <a href="#" class="btn btn-neutral">Filter</a> -->
-        <!-- <div class="row">
-          {% if messages %}
-            {% for message in messages %}
-              <div class="alert alert-{{ message.tags }}" style="background: rgba(0, 0, 0, 0); color: white; border: none;">
-                {{ message }}
-              </div>
-            {% endfor %}
-          {% endif %}
-        </div> -->
-        
-        <br><br>
-      </div>
+<div class="container-fluid d-flex justify-content-start">
+  <div class="row">
+    <div class="col text-left">
+
+      <h5 class="text-white mb-1" id="greetingText" style="letter-spacing: 0.5px;">
+        Hello, {{ request.user.username }}
+      </h5>
+
+      <small class="text-white-50" id="currentTime">
+        <!-- time will appear here -->
+      </small>
+
+      
     </div>
   </div>
 </div>
+
+</div>
 <!-- Page content -->
 <div class="container-fluid mt--6">
+ 
   <div class="row">
  
 <!-- DEMOGRAPHIC DATA -->
@@ -90,9 +102,18 @@ label.form-control-label{
       action="{% if isolates %}{% url 'raw_data' isolates.id %}{% endif %}" 
       autocomplete="on" id="myform">
 
+      <datalist id="enris-options">
+        <option value="R">
+        <option value="I">
+        <option value="S">
+        <option value="SDD">
+        <option value="NS">
+      </datalist>
+
+
         {% csrf_token %}
 
-      <div class="card" >
+      <div class="form-card" >
         <div class="card-header" id="mytop">
           <div class="row align-items-center">
             <!-- <div class="col-8">
@@ -134,7 +155,7 @@ label.form-control-label{
                 <button class="btn btn-sm btn-success" onclick="history.back()">Back </button>
                 <a href="{% url 'batch_create_view' %}" class="btn btn-sm btn-primary">New Batch</a>
                 <button type="submit" class="btn btn-sm btn-primary">Save</button>
-                <a href="{% url 'show_data' %}" class="btn btn-sm btn-primary">View / Print</a>  
+                <a href="{% url 'show_data' %}" class="btn btn-sm btn-primary">View Records</a>  
                 <a href="{% url 'add_breakpoints' %}" class="btn btn-warning btn-sm">Breakpoints</a>
                 
               </div>
@@ -150,16 +171,28 @@ label.form-control-label{
                     {{form.Site_Name| append_attr:"class: form-control fontsize"}}
                   </div>
                   </div>
-                <div class="col-lg-4">
+                <div class="col-lg-3">
                 <div class="form-group">
                   <label class="form-control-label" for="AccessionNo">Accession Number</label>
                   {{form.AccessionNo| append_attr:"class: form-control fontsize"}} 
               </div>
               </div>
-              <div class="col-lg-4">
+              <div class="col-lg-3">
                 <div class="form-group">
                   <label class="form-control-label" for="Batch_Name">Batch Name</label>
                   {{form.Batch_Code| append_attr:"class: form-control fontsize"}} 
+              </div>
+              </div>
+                <div class="col-lg-1">
+                <div class="form-group">
+                  <label class="form-control-label" for="bat_seq">Seq. No.</label>
+                  {{form.bat_seq| append_attr:"class: form-control fontsize"}} 
+              </div>
+              </div>
+              <div class="col-lg-1">
+                <div class="form-group">
+                  <label class="form-control-label" for="Batch_id"></label>
+                  {{ form.Batch_id|append_attr:"class:form-control fontsize,disabled:true" }}
               </div>
               </div>
             </div>
@@ -174,6 +207,7 @@ label.form-control-label{
         <li class="nav-item">
           <button class="nav-link" href="#tabcontent2" id="tab2"  data-toggle="tab" role="tab" >ARSRL STY RESULTS</button>
         </li>
+      
     </ul>
         <div class="card-body">
  
@@ -385,7 +419,7 @@ label.form-control-label{
                             </div>
                                <div class="col-lg-3">
                               <div class="form-group">
-                                <label class='form-control-label' for='Site_Org'>Organism Code</label> {{form.Site_Org| append_attr:"class: form-control" }}
+                                <label class='form-control-label' for="id_Site_Org">Organism Code</label> {{form.Site_Org| append_attr:"class: form-control" }}
                               </div>
                             </div>
                             <div class="col-lg-3">
@@ -414,14 +448,31 @@ label.form-control-label{
 <div id="antibiotic-container">
   <div class="col-lg-12">
     <div class="row">
+      <div class="mb-3">
+        <div class="input-group" style="max-width: 300px;">
+          <div class="input-group-prepend">
+            <span class="input-group-text">
+              <i class="fas fa-search"></i>
+            </span>
+          </div>
+<input type="text"
+       id="antibioticSearchMain"
+       class="form-control"
+       placeholder="Search antibiotic..."
+       onkeyup="filterAntibiotics()">
+
+        </div>
+    </div>
+    </div>
+    <div class="row">
 
       <!-- 🧫 DISK DIFFUSION -->
       <div class="col-lg-6">
         <h6 class="heading-small text-muted mb-4">DISK DIFFUSION</h6>
         <div class="card border-info mb-3">
           <div class="card-body text-info">
-            <div class="table-responsive " style="max-height: 500px; overflow-y: auto; overflow-x: auto;">
-              <table class="table align-items-center text-center table-sm table-responsive table-compact" style="width: 100%;">
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table align-items-center text-center table-sm" style="width: 100%;">
                 <thead class="thead-light">
                   <tr style="line-height: 15px;">
                     <th>ANTIBIOTIC</th>
@@ -430,7 +481,7 @@ label.form-control-label{
                     <th>RIS</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody id="disk-antibiotics">
                   {% if antibiotics_main %}
                     {% for entry in antibiotics_main|dictsort:"Whonet_Abx" %}
                       {% if entry.Disk_Abx %}
@@ -445,7 +496,7 @@ label.form-control-label{
                           <td>
                             <input name="disk_enris_{{ entry.Whonet_Abx }}" 
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk_enris' %}" 
-                                   type="text" style="width: 50px;">
+                                   type="text" style="width: 50px; text-align: center;" list="enris-options">
                           </td>
                         
                         </tr>
@@ -467,7 +518,7 @@ label.form-control-label{
         <div class="card border-info mb-3">
           <div class="card-body text-info">
             <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-              <table class="table align-items-center text-center table-sm table-responsive table-compact" style="width: 100%;">
+            <table class="table align-items-center text-center table-sm" style="width: 100%;">
                 <thead class="thead-light">
                   <tr style="line-height: 15px;">
                     <th>ANTIBIOTIC</th>
@@ -478,7 +529,7 @@ label.form-control-label{
                     <th>ALERT MIC</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody id="mic-antibiotics">
                   {% if antibiotics_main %}
                     {% for entry in antibiotics_main|dictsort:"Whonet_Abx" %}
                       {% if not entry.Disk_Abx %}
@@ -498,7 +549,7 @@ label.form-control-label{
                           <td>
                             <input name="mic_enris_{{ entry.Whonet_Abx }}"
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_enris' %}" 
-                                   type="text" style="width: 50px;">
+                                   type="text" style="width: 50px; text-align: center;" list="enris-options">
                           </td>
                           <td>
                             {% get_existing_value existing_entries entry.Whonet_Abx 'alert_mic' as alert_mic_checked %}
@@ -528,7 +579,7 @@ label.form-control-label{
                 <div class="row">
                   <div class="col-lg-12">
                               <div class="form-group">
-                                <label class='form-control-label' for='Comments'>Commments</label> {{form.Comments| append_attr:"class: form-control" }}
+                                <label class='form-control-label' for='Comments'>Remarks</label> {{form.Comments| append_attr:"class: form-control" }}
                               </div>
                         </div>
                 </div>
@@ -608,7 +659,7 @@ label.form-control-label{
                             </div>
                             <div class="col-lg-3">
                               <div class="form-group">
-                                <label class='form-control-label' for='ars_OrgCode'>Organism Code</label> {{form.ars_OrgCode| append_attr:"class: form-control" }}
+                                <label class='form-control-label' for='id_ars_OrgCode'>Organism Code</label> {{form.ars_OrgCode| append_attr:"class: form-control" }}
                               </div>
                             </div>
                             <div class="col-lg-3">
@@ -630,15 +681,32 @@ label.form-control-label{
 
 <div id="retest-container">
 <div class="col-lg-12">
+      <div class="row">
+      <div class="mb-3">
+        <div class="input-group" style="max-width: 300px;">
+          <div class="input-group-prepend">
+            <span class="input-group-text">
+              <i class="fas fa-search"></i>
+            </span>
+          </div>
+<input type="text"
+       id="antibioticSearchRetest"
+       class="form-control"
+       placeholder="Search retest antibiotic..."
+       onkeyup="filterRetestAntibiotics()">
+
+        </div>
+    </div>
+    </div>
   <div class="row">
 
     <!-- 🧫 RETEST DISK DIFFUSION -->
-    <div class="col-lg-5">
+    <div class="col-lg-6">
       <h6 class="heading-small text-muted mb-4">RETEST - DISK DIFFUSION</h6>
       <div class="card border-info mb-3">
         <div class="card-body text-info">
           <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-            <table class="table align-items-center text-center table-sm table-responsive table-compact" style="width: 100%;">
+            <table class="table align-items-center text-center table-sm" style="width: 100%;">
               <thead class="thead-light">
                 <tr style="line-height: 15px;">
                   <th scope="col">ANTIBIOTIC</th>
@@ -647,7 +715,7 @@ label.form-control-label{
                   <th scope="col">RIS</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="retest-disk-antibiotics">
                 {% if antibiotics_retest%}
                   {% for retest in antibiotics_retest|dictsort:"Whonet_Abx" %}
                     {% if retest.Disk_Abx %}
@@ -662,13 +730,13 @@ label.form-control-label{
                         <td>
                           <input name="retest_disk_enris_{{ retest.Whonet_Abx }}" 
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk_enris' %}"
-                                 type="text" style="width: 50px;">
+                                 type="text" style="width: 50px; text-align: center;" list="enris-options">
                         </td>
                       </tr>
                     {% endif %}
                   {% endfor %}
                 {% else %}
-                  <tr><td colspan="5">No retest disk antibiotics available</td></tr>
+                  <tr><td colspan="6">No retest disk antibiotics available</td></tr>
                 {% endif %}
               </tbody>
             </table>
@@ -678,12 +746,12 @@ label.form-control-label{
     </div>
 
     <!-- 💧 RETEST MIC RESULTS -->
-    <div class="col-lg-7">
+    <div class="col-lg-6">
       <h6 class="heading-small text-muted mb-4">RETEST - MIC RESULTS</h6>
       <div class="card border-info mb-3">
         <div class="card-body text-info">
           <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-            <table class="table align-items-center text-center table-sm table-responsive table-compact" style="width: 100%;">
+            <table class="table align-items-center text-center table-sm" style="width: 100%;">
               <thead class="thead-light">
                 <tr style="line-height: 15px;">
                   <th scope="col">ANTIBIOTIC</th>
@@ -694,7 +762,7 @@ label.form-control-label{
                   <th scope="col" style="width: 98px;">ALERT MIC</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="retest-mic-antibiotics">
                 {% if antibiotics_retest %}
                   {% for retest in antibiotics_retest|dictsort:"Whonet_Abx" %}
                     {% if not retest.Disk_Abx %}
@@ -714,7 +782,7 @@ label.form-control-label{
                         <td>
                           <input name="retest_mic_enris_{{ retest.Whonet_Abx }}" 
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_enris' %}"
-                                 type="text" style="width: 50px;">
+                                 type="text" style="width: 50px; text-align: center;" list="enris-options">
                         </td>
                         <td>
                           {% get_existing_value retest_entries retest.Whonet_Abx 'retest_alert_mic' as retest_alert_mic_checked %}
@@ -729,6 +797,40 @@ label.form-control-label{
                 {% else %}
                   <tr><td colspan="7">No retest MIC antibiotics available</td></tr>
                 {% endif %}
+                {% if antibiotics_retest %}
+                  {% for retest in antibiotics_retest|dictsort:"Whonet_Abx" %}
+                    {% if not retest.Disk_Abx %}
+                      <tr>
+                        <td>{{ retest.Antibiotic }}</td>
+                        <td>{{ retest.Whonet_Abx }}</td>
+                        <td>
+                          <input name="retest_mic_operand_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_operand' %}"
+                                 type="text" style="width: 50px;">
+                        </td>
+                        <td>
+                          <input name="retest_mic_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic' %}"
+                                 type="number" min="0" step="0.001" style="width: 70px;">
+                        </td>
+                        <td>
+                          <input name="retest_mic_enris_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_enris' %}"
+                                 type="text" style="width: 50px; text-align: center;" list="enris-options">
+                        </td>
+                        <td>
+                          {% get_existing_value retest_entries retest.Whonet_Abx 'retest_alert_mic' as retest_alert_mic_checked %}
+                          <input type="checkbox" 
+                                 name="retest_alert_mic_{{ retest.Whonet_Abx }}"
+                                 style="transform: scale(1.5); margin: 4px;" 
+                                 {% if retest_alert_mic_checked %}checked{% endif %}>
+                        </td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="6">No retest MIC antibiotics available</td></tr>
+                {% endif %}
               </tbody>
             </table>
           </div>
@@ -739,78 +841,104 @@ label.form-control-label{
   </div>
 </div>
 </div>
-            <div class="pl-lg-12">
-              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ARSRL PERSONNEL PROVIDING INFORMATION</h6>
-              <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
-              </div>
-            <div class="row">
+
+<div class="pl-lg-12">
+<h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">CONFIRMATORY TEST RESULTS</h6>
+ <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+  <div class="row">
+     <div class="col-lg-12">
+   
+              <div class="row">
+            <div class="col-lg-6">
+                  <div class="form-group">
+                  <label class='form-control-label' style="text-align: center; font-size: large; margin-bottom: 0;"> ESBL</label>
+                  </div>
+            </div>
+              <div class="col-lg-3">
+                  <div class="form-group">
+                  <label class='form-control-label'style="text-align: center; font-size: large; margin-bottom:0">ampC</label> 
+                  </div>
+            </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                  <label class='form-control-label' style="text-align: center; font-size: large; margin-bottom: 0;">MBL</label>
+                  </div>
+            </div>
+        </div>
+        <div class="row">
+          
+            <div class="col-lg-3">
+                  <div class="form-group">
+                  <label class='form-control-label' for='ars_ct_ctl'> CT/CTL</label> {{form.ars_ct_ctl| append_attr:"class: form-control"}}
+                  </div>
+            </div>
+              <div class="col-lg-3">
+                  <div class="form-group">
+                  <label class='form-control-label' for='ars_tz_tzl'> TZ/TZL</label> {{form.ars_tz_tzl| append_attr:"class: form-control"}}
+                  </div>
+            </div>
             
-              <div class="col-lg-12">
+              <div class="col-lg-3">
+                  <div class="form-group">
+                  <label class='form-control-label' for='ars_cn_cni'>CN/CNI</label> {{form.ars_cn_cni| append_attr:"class: form-control"}}
+                  </div>
+            </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                  <label class='form-control-label' for='ars_ip_ipi'> IP/IPI</label> {{form.ars_ip_ipi| append_attr:"class: form-control"}}
+                  </div>
+            </div>
+        </div>
+    
+     </div>
+  </div>
+</div>
 
-                <div class="card border-info mb-3">
-                  <div class="card-body  text-info">
-                    <div class="col-lg-12">
-                      <div class="row">
-                        <div class="col-lg-3">
-                          <div class="form-group">                    
-                            <label class='form-control-label' for='arsp_Encoder'>Encoded by</label>
-                            <div class="d-flex align-items-center">
-                              {{ form.arsp_Encoder| append_attr:"class: form-control "}} 
-                              <span><a href="{% url 'add_contact' %}" class="col-4 shortcut-item" style="padding: 0;">
-                              <span class="ni ni-settings" style="margin-left: 10px; line-height: 0; vertical-align: text-bottom;"></span>
-                              </a></span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="col-lg-3">
-                            <div class="form-group">
-                              <label class='form-control-label' for='arsp_Enc_Lic'>License Number</label> {{ form.arsp_Enc_Lic| append_attr:"class: form-control "}} 
-                          </div>
-                     </div>
-                        <div class="col-lg-4">
-                            <div class="form-group">
-                              <label class='form-control-label' for='arsp_License'>Contact Number</label> {{ form.arsp_License| append_attr:"class: form-control "}} 
-                          </div>
-                         
-                        </div>
-                        </div>
-                        <div class="row">
-                        <div class="col-lg-4">
-                            <div class="form-group">
-                              <label class='form-control-label' for='Date_Accomplished_ARSP'>Date_Accomplished</label> {{form.Date_Accomplished_ARSP| append_attr:"class: form-control"}}
-                            </div>
-                        </div>
 
-                    </div> 
-                  </div> 
-                     </div> 
-                    </div> 
-                </div>  
-              </div>
               <div class="pl-lg-12">
               <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">RECCOMENDATION</h6>
               <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
-              </div>
+          
               <div class="row">
-              <div class="col-lg-12">
-                <div class="card border-info mb-3">
-                  <div class="card-body  text-info">
+            
+               
+                 
                     <div class="col-lg-12">
                       <div class="row">
-                        <div class="col-lg-12">
+                      
+                        <div class="col-lg-6">
+                              <div class="row">
+                                <div class="col-lg-12">
+                              <div class="form-group">
+                                    <label class='form-control-label' for='ars_reco_Code'>Recomendation No</label> {{form.ars_reco_Code| append_attr:"class: form-control"}}
+                              </div>
+                              </div>
+                              </div>
+                              <div class="row">
+                                <div class="col-lg-12">
+                              <div class="form-group">
+                                    <label class='form-control-label' for='ars_description'>Description</label> {{form.ars_description| append_attr:"class: form-control"}}
+                              </div>
+                              </div>
+                              </div>
+                      </div>
+                      <div class="col-lg-6">
                           <div class="form-group">                    
                               <label class='form-control-label' for='ars_reco'>Recommendation</label> {{form.ars_reco| append_attr:"class: form-control"}}
                           </div>
                         </div>
                         </div>
                         </div>
-                        </div>
-                        </div>
-                        </div>
-              </div>
-              </div> 
+                       
+                       
+                    
+              </div> </div>
                <!--tabcontent 2-->
             </div> <!--card body-->
+            </div>
+              
+      
+
         
         </form> <!---end of form with post method-->  
       </div> <!--card-->
@@ -833,301 +961,342 @@ label.form-control-label{
 {% block javascripts %}
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script>
-  // Get the button (back to top button)
-  let mybutton = document.getElementById("myBtn");
-  
-  // When the user scrolls down 50px from the top of the document, show the button
-  window.onscroll = function() {scrollFunction()};
-  
-  function scrollFunction() {
-    if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
-      mybutton.style.display = "block";
-    } else {
-      mybutton.style.display = "none";
-    }
+document.addEventListener("DOMContentLoaded", function () {
+
+  /* =====================================================
+     1. BACK TO TOP BUTTON
+  ===================================================== */
+  const backToTopBtn = document.getElementById("myBtn");
+
+  if (backToTopBtn) {
+    window.addEventListener("scroll", () => {
+      backToTopBtn.style.display =
+        document.documentElement.scrollTop > 50 ? "block" : "none";
+    });
+
+    backToTopBtn.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   }
-  
-  // When the user clicks on the button, scroll to the top of the document
-  function topFunction() {
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
+
+  /* =====================================================
+     2. AUTO-CALCULATE AGE
+  ===================================================== */
+  const birthInput   = document.getElementById("id_Date_Birth");
+  const specDateInput = document.getElementById("id_Spec_Date");
+  const ageField     = document.getElementById("id_Age");
+
+  function calculateAge() {
+    if (!birthInput || !specDateInput || !ageField) return;
+
+    if (!birthInput.value || !specDateInput.value) {
+      ageField.value = "";
+      ageField.setCustomValidity("");
+      return;
   }
+
+    const birth = new Date(birthInput.value);
+    const consult = new Date(specDateInput.value);
+
+    if (consult < birth) {
+      ageField.value = "";
+      ageField.setCustomValidity("Specimen date cannot be earlier than birth date");
+      ageField.reportValidity();
+      return;
+    }
+
+
+    let age = consult.getFullYear() - birth.getFullYear();
+    const m = consult.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && consult.getDate() < birth.getDate())) age--;
+
+    ageField.value = age;
+    age
+  }
+
+  birthInput?.addEventListener("change", calculateAge);
+  specDateInput?.addEventListener("change", calculateAge);
+
+  /* =====================================================
+     3. AUTO-FILL ORGANISM NAME
+  ===================================================== */
+  function bindOrganismAutofill(codeSelectId, nameInputId) {
+    const codeSelect = document.getElementById(codeSelectId);
+    const nameInput  = document.getElementById(nameInputId);
+
+    if (!codeSelect || !nameInput) return;
+
+    codeSelect.addEventListener("change", function () {
+      if (!this.value) {
+        nameInput.value = "";
+        return;
+      }
+
+      fetch(`/get_organism_name/?org_code=${encodeURIComponent(this.value)}&field_key=Organism`)
+        .then(res => res.json())
+        .then(data => {
+          nameInput.value = data.Organism || "";
+        })
+        .catch(err => console.error("Organism lookup error:", err));
+    });
+  }
+
+  // Sentinel site
+  bindOrganismAutofill("id_Site_Org", "id_Site_OrgName");
+
+  // ARSRL
+  bindOrganismAutofill("id_ars_OrgCode", "id_ars_OrgName");
+
+
   
-</script>
+  // Dynamic Antibiotic Loading
+function loadAntibiotics(org, retest = false) {
+  if (!org) return;
 
+  fetch(`/ajax/filter-antibiotics/?isolate_id={{ isolates.id }}&org=${encodeURIComponent(org)}&retest=${retest ? 1 : 0}`)
+    .then(res => res.json())
+    .then(data => {
 
-<!-- <script>
-  $(document).ready(function () {
-    // ✅ Keep: Update lab staff contact info based on dropdown
-    $('#id_Laboratory_Staff').change(function () {
-      const labStaffId = $(this).val();
-      if (labStaffId) {
-        $.ajax({
-          url: "{% url 'get_ars_staff_details' %}",
-          data: { lab_staff_id: labStaffId },
-          dataType: 'json',
-          success: function (data) {
-            $('#id_ars_contact').val(data.Staff_Telnum);
-            $('#id_ars_email').val(data.Staff_EmailAdd);
-          },
-          error: function (xhr, status, error) {
-            console.error("Lab staff fetch error:", status, error);
+      // MAIN
+      const diskTbody = document.getElementById("disk-antibiotics");
+      const micTbody  = document.getElementById("mic-antibiotics");
+
+      // RETEST
+      const retestDiskTbody = document.getElementById("retest-disk-antibiotics");
+      const retestMicTbody  = document.getElementById("retest-mic-antibiotics");
+
+      if (retest) {
+        retestDiskTbody.innerHTML = "";
+        retestMicTbody.innerHTML  = "";
+      } else {
+        diskTbody.innerHTML = "";
+        micTbody.innerHTML  = "";
+      }
+
+      data.antibiotics.forEach(abx => {
+
+        // ======================
+        // SENTINEL SITE
+        // ======================
+        if (!retest) {
+          if (abx.is_disk) {
+            diskTbody.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td>${abx.name}</td>
+                <td>${abx.whonet}</td>
+                <td><input name="disk_${abx.whonet}" type="number" min="0" style="width:70px"></td>
+                <td><input name="disk_enris_${abx.whonet}" type="text" style="width:50px" list="enris-options"></td>
+              </tr>
+            `);
+          } else {
+            micTbody.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td>${abx.name}</td>
+                <td>${abx.whonet}</td>
+                <td><input name="mic_operand_${abx.whonet}" type="text" style="width:50px"></td>
+                <td><input name="mic_${abx.whonet}" type="number" step="0.001" style="width:70px"></td>
+                <td><input name="mic_enris_${abx.whonet}" type="text" style="width:50px" list="enris-options"></td>
+                <td><input type="checkbox" name="alert_mic_${abx.whonet}"></td>
+              </tr>
+            `);
           }
-        });
-      } else {
-        $('#id_ars_contact').val('');
-        $('#id_ars_email').val('');
-      }
-    });
+        }
 
-    // Commented out: Auto-generation of accession number in Referred Form
-    
-    $('#id_SiteCode').change(function () {
-      const siteCode = $(this).val();
-      const refDate = $('#id_Referral_Date').val();
-      const batchNum = $('#id_BatchNo').val();
-      const refnum = $('#id_RefNo').val();
-
-      if (siteCode) {
-        $.ajax({
-          url: "{% url 'get_clinic_code' %}",
-          data: { site_code: siteCode },
-          dataType: 'json',
-          success: function (data) {
-            $('#id_Site_Name').val(data.site_name);
-            generateAccessionNo(siteCode, refDate, batchNum, refnum);
-          },
-          error: function (xhr, status, error) {
-            console.error("Clinic code fetch error:", status, error);
+        // ======================
+        // ARSRL / RETEST
+        // ======================
+        else {
+          if (abx.is_disk) {
+            retestDiskTbody.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td>${abx.name}</td>
+                <td>${abx.whonet}</td>
+                <td><input name="retest_disk_${abx.whonet}" type="number" min="0" style="width:70px"></td>
+                <td><input name="retest_disk_enris_${abx.whonet}" type="text" style="width:50px" list="enris-options"></td>
+              </tr>
+            `);
+          } else {
+            retestMicTbody.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td>${abx.name}</td>
+                <td>${abx.whonet}</td>
+                <td><input name="retest_mic_operand_${abx.whonet}" type="text" style="width:50px"></td>
+                <td><input name="retest_mic_${abx.whonet}" type="number" step="0.001" style="width:70px"></td>
+                <td><input name="retest_mic_enris_${abx.whonet}" type="text" style="width:50px"  list="enris-options"></td>
+                <td><input type="checkbox" name="retest_alert_mic_${abx.whonet}"></td>
+              </tr>
+            `);
           }
-        });
-      } else {
-        $('#id_Site_Name').val('');
-        $('#id_AccessionNo').val('');
-      }
-    });
-
-    $('#id_RefNo, #id_Referral_Date, #id_BatchNo').on('input change', function () {
-      const refnum = $('#id_RefNo').val();
-      const siteCode = $('#id_SiteCode').val();
-      const refDate = $('#id_Referral_Date').val();
-      const batchNum = $('#id_BatchNo').val();
-
-      generateAccessionNo(siteCode, refDate, batchNum, refnum);
-    });
-
-    function generateAccessionNo(siteCode, refDate, batchNum, refnum) {
-      if (siteCode && refDate && batchNum && refnum) {
-        const parts = refDate.split('-');
-        let dateClean = '';
-        if (parts.length === 3) {
-          dateClean = parts[1] + parts[2] + parts[0]; // MMDDYYYY
         }
-        $('#id_Batch_Name').val(siteCode + dateClean + batchNum + refnum);
-      } else {
-        $('#id_Batch_Name').val('');
-      }
-    }
-    
-  });
-</script> -->
 
-
-<!-- <script>
-  document.getElementById('id_PermAdd_same_CurrAdd').addEventListener('change', function () {
-      const isChecked = this.checked;
-
-      const currentProvince = document.getElementById('id_Current_Province').value;
-      const currentCity = document.getElementById('id_Current_City').value;
-
-      const permanentProvinceField = document.getElementById('id_Permanent_Province');
-      const permanentCityField = document.getElementById('id_Permanent_City');
-
-      if (isChecked) {
-          permanentProvinceField.value = currentProvince;
-          permanentCityField.value = currentCity;
-      } else {
-          permanentProvinceField.value = '';
-          permanentCityField.value = '';
-      }
-  });
-</script> -->
-
-<script>
-  // Improved: Wait for DOMContentLoaded before attaching event listeners
-  document.addEventListener('DOMContentLoaded', function() {
-    var birthInput = document.getElementById('id_Date_Birth');
-    var consultInput = document.getElementById('id_Spec_Date');
-    var ageField = document.getElementById('id_Age');
-
-    function calculateAge() {
-      if (!birthInput || !consultInput || !ageField) return;
-
-      const birthVal = birthInput.value;
-      const consultVal = consultInput.value;
-
-      if (!birthVal || !consultVal) {
-        ageField.value = '';
-        return;
-      }
-
-      // Parse as YYYY-MM-DD for consistency
-      const birthdate = new Date(birthVal.replace(/-/g, '/'));
-      const consultDate = new Date(consultVal.replace(/-/g, '/'));
-
-      if (isNaN(birthdate.getTime()) || isNaN(consultDate.getTime())) {
-        ageField.value = '';
-        return;
-      }
-
-      if (consultDate < birthdate) {
-        ageField.value = 'Invalid Dates';
-        return;
-      }
-
-      let age = consultDate.getFullYear() - birthdate.getFullYear();
-      const m = consultDate.getMonth() - birthdate.getMonth();
-      if (m < 0 || (m === 0 && consultDate.getDate() < birthdate.getDate())) {
-        age--;
-      }
-      ageField.value = age;
-    }
-
-    birthInput.addEventListener('change', calculateAge);
-    consultInput.addEventListener('change', calculateAge);
-  });
-</script>
-
-<!-- Auto-fill license numbers -->
-<script>
-  $(document).ready(function() {
-    function bindStaffField(staffSelector, licenseSelector, licenseKey) {
-      $(staffSelector).change(function() {
-        var staffId = $(this).val();
-        if (staffId) {
-          $.ajax({
-            url: "{% url 'get_ars_staff_details' %}",
-            data: { ars_staff_id: staffId, license_field: licenseKey },
-            dataType: 'json',
-            success: function(data) {
-              if (data[licenseKey]) {
-                $(licenseSelector).val(data[licenseKey]);
-              }
-            }
-          });
-        } else {
-          $(licenseSelector).val('');
-        }
       });
-    }
-
-    bindStaffField('#id_arsp_Encoder',   '#id_arsp_Enc_Lic',  'arsp_Enc_Lic');
-    bindStaffField('#id_arsp_Checker',   '#id_arsp_Chec_Lic', 'arsp_Chec_Lic');
-    bindStaffField('#id_arsp_Verifier',  '#id_arsp_Ver_Lic',  'arsp_Ver_Lic');
-    bindStaffField('#id_arsp_LabManager','#id_arsp_Lab_Lic',  'arsp_Lab_Lic');
-    bindStaffField('#id_arsp_Head',      '#id_arsp_Head_Lic', 'arsp_Head_Lic');
-  });
-</script>
+    })
+    .catch(err => console.error("Antibiotic reload error:", err));
+}
 
 
+document.getElementById("id_Site_Org")?.addEventListener("change", function () {
+  loadAntibiotics(this.value, false);
+});
 
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-  const siteOrgInput = document.querySelector("[name='Site_Org']");
-  const arsOrgInput = document.querySelector("[name='ars_OrgCode']");
-  const specimenDateInput = document.querySelector("[name='Specimen_Date']");
-  const antibioticContainer = document.getElementById("antibiotic-container");
-
-  function reloadAntibiotics() {
-    const site_org = siteOrgInput ? siteOrgInput.value : "";
-    const ars_orgcode = arsOrgInput ? arsOrgInput.value : "";
-    const specimen_date = specimenDateInput ? specimenDateInput.value : "";
-
-    fetch(`/reload-antibiotics/?site_org=${encodeURIComponent(site_org)}&ars_orgcode=${encodeURIComponent(ars_orgcode)}&specimen_date=${encodeURIComponent(specimen_date)}`)
-      .then(response => response.json())
-      .then(data => {
-        antibioticContainer.innerHTML = data.html;
-      })
-      .catch(err => console.error("Error loading antibiotics:", err));
-  }
-
-  // Event listeners for changes
-  [siteOrgInput, arsOrgInput, specimenDateInput].forEach(input => {
-    if (input) {
-      input.addEventListener("change", reloadAntibiotics);
-    }
-  });
+document.getElementById("id_ars_OrgCode")?.addEventListener("change", function () {
+  loadAntibiotics(this.value, true);
+});
 });
 </script>
 
-<script>
-  
-// Improved: Separate handling for main and retest antibiotics
-document.addEventListener("DOMContentLoaded", function() {
-  const siteOrgInput = document.querySelector("[name='Site_Org']");
-  const arsOrgInput = document.querySelector("[name='ars_OrgCode']");
-  const specimenDateInput = document.querySelector("[name='Spec_Date']");
-  const antibioticContainer = document.getElementById("antibiotic-container");
-
-  function reloadAntibiotics() {
-    const site_org = siteOrgInput?.value || "";
-    const ars_orgcode = arsOrgInput?.value || "";
-    const specimen_date = specimenDateInput?.value || "";
-
-    fetch(`/reload-antibiotics/?site_org=${encodeURIComponent(site_org)}&ars_orgcode=${encodeURIComponent(ars_orgcode)}&specimen_date=${encodeURIComponent(specimen_date)}`)
-      .then(response => response.json())
-      .then(data => {
-        // Update main antibiotics section
-        antibioticContainer.innerHTML = data.main_html;
-
-        // If your retest section is on another tab:
-        const retestSection = document.querySelector("#retest-container");
-        if (retestSection) {
-          retestSection.innerHTML = data.retest_html;
-        }
-      })
-      .catch(err => console.error("Error loading antibiotics:", err));
-  }
-
-  // Watch for changes
-  [siteOrgInput, arsOrgInput, specimenDateInput].forEach(input => {
-    if (input) input.addEventListener("change", reloadAntibiotics);
-  });
-});
-</script>
 
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const siteOrgSelect = document.getElementById("id_Site_Org");
-    const siteOrgNameInput = document.getElementById("id_Site_OrgName");
+  // AUTO-FILL STAFF LICENSE NUMBERS
+$(function () {
 
-    if (!siteOrgSelect || !siteOrgNameInput) {
-        console.warn("Organism fields not found.");
+  function bindStaffField(selectId, inputId, licenseKey) {
+    $(selectId).on("change", function () {
+      const staffId = $(this).val();
+
+      if (!staffId) {
+        $(inputId).val("");
         return;
+      }
+
+      $.get("{% url 'get_ars_staff_details' %}", {
+        ars_staff_id: staffId,
+        license_field: licenseKey
+      }).done(data => {
+        if (data[licenseKey]) $(inputId).val(data[licenseKey]);
+      });
+    });
+  }
+
+  bindStaffField("#id_arsp_Encoder",   "#id_arsp_Enc_Lic",  "arsp_Enc_Lic");
+  bindStaffField("#id_arsp_Checker",   "#id_arsp_Chec_Lic", "arsp_Chec_Lic");
+  bindStaffField("#id_arsp_Verifier",  "#id_arsp_Ver_Lic",  "arsp_Ver_Lic");
+  bindStaffField("#id_arsp_LabManager","#id_arsp_Lab_Lic",  "arsp_Lab_Lic");
+  bindStaffField("#id_arsp_Head",      "#id_arsp_Head_Lic", "arsp_Head_Lic");
+
+});
+</script>
+
+<script>
+function updateGreetingAndTime() {
+  const now = new Date();
+  const hours = now.getHours();
+
+  let greeting = "Hello";
+  if (hours < 12) greeting = "Good morning";
+  else if (hours < 18) greeting = "Good afternoon";
+  else greeting = "Good evening";
+
+  const timeString = now.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  document.getElementById("greetingText").innerText =
+    `${greeting}, {{ request.user.username }}`;
+
+  document.getElementById("currentTime").innerText =
+    timeString;
+}
+
+// initial load
+updateGreetingAndTime();
+
+// update every minute
+setInterval(updateGreetingAndTime, 60000);
+</script>
+
+
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const recoSelect = document.getElementById("id_ars_reco_Code");
+  const descField = document.getElementById("id_ars_description");
+
+  if (!recoSelect || !descField) return;
+
+  recoSelect.addEventListener("change", function () {
+
+    const selectedValue = this.value;
+
+    if (!selectedValue) {
+      descField.value = "";
+      return;
     }
 
-    siteOrgSelect.addEventListener("change", function () {
-        const code = this.value;
+    fetch("{% url 'get_recommendation_description' %}?reco_code=" + encodeURIComponent(selectedValue))
+      .then(response => response.json())
+      .then(data => {
+        descField.value = data.description || "";
+      })
+      .catch(() => {
+        descField.value = "";
+      });
 
-        if (!code) {
-            siteOrgNameInput.value = "";
-            return;
-        }
+  });
 
-        fetch(`/get_organism_name/?org_code=${encodeURIComponent(code)}&field_key=Organism`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.Organism) {
-                    siteOrgNameInput.value = data.Organism;
-                } else {
-                    siteOrgNameInput.value = "";
-                }
-            })
-            .catch(err => console.error("Organism fetch error:", err));
-    });
 });
-
 </script>
+
+
+<script>
+function filterAntibiotics() {
+    const input = document.getElementById("antibioticSearchMain");
+    const filter = input.value.toUpperCase();
+
+    const tables = [
+        document.getElementById("disk-antibiotics"),
+        document.getElementById("mic-antibiotics")
+    ];
+
+    tables.forEach(tbody => {
+        if (!tbody) return;
+
+        const rows = tbody.getElementsByTagName("tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            const firstCell = rows[i].getElementsByTagName("td")[0];
+            if (!firstCell) continue;
+
+            const textValue = firstCell.textContent || firstCell.innerText;
+
+            rows[i].style.display =
+                textValue.toUpperCase().includes(filter) ? "" : "none";
+        }
+    });
+}
+</script>
+
+
+<script>
+function filterRetestAntibiotics() {
+    const input = document.getElementById("antibioticSearchRetest");
+    const filter = input.value.toUpperCase();
+
+    const tables = [
+        document.getElementById("retest-disk-antibiotics"),
+        document.getElementById("retest-mic-antibiotics")
+    ];
+
+    tables.forEach(tbody => {
+        if (!tbody) return;
+
+        const rows = tbody.getElementsByTagName("tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            const firstCell = rows[i].getElementsByTagName("td")[0];
+            if (!firstCell) continue;
+
+            const textValue = firstCell.textContent || firstCell.innerText;
+
+            rows[i].style.display =
+                textValue.toUpperCase().includes(filter) ? "" : "none";
+        }
+    });
+}
+</script>
+
 
 {% endblock javascripts %}

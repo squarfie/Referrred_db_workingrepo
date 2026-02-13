@@ -9,6 +9,7 @@
 {% block settings_content %}
 
 <!-- SAFE TAB PARTIAL: content only -->
+
 <div class="card shadow-sm">
 
   <!-- HEADER -->
@@ -25,13 +26,6 @@
       <a href="{% url 'antibiotics_view' %}" class="btn btn-sm btn-primary">
         <i class="fas fa-table mr-1"></i> View All
       </a>
-
-      <button type="button"
-              class="btn btn-sm btn-success"
-              data-toggle="modal"
-              data-target="#UploadAntibioticsModal">
-        <i class="ni ni-cloud-upload-96"></i> Antibiotic Class
-      </button>
     </div>
 
   </div>
@@ -63,24 +57,44 @@
           </button>
         </div>
 
-        <div class="col-md-3">
-          <label class="font-weight-bold">Show in Results</label><br>
+
+      </div>
+
+            <!-- Upload + Flags -->
+      <div class="row mb-4">
+`        
+      <div class="col-md-2">
+          <label class="font-weight-bold">Show in Form</label><br>
           <input type="checkbox" name="Show"
                  {% if antibiotic_form.Show.value %}checked{% endif %}>
+        </div>  
+
+        
+        <div class="col-md-2">
+          <label class="font-weight-bold">Site Result</label><br>
+          <input type="checkbox" name="Show_Site"
+                 {% if antibiotic_form.Show_Site.value %}checked{% endif %}>
+        </div>
+          <div class="col-md-2">
+          <label class="font-weight-bold">ARS Result</label><br>
+          <input type="checkbox" name="Show_Ars"
+                 {% if antibiotic_form.Show_Ars.value %}checked{% endif %}>
         </div>
 
-        <div class="col-md-3">
-          <label class="font-weight-bold">Retest Required</label><br>
+        <div class="col-md-2">
+          <label class="font-weight-bold">Retest Antibiotic</label><br>
           <input type="checkbox" name="Retest"
                  {% if antibiotic_form.Retest.value %}checked{% endif %}>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label class="font-weight-bold">Disk Diffusion</label><br>
           <input type="checkbox" name="Disk_Abx"
                  {% if antibiotic_form.Disk_Abx.value %}checked{% endif %}>
         </div>
 
+
+        
       </div>
 
       <!-- Guidelines -->

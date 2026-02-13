@@ -86,69 +86,151 @@
 
             </div>
 
+
             <!-- Organism -->
             <div class="section-divider">Organism Assignment</div>
 
-            <div class="row">
-
+            <!-- Emerging Organism -->
+                    <div class="row p-3 rounded" style="background: linear-gradient(135deg, #f7fbfd 0%, #eef7fb 100%);
+                                    border: 1px solid #d1e8ed;">
+                    <div class="col-6">
+                        <div class="d-flex align-items-start">
+                        <div class="pt-1">
+                            {{ breakpoint_form.Emerging_Org_Flag|add_class:"form-check-input m-0" }}
+                        </div>
+                        <div class="ms-3 d-flex align-items-start gap-20 flex-grow-1">
+                            <div class="text-warning font-weight-bold"> &nbsp;&nbsp;&nbsp;&nbsp;Flag this organism for emerging resistance</div>
+                        </div>
+                        </div>
+                    </div>
+                    
                 <div class="col-md-6 mb-3">
                     <label>Organism Code</label>
                     {{ breakpoint_form.Org|append_attr:"class: form-control" }}
                 </div>
+                    </div>
+
+            <div class="section-divider">Specimen</div>
 
                 <div class="col-md-6 mb-3">
-                    <label>Organism Group</label>
-                    {{ breakpoint_form.Org_Grp|append_attr:"class: form-control" }}
+                    <label>Specimen Code</label>
+                    {{ breakpoint_form.Spec_code|append_attr:"class: form-control" }}
                 </div>
 
-            </div>
+
+
 
             <!-- Antibiotic -->
-            <div class="section-divider">Antibiotic Information</div>
+           <div class="section-divider">Antibiotic Information</div>
 
-            <div class="row">
+                        <!-- Emerging Antibiotic + Phenotype -->
+                        <div class="row g-3 p-3 rounded"
+                            style="background: linear-gradient(135deg, #f7fbfd 0%, #eef7fb 100%);
+                                    border: 1px solid #d1e8ed;">
 
-                <div class="col-md-6 mb-3">
-                    <label>Antibiotic Code</label>
-                    {{ breakpoint_form.Abx_code|append_attr:"class: form-control"|attr:"placeholder:e.g. CFM" }}
+                        <!-- Emerging Antibiotic -->
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+
+                            <!-- Checkbox -->
+                            <div class="pt-1">
+                                {{ breakpoint_form.Emerging_Abx_Flag|add_class:"form-check-input m-0" }}
+                            </div>
+
+                            <!-- Text -->
+                            <div class="ms-3 d-flex align-items-start gap-2">
+                               
+                                <div>
+                                <div class="text-warning font-weight-bold">&nbsp;&nbsp;&nbsp; Emerging Antibiotic</div>
+                                <small class="text-muted">
+                                    &nbsp;&nbsp;&nbsp;&nbsp;  <i class="fas fa-info-circle mr-1"></i>Monitor this antibiotic for emerging resistance
+                                </small>
+                                </div>
+                            </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Emerging Phenotype -->
+                        <div class="col-md-6">
+                            <div class="row">
+                                <div class="col-md-6">
+                            <label class="fw-semibold mb-1 d-block">
+                            <i class="fas fa-filter text-warning mr-1"></i>
+                            <span class="text-warning font-weight-bold">Emerging Phenotype</span>
+                            </label>
+
+                            {{ breakpoint_form.Emerging_Pheno_Flag|add_class:"form-control" }}
+
+                            <small class="helper-text mt-1 d-block">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Flag when interpretation matches (R / I / S / SDD)
+                            </small>
+                                </div>
+                            <div class="col-md-6">
+                            <label class="fw-semibold mb-1 d-block">
+                            <i class="fas fa-filter text-warning mr-1"></i>
+                            <span class="text-warning font-weight-bold">Other Emerging Phenotype</span>
+                            </label>
+
+                            {{ breakpoint_form.Emerging_Pheno_Flag_Other|add_class:"form-control" }}
+
+                            <small class="helper-text mt-1 d-block">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Flag when interpretation matches (R / I / S / SDD)
+                            </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        </div>
+                <div class="row">
+
+                <div class="col-md-3 mb-3">
+                    <label class="form-control-label" for="id_Whonet_Abx">WHONET Code</label>
+                    {{ breakpoint_form.Whonet_Abx|append_attr:"class: form-control"|attr:"placeholder:e.g. CFM_ND30" }}
                 </div>
 
-                <div class="col-md-6 mb-3">
-                    <label>Antibiotic Name</label>
-                    {{ breakpoint_form.Antibiotic|append_attr:"class: form-control"|attr:"placeholder:e.g. Cefixime" }}
-                </div>
-
-            </div>
-
-            <div class="row">
-
-                <div class="col-md-4 mb-3">
+  
+                <div class="col-md-3 mb-3">
                     <label>Potency</label>
                     {{ breakpoint_form.Potency|append_attr:"class: form-control"|attr:"placeholder:e.g. 30" }}
                 </div>
 
-                <div class="col-md-4 mb-3">
-                    <label>WHONET Code</label>
-                    {{ breakpoint_form.Whonet_Abx|append_attr:"class: form-control"|attr:"placeholder:e.g. CFM_ND30" }}
+                <div class="col-md-3 mb-3">
+                    <label class="form-control-label" for="id_Tier">Tier</label>
+                    {{ breakpoint_form.Tier|append_attr:"class: form-control"|attr:"readonly:readonly"}}
                 </div>
 
-                <div class="col-md-4 mb-3">
-                    <label>Tier</label>
-                    {{ breakpoint_form.Tier|append_attr:"class: form-control" }}
-                </div>
-
-            </div>
-
-            <!-- Alert -->
-            <div class="mb-3">
-                <label>Alert Value</label>
+                <div class="col-md-3 mb-3">
+                    <label>Alert Value</label>
                 {{ breakpoint_form.Alert_val|append_attr:"class: form-control" }}
+                </div>
+
             </div>
+
+            <div class="row">
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-control-label" for="id_Abx_code" >Antibiotic Code</label>
+                    {{ breakpoint_form.Abx_code|append_attr:"class: form-control"|attr:"readonly:readonly"|attr:"placeholder:e.g. CFM" }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-control-label" for="id_Antibiotic">Antibiotic Name</label>
+                    {{ breakpoint_form.Antibiotic|append_attr:"class: form-control"|attr:"readonly:readonly"|attr:"placeholder:e.g. Cefixime" }}
+                </div>
+
+            </div>
+
+
+
 
             <!-- Breakpoints -->
             <div class="section-divider">Breakpoint Values</div>
 
-            <div class="row">
+          
+            <div class="row" style="padding-top: 3%;">
 
                 <div class="col-md-3 mb-3">
                     <label class="text-danger font-weight-bold">Resistant (≤)</label>
@@ -232,10 +314,57 @@
     </form>
 </div>
 
+
 <script>
 function confirmOverwrite() {
     return confirm("⚠️ Uploading will replace all existing breakpoints. Continue?");
 }
 </script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const whonetSelect = document.getElementById("id_Whonet_Abx");
+    const antibioticInput = document.getElementById("id_Antibiotic");
+    const abxCodeInput = document.getElementById("id_Abx_code");
+    const tierInput = document.getElementById("id_Tier");
+
+    if (!whonetSelect) {
+        console.error("Field 'id_Whonet_Abx' not found.");
+        return;
+    }
+
+    whonetSelect.addEventListener("change", function () {
+        // Get the text (e.g., 'AMC_ND20') instead of the value (e.g., '1')
+        const selectedText = this.options[this.selectedIndex].text.trim();
+        
+        // Handle the empty/default choice
+        if (!this.value || selectedText === "---------") {
+            if (antibioticInput) antibioticInput.value = "";
+            if (abxCodeInput) abxCodeInput.value = "";
+            if (tierInput) tierInput.value = "";
+            return;
+        }
+
+        console.log("Searching for WHONET code string:", selectedText);
+
+        fetch(`/ajax/get-antibiotic-details/?whonet_abx=${encodeURIComponent(selectedText)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.antibiotic || data.abx_code || data.tier) {
+                    if (antibioticInput) antibioticInput.value = data.antibiotic || "";
+                    if (abxCodeInput) abxCodeInput.value = data.abx_code || "";
+                    if (tierInput) tierInput.value = data.tier || "";
+                } else {
+                    console.warn("No match found in Antibiotic_List for:", selectedText);
+                }
+            })
+            .catch(err => console.error("AJAX Error:", err));
+    });
+});
+</script>
+
+
+
 
 {% endblock settings_content %}

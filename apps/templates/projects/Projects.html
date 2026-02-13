@@ -1,0 +1,98 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Projects Database{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+{% endblock stylesheets %}
+
+{% block content %}
+
+<div class="container-fluid mt-5">
+  <h2><i class="fas fa-cogs mr-2"></i> Projects Database</h2>
+  <br>
+
+  <div class="row">
+
+    <!-- LEFT SIDEBAR -->
+    <div class="col-md-4 col-lg-3">
+      <div class="card">
+
+        <div class="card-header"
+             style="background: linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
+                    border-bottom:2px solid #d1e8ed;">
+          <h5 class="card-title mb-0">Project</h5>
+        </div>
+
+        <div class="list-group list-group-flush" role="tablist">
+
+          <a class="list-group-item list-group-item-action active"
+             data-toggle="list"
+             href="#wgs_classification"
+             role="tab"
+             aria-controls="wgs_classification">
+            <i class="fa fa-bug mr-2"></i> WGS Classification
+          </a>
+
+          <a class="list-group-item list-group-item-action"
+             data-toggle="list"
+             href="#wgs_upload"
+             role="tab"
+             aria-controls="wgs_upload">
+            <i class="fas fa-pills mr-2"></i> Upload WGS
+          </a>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT CONTENT -->
+    <div class="col-md-8 col-lg-9">
+
+      <div class="settings-container">
+
+        <div class="tab-content settings-tab-content">
+
+          <!-- WGS CLASSIFICATION TAB -->
+          <div class="tab-pane fade show active"
+               id="wgs_classification"
+               role="tabpanel">
+            {% include "projects/tabs/wgs_classification.html" %}
+          </div>
+
+          <!-- WGS UPLOAD TAB -->
+          <div class="tab-pane fade"
+               id="wgs_upload"
+               role="tabpanel">
+            {% include "projects/tabs/wgs_upload.html" %}
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get("tab");
+
+  if (!tab) return;
+
+  const trigger = document.querySelector(
+    `a[data-toggle="list"][href="#${tab}"]`
+  );
+
+  if (trigger) {
+    trigger.click();
+  }
+});
+</script>
+
+{% endblock %}

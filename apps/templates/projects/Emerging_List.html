@@ -1,0 +1,160 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %}Emerging Accessions{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div class="header pb-6"
+     style="height:100px;
+            background: linear-gradient(135deg,#12142b 0%,#243064 50%,#2e578d 100%);
+            position:relative; overflow:hidden;">
+
+
+
+  <div class="container-fluid" style="position:relative; z-index:1;">
+    <div class="row align-items-center py-4">
+      <div class="col-lg-6">
+        <h6 class="h2 text-white mb-0">
+          <i class="fas fa-exclamation-triangle mr-2"></i>Emerging Accessions
+        </h6>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid mt-4">
+
+  <!-- SEARCH -->
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <form method="get">
+        <div class="input-group">
+          <input type="text"
+                 name="q"
+                 value="{{ q }}"
+                 class="form-control"
+                 placeholder="Search accession…">
+          <div class="input-group-append">
+            <button class="btn btn-primary">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="card shadow" style="border-top:3px solid #dc3545;">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+      <h3 class="mb-0 text-danger">
+        <i class="fas fa-list mr-2"></i>Emerging List
+      </h3>
+      <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-primary" href="{% url 'download_emerging_list' %}">Download Emerging</a>
+        <a class="btn btn-sm btn-primary" href="{% url 'view_wgs_overview' %}">WGS Review</a>
+            <button class="btn btn-sm btn-secondary" onclick="history.back()">
+            <i class="fas fa-arrow-left mr-1"></i>Back
+          </button>
+    </div>
+    </div>
+    </div>
+
+    <div class="table-responsive" style="max-height:560px; overflow-y:auto;">
+      <table class="table table-hover table-striped mb-0">
+        <thead class="thead-light">
+          <tr>
+            <th>Accession</th>
+            <th>Organism</th>
+            <th>Phenotype</th>
+            <th>Specimen</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+
+        <tbody>
+        {% for row in page_obj %}
+          <tr>
+            <td class="font-weight-bold">{{ row.eme_Accession }}</td>
+            <td>{{ row.eme_ars_Org }}</td>
+            <td>
+
+              <!-- add this as well new version !!! -->
+            <span class="badge
+              {% if row.eme_abx_Phenotype == 'R' %}badge-danger
+              {% elif row.eme_abx_Phenotype == 'I' %}badge-warning
+              {% elif row.eme_abx_Phenotype == 'S' %}badge-success
+              {% else %}badge-secondary{% endif %}">
+              {{ row.eme_abx_code_pheno }} ({{ row.eme_abx_Phenotype }})
+            </span>
+              <!-- up to here -->
+
+            </td>
+            <td>{{ row.eme_spec_Type }}</td>
+            <td>{{ row.eme_spec_Date }}</td>
+           
+           <!-- changed this add this too !!!!!!!!!!! -->
+            <!-- <td>  
+              {% if row.eme_primary_key %}
+                  <a href="{% url 'wgs_classification_view' row.eme_primary_key.pk %}">
+                      View classification
+                  </a>
+              {% else %}
+                  <span class="text-muted">No record</span>
+              {% endif %}
+            </td> -->
+
+            <!-- up to here only -->
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-5">
+              <i class="fas fa-check-circle fa-2x mb-2"></i>
+              <p>No emerging accessions found.</p>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="card-footer">
+      <div class="row align-items-center">
+        <div class="col-md-6 text-muted">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </div>
+        <div class="col-md-6">
+          <ul class="pagination justify-content-end mb-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link"
+                 href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}">
+                ‹
+              </a>
+            </li>
+            {% endif %}
+            {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link"
+                 href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}">
+                ›
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

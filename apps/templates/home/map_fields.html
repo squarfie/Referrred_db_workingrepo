@@ -72,6 +72,7 @@
           <button type="button" class="btn btn-primary btn-sm ml-2" onclick="autoMap()">
             <i class="fas fa-magic mr-1"></i>Auto-Map
           </button>
+
         </div>
       </div>
     </div>
@@ -95,6 +96,12 @@
         <div class="col-md-6 text-right">
           <span class="badge badge-success badge-pill" id="mapped-count">0 mapped</span>
           <span class="badge badge-secondary badge-pill" id="unmapped-count">{{ raw_headers|length }} unmapped</span>
+          <a href="{% url 'download_mapping_summary' %}"
+            class="btn btn-info btn-sm ml-2">
+            <i class="fas fa-file-export mr-1"></i>
+              Map Summary
+          </a>
+
         </div>
       </div>
     </div>
@@ -112,9 +119,12 @@
               <th style="width: 5%;">#</th>
               <th style="width: 35%;">Raw Column Header</th>
               <th style="width: 55%;">Map To Model Field</th>
-              <th style="width: 5%;">
+              <!-- <th style="width: 5%;">
                 <i class="fas fa-check-circle text-success" title="Mapped Status"></i>
-              </th>
+              </th> -->
+              <th style="width: 5%;" class="text-center">Status</th>
+              <th style="width: 5%;" class="text-center">Clear</th>
+
             </tr>
           </thead>
           <tbody>
@@ -125,7 +135,12 @@
                 <strong class="text-primary">{{ header }}</strong>
               </td>
               <td>
-                <select class="form-control form-control-sm field-select" data-header="{{ header }}" onchange="updateMappingCount()">
+                <!-- <select class="form-control form-control-sm field-select" data-header="{{ header }}" onchange="updateMappingCount()"> -->
+                  <select
+                        class="form-control form-control-sm field-select"
+                        data-header="{{ header }}"
+                        onchange="handleMappingChange(this)">
+
                   <option value="">-- Select Field --</option>
 
                   <optgroup label="Final_Data Fields">
@@ -147,6 +162,16 @@
                   </optgroup>
                 </select>
               </td>
+              <!-- <td class="text-center">
+                <span class="status-icon">
+                  {% if saved_mappings|get_item:header %}
+                    <i class="fas fa-check-circle text-success"></i>
+                  {% else %}
+                    <i class="far fa-circle text-muted"></i>
+                  {% endif %}
+                </span>
+              </td> -->
+
               <td class="text-center">
                 <span class="status-icon">
                   {% if saved_mappings|get_item:header %}
@@ -156,6 +181,19 @@
                   {% endif %}
                 </span>
               </td>
+
+              <td class="text-center">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-danger"
+                  title="Clear this mapping"
+                  onclick="clearRowMapping(this)">
+                  <i class="fas fa-times"></i>
+                </button>
+              </td>
+
+
+
             </tr>
             {% endfor %}
           </tbody>
@@ -241,7 +279,7 @@ thead.thead-light {
 
 <!-- JavaScript -->
 {% block javascripts %}
-<script>
+<!-- <script>
 // Search table function
 function searchTable() {
   var input = document.getElementById("search-input");
@@ -355,4 +393,266 @@ document.getElementById("search-input").addEventListener("keypress", function(ev
   }
 });
 </script>
+
+<script>
+/* Reset Generate button after file download */
+window.addEventListener("pageshow", function () {
+  const btn = document.querySelector('#mapping-form button[type="submit"]');
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ni ni-cloud-download-95 mr-1"></i>Generate Mapped Excel';
+  }
+});
+</script>
+
+<script>
+function clearRowMapping(btn) {
+  const row = btn.closest('tr');
+  const select = row.querySelector('.field-select');
+  const statusIcon = row.querySelector('.status-icon i');
+
+  // Clear only this select
+  select.value = "";
+
+  // Update icon
+  statusIcon.className = 'far fa-circle text-muted';
+
+  // Update counts
+  updateMappingCount();
+}
+</script>
+
+<script>
+function saveMapping(rawField, mappedField) {
+  fetch("{% url 'update_field_mapping' %}", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken"),
+    },
+    body: JSON.stringify({
+      raw_field: rawField,
+      mapped_field: mappedField || "", // empty = clear
+    }),
+  }).catch(() => {
+    console.error("Failed to save mapping:", rawField);
+  });
+}
+</script> -->
+
+
+<script>
+// --------------------------------------------------
+// CSRF helper (required for Django POST via fetch)
+// --------------------------------------------------
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// --------------------------------------------------
+// SEARCH TABLE
+// --------------------------------------------------
+function searchTable() {
+  const input = document.getElementById("search-input");
+  const filter = input.value.toLowerCase();
+  const rows = document.querySelectorAll("#mapping-table tbody tr");
+
+  rows.forEach(row => {
+    const header = row.dataset.header.toLowerCase();
+    const select = row.querySelector(".field-select");
+    const selectedText = select.options[select.selectedIndex].text.toLowerCase();
+
+    row.style.display =
+      header.includes(filter) || selectedText.includes(filter)
+        ? ""
+        : "none";
+  });
+}
+
+function clearSearch() {
+  document.getElementById("search-input").value = "";
+  searchTable();
+}
+
+// --------------------------------------------------
+// SAVE / DELETE MAPPING (AJAX)
+// --------------------------------------------------
+function saveMapping(rawField, mappedField) {
+  fetch("{% url 'update_field_mapping' %}", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken"),
+    },
+    body: JSON.stringify({
+      raw_field: rawField,
+      mapped_field: mappedField || "",
+    }),
+  }).catch(() => {
+    console.error("Failed to save mapping:", rawField);
+  });
+}
+
+// --------------------------------------------------
+// HANDLE SELECT CHANGE (COUNT + AUTOSAVE)
+// --------------------------------------------------
+function handleMappingChange(selectEl) {
+  const rawField = selectEl.dataset.header;
+  const mappedField = selectEl.value;
+
+  updateMappingCount();
+  saveMapping(rawField, mappedField);
+}
+
+// --------------------------------------------------
+// AUTO-MAP LOGIC (WITH AUTOSAVE)
+// --------------------------------------------------
+function autoMap() {
+  const selects = document.querySelectorAll(".field-select");
+  let mappedCount = 0;
+
+  selects.forEach(sel => {
+    const headerNorm = sel.dataset.header
+      .toLowerCase()
+      .replace(/[_\s-]/g, "");
+
+    for (let option of sel.options) {
+      const optionNorm = option.value
+        .toLowerCase()
+        .replace(/[_\s-]/g, "");
+
+      if (
+        optionNorm &&
+        (headerNorm === optionNorm ||
+          headerNorm.includes(optionNorm) ||
+          optionNorm.includes(headerNorm))
+      ) {
+        sel.value = option.value;
+        mappedCount++;
+
+        saveMapping(sel.dataset.header, option.value);
+        break;
+      }
+    }
+  });
+
+  updateMappingCount();
+  alert(`Auto-mapped ${mappedCount} field(s). Please review the mappings.`);
+}
+
+// --------------------------------------------------
+// UPDATE MAPPING COUNT + STATUS ICONS
+// --------------------------------------------------
+function updateMappingCount() {
+  const selects = document.querySelectorAll(".field-select");
+  let mappedCount = 0;
+
+  selects.forEach(sel => {
+    const row = sel.closest("tr");
+    const icon = row.querySelector(".status-icon i");
+
+    if (sel.value) {
+      mappedCount++;
+      icon.className = "fas fa-check-circle text-success";
+    } else {
+      icon.className = "far fa-circle text-muted";
+    }
+  });
+
+  document.getElementById("mapped-count").textContent =
+    `${mappedCount} mapped`;
+  document.getElementById("unmapped-count").textContent =
+    `${selects.length - mappedCount} unmapped`;
+}
+
+// --------------------------------------------------
+// CLEAR SINGLE ROW (UI + DB)
+// --------------------------------------------------
+function clearRowMapping(btn) {
+  const row = btn.closest("tr");
+  const select = row.querySelector(".field-select");
+  const rawField = select.dataset.header;
+
+  select.value = "";
+  updateMappingCount();
+  saveMapping(rawField, "");
+}
+
+// --------------------------------------------------
+// INITIALIZE COUNTS ON LOAD
+// --------------------------------------------------
+document.addEventListener("DOMContentLoaded", function () {
+  updateMappingCount();
+});
+
+// --------------------------------------------------
+// FORM SUBMIT (GENERATE MAPPED EXCEL)
+// --------------------------------------------------
+document.getElementById("mapping-form")
+  .addEventListener("submit", function (e) {
+
+    const selects = document.querySelectorAll(".field-select");
+    const mapping = {};
+
+    selects.forEach(sel => {
+      if (sel.value) {
+        mapping[sel.dataset.header] = sel.value;
+      }
+    });
+
+    if (Object.keys(mapping).length === 0) {
+      if (!confirm("No fields are mapped. Continue anyway?")) {
+        e.preventDefault();
+        return;
+      }
+    }
+
+    document.getElementById("mapping-json").value =
+      JSON.stringify(mapping);
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML =
+      '<i class="fas fa-spinner fa-spin mr-1"></i>Generating...';
+  });
+
+// --------------------------------------------------
+// ENTER KEY SUPPORT FOR SEARCH
+// --------------------------------------------------
+document.getElementById("search-input")
+  .addEventListener("keypress", function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      searchTable();
+    }
+  });
+
+// --------------------------------------------------
+// RESET GENERATE BUTTON AFTER DOWNLOAD / BACK
+// --------------------------------------------------
+window.addEventListener("pageshow", function () {
+  const btn = document.querySelector(
+    '#mapping-form button[type="submit"]'
+  );
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML =
+      '<i class="ni ni-cloud-download-95 mr-1"></i>Generate Mapped Excel';
+  }
+});
+</script>
+
+
+
 {% endblock %}

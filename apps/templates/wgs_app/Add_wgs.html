@@ -7,787 +7,573 @@
 <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
 <link rel="stylesheet" href="{% static 'assets/css/header.css' %}"> 
 <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+<style>
+.hover-lift {
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,.12) !important;
+}
+.icon-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+.section-divider {
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.section-divider h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #32325d;
+}
+.dashboard-tile {
+  transition: all 0.2s;
+}
+.dashboard-tile .card-body {
+  padding: 1.5rem;
+}
+.btn-upload {
+  background: linear-gradient(135deg, #11cdef, #1171ef);
+  color: white;
+  border: none;
+}
+.btn-upload:hover {
+  background: linear-gradient(135deg, #0da5c0, #0e5ac9);
+  color: white;
+}
+</style>
 {% endblock stylesheets %}
-
 
 {% block content %}
 
 <!-- Header Section -->
 <div class="header-container">
-
-  <!-- Background Animation Layer -->
   <div class="background-animation-wrapper" aria-hidden="true">
     <div class="grid-bg"></div>
-
     <div class="particles">
       <div class="particle"></div><div class="particle"></div><div class="particle"></div>
       <div class="particle"></div><div class="particle"></div><div class="particle"></div>
       <div class="particle"></div><div class="particle"></div><div class="particle"></div>
     </div>
-
     <div class="scanner"></div>
     <div class="scanner"></div>
     <div class="scanner"></div>
-
     <div class="glow-orb"></div>
     <div class="glow-orb"></div>
-
     <div class="overlay"></div>
   </div>
 
-  <!-- Foreground Content -->
   <div class="container-fluid mt-3">
+    <div class="header-content text-center mb-3">
+      <h1 class="text-white mb-2">Data Upload Center</h1>
+      <p class="text-light mb-0">Upload and manage project data</p>
+    </div>
 
-      <!-- Title Section -->
-      <div class="header-content text-center mb-3">
-          <h1 class="text-white">Upload Data Center</h1>
-          <p class="text-light">Manage referred isolates data and WGS data</p>
+    <div class="header-body mt-2">
+      <div class="row align-items-center py-3 px-0">
+        <div class="col-lg-6 col-12 px-0 text-left">
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark mb-0">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+              <li class="breadcrumb-item"><a href="{% url 'batch_create_view' %}">New Batch</a></li>
+              <li class="breadcrumb-item active">Upload Data</li>
+            </ol>
+          </nav>
+        </div>
+        <div class="col-lg-6 col-12 px-0 text-right mt-3 mt-lg-0">
+          <a class="btn btn-sm btn-neutral" href="{% url 'batch_create_view' %}"><i class="ni ni-fat-add mr-1"></i> New Batch</a>
+          <a class="btn btn-sm btn-neutral" href="{% url 'view_wgs_overview' %}"><i class="ni ni-chart-pie-35 mr-1"></i> WGS Overview</a>
+          <button class="btn btn-sm btn-neutral" onclick="history.back()"><i class="ni ni-bold-left mr-1"></i> Back</button>
+        </div>
       </div>
-
-      <!-- Breadcrumb + Buttons Row -->
-<div class="header-body mt-2">
-  <div class="row align-items-center py-3 px-0">
-
-    <!-- LEFT SIDE (Breadcrumb) -->
-    <div class="col-lg-6 col-12 px-0 text-left">
-      <nav aria-label="breadcrumb" class="d-none d-md-inline-block">
-        <ol class="breadcrumb breadcrumb-links breadcrumb-dark mb-0">
-          <li class="breadcrumb-item">
-            <a href="{% url 'home' %}">
-              <i class="fas fa-home"></i>
-            </a>
-          </li>
-          <li class="breadcrumb-item">
-            <a href="{% url 'batch_create_view' %}">New Batch</a>
-          </li>
-          <li class="breadcrumb-item active">Upload Data</li>
-        </ol>
-      </nav>
     </div>
-
-    <!-- RIGHT SIDE (Buttons) -->
-    <div class="col-lg-6 col-12 px-0 text-right mt-3 mt-lg-0">
-      <a class="btn btn-sm btn-neutral" href="{% url 'batch_create_view' %}">New Batch</a>
-      <a class="btn btn-sm btn-neutral" href="{% url 'view_wgs_overview' %}">WGS Overview</a>
-      <button class="btn btn-sm btn-neutral" onclick="history.back()">Back</button>
-    </div>
-
   </div>
 </div>
-
-
-  </div>
-
-</div>
-
 
 <!-- Main Content -->
-<div class="container-fluid">
+<div class="container-fluid mt-4">
 
-<!-- Referred Data Upload Section -->
 
-  <div class="section-divider">
+  <!-- Referred Data Section -->
+  <!-- <div class="section-divider">
     <h3 class="mb-0"><i class="ni ni-world mr-2"></i>Referred Isolates Data</h3>
+  </div> -->
+
+  <!-- Instructions -->
+  <!-- <div class="row mb-3">
+    <div class="col-lg-6 mb-3">
+      <div class="alert alert-light border-left border-info" role="alert">
+        <h6 class="alert-heading mb-2"><i class="fas fa-hospital text-primary mr-2"></i>Raw Data Upload</h6>
+        <p class="text-sm mb-0">Upload unprocessed demographic and antibiotic susceptibility data directly from sentinel sites.</p>
+      </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+      <div class="alert alert-light border-left border-success" role="alert">
+        <h6 class="alert-heading mb-2"><i class="fas fa-check-circle text-success mr-2"></i>Final Data Upload</h6>
+        <p class="text-sm mb-2"><strong>Steps:</strong></p>
+        <ol class="text-sm mb-0 pl-3">
+          <li>Map fields using the field mapper tool</li>
+          <li>Download the mapped Excel file</li>
+          <li>Upload the processed file</li>
+        </ol>
+      </div>
+    </div>
+  </div> -->
+
+  <!-- Data Cards -->
+  <!-- <div class="row"> -->
+    <!-- Raw Demographic -->
+    <!-- <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+        <div class="card-body text-center">
+          <div class="icon-circle" style="background: linear-gradient(135deg, #2dce89, #2dcecc);">
+            <i class="fas fa-user-md text-white" style="font-size: 1.75rem;"></i>
+          </div>
+          <h6 class="card-title font-weight-bold mb-1">Raw Demographic</h6>
+          <p class="text-muted text-sm mb-3">Patient information</p>
+          <button type="button" class="btn btn-upload btn-sm btn-block" data-toggle="modal" data-target="#UploadReferredModal">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+          <a href="#" class="btn btn-outline-secondary btn-sm btn-block mt-2">
+            <i class="ni ni-folder-17 mr-1"></i>View Data
+          </a>
+        </div>
+      </div>
+    </div> -->
+
+    <!-- Raw Antibiotic -->
+    <!-- <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+        <div class="card-body text-center">
+          <div class="icon-circle" style="background: linear-gradient(135deg, #5e72e4, #825ee4);">
+            <i class="fas fa-pills text-white" style="font-size: 1.75rem;"></i>
+          </div>
+          <h6 class="card-title font-weight-bold mb-1">Raw Antibiotic</h6>
+          <p class="text-muted text-sm mb-3">Susceptibility testing</p>
+          <button type="button" class="btn btn-upload btn-sm btn-block" data-toggle="modal" data-target="#UploadReferredModal">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+          <a href="#" class="btn btn-outline-secondary btn-sm btn-block mt-2">
+            <i class="ni ni-folder-17 mr-1"></i>View Data
+          </a>
+        </div>
+      </div>
+    </div> -->
+
+    <!-- Final Demographic -->
+    <!-- <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+        <div class="card-body text-center">
+          <div class="icon-circle" style="background: linear-gradient(135deg, #fb6340, #fbb140);">
+            <i class="fas fa-users text-white" style="font-size: 1.75rem;"></i>
+          </div>
+          <h6 class="card-title font-weight-bold mb-1">Final Demographic</h6>
+          <p class="text-muted text-sm mb-3">Verified patient data</p>
+          <button type="button" class="btn btn-success btn-sm btn-block" data-toggle="modal" data-target="#UploadFinalReferredModal">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+          <a href="{% url 'show_final_data' %}" class="btn btn-outline-secondary btn-sm btn-block mt-2">
+            <i class="ni ni-folder-17 mr-1"></i>View Data
+          </a>
+        </div>
+      </div>
+    </div> -->
+
+    <!-- Final Antibiotic -->
+    <!-- <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+        <div class="card-body text-center">
+          <div class="icon-circle" style="background: linear-gradient(135deg, #11cdef, #1171ef);">
+            <i class="fas fa-medkit text-white" style="font-size: 1.75rem;"></i>
+          </div>
+          <h6 class="card-title font-weight-bold mb-1">Final Antibiotic</h6>
+          <p class="text-muted text-sm mb-3">Verified AST results</p>
+          <button type="button" class="btn btn-success btn-sm btn-block" data-toggle="modal" data-target="#UploadFinalAntibioticModal">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+          <a href="{% url 'show_final_antibiotic' %}" class="btn btn-outline-secondary btn-sm btn-block mt-2">
+            <i class="ni ni-folder-17 mr-1"></i>View Data
+          </a>
+        </div>
+      </div>
+    </div>
+  </div> -->
+
+  <!-- Genomic Data Section -->
+  <div class="section-divider mt-5">
+    <h3 class="mb-0"><i class="ni ni-atom mr-2"></i>Whole Genome Sequencing Data</h3>
   </div>
 
-  <div class="card-body">
-    <div class="row mb-4 text-center">
-      <div class="col-lg-6">
-        <p class="font-weight-bold">
-          <i class="fas fa-hospital text-warning"></i>
-          &nbsp; Upload Raw Data
-        </p>
-      </div>
-      <div class="col-lg-6">
-        <p class="font-weight-bold">
-          <i class="fas fa-ambulance text-warning"></i>
-          &nbsp; Upload Final Data
-        </p>
+  <p class="text-muted mb-4">Upload bioinformatics analysis results from your WGS pipeline</p>
+
+  <div class="row">
+    <!-- FastQ -->
+    <div class="col-lg-4 col-md-6 mb-4">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+        <div class="card-body text-center">
+          <div class="icon-circle" style="background: linear-gradient(135deg, #2dce89, #2dcecc);">
+            <i class="ni ni-cloud-upload-96 text-white" style="font-size: 1.75rem;"></i>
+          </div>
+          <h6 class="card-title font-weight-bold mb-1">FastQ Summary</h6>
+          <p class="text-muted text-sm mb-3">Read quality metrics</p>
+          <button type="button" class="btn btn-upload btn-sm btn-block" data-toggle="modal" data-target="#UploadModal">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+          <a href="{% url 'show_fastq' %}" class="btn btn-outline-secondary btn-sm btn-block mt-2">
+            <i class="ni ni-folder-17 mr-1"></i>View Data
+          </a>
+        </div>
       </div>
     </div>
 
-    <div class="row">
-
-      <!-- Raw Demographic Data -->
-      <div class="col-lg-3 col-md-3 mb-4">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="card-body text-center p-4">
-
-
-            <div class="icon-circle mx-auto mb-4"
-                 style="width:70px;height:70px;border-radius:50%;
-                        background:linear-gradient(135deg,rgb(217,255,220),#2b7fb8);
-                        display:flex;align-items:center;justify-content:center;">
-              <i class="fas fa-user-md text-white" style="font-size:2rem;"></i>
-            </div>
-
-            <h5 class="card-title mb-2 font-weight-bold">Raw Demographic Data</h5>
-            <p class="text-muted small mb-4">Raw Data Entries</p>
-
-            <button type="button" class="btn btn-success btn-sm btn-block"
-                    data-toggle="modal" data-target="#UploadReferredModal">
-              <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Raw
-            </button>
-            <a href="#" class="btn btn-outline-primary btn-sm btn-block">
-              <i class="ni ni-folder-17 mr-2"></i>View Data
-            </a>
-
+    <!-- Gambit -->
+    <div class="col-lg-4 col-md-6 mb-4">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+        <div class="card-body text-center">
+          <div class="icon-circle" style="background: linear-gradient(135deg, #5e72e4, #825ee4);">
+            <i class="ni ni-chart-bar-32 text-white" style="font-size: 1.75rem;"></i>
           </div>
+          <h6 class="card-title font-weight-bold mb-1">Gambit</h6>
+          <p class="text-muted text-sm mb-3">Species identification</p>
+          <button type="button" class="btn btn-upload btn-sm btn-block" data-toggle="modal" data-target="#GambitModal">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+          <a href="{% url 'show_gambit' %}" class="btn btn-outline-secondary btn-sm btn-block mt-2">
+            <i class="ni ni-folder-17 mr-1"></i>View Data
+          </a>
         </div>
       </div>
+    </div>
 
-      <!-- Raw Antibiotic Data -->
-      <div class="col-lg-3 col-md-3 mb-4">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="card-body text-center p-4">
-
-            <div class="icon-circle mx-auto mb-4"
-                 style="width:70px;height:70px;border-radius:50%;
-                        background:linear-gradient(135deg,#4717f3,#cd81e0);
-                        display:flex;align-items:center;justify-content:center;">
-              <i class="fas fa-heartbeat text-white" style="font-size:2rem;"></i>
-            </div>
-
-            <h5 class="card-title mb-2 font-weight-bold">Raw Antibiotic Data</h5>
-            <p class="text-muted small mb-4">Raw Antibiotic Entries</p>
-
-            <button type="button" class="btn btn-success btn-sm btn-block"
-                    data-toggle="modal" data-target="#UploadReferredModal">
-              <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Raw
-            </button>
-            <a href="#" class="btn btn-outline-primary btn-sm btn-block">
-              <i class="ni ni-folder-17 mr-2"></i>View Data
-            </a>
-
+    <!-- MLST -->
+    <div class="col-lg-4 col-md-6 mb-4">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+        <div class="card-body text-center">
+          <div class="icon-circle" style="background: linear-gradient(135deg, #fb6340, #fbb140);">
+            <i class="ni ni-atom text-white" style="font-size: 1.75rem;"></i>
           </div>
+          <h6 class="card-title font-weight-bold mb-1">MLST</h6>
+          <p class="text-muted text-sm mb-3">Sequence typing</p>
+          <button type="button" class="btn btn-upload btn-sm btn-block" data-toggle="modal" data-target="#MlstModal">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+          <a href="{% url 'show_mlst' %}" class="btn btn-outline-secondary btn-sm btn-block mt-2">
+            <i class="ni ni-folder-17 mr-1"></i>View Data
+          </a>
         </div>
       </div>
+    </div>
 
-      <!-- Final Demographic Data -->
-      <div class="col-lg-3 col-md-3 mb-4">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="card-body text-center p-4">
-
-            <div class="icon-circle mx-auto mb-4"
-                 style="width:70px;height:70px;border-radius:50%;
-                        background:linear-gradient(135deg,#fa3c3c,#bb9755);
-                        display:flex;align-items:center;justify-content:center;">
-              <i class="fas fa-users text-white" style="font-size:2rem;"></i>
-            </div>
-
-            <h5 class="card-title mb-2 font-weight-bold">Final Demographic Data</h5>
-            <p class="text-muted small mb-4">Final Data Entries</p>
-
-            <button type="button" class="btn btn-success btn-sm btn-block"
-                    data-toggle="modal" data-target="#UploadFinalReferredModal">
-              <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Final
-            </button>
-            <a href="{% url 'show_final_data' %}" class="btn btn-outline-primary btn-sm btn-block">
-              <i class="ni ni-folder-17 mr-2"></i>View Data
-            </a>
-
+    <!-- CheckM2 -->
+    <div class="col-lg-4 col-md-6 mb-4">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+        <div class="card-body text-center">
+          <div class="icon-circle" style="background: linear-gradient(135deg, #11cdef, #1171ef);">
+            <i class="ni ni-check-bold text-white" style="font-size: 1.75rem;"></i>
           </div>
+          <h6 class="card-title font-weight-bold mb-1">CheckM2</h6>
+          <p class="text-muted text-sm mb-3">Genome quality</p>
+          <button type="button" class="btn btn-upload btn-sm btn-block" data-toggle="modal" data-target="#Checkm2Modal">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+          <a href="{% url 'show_checkm2' %}" class="btn btn-outline-secondary btn-sm btn-block mt-2">
+            <i class="ni ni-folder-17 mr-1"></i>View Data
+          </a>
         </div>
       </div>
+    </div>
 
-      <!-- Final Antibiotic Data -->
-      <div class="col-lg-3 col-md-3 mb-4">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="card-body text-center p-4">
-
-            <div class="icon-circle mx-auto mb-4"
-                 style="width:70px;height:70px;border-radius:50%;
-                        background:linear-gradient(135deg,#2944e0,#79d2f5);
-                        display:flex;align-items:center;justify-content:center;">
-              <i class="fas fa-medkit text-white" style="font-size:2rem;"></i>
-            </div>
-
-            <h5 class="card-title mb-2 font-weight-bold">Final Antibiotic Data</h5>
-            <p class="text-muted small mb-4">Final Antibiotic Entries</p>
-
-            <button type="button" class="btn btn-success btn-sm btn-block"
-                    data-toggle="modal" data-target="#UploadFinalAntibioticModal">
-              <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Final
-            </button>
-            <a href="{% url 'show_final_antibiotic' %}" class="btn btn-outline-primary btn-sm btn-block">
-              <i class="ni ni-folder-17 mr-2"></i>View Data
-            </a>
-
+    <!-- Assembly Scan -->
+    <div class="col-lg-4 col-md-6 mb-4">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+        <div class="card-body text-center">
+          <div class="icon-circle" style="background: linear-gradient(135deg, #f5365c, #f56036);">
+            <i class="ni ni-settings text-white" style="font-size: 1.75rem;"></i>
           </div>
+          <h6 class="card-title font-weight-bold mb-1">Assembly Scan</h6>
+          <p class="text-muted text-sm mb-3">Assembly metrics</p>
+          <button type="button" class="btn btn-upload btn-sm btn-block" data-toggle="modal" data-target="#AssemblyModal">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+          <a href="{% url 'show_assembly' %}" class="btn btn-outline-secondary btn-sm btn-block mt-2">
+            <i class="ni ni-folder-17 mr-1"></i>View Data
+          </a>
         </div>
       </div>
+    </div>
 
+    <!-- AMRFinderPlus -->
+    <div class="col-lg-4 col-md-6 mb-4">
+      <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
+        <div class="card-body text-center">
+          <div class="icon-circle" style="background: linear-gradient(135deg, #8965e0, #bc65e0);">
+            <i class="ni ni-lock-circle-open text-white" style="font-size: 1.75rem;"></i>
+          </div>
+          <h6 class="card-title font-weight-bold mb-1">AMRFinderPlus</h6>
+          <p class="text-muted text-sm mb-3">Resistance genes</p>
+          <button type="button" class="btn btn-upload btn-sm btn-block" data-toggle="modal" data-target="#AmrfinderModal">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+          <a href="{% url 'show_amrfinder' %}" class="btn btn-outline-secondary btn-sm btn-block mt-2">
+            <i class="ni ni-folder-17 mr-1"></i>View Data
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="section-divider">
-    <h3 class="mb-0"><i class="ni ni-atom mr-2"></i>Genomic Analysis Data</h3>
-  </div>
+</div>
 
-  <div class="card-body">
+<!-- Modals -->
 
-    <p class="text-center text-muted mb-4">
-      Upload and manage your whole genome sequencing analysis results
-    </p>
-
-    <div class="row">
-
-      <!-- FastQ Data Card -->
-      <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="card-body text-center p-4">
-
-            <div class="icon-circle mx-auto mb-3"
-                 style="width:70px;height:70px;border-radius:50%;
-                        background:linear-gradient(135deg,#2dce89,#2dcecc);
-                        display:flex;align-items:center;justify-content:center;">
-              <i class="ni ni-cloud-upload-96 text-white" style="font-size:2rem;"></i>
-            </div>
-
-            <h5 class="card-title font-weight-bold">FastQ Data</h5>
-            <p class="text-muted small mb-4">Raw sequencing reads quality metrics</p>
-
-            <button type="button" class="btn btn-success btn-sm btn-block"
-                    data-toggle="modal" data-target="#UploadModal">
-              <i class="ni ni-cloud-upload-96 mr-1"></i> Upload
-            </button>
-
-            <a href="{% url 'show_fastq' %}"
-               class="btn btn-outline-primary btn-sm btn-block">
-              <i class="ni ni-folder-17 mr-1"></i> View Data
-            </a>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Gambit Data Card -->
-      <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="card-body text-center p-4">
-
-            <div class="icon-circle mx-auto mb-3"
-                 style="width:70px;height:70px;border-radius:50%;
-                        background:linear-gradient(135deg,#5e72e4,#825ee4);
-                        display:flex;align-items:center;justify-content:center;">
-              <i class="ni ni-chart-bar-32 text-white" style="font-size:2rem;"></i>
-            </div>
-
-            <h5 class="card-title font-weight-bold">Gambit Data</h5>
-            <p class="text-muted small mb-4">Species identification results</p>
-
-            <button type="button" class="btn btn-success btn-sm btn-block"
-                    data-toggle="modal" data-target="#GambitModal">
-              <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-            </button>
-
-            <a href="{% url 'show_gambit' %}"
-               class="btn btn-outline-primary btn-sm btn-block">
-              <i class="ni ni-folder-17 mr-1"></i>View Data
-            </a>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- MLST Data Card -->
-      <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="card-body text-center p-4">
-
-            <div class="icon-circle mx-auto mb-3"
-                 style="width:70px;height:70px;border-radius:50%;
-                        background:linear-gradient(135deg,#fb6340,#fbb140);
-                        display:flex;align-items:center;justify-content:center;">
-              <i class="ni ni-atom text-white" style="font-size:2rem;"></i>
-            </div>
-
-            <h5 class="card-title font-weight-bold">MLST Data</h5>
-            <p class="text-muted small mb-4">Multi-locus sequence typing</p>
-
-            <button type="button" class="btn btn-success btn-sm btn-block"
-                    data-toggle="modal" data-target="#MlstModal">
-              <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-            </button>
-
-            <a href="{% url 'show_mlst' %}"
-               class="btn btn-outline-primary btn-sm btn-block">
-              <i class="ni ni-folder-17 mr-1"></i>View Data
-            </a>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- CheckM2 Card -->
-      <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="card-body text-center p-4">
-
-            <div class="icon-circle mx-auto mb-3"
-                 style="width:70px;height:70px;border-radius:50%;
-                        background:linear-gradient(135deg,#11cdef,#1171ef);
-                        display:flex;align-items:center;justify-content:center;">
-              <i class="ni ni-check-bold text-white" style="font-size:2rem;"></i>
-            </div>
-
-            <h5 class="card-title font-weight-bold">CheckM2 Data</h5>
-            <p class="text-muted small mb-4">Genome quality assessment</p>
-
-            <button type="button" class="btn btn-success btn-sm btn-block"
-                    data-toggle="modal" data-target="#Checkm2Modal">
-              <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-            </button>
-
-            <a href="{% url 'show_checkm2' %}"
-               class="btn btn-outline-primary btn-sm btn-block">
-              <i class="ni ni-folder-17 mr-1"></i>View Data
-            </a>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Assembly Scan Card -->
-      <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="card-body text-center p-4">
-
-            <div class="icon-circle mx-auto mb-3"
-                 style="width:70px;height:70px;border-radius:50%;
-                        background:linear-gradient(135deg,#f5365c,#f56036);
-                        display:flex;align-items:center;justify-content:center;">
-              <i class="ni ni-settings text-white" style="font-size:2rem;"></i>
-            </div>
-
-            <h5 class="card-title font-weight-bold">Assembly Scan</h5>
-            <p class="text-muted small mb-4">Assembly quality metrics</p>
-
-            <button type="button" class="btn btn-success btn-sm btn-block"
-                    data-toggle="modal" data-target="#AssemblyModal">
-              <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-            </button>
-
-            <a href="{% url 'show_assembly' %}"
-               class="btn btn-outline-primary btn-sm btn-block">
-              <i class="ni ni-folder-17 mr-1"></i>View Data
-            </a>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- AMRFinderPlus -->
-      <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card dashboard-tile shadow-sm h-100 border-0 hover-lift">
-          <div class="card-body text-center p-4">
-
-            <div class="icon-circle mx-auto mb-3"
-                 style="width:70px;height:70px;border-radius:50%;
-                        background:linear-gradient(135deg,#8965e0,#bc65e0);
-                        display:flex;align-items:center;justify-content:center;">
-              <i class="ni ni-lock-circle-open text-white" style="font-size:2rem;"></i>
-            </div>
-
-            <h5 class="card-title font-weight-bold">AMRFinderPlus</h5>
-            <p class="text-muted small mb-4">Antimicrobial resistance genes</p>
-
-            <button type="button" class="btn btn-success btn-sm btn-block"
-                    data-toggle="modal" data-target="#AmrfinderModal">
-              <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-            </button>
-
-            <a href="{% url 'show_amrfinder' %}"
-               class="btn btn-outline-primary btn-sm btn-block">
-              <i class="ni ni-folder-17 mr-1"></i>View Data
-            </a>
-
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-
-<!-- ===========================
-     Upload Referred Raw Data Modal
-=========================== -->
+<!-- Upload Referred Raw Data Modal -->
 <div class="modal fade" id="UploadReferredModal" tabindex="-1" role="dialog">
   <form method="POST" action="{% url 'upload_combined_table' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-
-        <!-- Header (kept your custom gradient) -->
-        <div class="modal-header text-white"
-             style="background: linear-gradient(135deg,#81dde0,#eff317);">
-          <h5 class="modal-title">
-            <i class="ni ni-single-copy-04 mr-2"></i>Upload Referred Isolates Data
-          </h5>
+        <div class="modal-header bg-gradient-primary text-white">
+          <h5 class="modal-title"><i class="ni ni-single-copy-04 mr-2"></i>Upload Raw Referred Data</h5>
           <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
         </div>
-
         <div class="modal-body">
-          <div class="alert alert-info">
+          <div class="alert alert-info mb-3">
             <i class="ni ni-notification-70 mr-2"></i>
-            <strong>File Format:</strong> CSV or Excel file.
+            <strong>Accepted formats:</strong> CSV, XLSX, XLS
           </div>
-
-          <div class="form-group">
+          <div class="form-group mb-0">
             <label class="form-control-label">Choose File</label>
             {{ referred_form.ReferredDataFile|add_class:"form-control-file" }}
-            <small class="form-text text-muted">Accepted: CSV, XLSX, XLS</small>
           </div>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button class="btn text-white" style="background: linear-gradient(135deg,#81dde0,#eff317);">
-            <i class="ni ni-cloud-upload-96 mr-1"></i> Upload
-          </button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="ni ni-cloud-upload-96 mr-1"></i>Upload</button>
         </div>
       </div>
     </div>
   </form>
 </div>
 
-
-
-<!-- ===========================
-     Upload Referred Final Data Modal 
-=========================== -->
+<!-- Upload Final Referred Data Modal -->
 <div class="modal fade" id="UploadFinalReferredModal" tabindex="-1" role="dialog">
   <form method="POST" action="{% url 'upload_final_combined_table' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-
-        <div class="modal-header text-white"
-             style="background: linear-gradient(135deg,#81dde0,#eff317);">
-          <h5 class="modal-title">
-            <i class="ni ni-single-copy-04 mr-2"></i>Upload Final Referred Data
-          </h5>
+        <div class="modal-header bg-gradient-success text-white">
+          <h5 class="modal-title"><i class="ni ni-single-copy-04 mr-2"></i>Upload Final Referred Data</h5>
           <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
         </div>
-
         <div class="modal-body">
-          <div class="alert alert-info">
-            <i class="ni ni-notification-70 mr-2"></i>CSV or Excel format required.
+          <div class="alert alert-info mb-3">
+            <i class="ni ni-notification-70 mr-2"></i>
+            <strong>Accepted formats:</strong> CSV, XLSX, XLS
           </div>
-
-          <div class="form-group">
+          <div class="form-group mb-0">
             <label class="form-control-label">Choose File</label>
             {{ referred_form.FinalDataFile|add_class:"form-control-file" }}
-            <small class="form-text text-muted">CSV, XLSX, XLS</small>
           </div>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button class="btn text-white" style="background: linear-gradient(135deg,#81dde0,#eff317);">
-            <i class="ni ni-cloud-upload-96 mr-1"></i> Upload
-          </button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="ni ni-cloud-upload-96 mr-1"></i>Upload</button>
         </div>
-
       </div>
     </div>
   </form>
 </div>
 
-
-
-<!-- ===========================
-     Upload Final Antibiotic Modal
-=========================== -->
+<!-- Upload Final Antibiotic Modal -->
 <div class="modal fade" id="UploadFinalAntibioticModal" tabindex="-1" role="dialog">
   <form method="POST" action="{% url 'upload_antibiotic_entries' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-
-        <div class="modal-header text-white"
-             style="background: linear-gradient(135deg,#81dde0,#eff317);">
-          <h5 class="modal-title">
-            <i class="ni ni-single-copy-04 mr-2"></i>Upload Final Antibiotic Data
-          </h5>
+        <div class="modal-header bg-gradient-success text-white">
+          <h5 class="modal-title"><i class="ni ni-single-copy-04 mr-2"></i>Upload Final Antibiotic Data</h5>
           <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
         </div>
-
         <div class="modal-body">
-          <div class="alert alert-info">
-            <i class="ni ni-notification-70 mr-2"></i>Select a CSV or Excel file.
+          <div class="alert alert-info mb-3">
+            <i class="ni ni-notification-70 mr-2"></i>
+            <strong>Accepted formats:</strong> CSV, XLSX, XLS
           </div>
-
-          <div class="form-group">
+          <div class="form-group mb-0">
             <label class="form-control-label">Choose File</label>
             {{ antibiotic_form.FinalAntibioticFile|add_class:"form-control-file" }}
           </div>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button class="btn text-white" style="background: linear-gradient(135deg,#81dde0,#eff317);">
-            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-          </button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="ni ni-cloud-upload-96 mr-1"></i>Upload</button>
         </div>
-
       </div>
     </div>
   </form>
 </div>
 
-
-
-<!-- ===========================
-     FastQ Modal
-=========================== -->
+<!-- FastQ Modal -->
 <div class="modal fade" id="UploadModal" tabindex="-1" role="dialog">
   <form method="POST" action="{% url 'upload_fastq' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-
         <div class="modal-header bg-gradient-success text-white">
-          <h5 class="modal-title">
-            <i class="ni ni-cloud-upload-96 mr-2"></i>Upload FastQ Summary
-          </h5>
+          <h5 class="modal-title"><i class="ni ni-cloud-upload-96 mr-2"></i>Upload FastQ Summary</h5>
           <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
         </div>
-
         <div class="modal-body">
-          <div class="form-group">
+          <div class="form-group mb-0">
             <label class="form-control-label">Choose File</label>
             {{ fastq_form.fastqfile|add_class:"form-control-file" }}
           </div>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button class="btn btn-success">
-            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-          </button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="ni ni-cloud-upload-96 mr-1"></i>Upload</button>
         </div>
-
       </div>
     </div>
   </form>
 </div>
 
-
-
-<!-- ===========================
-     Gambit Modal
-=========================== -->
+<!-- Gambit Modal -->
 <div class="modal fade" id="GambitModal" tabindex="-1" role="dialog">
   <form method="POST" action="{% url 'upload_gambit' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-
         <div class="modal-header bg-gradient-primary text-white">
-          <h5 class="modal-title">
-            <i class="ni ni-chart-bar-32 mr-2"></i>Upload Gambit Summary
-          </h5>
+          <h5 class="modal-title"><i class="ni ni-chart-bar-32 mr-2"></i>Upload Gambit Summary</h5>
           <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
         </div>
-
         <div class="modal-body">
-          <div class="form-group">
+          <div class="form-group mb-0">
             <label class="form-control-label">Choose File</label>
             {{ gambit_form.GambitFile|add_class:"form-control-file" }}
           </div>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button class="btn btn-success">
-            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-          </button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="ni ni-cloud-upload-96 mr-1"></i>Upload</button>
         </div>
-
       </div>
     </div>
   </form>
 </div>
 
-
-
-<!-- ===========================
-     MLST Modal
-=========================== -->
+<!-- MLST Modal -->
 <div class="modal fade" id="MlstModal" tabindex="-1" role="dialog">
   <form method="POST" action="{% url 'upload_mlst' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-
         <div class="modal-header bg-gradient-warning text-white">
-          <h5 class="modal-title">
-            <i class="ni ni-atom mr-2"></i>Upload MLST Summary
-          </h5>
+          <h5 class="modal-title"><i class="ni ni-atom mr-2"></i>Upload MLST Summary</h5>
           <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
         </div>
-
         <div class="modal-body">
-          <div class="form-group">
+          <div class="form-group mb-0">
             <label class="form-control-label">Choose File</label>
             {{ mlst_form.Mlstfile|add_class:"form-control-file" }}
           </div>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button class="btn btn-success">
-            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-          </button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="ni ni-cloud-upload-96 mr-1"></i>Upload</button>
         </div>
-
       </div>
     </div>
   </form>
 </div>
 
-
-
-<!-- ===========================
-     CheckM2 Modal
-=========================== -->
+<!-- CheckM2 Modal -->
 <div class="modal fade" id="Checkm2Modal" tabindex="-1" role="dialog">
   <form method="POST" action="{% url 'upload_checkm2' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-
         <div class="modal-header bg-gradient-info text-white">
-          <h5 class="modal-title">
-            <i class="ni ni-check-bold mr-2"></i>Upload CheckM2 Summary
-          </h5>
+          <h5 class="modal-title"><i class="ni ni-check-bold mr-2"></i>Upload CheckM2 Summary</h5>
           <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
         </div>
-
         <div class="modal-body">
-          <div class="form-group">
+          <div class="form-group mb-0">
             <label class="form-control-label">Choose File</label>
             {{ checkm2_form.Checkm2file|add_class:"form-control-file" }}
           </div>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button class="btn btn-success">
-            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-          </button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="ni ni-cloud-upload-96 mr-1"></i>Upload</button>
         </div>
-
       </div>
     </div>
   </form>
 </div>
 
-
-
-<!-- ===========================
-     Assembly Modal
-=========================== -->
+<!-- Assembly Modal -->
 <div class="modal fade" id="AssemblyModal" tabindex="-1" role="dialog">
   <form method="POST" action="{% url 'upload_assembly' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-
         <div class="modal-header bg-gradient-danger text-white">
-          <h5 class="modal-title">
-            <i class="ni ni-settings mr-2"></i>Upload Assembly Scan
-          </h5>
+          <h5 class="modal-title"><i class="ni ni-settings mr-2"></i>Upload Assembly Scan</h5>
           <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
         </div>
-
         <div class="modal-body">
-          <div class="form-group">
+          <div class="form-group mb-0">
             <label class="form-control-label">Choose File</label>
             {{ assembly_form.Assemblyfile|add_class:"form-control-file" }}
           </div>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button class="btn btn-success">
-            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-          </button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="ni ni-cloud-upload-96 mr-1"></i>Upload</button>
         </div>
-
       </div>
     </div>
   </form>
 </div>
 
-
-
-<!-- ===========================
-     AMRFinder Modal
-=========================== -->
+<!-- AMRFinder Modal -->
 <div class="modal fade" id="AmrfinderModal" tabindex="-1" role="dialog">
   <form method="POST" action="{% url 'upload_amrfinder' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-
-        <div class="modal-header"
-             style="background: linear-gradient(135deg,#8965e0,#bc65e0);">
-          <h5 class="modal-title text-white">
-            <i class="ni ni-lock-circle-open mr-2"></i>Upload AMRFinderPlus
-          </h5>
+        <div class="modal-header" style="background: linear-gradient(135deg, #8965e0, #bc65e0);">
+          <h5 class="modal-title text-white"><i class="ni ni-lock-circle-open mr-2"></i>Upload AMRFinderPlus</h5>
           <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
         </div>
-
         <div class="modal-body">
-          <div class="form-group">
+          <div class="form-group mb-0">
             <label class="form-control-label">Choose File</label>
             {{ amrfinder_form.Amrfinderfile|add_class:"form-control-file" }}
           </div>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button class="btn btn-success">
-            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
-          </button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="ni ni-cloud-upload-96 mr-1"></i>Upload</button>
         </div>
-
       </div>
     </div>
   </form>
 </div>
 
-
-
-<!-- ===========================
-     Final Styles
-=========================== -->
-<style>
-.hover-lift {
-  transition: transform .3s ease, box-shadow .3s ease;
-}
-.hover-lift:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 30px rgba(0,0,0,.15) !important;
-}
-.alert-info {
-  background:#d1ecf1;
-  border-color:#bee5eb;
-  color:#0c5460;
-}
-</style>
-
-
-
-<!-- ===========================
-     Final JS
-=========================== -->
 <script>
 function confirmOverwrite() {
-  return confirm("⚠️ WARNING: Uploading will overwrite existing data.\nAre you sure you want to continue?");
+  return confirm("⚠️ WARNING: Uploading will overwrite existing data.\n\nAre you sure you want to continue?");
 }
 </script>
 

@@ -1,0 +1,125 @@
+{% load static %}
+{% load widget_tweaks %}
+
+{% block settings_content %}
+
+<div class="card shadow-sm">
+
+  <!-- HEADER -->
+  <div class="card-header d-flex justify-content-between align-items-center"
+       style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+              border-bottom: 2px solid #d1e8ed;">
+
+    <h5 class="card-title mb-0">
+      <i class="fas fa-vials mr-2"></i>
+      Add Phenotype (Pre)
+    </h5>
+
+    <a href="{% url 'view_phenotype_pre' %}" class="btn btn-sm btn-primary">
+      <i class="fas fa-table mr-1"></i> View All
+    </a>
+  </div>
+
+  <!-- BODY -->
+  <div class="card-body">
+
+    {% if pheno_pre_form %}
+    <form method="POST"
+          action="{% url 'add_phenotype_pre' %}"
+          id="phenotypepreform"
+          autocomplete="on">
+
+      {% csrf_token %}
+
+      <!-- Upload Button -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <button type="button"
+                  class="btn btn-secondary"
+                  data-toggle="modal"
+                  data-target="#UploadModalPhenotypePre">
+            <i class="fas fa-file-upload mr-1"></i> Upload CSV / Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- FORM FIELDS -->
+      <div class="row pt-3">
+
+        <div class="col-md-12 mb-3">
+          <label>
+            <i class="fas fa-tag mr-2"></i> Pre Phenotype
+          </label>
+          {{ pheno_pre_form.Pre_Phenotypes|append_attr:"class:form-control" }}
+          <small class="helper-text">
+            <i class="fas fa-info-circle mr-1"></i>
+            Enter phenotype description (Pre).
+          </small>
+        </div>
+
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="d-flex justify-content-end gap-3 mt-4 flex-wrap">
+
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save mr-2"></i>
+          {% if editing %}Update{% else %}Save{% endif %} Phenotype
+        </button>
+
+        <button type="button"
+                onclick="document.getElementById('phenotypepreform').reset()"
+                class="btn btn-secondary">
+          Clear
+        </button>
+
+      </div>
+
+    </form>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- ================= UPLOAD MODAL ================= -->
+<div class="modal fade" id="UploadModalPhenotypePre" tabindex="-1">
+    <form method="POST"
+          action="{% url 'upload_phenotype_pre' %}"
+          enctype="multipart/form-data"
+          onsubmit="return confirmOverwritePhenotypePre();">
+
+        {% csrf_token %}
+
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-top:4px solid #2d9cad;">
+                <div class="modal-header"
+                     style="background: linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
+                            border-bottom:2px solid #d1e8ed;">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-upload mr-2"></i> Upload Phenotype (Pre)
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    {{ phenotype_pre_upload.File_Pheno_pre|append_attr:"class:form-control" }}
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function confirmOverwritePhenotypePre() {
+  return confirm("WARNING: Uploading will overwrite existing Phenotype (Pre) data. Continue?");
+}
+</script>
+
+{% endblock settings_content %}

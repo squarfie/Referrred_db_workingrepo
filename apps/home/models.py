@@ -1,14 +1,15 @@
+from datetime import timezone
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.validators import EmailValidator
-from apps.wgs_app.models import *
-from apps.home_final.models import *
 from phonenumber_field.modelfields import PhoneNumberField
 from django.contrib.auth.models import User
 
 # Create your models here.
 
+
 class Batch_Table(models.Model):
+
     Batch_Status = (
         ('n/a',''),
         ('Encoding','Encoding'),
@@ -17,40 +18,98 @@ class Batch_Table(models.Model):
         ('Third Draft', '3rd Draft'),
         ('Verification','Verification'),
         ('Other','Other'),
+    )
 
-    )  
-    bat_SiteCode=models.CharField(max_length=255, blank=True, default='')
-    bat_Site_Name=models.CharField(max_length=255, blank=True,)
-    bat_Site_NameGen = models.CharField(max_length=255, blank=True,) 
-    bat_Batch_Name=models.CharField(max_length=255, blank=True,)
-    bat_Batch_Code=models.CharField(max_length=255, blank=True,)
-    bat_Date_of_Entry =models.DateTimeField(auto_now_add=True)
-    bat_RefNo=models.CharField(null=True, blank=True)
-    bat_BatchNo=models.CharField(max_length=255, blank=True,)
-    bat_Total_batch=models.CharField(max_length=100, blank=True,)
-    bat_AccessionNo=models.CharField(max_length=255, blank=True,)
-    bat_AccessionNoGen=models.CharField(max_length=100, blank=True)
-    bat_Default_Year=models.DateField(null=True, blank=True)
-    bat_Referral_Date=models.DateField(null=True, blank=True)
+    bat_SiteCode = models.CharField(max_length=255, blank=True, default='')
+    bat_Seq_No = models.IntegerField(null=True, blank=True)
+    bat_Site_Name = models.CharField(max_length=255, blank=True)
+    bat_Site_NameGen = models.CharField(max_length=255, blank=True)
+    bat_Batch_Name = models.CharField(max_length=255, blank=True)
+    bat_Batch_Code = models.CharField(max_length=255, blank=True)
+
+    bat_Date_of_Entry = models.DateTimeField(auto_now_add=True)
+    bat_RefNo = models.CharField(null=True, blank=True)
+    bat_BatchNo = models.CharField(max_length=255, blank=True)
+    bat_Total_batch = models.CharField(max_length=100, blank=True)
+    bat_AccessionNo = models.CharField(max_length=255, blank=True)
+    bat_AccessionNoGen = models.CharField(max_length=100, blank=True)
+    bat_Default_Year = models.DateField(null=True, blank=True)
+    bat_Referral_Date = models.DateField(null=True, blank=True)
+
     bat_Status = models.CharField(max_length=100, choices=Batch_Status, default='')
+
     bat_Encoder = models.CharField(max_length=255, blank=True, default='')
-    bat_Enc_Lic = models.CharField(max_length=100,blank=True, default='')
+    bat_Enc_Lic = models.CharField(max_length=100, blank=True, default='')
+
     bat_Checker = models.CharField(max_length=255, blank=True, default='')
-    bat_Chec_Lic = models.CharField(max_length=100,blank=True, default='')
+    bat_Chec_Lic = models.CharField(max_length=100, blank=True, default='')
+
     bat_Verifier = models.CharField(max_length=255, blank=True, default='')
-    bat_Ver_Lic = models.CharField(max_length=100,blank=True,  default='')
+    bat_Ver_Lic = models.CharField(max_length=100, blank=True, default='')
+
     bat_LabManager = models.CharField(max_length=255, blank=True, default='')
-    bat_Lab_Lic = models.CharField(max_length=100,blank=True, default='')
+    bat_Lab_Lic = models.CharField(max_length=100, blank=True, default='')
+
     bat_Head = models.CharField(max_length=255, blank=True, default='')
-    bat_Head_Lic = models.CharField(max_length=100,blank=True, default='')
+    bat_Head_Lic = models.CharField(max_length=100, blank=True, default='')
+
+    bat_Date_Encoded = models.DateField(null=True, blank=True)
+    bat_Date_Checked = models.DateField(null=True, blank=True)
+    bat_Date_Verified = models.DateField(null=True, blank=True)
+    bat_Date_LabManager = models.DateField(null=True, blank=True)
+    bat_Date_Head = models.DateField(null=True, blank=True)
+
+    bat_Date_Accomplished = models.DateField(null=True, blank=True)
+
+    class Meta:
+        db_table = "Batch_Table"
+
+
+    def save(self, *args, **kwargs):
+
+        today = timezone.now().date()
+
+        # Encoder
+        if self.bat_Encoder and not self.bat_Date_Encoded:
+            self.bat_Date_Encoded = today
+
+        # Checker
+        if self.bat_Checker and not self.bat_Date_Checked:
+            self.bat_Date_Checked = today
+
+        # Verifier
+        if self.bat_Verifier and not self.bat_Date_Verified:
+            self.bat_Date_Verified = today
+
+        # Lab Manager
+        if self.bat_LabManager and not self.bat_Date_LabManager:
+            self.bat_Date_LabManager = today
+
+        # Head
+        if self.bat_Head and not self.bat_Date_Head:
+            self.bat_Date_Head = today
+
+        super().save(*args, **kwargs)
 
 
 
-class Meta:
-    db_table ="Batch_Table"
-    constraints = [
-        models.UniqueConstraint(fields=['bat_AccessionNo', 'bat_Batch_Code'], name='unique_batch_accession')
-    ]
+        def __init__(self, *args, **kwargs):
+                editing = kwargs.pop("editing", False)
+                super().__init__(*args, **kwargs)
+
+                if editing:
+                    LOCKED_FIELDS = [
+                        "bat_SiteCode",
+                        "bat_Referral_Date",
+                        "bat_BatchNo",
+                        "bat_Total_batch",
+                        "bat_RefNo",
+                        "bat_Site_NameGen",
+                        "bat_Batch_Name",
+                    ]
+
+                    for field in LOCKED_FIELDS:
+                        self.fields[field].disabled = True
 
 
 class Referred_Data(models.Model):
@@ -99,6 +158,26 @@ class Referred_Data(models.Model):
         ('Other','Other'),
 
     )
+
+    Growth_Choice = (
+        ('n/a','n/a'),
+        ('light growth','light growth'),
+        ('light to moderate growth','light to moderate growth'),
+        ('heavy growth', 'heavy growth'),
+        ('moderately heavy growth', 'moderately heavy growth'),
+        ('positive growth', 'positive growth'),
+        ('no growth','no growth'),
+
+
+    )
+   
+    Gender_Choice = (
+        ('n/a','n/a'),
+        ('f','f'),
+        ('m','m'),
+     
+    )
+   
    
     #isolates
     bat_seq = models.PositiveIntegerField(null=True, blank=True, help_text="Auto sequence number per batch")
@@ -108,6 +187,7 @@ class Referred_Data(models.Model):
     Batch_Name=models.CharField(max_length=255, blank=True,)
     Batch_Code = models.CharField(max_length=255, blank=True)
     Date_of_Entry =models.DateTimeField(auto_now_add=True)
+    Date_Modified =models.DateTimeField(auto_now=True)
     RefNo = models.CharField(max_length=20, blank=True, null=True)
     BatchNo=models.CharField(max_length=255, blank=True,)
     Total_batch=models.CharField(max_length=100, blank=True,)
@@ -124,9 +204,12 @@ class Referred_Data(models.Model):
     Mid_Name=models.CharField(max_length=255, blank=True,)
     Last_Name=models.CharField(max_length=255, blank=True,)
     Date_Birth=models.DateField(null=True, blank=True)
-    Age=models.CharField(max_length=255, blank=True,)
-    Age_Verification=models.CharField(max_length=255, blank=True,)
-    Sex=models.CharField(max_length=255, blank=True,)
+    Age = models.IntegerField(
+    blank=True,
+    null=True,
+    validators=[MinValueValidator(0), MaxValueValidator(120)]
+    )
+    Sex=models.CharField(max_length=255, blank=True, choices=Gender_Choice, default="n/a")
     Date_Admis=models.DateField(null=True, blank=True)
     Nosocomial=models.CharField(max_length=255, choices=Common_Choices, default="n/a")
     Diagnosis=models.CharField(max_length=255, blank=True,)
@@ -137,9 +220,10 @@ class Referred_Data(models.Model):
     #Isolate Information
     Spec_Num=models.CharField(max_length=255, blank=True,)
     Spec_Date=models.DateField(null=True, blank=True)
-    Spec_Type=models.CharField(max_length=255, blank=True, null=True)
+    # Spec_Type=models.CharField(max_length=255, blank=True, null=True)
+    Spec_Type = models.ForeignKey("SpecimenTypeModel", on_delete=models.SET_NULL, null=True,blank=True, related_name='specimen_type_entries')
     Reason=models.TextField(max_length=255, choices=ReasonChoices, default="n/a")
-    Growth=models.CharField(max_length=255, blank=True,)
+    Growth=models.CharField(max_length=255, blank=True, choices=Growth_Choice, default="n/a")
     Urine_ColCt=models.CharField(max_length=255, blank=True,)
     #Phenotypic Results
     ampC=models.CharField(max_length=255, choices=Common_pheno, default="n/a")
@@ -152,10 +236,10 @@ class Referred_Data(models.Model):
     ICR=models.CharField(max_length=255, choices=Common_pheno, default="n/a")
     OtherResMech=models.CharField(max_length=255, blank=True)
     #Organism Result
-    Site_Pre=models.CharField(max_length=255, blank=True,)
+    Site_Pre=models.CharField(max_length=255, blank=True, default='', null=True)
     Site_Org=models.CharField(max_length=255, blank=True, default="")
-    Site_OrgName=models.CharField(max_length=255, blank=True,)
-    Site_Pos=models.CharField(max_length=255, blank=True,)
+    Site_OrgName=models.CharField(max_length=255, blank=True, null=True)
+    Site_Pos=models.CharField(max_length=255, blank=True, null=True, default="")
     Comments=models.TextField(blank=True, null=True)
     
     #ARSRL Sty Results
@@ -170,16 +254,17 @@ class Referred_Data(models.Model):
     ars_MR=models.CharField(max_length=255, choices=Common_pheno, default="n/a")
     ars_mecA=models.CharField(max_length=255, choices=Common_pheno, default="n/a")
     ars_ICR=models.CharField(max_length=255, choices=Common_pheno, default="n/a")
-    ars_Pre=models.CharField( max_length=255, blank=True,)
-    ars_Post=models.CharField(max_length=255, blank=True,)
+    ars_Pre=models.CharField( max_length=255, blank=True, default="", null=True)
+    ars_Post=models.CharField(max_length=255, blank=True, default="", null=True)
     ars_OrgCode=models.CharField(max_length=255, blank=True, default="")
     ars_OrgName=models.CharField(max_length=255, blank=True,)
     ars_ct_ctl=models.CharField(max_length=255, blank=True,)
     ars_tz_tzl=models.CharField(max_length=255, blank=True,)
     ars_cn_cni=models.CharField(max_length=255, blank=True,)
     ars_ip_ipi=models.CharField(max_length=255, blank=True,)
-    ars_reco_Code=models.CharField(max_length=255, blank=True,)
-    ars_reco=models.TextField(blank=True, null=True)
+    ars_reco_Code=models.CharField(max_length=255, blank=True, null=True)
+    ars_description = models.TextField(blank=True, null=True)
+    ars_reco=models.TextField(blank=True, null=True, default='')
     
     #Batch Table Data
     SiteName=models.CharField(max_length=255, blank=True,)
@@ -214,6 +299,9 @@ class Referred_Data(models.Model):
     x_entbac = models.CharField(max_length=255, blank=True)
     edta = models.CharField(max_length=255, blank=True)
 
+
+
+
     def save(self, *args, **kwargs):
         # Fill defaults to prevent NULL insertion
         self.arsp_Encoder = self.arsp_Encoder or ""
@@ -229,6 +317,14 @@ class Referred_Data(models.Model):
         self.Site_Org = self.Site_Org or ""
         self.ars_OrgCode = self.ars_OrgCode or ""
         self.Site_OrgName = self.Site_OrgName or ""
+
+
+
+        # Normalize Age for IntegerField
+        if self.Age in ("", " ", None):
+            self.Age = None
+
+
         super().save(*args, **kwargs)
 
 
@@ -238,7 +334,9 @@ class Referred_Data(models.Model):
     class Meta:
         db_table ="Referred_Data"
         constraints = [
-            models.UniqueConstraint(fields=['AccessionNo', 'Batch_Code'], name='unique_accession_batch')
+            models.UniqueConstraint(fields=['AccessionNo', 'Batch_Code'], name='unique_accession_batch'),
+            models.UniqueConstraint(fields=["Batch_id", "bat_seq"],name="unique_bat_seq_per_batch")
+        
         ]
 
 
@@ -265,10 +363,15 @@ class TATform(models.Model):
     Num_Isolate = models.CharField(max_length=3, blank=True,)
     Total_Batch = models.CharField(max_length=3, blank=True,)
     ars_Encoder = models.CharField(max_length=255, blank=True,)
+    ars_Date_Encoded = models.DateField(blank=True, null=True)
     ars_Checker = models.CharField(max_length=255, blank=True,) 
+    ars_Date_Checked = models.DateField(blank=True, null=True)
     ars_Verifier = models.CharField(max_length=255, blank=True,)
+    ars_Date_Verified = models.DateField(blank=True, null=True)
     ars_LabManager = models.CharField(max_length=255, blank=True,)
+    ars_Date_LabManager = models.DateField(blank=True, null=True)
     ars_Head = models.CharField(max_length=255, blank=True,)
+    ars_Date_Head = models.DateField(blank=True, null=True)
 
     class Meta:
         db_table ="TATform"
@@ -332,6 +435,16 @@ class BreakpointsTable(models.Model):
     GuidelineChoices = (
         ('CLSI', 'CLSI'),        
     )
+    
+    Emerg_Int_Choices = (
+        ('','-'),
+        ('R','R'),
+        ('I', 'I'),
+        ('S', 'S'),
+        ('NS','NS'),
+        ('SDD','SDD'),
+
+    )
     Antibiotic_list = models.ForeignKey(
         'Antibiotic_List',
         on_delete=models.CASCADE,
@@ -343,14 +456,22 @@ class BreakpointsTable(models.Model):
     )
     Guidelines = models.CharField(max_length=100, choices=GuidelineChoices, blank=True, default='')
     Year = models.CharField(max_length=100, blank=True, default='')
-    Org_Grp = models.CharField(max_length=100, blank=True, default='')
     Org = models.CharField(max_length=100, blank=True, default='')
+    Spec_code = models.CharField(max_length=100, blank=True, null=True)
+    Emerging_specimen =models.BooleanField(default=False)
     Test_Method = models.CharField(max_length=20, choices=TestMethodChoices, blank=True, default='')
     Potency = models.CharField(max_length=20, blank=True, default='')
     Abx_code = models.CharField(max_length=15, blank=True, default='')
     Tier = models.CharField(max_length=10, blank=True, default='')
     # Show = models.BooleanField(default=True)
     # Retest = models.BooleanField(default=False)
+
+    Emerging_Org_Flag= models.BooleanField(default=False)
+    Emerging_Abx_Flag=models.BooleanField(default=False)
+    Emerging_Pheno_Flag=models.CharField(max_length=100, blank=True, default="", choices=Emerg_Int_Choices)
+    Emerging_Pheno_Flag_Other=models.CharField(max_length=100, blank=True, default="", choices=Emerg_Int_Choices)
+    
+
     Antibiotic = models.CharField(max_length=100, blank=True, default='')
     Whonet_Abx = models.CharField(max_length=100, blank=True, default='')
     Disk_Abx = models.BooleanField(default=False)
@@ -365,6 +486,7 @@ class BreakpointsTable(models.Model):
 
     class Meta:
         db_table ="BreakpointsTable"
+        ordering = ["Whonet_Abx"]
 
 
 class Breakpoint_upload(models.Model):
@@ -376,8 +498,14 @@ class Breakpoint_upload(models.Model):
     
 #for antibiotic test entries
 class AntibioticEntry(models.Model):
+
 #  links to main and breakpoints table
     ab_idNum_referred = models.ForeignKey(Referred_Data, on_delete=models.CASCADE, null=True, related_name='antibiotic_entries', to_field='AccessionNo')
+    ab_Site_Org = models.CharField(max_length=100, blank=True, null=True)
+    ab_Ret_Org = models.CharField(max_length=100, blank=True, null=True)
+    
+   
+
     ab_Disk_Abx = models.BooleanField(default=False)
     ab_Ret_Disk_Abx= models.BooleanField(default=False)
     ab_AccessionNo= models.CharField(max_length=100, blank=True, null=True)
@@ -392,9 +520,10 @@ class AntibioticEntry(models.Model):
     ab_Disk_value = models.IntegerField(blank=True, null=True)
     ab_Disk_RIS = models.CharField(max_length=4, blank=True) 
     ab_Disk_enRIS = models.CharField(max_length=4, blank=True, default='') 
-    
+
+
     ab_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
-    ab_MIC_value = models.DecimalField(max_digits=5, decimal_places=3, blank=True, null=True)
+    ab_MIC_value = models.DecimalField(max_digits=7, decimal_places=3, blank=True, null=True)
     ab_MIC_RIS = models.CharField(max_length=4, blank=True)
     ab_MIC_enRIS = models.CharField(max_length=4, blank=True, default='')
     
@@ -407,6 +536,12 @@ class AntibioticEntry(models.Model):
     ab_S_breakpoint = models.CharField(max_length=10, blank=True, null=True)
     
     #arsrl results
+     #### this will apply on retest only
+    ab_Org_Flag = models.BooleanField(default=False)
+    ab_Abx_Flag = models.BooleanField(default=False)
+    ab_Abx_Phenotype = models.CharField(max_length=100, blank=True, null=True)
+    ab_Abx_Phenotype_Other = models.CharField(max_length=100, blank=True, null=True)
+
     ab_Retest_Antibiotic = models.CharField(max_length=100, blank=True, null=True)
     ab_Retest_Abx_code = models.CharField(max_length=100, blank=True, null=True)
     ab_Retest_Abx = models.CharField(max_length=100, blank=True, null=True)
@@ -432,6 +567,18 @@ class AntibioticEntry(models.Model):
         return ", ".join([abx.Whonet_Abx for abx in self.ab_breakpoints_id.all()]) 
 
     def save(self, *args, **kwargs):
+        if self.ab_Disk_enRIS:
+            self.ab_Disk_enRIS = self.ab_Disk_enRIS.upper()
+
+        if self.ab_MIC_enRIS:
+            self.ab_MIC_enRIS = self.ab_MIC_enRIS.upper()
+        
+        if self.ab_Retest_Disk_enRIS:
+            self.ab_Retest_Disk_enRIS = self.ab_Retest_Disk_enRIS.upper()
+
+        if self.ab_Retest_MIC_enRIS:
+            self.ab_Retest_MIC_enRIS = self.ab_Retest_MIC_enRIS.upper()
+
         super().save(*args, **kwargs)  # Save the instance first
         
 
@@ -442,15 +589,27 @@ class AntibioticEntry(models.Model):
 
 
 class SpecimenTypeModel(models.Model):
+    Emerging_Spec_Flag= models.BooleanField(default=False)
+    Specimen_code = models.CharField(max_length=4, unique=True, db_index=True, blank=True, null=True)
     Specimen_name = models.CharField(max_length=100, blank=True, null=True)
-    Specimen_code = models.CharField(max_length=4, blank=True, null=True)
+    Specimen_Code_Grp = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True)
+    Specimen_Grp_Name = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         # Always return a string; prefer Specimen_code, fallback to placeholder
-        return str(self.Specimen_code) if self.Specimen_code else "n/a"
+        return str(self.Specimen_code) or "n/a"
     
     class Meta:
         db_table = "SpecimenTypeTable"
+
+
+class Specimen_upload(models.Model):
+    File_uploadSpec = models.FileField(upload_to='uploads/specimen/', null=True, blank=True)
+
+    class Meta:
+        db_table = "Specimen_upload"
+
+
 
 #Address Book
 class arsStaff_Details(models.Model):
@@ -471,20 +630,20 @@ class Recommendation(models.Model):
             return self.Reco_Code 
     
 
-
 class FieldMapping(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     raw_field = models.CharField(max_length=255)
     mapped_field = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
 
     class Meta:
         unique_together = ('user', 'raw_field')
 
     def __str__(self):
         return f"{self.user.username}: {self.raw_field} → {self.mapped_field}"
-    
+
 
 class Antibiotic_List(models.Model):
     TestMethodChoices =(
@@ -495,9 +654,11 @@ class Antibiotic_List(models.Model):
     GuidelineChoices = (
         ('CLSI', 'CLSI'),        
     )
-    Show=models.BooleanField(default=True)
-    Show_Final = models.BooleanField(default=True)
-    Retest=models.BooleanField(default=True)
+    Show=models.BooleanField(default=True) #Show in Sentinel Antibiotiocs in data entry
+    Retest=models.BooleanField(default=True) # Show in Retest antibiotics in data entry
+    Show_Site=models.BooleanField(default=True) # Show in Sentinel Result
+    Show_Ars = models.BooleanField(default=True) # Show in ARSRL Result
+    Show_Value=models.BooleanField(default=True) # Show Value Column
     Disk_Abx=models.BooleanField(default=True)
     Tier = models.CharField(max_length=10, blank=True, default='')
     Test_Method=models.CharField(max_length=100, choices=TestMethodChoices, blank=True, default="")
@@ -550,3 +711,74 @@ class Organism_upload(models.Model):
 
     class Meta:
         db_table = "Organism_upload"
+
+
+
+
+
+
+class Emerging_Filter_Age(models.Model):
+
+    Eme_Age=models.IntegerField(blank=True, null=True)
+    class Meta:
+        db_table = "Emerging_Filter_Age"
+    
+    def __str__(self):
+        return str(self.Eme_Age)
+
+class Emerging_Crit_upload(models.Model):
+    File_uploadEme = models.FileField(upload_to='uploads/emerging/', null=True, blank=True)
+
+    class Meta:
+        db_table = "Emerging_upload"
+
+
+
+class Phenotype_Pre(models.Model):
+    Pre_Phenotypes = models.CharField(max_length=255, blank=True, null=True)
+
+
+    class Meta:
+        db_table = "Phenotype_Pre"
+
+    
+    def __str__(self):
+        return f"{self.Pre_Phenotypes}"
+
+class Pheno_upload_Pre(models.Model):
+    File_Pheno_pre = models.FileField(upload_to='uploads/pheno_pre/', null=True, blank=True)
+
+
+class Phenotype_Post(models.Model):
+    Post_Phenotypes = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        db_table = "Phenotype_Post"
+
+    def __str__(self):
+        return self.Post_Phenotypes or ""
+
+
+class Pheno_upload_Post(models.Model):
+    File_Pheno_post = models.FileField(
+        upload_to='uploads/pheno_post/',
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        db_table = "Pheno_upload_Post"
+
+
+class Recommendation_items(models.Model):
+    RecoCode = models.CharField(max_length=100, blank=True, null=True)
+    Description = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = "Recommendation_items"
+    
+    def __str__(self):
+        return f"{self.RecoCode}" or ""
+
+class Reco_item_upload(models.Model):
+    File_reco_desc = models.FileField(upload_to='uploads/reco_desc/', null=True, blank=True)

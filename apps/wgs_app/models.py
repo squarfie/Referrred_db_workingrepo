@@ -1,13 +1,11 @@
 from django.db import models
-from django.apps import apps
-from apps.home.models import *
-from apps.home_final.models import Final_Data
+
 # Create your models here.
 
 # Connector Table for WGS Projects
 class WGS_Project(models.Model):
     Ref_Accession = models.ForeignKey(
-        Final_Data,   # connects to Final_Data model
+        'home_final.Final_Data',    # connects to Final_Data model
         on_delete=models.CASCADE,   #DELETE WHEN FINAL REFERRED DATA ACCESSION IS DELETED
         null=True,
         blank=True,

@@ -1,0 +1,179 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %}WGS Classification{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt--6">
+
+  <!-- ================= FINAL DATA SUMMARY ================= -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0 text-primary">
+        <i class="fas fa-file-medical mr-2"></i>Final Data Summary
+      </h5>
+    </div>
+
+    <div class="card-body py-3">
+      <div class="row text-sm">
+        <div class="col-md-3 mb-2">
+          <div class="text-muted">Accession No</div>
+          <strong>{{ isolates.f_AccessionNo }}</strong>
+        </div>
+        <div class="col-md-3 mb-2">
+          <div class="text-muted">Site Code</div>
+          <strong>{{ isolates.f_SiteCode }}</strong>
+        </div>
+        <div class="col-md-3 mb-2">
+          <div class="text-muted">Specimen</div>
+          <strong>{{ isolates.f_Spec_Type }}</strong>
+        </div>
+        <div class="col-md-3 mb-2">
+          <div class="text-muted">Specimen Date</div>
+          <strong>{{ isolates.f_Spec_Date|default:"—" }}</strong>
+        </div>
+      </div>
+
+      <hr class="my-3">
+
+      <div class="row text-sm">
+        <div class="col-md-4 mb-2">
+          <div class="text-muted">Organism (Site)</div>
+          <strong>{{ isolates.f_Site_Org }} — {{ isolates.f_Site_OrgName }}</strong>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="text-muted">Organism (ARS)</div>
+          <strong>{{ isolates.f_ars_OrgCode }} — {{ isolates.f_ars_OrgName }}</strong>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="text-muted">Batch</div>
+          <strong>{{ isolates.f_Batch_Code }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= WGS RESULTS ================= -->
+  {% if wgs %}
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-info text-white">
+      <h5 class="mb-0">
+        <i class="fas fa-dna mr-2"></i>WGS Pipeline Results
+      </h5>
+    </div>
+
+    <div class="card-body">
+
+      <!-- FASTQ QC -->
+   {% if fastq %}
+<h6 class="text-uppercase text-muted">FASTQ Quality Control</h6>
+<table class="table table-sm table-bordered">
+  <thead>
+    <tr>
+      <th>Accession</th>
+      <th>Sample</th>
+      <th>Q30 (%)</th>
+      <th>GC (%)</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for fq in fastq %}
+    <tr>
+      <td>{{ fq.FastQ_Accession }}</td>
+      <td>{{ fq.sample }}</td>
+      <td>{{ fq.post_trim_q30_pct }}</td>
+      <td>{{ fq.after_gc_pct }}</td>
+      <td>
+        <span class="badge badge-{% if fq.q30_status == 'PASS' %}success{% else %}danger{% endif %}">
+          {{ fq.q30_status }}
+        </span>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+
+      <!-- GAMBIT -->
+      {% if wgs.gambit_entries.exists %}
+      <h6 class="text-uppercase text-muted">GAMBIT Identification</h6>
+      {% for g in wgs.gambit_entries.all %}
+        <p class="mb-1">
+          <strong>{{ g.predicted_name }}</strong>
+          ({{ g.predicted_rank }})<br>
+          <small class="text-muted">
+            Closest: {{ g.closest_description }} ({{ g.closest_distance }})
+          </small>
+        </p>
+      {% endfor %}
+      <hr>
+      {% endif %}
+
+      <!-- MLST -->
+      {% if wgs.mlst_entries.exists %}
+      <h6 class="text-uppercase text-muted">MLST</h6>
+      {% for m in wgs.mlst_entries.all %}
+        <p class="mb-1">
+          <strong>Scheme:</strong> {{ m.scheme }} |
+          <strong>ST:</strong> {{ m.mlst }}
+        </p>
+      {% endfor %}
+      <hr>
+      {% endif %}
+
+      <!-- CHECKM2 -->
+      {% if wgs.checkm2_entries.exists %}
+      <h6 class="text-uppercase text-muted">Genome Quality (CheckM2)</h6>
+      {% for c in wgs.checkm2_entries.all %}
+        <div class="row text-sm mb-2">
+          <div class="col-md-3">Completeness: {{ c.Completeness }}%</div>
+          <div class="col-md-3">Contamination: {{ c.Contamination }}%</div>
+          <div class="col-md-3">Genome Size: {{ c.Genome_Size }}</div>
+          <div class="col-md-3">GC: {{ c.GC_Content }}</div>
+        </div>
+      {% endfor %}
+      <hr>
+      {% endif %}
+
+      <!-- ASSEMBLY -->
+      {% if wgs.assembly_entries.exists %}
+      <h6 class="text-uppercase text-muted">Assembly Metrics</h6>
+      {% for a in wgs.assembly_entries.all %}
+        <p class="mb-1">
+          Contigs: {{ a.total_contig }},
+          N50: {{ a.n50_contig_length }},
+          Max contig: {{ a.max_contig_length }}
+        </p>
+      {% endfor %}
+      <hr>
+      {% endif %}
+
+      <!-- AMRFINDER -->
+      {% if wgs.amrfinder_entries.exists %}
+      <h6 class="text-uppercase text-muted">AMR Genes</h6>
+      {% for amr in wgs.amrfinder_entries.all %}
+        <span class="badge badge-warning mb-1">
+          {{ amr.element_symbol }} ({{ amr.class_field }})
+        </span>
+      {% endfor %}
+      {% endif %}
+
+    </div>
+
+    <div class="card-footer text-right">
+      <a href="{% url 'edit_final_data' isolates.id %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left mr-1"></i>Back
+      </a>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-warning">
+    <i class="fas fa-exclamation-circle mr-1"></i>
+    No WGS data available for this accession.
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

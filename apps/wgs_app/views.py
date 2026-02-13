@@ -1770,7 +1770,6 @@ def delete_amrfinder_by_date(request):
 ########### Show all WGS project entries for one Referred_Data AccessionNo,
 ##########  including FastQ, CheckM2, AMRFinder tables.
 
-
 # @login_required
 
 @login_required
@@ -1814,6 +1813,8 @@ def view_wgs_overview(request):
     print(f"WGS Accessions sample: {list(wgs_accessions)[:10]}")
 
     # --- Step 2: Load only matched isolates ---
+    q = request.GET.get("q", "").strip()
+
     referred_list = Final_Data.objects.only(
         "f_AccessionNo",
         "f_Patient_ID",
@@ -1830,7 +1831,23 @@ def view_wgs_overview(request):
         "f_Growth",
         "f_Spec_Date",
         "f_Referral_Date",
-    ).filter(f_AccessionNo__in=wgs_accessions).order_by("f_AccessionNo")
+    ).filter(
+        f_AccessionNo__in=wgs_accessions
+    )
+
+    if q:
+        referred_list = referred_list.filter(
+            Q(f_AccessionNo__icontains=q) |
+            Q(f_Patient_ID__icontains=q) |
+            Q(f_Last_Name__icontains=q) |
+            Q(f_First_Name__icontains=q) |
+            Q(f_ars_OrgCode__icontains=q) |
+            Q(f_SiteCode__icontains=q)
+        )
+
+    referred_list = referred_list.order_by("f_AccessionNo")
+
+
 
     print(f"Matched isolates found: {referred_list.count()}")
     
@@ -1976,7 +1993,9 @@ def view_wgs_overview(request):
     return render(request, "wgs_app/Wgs_overview.html", {
         "table_data": table_data,
         "counts": counts,
+        "q": q,
     })
+
 
 
 

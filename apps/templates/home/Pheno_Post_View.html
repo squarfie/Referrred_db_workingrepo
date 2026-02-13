@@ -1,0 +1,199 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Phenotype (Post){% endblock title %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div class="header pb-6"
+     style="height: 100px;
+            background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%);
+            position: relative;
+            overflow: hidden;">
+
+  <div style="position:absolute; top:0; left:0; right:0; bottom:0;
+              background-image:
+              radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+              radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%);
+              opacity:0.6;"></div>
+
+  <div class="container-fluid" style="position:relative; z-index:1;">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">
+            <i class="fas fa-database mr-2"></i>Phenotype Post Database
+          </h6>
+
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+              <li class="breadcrumb-item">
+                <a href="{% url 'home' %}">
+                  <i class="fas fa-home"></i>
+                </a>
+              </li>
+              <li class="breadcrumb-item">
+                <a href="{% url 'settings_page' %}">Settings</a>
+              </li>
+              <li class="breadcrumb-item active" aria-current="page">
+                View Phenotype Post
+              </li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid mt-4">
+
+  <!-- TOP ACTIONS -->
+  <div class="header-body">
+    <div class="row align-items-center py-4">
+      <div class="col-lg-12 text-right">
+
+        <a href="{% url 'settings_page' %}?tab=pheno_post_tab"
+           class="btn btn-sm btn-success">
+          <i class="fas fa-plus mr-1"></i>Add New
+        </a>
+
+        <button type="button"
+                class="btn btn-sm btn-secondary px-4"
+                onclick="history.back()">
+          <i class="fas fa-arrow-left mr-2"></i> Back
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD -->
+  <div class="card shadow" style="border-top:3px solid #2d9cad;">
+
+    <!-- CARD HEADER -->
+    <div class="card-header border-0"
+         style="background: linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);">
+      <h3 class="mb-0" style="color:#1a7a8e;">
+        <i class="fas fa-list mr-2"></i>Phenotype (Post) List
+      </h3>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="card-body border-bottom">
+
+      <!-- SEARCH -->
+      <form method="get" class="mb-3">
+        <div class="input-group" style="max-width:420px;">
+          <div class="input-group-prepend">
+            <span class="input-group-text">
+              <i class="fas fa-search"></i>
+            </span>
+          </div>
+
+          <input type="text"
+                 name="q"
+                 value="{{ q }}"
+                 class="form-control"
+                 placeholder="Search phenotype…">
+
+          {% if q %}
+          <div class="input-group-append">
+            <a href="{% url 'view_phenotype_post' %}"
+               class="btn btn-outline-secondary">
+              <i class="fas fa-times"></i>
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </form>
+
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-responsive"
+         style="max-height:570px; overflow-y:auto; overflow-x:auto;">
+      <table class="table table-hover align-items-center">
+        <thead class="thead-light">
+          <tr>
+            <th style="width:120px;">Actions</th>
+            <th>Post Phenotype</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for pheno_post_item in page_obj %}
+          <tr>
+            <td>
+
+              <a href="{% url 'edit_phenotype_post' pheno_post_item.id %}"
+                 class="btn btn-sm btn-success mr-1"
+                 title="Edit">
+                <i class="fa fa-pencil-alt"></i>
+              </a>
+
+              <a href="{% url 'delete_phenotype_post' pheno_post_item.id %}"
+                 class="btn btn-sm btn-danger"
+                 onclick="return confirm('Delete this phenotype?');"
+                 title="Delete">
+                <i class="fa fa-trash"></i>
+              </a>
+
+            </td>
+
+            <td>{{ pheno_post_item.Post_Phenotypes }}</td>
+          </tr>
+
+          {% empty %}
+          <tr>
+            <td colspan="2"
+                class="text-center py-5 text-muted">
+              <i class="ni ni-folder-17" style="font-size:2rem;"></i>
+              <p class="mt-2">No Phenotype (Post) records found.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="card-footer bg-light py-3">
+      <div class="row align-items-center">
+
+        <div class="col-md-6 text-muted">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </div>
+
+        <div class="col-md-6">
+          <nav>
+            <ul class="pagination justify-content-end mb-0">
+
+              {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link"
+                   href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}">
+                  <i class="fas fa-angle-left"></i>
+                </a>
+              </li>
+              {% endif %}
+
+              {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link"
+                   href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}">
+                  <i class="fas fa-angle-right"></i>
+                </a>
+              </li>
+              {% endif %}
+
+            </ul>
+          </nav>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock content %}

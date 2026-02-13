@@ -1,0 +1,115 @@
+{% extends "layouts/base.html" %}
+{% block title %}Emerging Cases{% endblock %}
+
+{% block content %}
+
+<!-- Animated Header -->
+<div class="header-container">
+  <div class="header-content">
+    <h1>
+      <i class="fa fa-exclamation-circle mr-2"></i>Emerging Resistance
+    </h1>
+    <div class="badge-group">
+      <span class="badge">
+        <i class="badge-icon fas fa-flask"></i>
+        {{ page_obj.paginator.count }} Total Records
+      </span>
+      <span class="badge">
+        <i class="badge-icon fas fa-list"></i>
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      </span>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="container-fluid" style="padding-top: 20px;">
+  <div class="row justify-content-center">
+    <div class="col-lg-12 col-md-12">
+
+
+
+  <h2 class="mb-4">🚨 Emerging Cases</h2>
+
+  {% if cases %}
+    <div class="table-responsive" style="overflow-y: auto; overflow-x: auto;">
+      <thead class="table-dark">
+        <tr>
+          <th>Accession No</th>
+          <th>Specimen</th>
+          <th>Organism</th>
+          <th>Age</th>
+          <th>Emerging Reason</th>
+          <th>Emerging Antibiotics</th>
+          <th>Date Entered</th>
+        </tr>
+      </thead>
+
+      <tbody>
+      {% for case in cases %}
+        <tr>
+          <td>{{ case.AccessionNo }}</td>
+
+          <td>
+            {{ case.Spec_Type }}
+            {% if case.Spec_Type.Emerging_Spec_Flag %}
+              <span class="badge bg-warning text-dark">Emerging</span>
+            {% endif %}
+          </td>
+
+          <td>{{ case.Site_OrgName }}</td>
+
+          <td>
+            {{ case.Age }}
+            {% if case.Emerging_Flag_Age %}
+              <span class="badge bg-danger">Age</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if case.Emerging_Flag_Age %}Age<br>{% endif %}
+            {% if case.Specimen_Type.Emerging_Spec_Flag %}Specimen<br>{% endif %}
+            {% if case.Site_Org.Emerging_Org_Flag %}Organism<br>{% endif %}
+            {% if case.antibiotic_entries.all %}
+              Antibiotic
+            {% endif %}
+          </td>
+
+          <td>
+            <ul class="mb-0">
+              {% for ab in case.antibiotic_entries.all %}
+                {% for bp in ab.ab_breakpoints_id.all %}
+                  {% if bp.Emerging_Abx_Flag %}
+                    <li>
+                      <strong>{{ bp.Whonet_Abx }}</strong>
+                      ({{ bp.Emerging_Pheno_Flag }})
+                      {% if ab.ab_Disk_Abx %}
+                        DISK: {{ ab.ab_Disk_enRIS }}
+                      {% else %}
+                        MIC: {{ ab.ab_MIC_enRIS }}
+                      {% endif %}
+                    </li>
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+            </ul>
+          </td>
+
+          <td>{{ case.Date_of_Entry|date:"Y-m-d" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+  {% else %}
+    <div class="alert alert-info">
+      No emerging cases found.
+    </div>
+  {% endif %}
+
+
+        </div>
+    </div>
+</div>
+{% endblock %}

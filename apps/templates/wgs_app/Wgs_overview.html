@@ -30,20 +30,59 @@
 
 <!-- Main Content -->
 <div class="container-fluid mt--6">
+  
   <div class="card shadow">
-    <div class="card-header bg-gradient-primary border-0">
-      <div class="row align-items-center">
-        <div class="col">
-          <h3 class="mb-0 text-white"><i class="ni ni-atom mr-2"></i>WGS Data Overview</h3>
+    
+<div class="card shadow">
+  <div class="card-header bg-gradient-primary border-0 py-3">
+    <div class="row align-items-center">
+      
+      <div class="col-lg-8 d-flex align-items-center">
+        <h3 class="mb-0 text-white mr-4">
+          <i class="ni ni-atom mr-2"></i>WGS Data Overview
+        </h3>
+
+        <div style="width: 320px;">
+          <form method="get" class="mb-0">
+            <div class="input-group input-group-sm input-group-alternative">
+              <div class="input-group-prepend">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+              </div>
+              <input
+                type="text"
+                name="q"
+                value="{{ request.GET.q }}"
+                class="form-control"
+                placeholder="Search data..."
+              >
+              <div class="input-group-append">
+                <button class="btn btn-neutral btn-sm" type="submit">Go</button>
+              </div>
+            </div>
+          </form>
+          
+          {% if request.GET.q %}
+            <div class="position-absolute">
+              <small class="text-white-50">
+                Found results for "{{ request.GET.q }}" 
+                <a href="{% url 'view_wgs_overview' %}" class="text-warning ml-1">Clear</a>
+              </small>
+            </div>
+          {% endif %}
         </div>
-        <div class="col text-right">
+      </div>
+
+            <div class="col text-right">
           <span class="text-white counter-text">
             Loaded <strong style="color: #201cf0;">{{ table_data|length }} Accession(s)</strong> with sequencing data. 
           </span>
         </div>
-      </div>
     </div>
-    
+  </div>
+</div>
+
+
+
     <div class="card-body">
       <!-- Filter Section -->
       <div class="row mb-4">

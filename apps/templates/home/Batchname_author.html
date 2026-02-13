@@ -1,0 +1,199 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% load custom_filters %}
+
+{% block title %}
+  {% if editing %}Edit Batch{% else %}Create Batch{% endif %}
+{% endblock title %}
+
+
+{% block stylesheets %}
+  <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+
+{% endblock stylesheets %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="header-container">
+  <div class="header-content">
+    <h1 style="color: aliceblue;">
+      <i class="fas fa-user-edit mr-3"></i>
+      Edit Batch Signatories
+    </h1>
+
+    <div class="badge-group">
+      <span class="badge">
+        <i class="badge-icon fas fa-id-card"></i>
+        Edit Authors
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="container-fluid mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+
+      <div class="form-card">
+          <div class="card-header d-flex justify-content-between align-items-center"
+              style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+                      border-bottom: 2px solid #d1e8ed;">
+          <h4 class="mb-0">
+            <i class="fas fa-user-check mr-2"></i>
+            Update Signatories 
+          </h4>
+          <h4 class="mb-0">
+            RAW DATA
+          </h4>
+        </div>
+
+        <div class="card-body">
+
+          <!-- INFO (READ ONLY DISPLAY) -->
+          <div class="alert alert-info">
+            <strong>Batch:</strong>  {{ batch.bat_Batch_Name }} <br>
+            <strong>Site:</strong>   {{ batch.bat_Site_Name }}
+          </div>
+
+          <form method="POST"
+                action="{% url 'batch_edit_view' batch.id %}"
+                novalidate>
+
+            {% csrf_token %}
+
+            <!-- Encoder -->
+            <div class="form-row">
+              <div class="form-group col-md-3">
+                <label>Encoded by</label>
+                {{ form.bat_Encoder|add_class:"form-control" }}
+              </div>
+              <div class="form-group col-md-3">
+                <label>License No.</label>
+                {{ form.bat_Enc_Lic|add_class:"form-control" }}
+              </div>
+
+              <div class="form-group col-md-3">
+                <label>Checked by</label>
+                {{ form.bat_Checker|add_class:"form-control" }}
+              </div>
+              <div class="form-group col-md-3">
+                <label>License No.</label>
+                {{ form.bat_Chec_Lic|add_class:"form-control" }}
+              </div>
+            </div>
+
+            <!-- Verifier -->
+            <div class="form-row">
+              <div class="form-group col-md-3">
+                <label>Verified by</label>
+                {{ form.bat_Verifier|add_class:"form-control" }}
+              </div>
+              <div class="form-group col-md-3">
+                <label>License No.</label>
+                {{ form.bat_Ver_Lic|add_class:"form-control" }}
+              </div>
+
+              <div class="form-group col-md-3">
+                <label>Lab Manager</label>
+                {{ form.bat_LabManager|add_class:"form-control" }}
+              </div>
+              <div class="form-group col-md-3">
+                <label>License No.</label>
+                {{ form.bat_Lab_Lic|add_class:"form-control" }}
+              </div>
+            </div>
+
+            <!-- ARSP Head -->
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label>ARSP Head</label>
+                {{ form.bat_Head|add_class:"form-control" }}
+              </div>
+              <div class="form-group col-md-6">
+                <label>License No.</label>
+                {{ form.bat_Head_Lic|add_class:"form-control" }}
+              </div>
+            </div>
+            <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">Date Accomplished</h6>
+              <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+                <div class="form-row">
+              <div class="form-group col-md-6">
+                <label class="form-control-label">Date Accomplished</label>
+                {{ form.bat_Date_Accomplished|append_attr:"class: form-control" }}
+                            <small class="helper-text text-muted">
+                <i class="fas fa-info-circle mr-1"></i>
+                IMPORTANT!: Make sure to indicate the accomplish date before printing of confirmatory results
+              </small>
+              </div>
+    
+              </div>
+            
+
+            <!-- ACTION BUTTONS -->
+            <div class="d-flex justify-content-end mt-4 gap-3">
+              <button type="submit" class="btn btn-warning btn-lg">
+                <i class="fas fa-save mr-2"></i>Update Signatories
+              </button>
+
+              <a href="{% url 'show_batches' %}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-arrow-left mr-2"></i>Back
+              </a>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+{% endblock content %}
+
+
+{% block javascripts %}
+<script>
+$(document).ready(function () {
+
+  function bindStaffField(staffSelector, licenseSelector, licenseKey) {
+    $(staffSelector).on('change', function () {
+      const staffId = $(this).val();
+
+      if (!staffId) {
+        $(licenseSelector).val('');
+        return;
+      }
+
+      $.ajax({
+        url: "{% url 'get_ars_staff_details' %}",
+        data: {
+          ars_staff_id: staffId,
+          license_field: licenseKey
+        },
+        dataType: 'json',
+        success: function (data) {
+          $(licenseSelector).val(data[licenseKey] || '');
+        },
+        error: function () {
+          console.error("License lookup failed:", staffSelector);
+        }
+      });
+    });
+  }
+
+  bindStaffField('#id_bat_Encoder',    '#id_bat_Enc_Lic',  'bat_Enc_Lic');
+  bindStaffField('#id_bat_Checker',    '#id_bat_Chec_Lic', 'bat_Chec_Lic');
+  bindStaffField('#id_bat_Verifier',   '#id_bat_Ver_Lic',  'bat_Ver_Lic');
+  bindStaffField('#id_bat_LabManager', '#id_bat_Lab_Lic',  'bat_Lab_Lic');
+  bindStaffField('#id_bat_Head',       '#id_bat_Head_Lic', 'bat_Head_Lic');
+
+});
+</script>
+{% endblock javascripts %}
+
+
+
+
+

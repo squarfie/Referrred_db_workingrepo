@@ -129,6 +129,11 @@
             <th style="min-width: 100px; color: #1a7a8e; font-weight: 600;">Actions</th>
             <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Show</th>
             <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Retest</th>
+
+            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Site Result</th>
+            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Ars Result</th>
+            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Show Value</th>
+            
             <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Disk?</th>
             <th style="min-width: 120px; color: #1a7a8e; font-weight: 600;">Guidelines</th>
             <th style="min-width: 120px; color: #1a7a8e; font-weight: 600;">Test Method</th>
@@ -143,7 +148,7 @@
           </tr>
         </thead>
         <tbody class="list">
-          {% for antibiotic in antibiotics|multi_sort:"Antibiotic,Whonet_Abx" %}
+          {% for antibiotic in page_obj|multi_sort:"Antibiotic,Whonet_Abx" %}
           <tr style="transition: all 0.2s ease;">
             <td style="white-space: nowrap;">
               <a href="{% url 'edit_antibiotics' pk=antibiotic.pk %}" class="btn btn-sm mr-1" style="background: linear-gradient(135deg, #7ec97e 0%, #5fb85f 100%); color: white; border: none;" title="Edit">
@@ -161,13 +166,35 @@
                 <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
               {% endif %}
             </td>
-            <td>
+              <td>
               {% if antibiotic.Retest %}
                 <span class="badge badge-warning"><i class="fas fa-redo"></i></span>
               {% else %}
                 <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
               {% endif %}
             </td>
+            <td>
+              {% if antibiotic.Show_Site %}
+                <span class="badge badge-success"><i class="fas fa-check"></i></span>
+              {% else %}
+                <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
+              {% endif %}
+            </td>
+            <td>
+              {% if antibiotic.Show_Ars %}
+                <span class="badge badge-success"><i class="fas fa-check"></i></span>
+              {% else %}
+                <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
+              {% endif %}
+            </td>
+            <td>
+              {% if antibiotic.Show_Value %}
+                <span class="badge badge-success"><i class="fas fa-check"></i></span>
+              {% else %}
+                <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
+              {% endif %}
+            </td>
+
             <td>
               {% if antibiotic.Disk_Abx %}
                 <span class="badge" style="background: #7eb8d4; color: white;"><i class="fas fa-circle"></i></span>
@@ -330,7 +357,7 @@
           <button type="button" class="btn btn-danger" id="confirmDelete">
             <i class="fa fa-trash mr-1"></i>Delete Record
           </button>
-          <a href="{% url 'delete_all_antibiotics' %}" class="btn btn-warning" onclick="return confirm('⚠️ WARNING: This will delete ALL antibiotics records. Are you absolutely sure?')">
+          <a href="{% url 'delete_all_antibiotics' %}" class="btn btn-warning" onclick="return confirm('⚠️ WARNING: This will delete ALL breakpoint records. Are you absolutely sure?')">
             <i class="fa fa-trash-alt mr-1"></i>Delete All
           </a>
         </div>

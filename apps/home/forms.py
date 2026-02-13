@@ -23,55 +23,54 @@ class Referred_Form(forms.ModelForm):
             
         # )
 
+        
 
         Spec_Type = forms.ModelChoiceField(
             queryset=SpecimenTypeModel.objects.all(),
-            to_field_name='Specimen_code',  # Specify the field you want as the value
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            widget=forms.Select(attrs={'class': "form-select fw-bold"}),
             empty_label="Select Specimen",
             required=False,
-            
         )
 
-        arsp_Checker = forms.ModelChoiceField(
-            queryset=arsStaff_Details.objects.all(),
-            to_field_name='Staff_Name',  # Specify the field you want as the value
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-            empty_label="Select Staff",
-            required=False,
-        )
+        # arsp_Checker = forms.ModelChoiceField(
+        #     queryset=arsStaff_Details.objects.all(),
+        #     to_field_name='Staff_Name',  # Specify the field you want as the value
+        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+        #     empty_label="Select Staff",
+        #     required=False,
+        # )
 
-        arsp_Verifier = forms.ModelChoiceField(
-            queryset=arsStaff_Details.objects.all(),
-            to_field_name='Staff_Name',  # Specify the field you want as the value
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-            empty_label="Select Staff",
-            required=False,
-        )
+        # arsp_Verifier = forms.ModelChoiceField(
+        #     queryset=arsStaff_Details.objects.all(),
+        #     to_field_name='Staff_Name',  # Specify the field you want as the value
+        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+        #     empty_label="Select Staff",
+        #     required=False,
+        # )
 
-        arsp_LabManager = forms.ModelChoiceField(
-            queryset=arsStaff_Details.objects.all(),
-            to_field_name='Staff_Name',  # Specify the field you want as the value
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-            empty_label="Select Staff",
-            required=False,
-        )
+        # arsp_LabManager = forms.ModelChoiceField(
+        #     queryset=arsStaff_Details.objects.all(),
+        #     to_field_name='Staff_Name',  # Specify the field you want as the value
+        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+        #     empty_label="Select Staff",
+        #     required=False,
+        # )
 
-        arsp_Encoder= forms.ModelChoiceField(
-            queryset=arsStaff_Details.objects.all(),
-            to_field_name='Staff_Name',  # Specify the field you want as the value
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-            empty_label="Select Staff",
-            required=False,
-        )
+        # arsp_Encoder= forms.ModelChoiceField(
+        #     queryset=arsStaff_Details.objects.all(),
+        #     to_field_name='Staff_Name',  # Specify the field you want as the value
+        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+        #     empty_label="Select Staff",
+        #     required=False,
+        # )
 
-        arsp_Head= forms.ModelChoiceField(
-            queryset=arsStaff_Details.objects.all(),
-            to_field_name='Staff_Name',  # Specify the field you want as the value
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-            empty_label="Select Staff",
-            required=False,
-        )
+        # arsp_Head= forms.ModelChoiceField(
+        #     queryset=arsStaff_Details.objects.all(),
+        #     to_field_name='Staff_Name',  # Specify the field you want as the value
+        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+        #     empty_label="Select Staff",
+        #     required=False,
+        # )
 
         ars_OrgCode = forms.ModelChoiceField(
             queryset=Organism_List.objects.all(),
@@ -83,23 +82,75 @@ class Referred_Form(forms.ModelForm):
         )
         Site_Org = forms.ModelChoiceField(
             queryset=Organism_List.objects.all(),
-            to_field_name='Whonet_Org_Code',  # Specify the field you want as the value
+            to_field_name='Whonet_Org_Code', 
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Organism",
             required=False,
             
         )
 
-        Site_OrgName = forms.ModelChoiceField(
-            queryset=Organism_List.objects.all(),
-            to_field_name='Organism',  # Specify the field you want as the value
+        Site_OrgName = forms.CharField(
+            required=False,
+            widget=forms.TextInput(attrs={
+                "class": "form-control fw-bold",
+                "readonly": True
+            })
+        )
+
+        ars_OrgName = forms.CharField(
+            required=False,
+            widget=forms.TextInput(attrs={
+                "class": "form-control fw-bold",
+                "readonly": True
+            })
+        )
+
+        
+        ars_reco_Code = forms.ModelChoiceField(
+            queryset=Recommendation_items.objects.all(),
+            to_field_name='RecoCode',  
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-            empty_label="Select Organism",
+            empty_label="Select no",
             required=False,
             
         )
-       
 
+        Site_Pre = forms.ModelChoiceField(
+            queryset=Phenotype_Pre.objects.all(),
+            to_field_name='Pre_Phenotypes',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Phenotype",
+            required=False,
+            
+        )
+
+        Site_Pos = forms.ModelChoiceField(
+            queryset=Phenotype_Post.objects.all(),
+            to_field_name='Post_Phenotypes',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Phenotype",
+            required=False,
+            
+        )
+
+
+        ars_Pre = forms.ModelChoiceField(
+            queryset=Phenotype_Pre.objects.all(),
+            to_field_name='Pre_Phenotypes',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Phenotype",
+            required=False,
+            
+        )
+
+        ars_Post = forms.ModelChoiceField(
+            queryset=Phenotype_Post.objects.all(),
+            to_field_name='Post_Phenotypes',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Phenotype",
+            required=False,
+            
+        )
         class Meta:
             model = Referred_Data
             fields ='__all__'
@@ -108,21 +159,25 @@ class Referred_Form(forms.ModelForm):
             'Date_Birth': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
             'Date_Admis' :forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
             'Spec_Date' :forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
+            'Date_Accomplished_ARSP' :forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
             'RefNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 0001'}),
             'BatchNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1.1'}),
             'Growth_others' :forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ex. after 24 hrs of incubation'}),
             'Comments': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '3'}),
-            'ars_reco': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '3'}),
+            'ars_reco': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '11'}),
+            'ars_description': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '6'}),
+            "Batch_id": forms.HiddenInput(),
             
             # Add more fields as needed
             }
-            
-       
-            
+
+                
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-           
+            self.fields['bat_seq'].widget.attrs['readonly'] = True
+            self.fields["Batch_id"].disabled = True
+            
             self.fields['SiteCode'].widget.attrs['readonly'] = True
             self.fields['Batch_Code'].widget.attrs['readonly'] = True
             self.fields['AccessionNo'].widget.attrs['readonly'] = True
@@ -132,19 +187,25 @@ class Referred_Form(forms.ModelForm):
             self.fields['Referral_Date'].widget.attrs['readonly'] = True
             self.fields['BatchNo'].widget.attrs['readonly'] = True
             self.fields['Site_Name'].widget.attrs['readonly'] = True
-            self.fields['arsp_Encoder'].required=False
-            self.fields['arsp_Checker'].required=False
-            self.fields['arsp_Verifier'].required=False
-            self.fields['arsp_LabManager'].required=False
-            self.fields['arsp_Head'].required=False
-            self.fields['arsp_Enc_Lic'].widget.attrs['readonly'] = True  
-            self.fields['arsp_Chec_Lic'].widget.attrs['readonly'] = True  
-            self.fields['arsp_Ver_Lic'].widget.attrs['readonly'] = True  
-            self.fields['arsp_Lab_Lic'].widget.attrs['readonly'] = True  
-            self.fields['arsp_Head_Lic'].widget.attrs['readonly'] = True
+            # self.fields['arsp_Encoder'].required=False
+            # self.fields['arsp_Checker'].required=False
+            # self.fields['arsp_Verifier'].required=False
+            # self.fields['arsp_LabManager'].required=False
+            # self.fields['arsp_Head'].required=False
+            # self.fields['arsp_Enc_Lic'].widget.attrs['readonly'] = True  
+            # self.fields['arsp_Chec_Lic'].widget.attrs['readonly'] = True  
+            # self.fields['arsp_Ver_Lic'].widget.attrs['readonly'] = True  
+            # self.fields['arsp_Lab_Lic'].widget.attrs['readonly'] = True  
+            # self.fields['arsp_Head_Lic'].widget.attrs['readonly'] = True
+            self.fields['Age'].widget.attrs['readonly'] = True
+            # Dynamic queryset loading
             self.fields['Site_Org'].queryset = Organism_List.objects.all() # Always load the latest Site Code
-            self.fields['Site_Org'].label_from_instance = lambda obj: obj.Whonet_Org_Code
-            self.fields['Site_OrgName'].label_from_instance = lambda obj: obj.Organism
+            self.fields['Site_Org'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
+            self.fields['Site_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
+            self.fields['ars_OrgCode'].queryset = Organism_List.objects.all() # Always load the latest Site Code
+            self.fields['ars_OrgCode'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
+            self.fields['ars_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
+
 
         
         
@@ -159,6 +220,7 @@ class BatchTable_form(forms.ModelForm):
             required=False
             
         )
+
 
         bat_Checker = forms.ModelChoiceField(
             queryset=arsStaff_Details.objects.all(),
@@ -208,6 +270,7 @@ class BatchTable_form(forms.ModelForm):
             'bat_RefNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 0001-0002'}),
             'bat_BatchNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1'}),
             'bat_Total_batch' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1'}),
+            'bat_Date_Accomplished': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
             
             # Add more fields as needed
             }
@@ -249,7 +312,98 @@ class BatchTable_form(forms.ModelForm):
             head = self.cleaned_data.get("bat_Head")
             return head.Staff_Name if head else ""
 
-        
+
+class BatchEditForm(forms.ModelForm):
+    bat_Checker = forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+    bat_Verifier = forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+    bat_LabManager = forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+    bat_Encoder= forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+    bat_Head= forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            to_field_name='Staff_Name',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+    class Meta:
+        model = Batch_Table
+        fields = [
+            # ONLY fields allowed to change in edit
+            "bat_Encoder",
+            "bat_Enc_Lic",
+            "bat_Checker",
+            "bat_Chec_Lic",
+            "bat_Verifier",
+            "bat_Ver_Lic",
+            "bat_LabManager",
+            "bat_Lab_Lic",
+            "bat_Head",
+            "bat_Head_Lic",
+            "bat_Date_Accomplished"
+        ]
+        widgets = {
+            'bat_Date_Accomplished': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+                super(BatchEditForm, self).__init__(*args, **kwargs)
+                self.fields['bat_Enc_Lic'].widget.attrs['readonly'] = True  
+                self.fields['bat_Chec_Lic'].widget.attrs['readonly'] = True  
+                self.fields['bat_Ver_Lic'].widget.attrs['readonly'] = True  
+                self.fields['bat_Lab_Lic'].widget.attrs['readonly'] = True  
+                self.fields['bat_Head_Lic'].widget.attrs['readonly'] = True
+
+
+                 # --- Custom cleaning methods to save Staff_Name as string ---
+    def clean_bat_Encoder(self):
+            encoder = self.cleaned_data.get("bat_Encoder")
+            return encoder.Staff_Name if encoder else ""
+
+    def clean_bat_Checker(self):
+            checker = self.cleaned_data.get("bat_Checker")
+            return checker.Staff_Name if checker else ""
+
+    def clean_bat_Verifier(self):
+            verifier = self.cleaned_data.get("bat_Verifier")
+            return verifier.Staff_Name if verifier else ""
+
+    def clean_bat_LabManager(self):
+            manager = self.cleaned_data.get("bat_LabManager")
+            return manager.Staff_Name if manager else ""
+
+    def clean_bat_Head(self):
+            head = self.cleaned_data.get("bat_Head")
+            return head.Staff_Name if head else ""
+
+
 #for adding of site code
 class SiteCode_Form(forms.ModelForm):
     class Meta:
@@ -271,28 +425,72 @@ def save(self, commit=True):
         return instance
 
 
+
 #Breakpoints data
 class BreakpointsForm(forms.ModelForm):
+
+    Org = forms.ModelChoiceField(
+        queryset=Organism_List.objects.all(),
+        to_field_name='Whonet_Org_Code',
+        widget=forms.Select(attrs={'class': "form-select fw-bold"}),
+        empty_label="Select Organism",
+        required=False,
+    )
+
+    Whonet_Abx = forms.ModelChoiceField(
+            queryset=Antibiotic_List.objects.all(),
+            to_field_name='Whonet_Abx',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Antibiotic Code",
+            required=False,
+            
+        )
+
+    Antibiotic = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "readonly": True, "style": "background-color: #e9ecef !important; cursor: not-allowed;"})
+    )
+
+    Abx_code = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "readonly": True, "style": "background-color: #e9ecef !important; cursor: not-allowed;"})
+    )
+
+    Tier = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "readonly": True, "style": "background-color: #e9ecef !important; cursor: not-allowed;"})
+    )
+
+    Spec_code = forms.ModelChoiceField(
+            queryset=SpecimenTypeModel.objects.all(),
+            to_field_name='Specimen_code',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Specimen",
+            required=False,
+            
+        )
+
+
     class Meta:
-          model = BreakpointsTable
-          fields = '__all__'
-          widgets = { 
-               'Potency': forms.NumberInput(attrs={'min': 0, 'max': 1000}),
-                     }
-          
+        model = BreakpointsTable
+        fields = "__all__"
+
     def save(self, commit=True):
         instance = super().save(commit=False)
-        
-        # Replace None with an empty string or another default value
-        for field_name in self.fields:
-            value = getattr(instance, field_name)
-            if value is None:
-                setattr(instance, field_name, '')
+
+        if instance.Whonet_Abx:
+            abx = instance.Whonet_Abx   # THIS IS Antibiotic_List now
+            instance.Antibiotic = abx.Antibiotic
+            instance.Abx_code = abx.Abx_code
+            instance.Tier = abx.Tier
 
         if commit:
             instance.save()
-            self.save_m2m()
+
         return instance
+
+
+                        
 
 class Breakpoint_uploadForm(forms.ModelForm):
      class Meta:
@@ -328,8 +526,26 @@ class AntibioticEntryForm(forms.ModelForm):
 
 class SpecimenTypeForm(forms.ModelForm):
     class Meta:
-        model = SpecimenTypeModel  # Ensure the model is specified
-        fields = ['Specimen_name', 'Specimen_code']  # Include the fields you want in the form
+        model = SpecimenTypeModel  
+        fields = ['Specimen_name', 'Specimen_code', 'Emerging_Spec_Flag', 'Specimen_Code_Grp', 'Specimen_Grp_Name']  # Include the fields you want in the form
+        widgets = {
+             "Emerging_Spec_Flag": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+            vals = SpecimenTypeModel.objects.values_list("Specimen_code", flat=True).distinct()
+            self.fields["Specimen_Code_Grp"].choices = [(v, v) for v in vals]
+
+class SpecimenUploadForm(forms.ModelForm):
+    class Meta:
+        model = Specimen_upload
+        fields = ['File_uploadSpec']
+        widgets = {
+            'File_uploadSpec': forms.FileInput(attrs={'class': 'form-control'})
+        }
+
 
 
 class ContactForm(forms.ModelForm):
@@ -414,3 +630,59 @@ class Organism_uploadForm(forms.ModelForm):
      class Meta:
           model = Organism_upload
           fields =['File_uploadOrg']
+
+
+
+
+
+
+class Emerge_Pheno_Form(forms.ModelForm):
+
+        class Meta:
+          model = Emerging_Filter_Age
+          fields = '__all__'
+
+
+class Eme_Crit_Upload_Form(forms.ModelForm):
+     class Meta:
+          model = Emerging_Crit_upload
+          fields =['File_uploadEme']
+
+
+
+class Phenotype_Pre_Form(forms.ModelForm):
+     class Meta:
+          model = Phenotype_Pre
+          fields = '__all__'
+
+class Pheno_pre_upForm(forms.ModelForm):
+     class Meta:
+          model = Pheno_upload_Pre
+          fields = ['File_Pheno_pre']
+
+
+
+class Phenotype_Post_Form(forms.ModelForm):
+     class Meta:
+          model = Phenotype_Post
+          fields = '__all__'
+
+class Pheno_post_upForm(forms.ModelForm):
+     class Meta:
+          model = Pheno_upload_Post
+          fields = ['File_Pheno_post']
+
+
+
+
+class Recco_item_Form(forms.ModelForm):
+     class Meta:
+          model = Recommendation_items
+          fields = '__all__'
+          
+
+
+class Reco_item_upForm (forms.ModelForm):
+     class Meta:
+          model = Reco_item_upload
+          fields = ['File_reco_desc']

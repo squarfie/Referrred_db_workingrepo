@@ -124,9 +124,12 @@
           <tr>
             <th style="min-width: 100px; color: #1a7a8e; font-weight: 600;">Actions</th>
             <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Disk?</th>
+            <th style="min-width: 80px; color: #8e581a; font-weight: 600;">Flag Organism?</th>
+            <th style="min-width: 80px; color: #8e581a; font-weight: 600;">Flag Antibiotic?</th>
+            <th style="min-width: 80px; color: #8e581a; font-weight: 600;">Abx Phenotype</th>
             <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Year</th>
-            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Org_Grp</th>
             <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Org</th>
+            <th style="min-width: 80px; color: #1a7a8e; font-weight: 600;">Spec Code</th>
             <th style="min-width: 120px; color: #1a7a8e; font-weight: 600;">Guidelines</th>
             <th style="min-width: 120px; color: #1a7a8e; font-weight: 600;">Test Method</th>
             <th style="min-width: 100px; color: #1a7a8e; font-weight: 600;">Potency</th>
@@ -160,9 +163,24 @@
                 <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
               {% endif %}
             </td>
+              <td>
+              {% if breakpoint.Emerging_Org_Flag %}
+                <span class="badge" style="background: #8e581a;; color: white;"><i class="fas fa-circle"></i></span>
+              {% else %}
+                <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
+              {% endif %}
+            </td>
+            <td>
+              {% if breakpoint.Emerging_Abx_Flag %}
+                <span class="badge" style="background: #8e581a;; color: white;"><i class="fas fa-circle"></i></span>
+              {% else %}
+                <span class="badge badge-secondary"><i class="fas fa-times"></i></span>
+              {% endif %}
+            </td>
+            <td><span style="color: #d82912;">{{breakpoint.Emerging_Pheno_Flag}}</span></td>
             <td><span style="color: #5a6c72;">{{breakpoint.Year}}</span></td>
-            <td><span style="color: #5a6c72;">{{breakpoint.Org_Grp}}</span></td>
             <td><span style="color: #5a6c72;">{{breakpoint.Org}}</span></td>
+            <td><span style="color: #5a6c72;">{{breakpoint.Spec_code}}</span></td>
             <td><span style="color: #5a6c72;">{{breakpoint.Guidelines}}</span></td>
             <td><span style="color: #5a6c72;">{{breakpoint.Test_Method}}</span></td>
             <td><span style="color: #5a6c72;">{{breakpoint.Potency}}</span></td>

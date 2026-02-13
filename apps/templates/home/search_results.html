@@ -24,22 +24,44 @@
             </tr>
           </thead>
           <tbody>
-            {% for item in items %}
+            {% for referred in referred_items %}
             <tr class="text-center">
-              <td>{{ item.AccessionNo }}</td>
-              <td>{{ item.SiteCode }}</td>
-              <td>{{ item.Patient_ID}}</td>
-              <td>{{ item.OrganismCode}}</td>
-              <td>{{ item.Spec_Type}}</td>
+              <td> <em> <i>Raw:</i> </em> &nbsp; <span class="text-warning"> {{ referred.AccessionNo }}</span> </td>
+              <td>{{ referred.SiteCode }}</td>
+              <td>{{ referred.Patient_ID}}</td>
+              <td>{{ referred.Site_Org}}</td>
+              <td>{{ referred.Spec_Type}}</td>
               <td class="d-flex flex-column gap-2">
-                <a href="{% url 'edit_data' item.id %}" class="btn btn-sm btn-outline-primary w-100" style="padding: 5px; margin-bottom: 2px;">
-                  <i class="fas fa-edit"></i> Edit
+                <a href="{% url 'edit_data' referred.id %}" class="btn btn-sm btn-outline-primary w-100" style="padding: 5px; margin-bottom: 2px;">
+                  <i class="fas fa-edit"></i> Edit Raw
                 </a>
-                <a href="{% url 'generate_pdf' item.id %}" class="btn btn-sm btn-outline-warning w-100" style="padding: 5px; margin-bottom: 2px;">
-                  <i class="fas fa-print"></i> Lab Result 
+                <a href="{% url 'generate_batch_pdf' referred.Batch_id.id %}" class="btn btn-sm btn-outline-warning w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
+                  <i class="fas fa-print"></i> Raw Result
                 </a>
-                <a href="{% url 'generate_gs' item.id %}" class="btn btn-sm btn-outline-info w-100" style="padding: 5px;">
-                  <i class="fas fa-print"></i> Gram Stain
+              </td>
+              
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted">
+                No Record Found.
+              </td>
+            </tr>
+            {% endfor %}
+
+              {% for final in final_items %}
+            <tr class="text-center">
+              <td><em><i> Final: </i></em> &nbsp; <span class="text-warning"> {{ final.f_AccessionNo }} </span></td>
+              <td>{{ final.f_SiteCode }}</td>
+              <td>{{ final.f_Patient_ID}}</td>
+              <td>{{ final.f_Site_Org}}</td>
+              <td>{{ final.f_Spec_Type}}</td>
+              <td class="d-flex flex-column gap-2">
+                <a href="{% url 'edit_final_data' final.id %}" class="btn btn-sm btn-outline-primary w-100" style="padding: 5px; margin-bottom: 2px;">
+                  <i class="fas fa-edit"></i> Edit Final
+                </a>
+                <a href="{% url 'generate_final_batch_pdf' final.id %}" class="btn btn-sm btn-outline-warning w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
+                  <i class="fas fa-print"></i> Final Result
                 </a>
               </td>
             </tr>
@@ -50,6 +72,10 @@
               </td>
             </tr>
             {% endfor %}
+
+
+
+
           </tbody>
         </table>
       </div>

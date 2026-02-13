@@ -18,11 +18,6 @@ class FinalDataUploadForm(forms.ModelForm):
           fields = ['FinalDataFile']
 
 
-# # Final Referred Antibiotic Upload Form
-# class FinalAntibioticUploadForm(forms.ModelForm):
-#      class Meta:
-#           model = FinalAntibiotic_upload
-#           fields = ['FinalAntibioticFile']
 
 class FinalAntibioticUploadForm(forms.ModelForm):
     class Meta:
@@ -36,65 +31,93 @@ class FinalAntibioticUploadForm(forms.ModelForm):
 #### Final referred form
 class FinalReferred_Form(forms.ModelForm):
 
-        # #using modelchoicefield for dynamic rendering
-        # SiteCode = forms.ModelChoiceField(
-        #     queryset=SiteData.objects.all(),
-        #     to_field_name='SiteCode',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Site Code",
-        #     required=False
-            
-        # )
-
-
         f_Spec_Type = forms.ModelChoiceField(
             queryset=SpecimenTypeModel.objects.all(),
-            to_field_name='Specimen_code',  # Specify the field you want as the value
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            widget=forms.Select(attrs={'class': "form-select fw-bold"}),
             empty_label="Select Specimen",
+            required=False,
+        )
+
+
+        f_ars_OrgCode = forms.ModelChoiceField(
+            queryset=Organism_List.objects.all(),
+            to_field_name='Whonet_Org_Code',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Organism",
+            required=False,
+            
+        )
+        f_Site_Org = forms.ModelChoiceField(
+            queryset=Organism_List.objects.all(),
+            to_field_name='Whonet_Org_Code', 
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Organism",
             required=False,
             
         )
 
-        # f_arsp_Checker = forms.ModelChoiceField(
-        #     queryset=arsStaff_Details.objects.all(),
-        #     to_field_name='Staff_Name',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Staff",
-        #     required=False,
-        # )
+        f_Site_OrgName = forms.CharField(
+            required=False,
+            widget=forms.TextInput(attrs={
+                "class": "form-control fw-bold",
+                "readonly": True
+            })
+        )
 
-        # f_arsp_Verifier = forms.ModelChoiceField(
-        #     queryset=arsStaff_Details.objects.all(),
-        #     to_field_name='Staff_Name',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Staff",
-        #     required=False,
-        # )
+        f_ars_OrgName = forms.CharField(
+            required=False,
+            widget=forms.TextInput(attrs={
+                "class": "form-control fw-bold",
+                "readonly": True
+            })
+        )
 
-        # f_arsp_LabManager = forms.ModelChoiceField(
-        #     queryset=arsStaff_Details.objects.all(),
-        #     to_field_name='Staff_Name',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Staff",
-        #     required=False,
-        # )
+        
+        f_ars_reco_Code = forms.ModelChoiceField(
+            queryset=Recommendation_items.objects.all(),
+            to_field_name='RecoCode',  
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select no",
+            required=False,
+            
+        )
 
-        # f_arsp_Encoder= forms.ModelChoiceField(
-        #     queryset=arsStaff_Details.objects.all(),
-        #     to_field_name='Staff_Name',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Staff",
-        #     required=False,
-        # )
+        f_Site_Pre = forms.ModelChoiceField(
+            queryset=Phenotype_Pre.objects.all(),
+            to_field_name='Pre_Phenotypes',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Phenotype",
+            required=False,
+            
+        )
 
-        # f_arsp_Head= forms.ModelChoiceField(
-        #     queryset=arsStaff_Details.objects.all(),
-        #     to_field_name='Staff_Name',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Staff",
-        #     required=False,
-        # )
+        f_Site_Pos = forms.ModelChoiceField(
+            queryset=Phenotype_Post.objects.all(),
+            to_field_name='Post_Phenotypes',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Phenotype",
+            required=False,
+            
+        )
+
+
+        f_ars_Pre = forms.ModelChoiceField(
+            queryset=Phenotype_Pre.objects.all(),
+            to_field_name='Pre_Phenotypes',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Phenotype",
+            required=False,
+            
+        )
+
+        f_ars_Post = forms.ModelChoiceField(
+            queryset=Phenotype_Post.objects.all(),
+            to_field_name='Post_Phenotypes',  # Specify the field you want as the value
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Phenotype",
+            required=False,
+            
+        )
 
 
         class Meta:
@@ -108,7 +131,10 @@ class FinalReferred_Form(forms.ModelForm):
             'f_RefNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 0001'}),
             'f_BatchNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1.1'}),
             'f_Comments': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '3'}),
-            'f_ars_reco': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '3'}),
+            'f_ars_reco': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '14'}),
+            'f_ars_description': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '9'}),
+            "f_Batch_id": forms.HiddenInput(),
+            
             
             # Add more fields as needed
             }
@@ -119,6 +145,8 @@ class FinalReferred_Form(forms.ModelForm):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             # self.fields['SiteCode'].queryset = SiteData.objects.all() # Always load the latest Site Code
+            self.fields['f_bat_seq'].widget.attrs['readonly'] = True
+            self.fields["f_Batch_id"].disabled = True
             self.fields['f_SiteCode'].widget.attrs['readonly'] = True
             self.fields['f_Batch_Code'].widget.attrs['readonly'] = True
             self.fields['f_AccessionNo'].widget.attrs['readonly'] = True
@@ -127,5 +155,49 @@ class FinalReferred_Form(forms.ModelForm):
             self.fields['f_Referral_Date'].widget.attrs['readonly'] = True
             self.fields['f_BatchNo'].widget.attrs['readonly'] = True
             self.fields['f_Site_Name'].widget.attrs['readonly'] = True
+            self.fields['f_Age'].widget.attrs['readonly'] = True
+            self.fields['f_Site_Org'].queryset = Organism_List.objects.all() # Always load the latest Site Code
+            self.fields['f_Site_Org'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
+            self.fields['f_Site_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
+            self.fields['f_ars_OrgCode'].queryset = Organism_List.objects.all() # Always load the latest Site Code
+            self.fields['f_ars_OrgCode'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
+            self.fields['f_ars_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
            
+
+
+class Final_AntibioticEntryForm(forms.ModelForm):
+        ab_Abx_code = forms.ModelChoiceField(
+            queryset=BreakpointsTable.objects.all(),
+            to_field_name='Antibiotic',
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Antibiotic",
+            required=False,
+        )
         
+        class Meta:
+            model = AntibioticEntry
+            fields = '__all__'
+
+        def __init__(self, *args, **kwargs):
+            super(AntibioticEntryForm, self).__init__(*args, **kwargs)
+            self.fields['ab_AccessionNo'].widget.attrs['readonly'] = True  
+
+
+
+
+
+class Classification_Form(forms.ModelForm):
+     class Meta:
+          model = Classification_Table
+          fields = '__all__'
+          
+          def __init__(self, *args, **kwargs):
+                super(Classification_Form, self).__init__(*args, **kwargs)
+                self.fields['Class_Chk_Emerging'].widget.attrs['readonly'] = True  
+
+
+class Emerging_List_Form(forms.ModelForm):
+     class Meta:
+          model = Emerging_Table
+          fields = '__all__'
+    

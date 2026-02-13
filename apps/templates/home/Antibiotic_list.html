@@ -17,46 +17,23 @@
 {% block content %}
 
 <body>
-<div class="header-container pb-6" style="min-height: 180px; position: relative;">
-  <!-- Animated background elements -->
-  <div class="grid-bg"></div>
-
-  <!-- Particles rising -->
-  <div class="particles">
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-  </div>
-
-  <!-- Scanning circles -->
-  <div class="scanner"></div>
-  <div class="scanner"></div>
-  <div class="scanner"></div>
-
-  <!-- Glow orbs -->
-  <div class="glow-orb"></div>
-  <div class="glow-orb"></div>
-
-  <!-- Overlay -->
-  <div class="overlay"></div>
-
-  <!-- Header content wrapper with relative positioning for content -->
-  <div class="container-fluid" style="position: relative; z-index: 2;">
-    <div class="row align-items-center justify-content-between py-4">
-      <div class="col-lg-8">
-        <h6 class="h2 text-white d-inline-block mb-0">
-          <i class="fas fa-flask mr-2"></i>
-          Edit Antibiotic List
-        </h6>
-        <p class="text-white mt-2 mb-0 opacity-8">
-          <strong><small>Define and update antibiotics used for ARS testing</small></strong>
-        </p>
+<div class="header pb-6" style="height: 180px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%); opacity: 0.6;"></div>
+  <div class="container-fluid" style="position: relative; z-index: 1;">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">
+            <i class="fas fa-database mr-2"></i>Antibiotics Database
+          </h6>
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+              <li class="breadcrumb-item"><a href="{% url 'settings_page' %}">Settings</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Edit Antibiotics </li>
+            </ol>
+          </nav>
+        </div>
       </div>
     </div>
   </div>
@@ -90,7 +67,13 @@
               <a href="{% url 'add_antibiotics' %}" class="btn btn-sm btn-success">
                 <i class="fa fa-plus-square" aria-hidden="true"> </i> Add New
               </a>
+                              <button type="button"
+                      class="btn btn-sm btn-secondary px-4"
+                      onclick="history.back()">
+                <i class="fas fa-arrow-left mr-2"></i> Back
+              </button>
             </div>
+              
 
           </div>
 
@@ -99,15 +82,16 @@
         <!-- Checkbox Section -->
         <div class="checkbox-container mb-4">
           <div class="row mt-3">
+
             <div class="col-md-4">
               <div class="checkbox-wrapper">
                 <label class="form-control-label mb-2" for="Show">
-                  <i class="fas fa-eye mr-1" style="color: #2d9cad;"></i>Show in Results
+                  <i class="fas fa-eye mr-1" style="color: #2d9cad;"></i>Show Antibiotics
                 </label>
                 <input id="Show" type="checkbox" name="Show" {% if form.Show.value %}checked{% endif %} />
               </div>
             </div>
-            <div class="col-md-4">
+              <div class="col-md-2">
               <div class="checkbox-wrapper">
                 <label class="form-control-label mb-2" for="Retest">
                   <i class="fas fa-redo mr-1" style="color: #2d9cad;"></i>Retest Required
@@ -115,7 +99,24 @@
                 <input id="Retest" type="checkbox" name="Retest" {% if form.Retest.value %}checked{% endif %} />
               </div>
             </div>
-            <div class="col-md-4">
+          <div class="col-md-2">
+              <div class="checkbox-wrapper">
+                <label class="form-control-label mb-2" for="Show_Site">
+                  <i class="fa fa-envelope-open mr-1" style="color: #2d9cad;"></i>Show in Site Result
+                </label>
+                <input id="Show" type="checkbox" name="Show_Site" {% if form.Show_Site.value %}checked{% endif %} />
+              </div>
+            </div>
+              <div class="col-md-2">
+              <div class="checkbox-wrapper">
+                <label class="form-control-label mb-2" for="Show_Ars">
+                  <i class="fa fa-folder-open mr-1" style="color: #2d9cad;"></i>Show in Ars Result
+                </label>
+                <input id="Show" type="checkbox" name="Show_Ars" {% if form.Show_Ars.value %}checked{% endif %} />
+              </div>
+            </div>
+
+            <div class="col-md-2">
               <div class="checkbox-wrapper">
                 <label class="form-control-label mb-2" for="Disk_Abx">
                   <i class="fas fa-circle mr-1" style="color: #2d9cad;"></i>Disk Diffusion Method
@@ -123,6 +124,7 @@
                 <input id="Disk_Abx" type="checkbox" name="Disk_Abx" {% if form.Disk_Abx.value %}checked{% endif %} />
               </div>
             </div>
+
           </div>
         </div>
 

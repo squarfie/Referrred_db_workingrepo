@@ -1,0 +1,149 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}Edit Recommendation{% endblock title %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+{% endblock stylesheets %}
+
+{% block content %}
+
+<!-- ================= HEADER ================= -->
+<div class="header pb-6"
+     style="height:180px;
+            background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%);
+            position: relative;
+            overflow: hidden;">
+
+  <div style="position:absolute; inset:0;
+              background-image:
+                radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%);
+              opacity:0.6;">
+  </div>
+
+  <div class="container-fluid" style="position: relative; z-index: 1;">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">
+            <i class="fas fa-notes-medical mr-2"></i>Edit Recommendation
+          </h6>
+
+          <nav aria-label="breadcrumb"
+               class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark mb-0">
+              <li class="breadcrumb-item">
+                <a href="{% url 'home' %}">
+                  <i class="fas fa-home"></i>
+                </a>
+              </li>
+              <li class="breadcrumb-item">
+                <a href="{% url 'settings_page' %}">Settings</a>
+              </li>
+              <li class="breadcrumb-item">
+                <a href="{% url 'view_recommendation_items' %}">
+                  Recommendations
+                </a>
+              </li>
+              <li class="breadcrumb-item active">
+                Edit
+              </li>
+            </ol>
+          </nav>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CONTENT ================= -->
+<div class="container-fluid mt--6" style="position:relative; z-index:3;">
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+
+      <div class="card shadow-sm">
+
+        <!-- CARD HEADER -->
+        <div class="card-header d-flex justify-content-between align-items-center"
+             style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+                    border-bottom: 2px solid #d1e8ed;">
+
+          <h5 class="card-title mb-0">
+            <i class="fas fa-edit mr-2"></i>Edit Recommendation Item
+          </h5>
+
+          <a href="{% url 'view_recommendation_items' %}"
+             class="btn btn-sm btn-primary">
+            <i class="fas fa-table mr-1"></i> View All
+          </a>
+        </div>
+
+        <!-- BODY -->
+        <div class="card-body">
+
+          <form method="POST"
+                action="{% url 'edit_recommendation_item' object.id %}"
+                id="recoEditForm"
+                autocomplete="on">
+
+            {% csrf_token %}
+
+            <div class="row">
+
+              <!-- Recommendation Code -->
+              <div class="col-md-6 mb-3">
+                <label>
+                  <i class="fas fa-code mr-1"></i> Recommendation Code
+                </label>
+                {{ form.RecoCode|add_class:"form-control" }}
+              </div>
+
+              <!-- Description -->
+              <div class="col-md-12 mb-3">
+                <label>
+                  <i class="fas fa-align-left mr-1"></i> Description
+                </label>
+                {{ form.Description|add_class:"form-control"|attr:"rows:4" }}
+              </div>
+
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="fas fa-save mr-2"></i>Update Recommendation
+              </button>
+
+              <button type="button"
+                      class="btn btn-success px-4"
+                      onclick="document.getElementById('recoEditForm').reset()">
+                <i class="fas fa-eraser mr-2"></i> Reset
+              </button>
+
+              <button type="button"
+                      class="btn btn-secondary px-4"
+                      onclick="history.back()">
+                <i class="fas fa-arrow-left mr-2"></i> Back
+              </button>
+
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock content %}

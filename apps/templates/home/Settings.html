@@ -56,6 +56,25 @@
                             data-toggle="list" href="#contact_tab" role="tab">
                             <i class="fas fa-user-md mr-2"></i> ARSP Staff
                         </a>
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#emerging_tab" role="tab">
+                            <i class="fa fa-exclamation-triangle mr-2"></i> Flag Age <small>(Emerging Resistance)</small>
+                        </a>
+
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#pheno_pre_tab" role="tab">
+                            <i class="ni ni-world mr-2"></i> Pre Phenotypes
+                        </a>
+
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#pheno_post_tab" role="tab">
+                            <i class="ni ni-planet mr-2"></i>  Post Phenotypes
+                        </a>
+
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#recommendation_tab" role="tab">
+                            <i class="fa fa-bolt mr-2"></i> Recommendations
+                        </a>
 
                         <a class="list-group-item list-group-item-action"
                             data-toggle="list" href="#tat_tab" role="tab">
@@ -105,6 +124,26 @@
                 <!-- ARSP Contact -->
                 <div class="tab-pane fade" id="contact_tab" role="tabpanel">
                     {% include "settings/tabs/contact_tab.html" %}
+                </div>
+                <!-- Lab Result Recommendations -->
+                <div class="tab-pane fade" id="emerging_tab" role="tabpanel">
+                    {% include "settings/tabs/emerging_tab.html" %}
+                </div>
+
+                <!-- Lab Pre Phenotype -->
+                <div class="tab-pane fade" id="pheno_pre_tab" role="tabpanel">
+                    {% include "settings/tabs/pheno_pre_tab.html" %}
+                </div>
+
+                <!-- Lab Post Phenotype -->
+                <div class="tab-pane fade" id="pheno_post_tab" role="tabpanel">
+                    {% include "settings/tabs/pheno_post_tab.html" %}
+                </div>
+
+
+                 <!-- Emerging Resistance Classification -->
+                <div class="tab-pane fade" id="recommendation_tab" role="tabpanel">
+                    {% include "settings/tabs/recommendation_tab.html" %}
                 </div>
 
                 <!-- TAT -->

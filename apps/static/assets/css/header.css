@@ -54,6 +54,24 @@
   letter-spacing: 0.5px;
 }
 
+.header-index {
+  position: relative;
+  z-index: 5;
+}
+
+
+.header-index p {
+  font-size: 20px;
+  font-weight: bold;
+  background: linear-gradient(90deg, #00e5ff, #00bcd4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 1px;
+}
+
+
+
 .header-content p {
   font-size: 1.2rem;
   font-weight: 300;

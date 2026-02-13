@@ -1,0 +1,176 @@
+{% load static %}
+
+<div class="card shadow-sm">
+
+  <!-- HEADER -->
+  <div class="card-header d-flex justify-content-between align-items-center"
+       style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+              border-bottom: 2px solid #d1e8ed;">
+
+    <h5 class="card-title mb-0">
+      <i class="fas fa-dna mr-2"></i>
+      WGS Classification
+    </h5>
+
+    <div class="d-flex gap-2">
+           <a class="btn btn-sm btn-primary" href="{% url 'emerging_list_view' %}">View Emerging</a>
+        <a class="btn btn-sm btn-primary" href="{% url 'download_emerging_list' %}">Download Emerging</a>
+            <button class="btn btn-sm btn-secondary" onclick="history.back()">
+            <i class="fas fa-arrow-left mr-1"></i>Back
+            </button>
+    </div>
+
+  </div>
+
+  <!-- SEARCH -->
+  <div class="card-body border-bottom py-3">
+    <div class="input-group" style="max-width: 360px;">
+      <div class="input-group-prepend">
+        <span class="input-group-text">
+          <i class="fas fa-search"></i>
+        </span>
+      </div>
+
+      <input type="text"
+             id="accessionSearch"
+             class="form-control"
+             placeholder="Search Accession No…"
+             onkeyup="filterAccession()">
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="card-body p-0">
+    <div class="table-responsive"
+         style="max-height: 650px; overflow-y: auto;">
+
+      <table class="table table-hover align-items-center mb-0"
+             id="classificationTable">
+
+        <thead class="thead-light">
+          <tr>
+            <th style="width: 160px;">Accession No</th>
+            <th class="text-center">Emerging</th>
+            <th class="text-center">Satscan</th>
+            <th class="text-center">Serotyping</th>
+            <th class="text-center">GHRU (All)</th>
+            <th class="text-center">GHRU (Neo)</th>
+            <th class="text-center">Tricycle</th>
+            <th style="width: 140px;" class="text-center">Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+        {% for ref in referred_list %}
+        {% with class_obj=ref.class_entry.first %}
+        <tr class="classification-row">
+
+          <form method="POST"
+                action="{% url 'update_wgs_classification_inline' ref.AccessionNo %}">
+            {% csrf_token %}
+
+            <!-- ACCESSION -->
+            <td class="font-weight-bold accession-cell">
+              {{ ref.AccessionNo }}
+            </td>
+
+            <!-- CHECKBOXES -->
+            <td class="text-center">
+              <input type="checkbox" name="Class_Chk_Emerging"
+                     {% if class_obj and class_obj.Class_Chk_Emerging %}checked{% endif %}>
+            </td>
+
+            <td class="text-center">
+              <input type="checkbox" name="Class_Chk_Satscan"
+                     {% if class_obj and class_obj.Class_Chk_Satscan %}checked{% endif %}>
+            </td>
+
+            <td class="text-center">
+              <input type="checkbox" name="Class_Chk_Serotyping"
+                     {% if class_obj and class_obj.Class_Chk_Serotyping %}checked{% endif %}>
+            </td>
+
+            <td class="text-center">
+              <input type="checkbox" name="Class_Chk_GHRU_all"
+                     {% if class_obj and class_obj.Class_Chk_GHRU_all %}checked{% endif %}>
+            </td>
+
+            <td class="text-center">
+              <input type="checkbox" name="Class_Chk_GHRU_Neo"
+                     {% if class_obj and class_obj.Class_Chk_GHRU_Neo %}checked{% endif %}>
+            </td>
+
+            <td class="text-center">
+              <input type="checkbox" name="Class_Chk_Tricycle"
+                     {% if class_obj and class_obj.Class_Chk_Tricycle %}checked{% endif %}>
+            </td>
+
+            <!-- ACTIONS -->
+            <td class="text-center">
+
+              <div class="btn-group" role="group">
+
+                <button type="button"
+                        class="btn btn-sm btn-outline-success"
+                        onclick="toggleRow(this, true)"
+                        title="Check all">
+                  <i class="fas fa-check"></i>
+                </button>
+
+                <button type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        onclick="toggleRow(this, false)"
+                        title="Uncheck all">
+                  <i class="fas fa-times"></i>
+                </button>
+
+                <button type="submit"
+                        class="btn btn-sm btn-primary"
+                        title="Save classification">
+                  <i class="fas fa-save"></i>
+                </button>
+
+              </div>
+
+            </td>
+
+          </form>
+
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr>
+          <td colspan="8" class="text-center py-5 text-muted">
+            <i class="ni ni-folder-17" style="font-size:2rem;"></i>
+            <p class="mt-2 mb-0">No referred records found.</p>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================= JS ================= -->
+<script>
+function filterAccession() {
+  const input = document.getElementById("accessionSearch").value.toUpperCase();
+  const rows = document.querySelectorAll(".classification-row");
+
+  rows.forEach(row => {
+    const cell = row.querySelector(".accession-cell");
+    const txt = cell.textContent || cell.innerText;
+    row.style.display = txt.toUpperCase().includes(input) ? "" : "none";
+  });
+}
+
+function toggleRow(btn, state) {
+  const row = btn.closest("tr");
+  row.querySelectorAll("input[type='checkbox']").forEach(cb => {
+    cb.checked = state;
+  });
+}
+</script>

@@ -1,8 +1,12 @@
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+
+from apps.home_final.models import Final_AntibioticEntry
 from .models import AntibioticEntry, Referred_Data
 import re
+from django.db.models import Q, F
 
+# version 1 - original
 # def determine_ris(value, r_breakpoint, i_breakpoint, s_breakpoint, sdd_breakpoint, is_disk=False):
 
 
@@ -95,6 +99,7 @@ import re
 #                     return "S"
 #         return None  # Return None if no valid interpretation can be made
 
+# version 2
 
 def determine_ris(value, r_breakpoint, i_breakpoint, s_breakpoint, sdd_breakpoint, is_disk=False):
     """
@@ -183,7 +188,7 @@ def determine_ris(value, r_breakpoint, i_breakpoint, s_breakpoint, sdd_breakpoin
 
 
 
-
+# version 1 - original
 
 @receiver(post_save, sender=AntibioticEntry)
 def update_ris_interpretation(sender, instance, **kwargs):
@@ -223,7 +228,6 @@ def update_ris_interpretation(sender, instance, **kwargs):
     # Only save if there are updates
     if updated_fields:
         instance.save(update_fields=updated_fields)
-
 
 
 

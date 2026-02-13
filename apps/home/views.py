@@ -14,6 +14,8 @@ from django.urls import reverse
 from django.shortcuts import render, redirect, get_object_or_404 
 from django.template import loader
 from django.db.models import Prefetch
+
+from apps.home_final.utils import apply_final_breakpoints, get_filtered_antibiotics, resolve_organism_name
 from .models import *
 from apps.home_final.models import *
 from apps.wgs_app.models import *
@@ -35,18 +37,28 @@ from django.http import JsonResponse, FileResponse
 #for importation 
 import pandas as pd
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, F, Case, When
 from django.utils.timezone import now
 import csv
 from django.utils.dateparse import parse_date
 from datetime import datetime
 from django.db import IntegrityError
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.template.loader import render_to_string
 from django.db.models import Max
 from itertools import islice
+from django.views.decorators.http import require_GET, require_POST
+
+
+
+@login_required(login_url="/login/")
+# auto generate clinic_code based on javascript
+def get_clinic_code(request):
+    site_code = request.GET.get('site_code')
+    site_name = SiteData.objects.filter(SiteCode=site_code).values_list('SiteName', flat=True).first()
+    return JsonResponse({'site_name': site_name})
 
 
 
@@ -60,10 +72,21 @@ def settings_page(request):
         "site_form": SiteCode_Form(),
         "specimen_form": SpecimenTypeForm(),
         "contact_form":ContactForm(),
+        "emerging_form":Emerge_Pheno_Form(),
         "abx_upload_form": Antibiotics_uploadForm(),
         'bp_upload_form': Breakpoint_uploadForm(),
         "site_upload_form": SiteCode_uploadForm(),
         "org_upload_form": Organism_uploadForm(),
+        "eme_upload_form": Emerging_Crit_upload(),
+        "specimen_upload": SpecimenUploadForm(),
+        "pheno_pre_form": Phenotype_Pre_Form(),
+        "phenotype_pre_upload": Pheno_pre_upForm(),
+        "pheno_post_form": Phenotype_Post_Form(),
+        "phenotype_post_upload": Pheno_post_upForm(),
+        "reco_desc_form": Recco_item_Form(),
+        "reco_desc_upload": Reco_item_upForm(),
+
+        
         "editing": False,  # default state
     }
 
@@ -73,8 +96,7 @@ def settings_page(request):
 
 @login_required(login_url="/login/")
 def index(request):
-    isolates = Referred_Data.objects.all().order_by('-Date_of_Entry')
-
+    isolates = Final_Data.objects.all().order_by('-f_Date_of_Entry')
     # Count per clinic
     site_count = Referred_Data.objects.values('SiteCode').distinct().count()
 
@@ -108,7 +130,7 @@ def index(request):
 
 
 
-##### helper for loading pages, 
+
 @login_required(login_url="/login/")
 def pages(request):
     context = {}
@@ -136,23 +158,16 @@ def pages(request):
 
 
 
-@login_required(login_url="/login/")
-def get_antibiotic_name(request):
-    whonet_code = request.GET.get("whonet")
-    try:
-        abx = Antibiotic_List.objects.get(Whonet_Abx=whonet_code)
-        return JsonResponse({"name": abx.Antibiotic})
-    except Antibiotic_List.DoesNotExist:
-        return JsonResponse({"name": ""})
 
 
+#activate bat_seq
 @login_required(login_url="/login/")
 def batch_create_view(request):
     """
     Creates or overwrites a batch:
-    - Overwrites data only in Batch_Table (does NOT delete Referred_Data).
-    - If batch already exists, asks for confirmation before overwriting.
-    - Re-links existing Referred_Data isolates to the new batch.
+    - Overwrites Batch_Table safely
+    - Re-links Referred_Data
+    - Assigns clean auto sequence (bat_seq) per batch
     """
 
     if request.method == "POST":
@@ -160,23 +175,22 @@ def batch_create_view(request):
         if form.is_valid():
             instance = form.save(commit=False)
 
-            # --- Extract values ---
+            # extract values
             site_code = (instance.bat_SiteCode or "").strip()
-            referral_date_obj = instance.bat_Referral_Date
+            referral_date = instance.bat_Referral_Date
             ref_no_raw = (instance.bat_RefNo or "").strip()
             batch_no = (instance.bat_BatchNo or "").strip()
             total_batch = (instance.bat_Total_batch or "").strip()
             site_name = (instance.bat_Site_NameGen or "").strip()
 
-            # --- Validate required fields ---
-            if not (referral_date_obj and site_code and ref_no_raw):
-                messages.error(request, "Missing required fields (Site Code, Referral Date, or Ref No).")
+            if not (site_code and referral_date and ref_no_raw):
+                messages.error(request, "Missing required fields.")
                 return redirect("batch_create")
 
-            # --- Generate accession numbers ---
+            # generate accession numbers
             try:
-                year_short = referral_date_obj.strftime("%y")
-                year_long = referral_date_obj.strftime("%m%d%Y")
+                year_short = referral_date.strftime("%y")
+                year_long = referral_date.strftime("%m%d%Y")
 
                 if "-" in ref_no_raw:
                     start_ref, end_ref = map(int, ref_no_raw.split("-"))
@@ -184,8 +198,9 @@ def batch_create_view(request):
                         start_ref, end_ref = end_ref, start_ref
                 else:
                     start_ref = end_ref = int(ref_no_raw)
+
             except ValueError:
-                messages.error(request, "Invalid Ref No format. Use a number or range (e.g., 1-5).")
+                messages.error(request, "Invalid Ref No format.")
                 return redirect("batch_create")
 
             accession_numbers = [
@@ -193,32 +208,24 @@ def batch_create_view(request):
                 for ref in range(start_ref, end_ref + 1)
             ]
 
-            # --- Generate batch code and name ---
+           # generate batch code and name
             batch_codegen = f"{site_code}_{year_long}_{batch_no}.{total_batch}_{ref_no_raw}"
             auto_batch_name = batch_codegen
 
-            # --- Resolve site name ---
-            if not site_name and site_code:
+            if not site_name:
                 site_obj = SiteData.objects.filter(SiteCode=site_code).first()
                 if site_obj:
                     site_name = site_obj.SiteName
 
-            # --- Check if batch already exists ---
+          # check if batch exists then overwrite
             existing_batch = Batch_Table.objects.filter(
-                Q(bat_Batch_Code=batch_codegen)
-                | Q(
-                    bat_SiteCode=site_code,
-                    bat_BatchNo=batch_no,
-                    bat_Total_batch=total_batch,
-                    bat_RefNo=ref_no_raw
-                )
+                bat_Batch_Code=batch_codegen
             ).first()
 
-            # --- Step 1: Ask for confirmation before overwriting ---
             if existing_batch and "confirm_overwrite" not in request.POST:
                 messages.warning(
                     request,
-                    f"Batch '{existing_batch.bat_Batch_Name}' already exists. Confirm overwrite to replace it."
+                    f"Batch '{existing_batch.bat_Batch_Name}' already exists."
                 )
                 return render(request, "home/Batchname_form.html", {
                     "form": form,
@@ -226,180 +233,390 @@ def batch_create_view(request):
                     "existing_batch": existing_batch,
                 })
 
-            # --- Step 2: Safe overwrite logic (does NOT delete Referred_Data) ---
+           # start atomic transaction
             with transaction.atomic():
-                # Step 2.1: Find any Referred_Data records matching the new accession numbers
-                existing_refs = Referred_Data.objects.filter(AccessionNo__in=accession_numbers)
 
-                # Step 2.2: If those exist, delete their Batch_Table entries (if any)
-                existing_batch_ids = existing_refs.values_list("Batch_id", flat=True).distinct()
-                if existing_batch_ids:
-                    Batch_Table.objects.filter(id__in=existing_batch_ids).delete()
-
-                # Step 2.3: Also check for matching batch code (if already existing)
-                existing_batch = Batch_Table.objects.filter(bat_Batch_Code=batch_codegen).first()
+                # Delete old batch safely
                 if existing_batch:
                     existing_batch.delete()
 
-                # Step 2.4: Now create a new batch cleanly
+                # Create new batch
                 batch_obj = Batch_Table.objects.create(
                     bat_Batch_Name=auto_batch_name,
                     bat_AccessionNo=", ".join(accession_numbers),
                     bat_Batch_Code=batch_codegen,
                     bat_Site_Name=site_name,
                     bat_SiteCode=site_code,
-                    bat_Referral_Date=referral_date_obj,
+                    bat_Referral_Date=referral_date,
                     bat_RefNo=ref_no_raw,
                     bat_BatchNo=batch_no,
                     bat_Total_batch=total_batch,
-                    bat_Encoder=(instance.bat_Encoder or "").strip(),
-                    bat_Enc_Lic=(instance.bat_Enc_Lic or "").strip(),
-                    bat_Checker=(instance.bat_Checker or "").strip(),
-                    bat_Chec_Lic=(instance.bat_Chec_Lic or "").strip(),
-                    bat_Verifier=(instance.bat_Verifier or "").strip(),
-                    bat_Ver_Lic=(instance.bat_Ver_Lic or "").strip(),
-                    bat_LabManager=(instance.bat_LabManager or "").strip(),
-                    bat_Lab_Lic=(instance.bat_Lab_Lic or "").strip(),
-                    bat_Head=(instance.bat_Head or "").strip(),
-                    bat_Head_Lic=(instance.bat_Head_Lic or "").strip(),
+                    bat_Encoder=instance.bat_Encoder or "",
+                    bat_Enc_Lic=instance.bat_Enc_Lic or "",
+                    bat_Checker=instance.bat_Checker or "",
+                    bat_Chec_Lic=instance.bat_Chec_Lic or "",
+                    bat_Verifier=instance.bat_Verifier or "",
+                    bat_Ver_Lic=instance.bat_Ver_Lic or "",
+                    bat_LabManager=instance.bat_LabManager or "",
+                    bat_Lab_Lic=instance.bat_Lab_Lic or "",
+                    bat_Head=instance.bat_Head or "",
+                    bat_Head_Lic=instance.bat_Head_Lic or "",
                 )
 
-                # Step 2.5: Re-link all existing isolates with the new batch
-                Referred_Data.objects.filter(AccessionNo__in=accession_numbers).update(Batch_id=batch_obj)
-
-                last_seq = (
-                    Referred_Data.objects
-                    .filter(Batch_id=batch_obj)
-                    .aggregate(Max("bat_seq"))
-                    .get("bat_seq__max") or 0
-                )
-                # Step 2.6: Create missing accessions (if new range includes more)
-                for acc_no in accession_numbers:
-                    Referred_Data.objects.update_or_create(
-                        AccessionNo=acc_no,
-                        defaults={
-                            "bat_seq": last_seq + 1,
-                            "Batch_id": batch_obj,
-                            "Batch_Code": batch_codegen,
-                            "Referral_Date": referral_date_obj,
-                            "RefNo": ref_no_raw,
-                            "BatchNo": batch_no,
-                            "Total_batch": total_batch,
-                            "SiteCode": site_code,
-                            "Site_Name": site_name,
-                            "Batch_Name": auto_batch_name,
-                            "arsp_Encoder": batch_obj.bat_Encoder or "",
-                            "arsp_Enc_Lic": batch_obj.bat_Enc_Lic or "",
-                            "arsp_Checker": batch_obj.bat_Checker or "",
-                            "arsp_Chec_Lic": batch_obj.bat_Chec_Lic or "",
-                            "arsp_Verifier": batch_obj.bat_Verifier or "",
-                            "arsp_Ver_Lic": batch_obj.bat_Ver_Lic or "",
-                            "arsp_LabManager": batch_obj.bat_LabManager or "",
-                            "arsp_Lab_Lic": batch_obj.bat_Lab_Lic or "",
-                            "arsp_Head": batch_obj.bat_Head or "",
-                            "arsp_Head_Lic": batch_obj.bat_Head_Lic or "",
-                        }
+                # Ensure all accession numbers exist in Referred_Data
+                for acc in accession_numbers:
+                    Referred_Data.objects.get_or_create(
+                        AccessionNo=acc
                     )
 
-            # --- Count and success message ---
-            total_records = Referred_Data.objects.filter(Batch_Code=batch_codegen).count()
+
+              
+                # fetch isolates to update
+                isolates = (
+                    Referred_Data.objects
+                    .filter(AccessionNo__in=accession_numbers)
+                    .order_by("AccessionNo")  
+                )
+
+             # assign bat_seq and update fields
+                seq = 1
+
+                for iso in isolates:
+                    iso.bat_seq = seq
+                    iso.Batch_id_id = batch_obj.id   # ForeignKey link
+                    iso.Batch_Code = batch_codegen
+                    iso.Referral_Date = referral_date
+                    iso.RefNo = ref_no_raw
+                    iso.BatchNo = batch_no
+                    iso.Total_batch = total_batch
+                    iso.SiteCode = site_code
+                    iso.Site_Name = site_name
+                    iso.Batch_Name = auto_batch_name
+
+                    # ---- ARSRL PERSONNEL FIELDS ----
+                    iso.arsp_Encoder = batch_obj.bat_Encoder or ""
+                    iso.arsp_Enc_Lic = batch_obj.bat_Enc_Lic or ""
+                    iso.arsp_Checker = batch_obj.bat_Checker or ""
+                    iso.arsp_Chec_Lic = batch_obj.bat_Chec_Lic or ""
+                    iso.arsp_Verifier = batch_obj.bat_Verifier or ""
+                    iso.arsp_Ver_Lic = batch_obj.bat_Ver_Lic or ""
+                    iso.arsp_LabManager = batch_obj.bat_LabManager or ""
+                    iso.arsp_Lab_Lic = batch_obj.bat_Lab_Lic or ""
+                    iso.arsp_Head = batch_obj.bat_Head or ""
+                    iso.arsp_Head_Lic = batch_obj.bat_Head_Lic or ""
+
+                    iso.save(update_fields=[
+                        "bat_seq",
+                        "Batch_id_id",
+                        "Batch_Code",
+                        "Referral_Date",
+                        "RefNo",
+                        "BatchNo",
+                        "Total_batch",
+                        "SiteCode",
+                        "Site_Name",
+                        "Batch_Name",
+                        "arsp_Encoder",
+                        "arsp_Enc_Lic",
+                        "arsp_Checker",
+                        "arsp_Chec_Lic",
+                        "arsp_Verifier",
+                        "arsp_Ver_Lic",
+                        "arsp_LabManager",
+                        "arsp_Lab_Lic",
+                        "arsp_Head",
+                        "arsp_Head_Lic",
+                    ])
+
+                    seq += 1
+
+           
             messages.success(
                 request,
-                f"Batch '{auto_batch_name}' saved successfully with {total_records} record(s)."
+                f"Batch '{auto_batch_name}' saved with {len(accession_numbers)} isolates."
             )
-            return redirect(f"{reverse('show_batches')}?batch_code={batch_obj.bat_Batch_Code}")
+
+            return redirect(
+                f"{reverse('show_batches')}?batch_code={batch_obj.bat_Batch_Code}"
+            )
 
         else:
-            messages.error(request, "Batch creation failed. Please check the form.")
+            messages.error(request, "Batch creation failed.")
     else:
         form = BatchTable_form()
 
-    return render(request, "home/Batchname_form.html", {"form": form})
+    return render(request, "home/Batchname_form.html", {
+    "form": form,
+    "editing": False,
+})
+
+
+
+
+## edit the batch
+@login_required(login_url="/login/")
+@transaction.atomic
+def batch_edit_view(request, pk):
+
+    batch = get_object_or_404(Batch_Table, pk=pk)
+
+    if request.method == "POST":
+        form = BatchEditForm(request.POST, instance=batch)
+
+        if form.is_valid():
+            batch = form.save()
+
+            isolates = (
+                Referred_Data.objects
+                .filter(Batch_id=batch)
+                .order_by("AccessionNo")
+            )
+
+            for seq, iso in enumerate(isolates, start=1):
+                iso.bat_seq = seq
+
+                # ONLY PERSONNEL FIELDS
+                iso.arsp_Encoder     = batch.bat_Encoder or ""
+                iso.arsp_Enc_Lic     = batch.bat_Enc_Lic or ""
+                iso.arsp_Checker     = batch.bat_Checker or ""
+                iso.arsp_Chec_Lic    = batch.bat_Chec_Lic or ""
+                iso.arsp_Verifier    = batch.bat_Verifier or ""
+                iso.arsp_Ver_Lic     = batch.bat_Ver_Lic or ""
+                iso.arsp_LabManager  = batch.bat_LabManager or ""
+                iso.arsp_Lab_Lic     = batch.bat_Lab_Lic or ""
+                iso.arsp_Head        = batch.bat_Head or ""
+                iso.arsp_Head_Lic    = batch.bat_Head_Lic or ""
+                iso.Date_Accomplished_ARSP = batch.bat_Date_Accomplished
+
+                iso.save(update_fields=[
+                    "bat_seq",
+                    "arsp_Encoder",
+                    "arsp_Enc_Lic",
+                    "arsp_Checker",
+                    "arsp_Chec_Lic",
+                    "arsp_Verifier",
+                    "arsp_Ver_Lic",
+                    "arsp_LabManager",
+                    "arsp_Lab_Lic",
+                    "arsp_Head",
+                    "arsp_Head_Lic",
+                    "Date_Accomplished_ARSP",
+                ])
+
+                # final data
+                try:
+                    final_iso = Final_Data.objects.get(
+                        f_AccessionNo=iso.AccessionNo
+                    )
+
+                    final_iso.f_arsp_Encoder     = batch.bat_Encoder or ""
+                    final_iso.f_arsp_Enc_Lic     = batch.bat_Enc_Lic or ""
+                    final_iso.f_arsp_Checker     = batch.bat_Checker or ""
+                    final_iso.f_arsp_Chec_Lic    = batch.bat_Chec_Lic or ""
+                    final_iso.f_arsp_Verifier    = batch.bat_Verifier or ""
+                    final_iso.f_arsp_Ver_Lic     = batch.bat_Ver_Lic or ""
+                    final_iso.f_arsp_LabManager  = batch.bat_LabManager or ""
+                    final_iso.f_arsp_Lab_Lic     = batch.bat_Lab_Lic or ""
+                    final_iso.f_arsp_Head        = batch.bat_Head or ""
+                    final_iso.f_arsp_Head_Lic    = batch.bat_Head_Lic or ""
+                    final_iso.f_Date_Accomplished_ARSP = batch.bat_Date_Accomplished
+
+                    final_iso.save(update_fields=[
+                        "f_arsp_Encoder",
+                        "f_arsp_Enc_Lic",
+                        "f_arsp_Checker",
+                        "f_arsp_Chec_Lic",
+                        "f_arsp_Verifier",
+                        "f_arsp_Ver_Lic",
+                        "f_arsp_LabManager",
+                        "f_arsp_Lab_Lic",
+                        "f_arsp_Head",
+                        "f_arsp_Head_Lic",
+                        "f_Date_Accomplished_ARSP",
+                    ])
+
+                except Final_Data.DoesNotExist:
+                    # Final record may not exist yet — SAFE TO IGNORE
+                    pass
+
+            messages.success(request, "Batch and signatories updated successfully.")
+            return redirect("show_data")
+
+    else:
+        form = BatchEditForm(instance=batch)
+
+    return render(
+        request,
+        "home/Batchname_author.html",
+        {
+            "form": form,
+            "editing": True,
+            "batch": batch,
+        }
+    )
+
 
 
 
 @login_required(login_url="/login/")
 def show_batches(request):
-    """
-    Show isolates that belong to the last generated batch by default,
-    or filter by batch_code if provided in GET.
-    """
-    batch_code = request.GET.get('batch_code')
+    batch_code = request.GET.get("batch_code")
 
     if not batch_code:
-        # Get the last generated batch code from the database
-        last_batch = Referred_Data.objects.order_by('-Date_of_Entry').first()
-        batch_code = last_batch.Batch_Code if last_batch else None
+        last_batch = Batch_Table.objects.order_by("-id").first()
+        batch_code = last_batch.bat_Batch_Code if last_batch else None
 
-    isolates = Referred_Data.objects.prefetch_related('antibiotic_entries')
- 
-    if batch_code:
-        isolates = isolates.filter(Batch_Code=batch_code)
+    isolates = (
+        Referred_Data.objects
+        .filter(Batch_Code=batch_code)
+        .exclude(bat_seq__isnull=True)   
+        .order_by("bat_seq")             
+        .prefetch_related("antibiotic_entries")
+    )
 
-    isolates = isolates.order_by('-Date_of_Entry')
-
-    # Paginate the queryset to display 20 records per page
     paginator = Paginator(isolates, 20)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    # Fetch batch object for header buttons
-    batch = Batch_Table.objects.filter(bat_Batch_Code=batch_code).first() if batch_code else None
-    
-    return render(request, 'home/Batch_isolates.html', {
-        'page_obj': page_obj,
-        'batch_code': batch_code,
-        'batch': batch,
+    batch = Batch_Table.objects.filter(bat_Batch_Code=batch_code).first()
+
+    return render(request, "home/Batch_isolates.html", {
+        "page_obj": page_obj,
+        "batch_code": batch_code,
+        "batch": batch,
     })
+# @login_required(login_url="/login/")
+# def review_batches(request):
+
+#     isolate_qs = (
+#         Referred_Data.objects
+#         .only(
+#             "id",
+#             "AccessionNo",
+#             "SiteCode",
+#             "Patient_ID",
+#             "Site_Org",
+#             "Spec_Type",
+#             "Batch_id",
+#         )
+#         .exclude(
+#             Q(Site_Org__isnull=False) & ~Q(Site_Org="")
+#             |
+#             Q(Spec_Type__isnull=False)
+#         )
+#     )
+
+#     batches = (
+#         Batch_Table.objects.all()
+#         .order_by("-bat_Referral_Date")
+#         .prefetch_related(
+#             Prefetch(
+#                 "Batch_isolates",
+#                 queryset=isolate_qs,
+#                 to_attr="prefetched_isolates",
+#             )
+#         )
+#     )
+
+#     total_accessions_all = 0
+
+#     #  PRELOAD Final_Data batch IDs
+#     final_batch_ids = set(
+#         Final_Data.objects
+#         .values_list("f_Batch_id", flat=True)
+#         .distinct()
+#     )
+
+#     for batch in batches:
+#         isolates = getattr(batch, "prefetched_isolates", [])
+#         batch.display_isolates = isolates
+#         batch.total_isolates = len(isolates)
+#         total_accessions_all += len(isolates)
+
+#         #  THIS IS THE KEY FLAG
+#         batch.is_copied_to_final = batch.id in final_batch_ids
+
+#     return render(
+#         request,
+#         "home/review_batches.html",
+#         {
+#             "batches": batches,
+#             "total_batches": batches.count(),
+#             "total_accessions_all": total_accessions_all,
+#         },
+#     )
+
 
 
 
 @login_required(login_url="/login/")
 def review_batches(request):
-    # Prefetch isolates if your Batch_Table is linked via ForeignKey
-    isolate_qs = Referred_Data.objects.only(
-        "id", "AccessionNo", "SiteCode", "Patient_ID", "Site_Org", "Batch_id"
+
+    q = request.GET.get("q", "").strip()
+
+    isolate_qs = (
+        Referred_Data.objects
+        .only(
+            "id",
+            "AccessionNo",
+            "Batch_id",
+        )
+        .exclude(
+            Q(Site_Org__isnull=False) & ~Q(Site_Org="")
+            |
+            Q(Spec_Type__isnull=False)
+        )
     )
 
-    batches = (
-        Batch_Table.objects.all()
-        .order_by("-bat_Referral_Date")
-        .prefetch_related(
-            Prefetch("Batch_isolates", queryset=isolate_qs, to_attr="prefetched_isolates")
+    # Accession-only filter
+    if q:
+        isolate_qs = isolate_qs.filter(
+            AccessionNo__icontains=q
+        )
+
+    batches = Batch_Table.objects.all().order_by("-bat_Referral_Date")
+
+    #  Batch name filter
+    if q:
+        batches = batches.filter(
+            bat_Batch_Code__icontains=q
+        )
+
+    batches = batches.prefetch_related(
+        Prefetch(
+            "Batch_isolates",
+            queryset=isolate_qs,
+            to_attr="prefetched_isolates",
         )
     )
 
     total_accessions_all = 0
 
+    final_batch_ids = set(
+        Final_Data.objects.values_list("f_Batch_id", flat=True).distinct()
+    )
+
     for batch in batches:
-        # Start with isolates from Referred_Data
-        if getattr(batch, "prefetched_isolates", None):
-            isolates = batch.prefetched_isolates
-        else:
-            isolates = []
-
-        # Fallback: use bat_AccessionNo if Referred_Data has no isolates
-        if not isolates and batch.bat_AccessionNo:
-            parsed_acc = [acc.strip() for acc in batch.bat_AccessionNo.split(",") if acc.strip()]
-            # Create fake isolate-like objects for display
-            isolates = [{"AccessionNo": acc, "SiteCode": batch.bat_Site_Name} for acc in parsed_acc]
-
-        # Attach isolates to the batch object for template use
+        isolates = getattr(batch, "prefetched_isolates", [])
         batch.display_isolates = isolates
         batch.total_isolates = len(isolates)
         total_accessions_all += len(isolates)
-
-    total_batches = len(batches)
+        batch.is_copied_to_final = batch.id in final_batch_ids
 
     return render(
         request,
         "home/review_batches.html",
         {
             "batches": batches,
-            "total_batches": total_batches,
+            "total_batches": batches.count(),
             "total_accessions_all": total_accessions_all,
+            "q": q,
         },
     )
+
+
+
+
 
 
 @login_required(login_url="/login/")
@@ -423,296 +640,567 @@ def clean_batch(request, batch_id):
 
 
 @login_required(login_url="/login/")
+@transaction.atomic
 def delete_batch(request, batch_id):
     """
-    Deletes a batch and all related Referred_Data records.
+    Deletes a batch and all related Referred_Data and Final_Data records.
     """
+
     batch = get_object_or_404(Batch_Table, pk=batch_id)
-    
-    # Delete related isolates manually
-    Referred_Data.objects.filter(Batch_Code=batch.bat_Batch_Code).delete()
-    
-    # Delete the batch itself
+
+    Referred_Data.objects.filter(
+        Batch_Code=batch.bat_Batch_Code
+    ).delete()
+
+    Final_Data.objects.filter(
+        f_Batch_Code=batch.bat_Batch_Code
+    ).delete()
+
     batch.delete()
-    
-    messages.success(request, f"Batch '{batch.bat_Batch_Name}' and all related isolates have been deleted.")
-    
-    return redirect('show_batches')
+
+    messages.success(
+        request,
+        f"Batch '{batch.bat_Batch_Name}' and all related records have been deleted."
+    )
+
+    return redirect("show_batches")
+
 
 
 @login_required(login_url="/login/")
+@transaction.atomic
 def delete_record_in_batch(request, id):
+
     isolate = get_object_or_404(Referred_Data, pk=id)
+
+    accession_no = isolate.AccessionNo
+
+    Final_Data.objects.filter(
+        f_AccessionNo=accession_no
+    ).delete()
+
     isolate.delete()
-    return redirect('show_batches')
+
+    messages.success(
+        request,
+        f"Isolate '{accession_no}' and related final record have been deleted."
+    )
+
+    return redirect("show_batches")
 
 
-
-################ Raw data view (final version with dynamic breakpoints)
-
+############# filtering of antibiotics via ajax 
 @login_required(login_url="/login/")
-def raw_data(request, id):
-    """
-    Dynamically filters antibiotics based on:
-      - Specimen year (closest <= breakpoint year)
-      - Site_Org for main antibiotics
-      - ars_OrgCode for retest antibiotics
-      Falls back to blank Org if no specific match found.
-    """
+def get_antibiotic_name(request):
+    whonet_code = request.GET.get("whonet")
+    try:
+        abx = Antibiotic_List.objects.get(Whonet_Abx=whonet_code)
+        return JsonResponse({"name": abx.Antibiotic})
+    except Antibiotic_List.DoesNotExist:
+        return JsonResponse({"name": ""})
 
-    # --- Get isolate record ---
-    isolates = get_object_or_404(Referred_Data, pk=id)
+
+
+# used in breakopints dropdown for organism 
+@require_GET
+def get_organism_group(request):
+    org_code = request.GET.get("org_code")
+
+    if not org_code:
+        return JsonResponse({"genus_group": ""})
+
+    try:
+        organism = Organism_List.objects.get(
+            Whonet_Org_Code=org_code
+        )
+        return JsonResponse({
+            "genus_group": organism.Genus_Group or ""
+        })
+    except Organism_List.DoesNotExist:
+        return JsonResponse({"genus_group": ""})
+
+
+## aut fill  abx code and tier
+@require_GET
+def get_antibiotic_details(request):
+    whonet_abx = request.GET.get("whonet_abx", "").strip()
     
-    # --- Determine year and organism codes ---
-    specimen_year = isolates.Spec_Date.year if isolates.Spec_Date else None
-    site_org = isolates.Site_Org.strip().lower() if isolates.Site_Org else ""
-    ars_org = isolates.ars_OrgCode.strip().lower() if isolates.ars_OrgCode else ""
+    # Use filter().first() to avoid DoesNotExist exceptions crashing the AJAX call
+    abx = Antibiotic_List.objects.filter(Whonet_Abx=whonet_abx).first()
+    
+    if abx:
+        return JsonResponse({
+            "antibiotic": abx.Antibiotic,
+            "abx_code": abx.Abx_code,
+            "tier": abx.Tier,
+        })
+    
+    return JsonResponse({"error": "Not found"}, status=404)
 
 
-    # --- Get all antibiotics (from Antibiotic_List) ---
-    antibiotics_main = Antibiotic_List.objects.filter(Show=True)
-    antibiotics_retest = Antibiotic_List.objects.filter(Retest=True)
+@login_required
+def ajax_filter_antibiotics(request):
+    isolate_id = request.GET.get("isolate_id")
+    org_code   = request.GET.get("org", "").strip().lower()
+    retest     = request.GET.get("retest") == "1"
 
+    isolate = get_object_or_404(Referred_Data, pk=isolate_id)
 
-    # --- Determine closest breakpoint year ---
+   # determine breakpoint year
+    specimen_year = isolate.Spec_Date.year if isolate.Spec_Date else None
+
     if specimen_year:
         breakpoint_year = (
-            BreakpointsTable.objects.filter(Year__lte=specimen_year)
+            BreakpointsTable.objects
+            .filter(Year__lte=specimen_year)
             .order_by("-Year")
             .values_list("Year", flat=True)
             .first()
         )
     else:
         breakpoint_year = (
-            BreakpointsTable.objects.all()
+            BreakpointsTable.objects
             .order_by("-Year")
             .values_list("Year", flat=True)
             .first()
         )
 
-    # --- Fetch existing antibiotic entries ---
-    all_entries = AntibioticEntry.objects.filter(ab_idNum_referred=isolates)
-    existing_entries = all_entries.filter(ab_Abx_code__isnull=False)
-    retest_entries = all_entries.filter(ab_Retest_Abx_code__isnull=False)
 
-    # --- Handle GET ---
+    
+    # filter antibiotics
+    antibiotics = get_filtered_antibiotics(
+        breakpoint_year,
+        org_code,     # ✅ ALWAYS CODE (matches raw_data + edit_data)
+        retest=retest
+    )
+
+    # fetch existing entries
+    entries = AntibioticEntry.objects.filter(
+        ab_idNum_referred=isolate
+    )
+
+    # Map entries by Whonet code
+    entry_map = {}
+    for e in entries:
+        code = e.ab_Retest_Abx_code if retest else e.ab_Abx_code
+        if code:
+            entry_map[code.upper()] = e
+
+    # build payload JSON
+    payload = []
+
+    for abx in antibiotics:
+        code = (abx.Whonet_Abx or "").strip().upper()
+        entry = entry_map.get(code)
+
+        if retest:
+            payload.append({
+                "whonet": code,
+                "name": abx.Antibiotic,
+                "is_disk": abx.Disk_Abx,
+
+                # RETEST VALUES
+                "disk": entry.ab_Retest_DiskValue if entry else "",
+                "disk_enris": entry.ab_Retest_Disk_enRIS if entry else "",
+                "mic": entry.ab_Retest_MICValue if entry else "",
+                "mic_enris": entry.ab_Retest_MIC_enRIS if entry else "",
+                "mic_operand": entry.ab_Retest_MIC_operand if entry else "",
+                "alert_mic": entry.ab_Retest_AlertMIC if entry else False,
+            })
+        else:
+            payload.append({
+                "whonet": code,
+                "name": abx.Antibiotic,
+                "is_disk": abx.Disk_Abx,
+
+                # MAIN VALUES
+                "disk": entry.ab_Disk_value if entry else "",
+                "disk_enris": entry.ab_Disk_enRIS if entry else "",
+                "mic": entry.ab_MIC_value if entry else "",
+                "mic_enris": entry.ab_MIC_enRIS if entry else "",
+                "mic_operand": entry.ab_MIC_operand if entry else "",
+                "alert_mic": entry.ab_AlertMIC if entry else False,
+            })
+
+    return JsonResponse({"antibiotics": payload})
+
+
+
+
+
+################ Raw data view (final version with dynamic breakpoints)
+
+# new version with auto filter antibiotics + breakpoint assignment
+# aligns with new edit data view
+
+@login_required(login_url="/login/")
+@transaction.atomic
+def raw_data(request, id):
+
+   # Fetch the isolate
+    isolates = get_object_or_404(Referred_Data, pk=id)
+
+   # get the display form
     if request.method == "GET":
+
         form = Referred_Form(instance=isolates)
+
+        antibiotics_main = Antibiotic_List.objects.filter(Show=True).order_by("Antibiotic")
+        antibiotics_retest = Antibiotic_List.objects.filter(Retest=True).order_by("Antibiotic")
+
+        existing_entries = AntibioticEntry.objects.filter(
+            ab_idNum_referred=isolates
+        )
+
         return render(request, "home/Referred_form.html", {
             "form": form,
+            "isolates": isolates,
             "antibiotics_main": antibiotics_main,
             "antibiotics_retest": antibiotics_retest,
-            "isolates": isolates,
             "existing_entries": existing_entries,
-            "retest_entries": retest_entries,
-            "breakpoint_year": breakpoint_year,
+            "retest_entries": existing_entries,
             "edit_mode": True,
         })
 
-    # --- Handle POST ---
-    elif request.method == "POST":
-        form = Referred_Form(request.POST, instance=isolates)
+    # save form first before processing antibiotics
+    form = Referred_Form(request.POST, instance=isolates)
 
-        if form.is_valid():
-            isolates = form.save(commit=False)
-            isolates.save()
 
-            # --- Handle main antibiotics (Site_Org) ---
-            for abx in antibiotics_main:
-                abx_code = (abx.Whonet_Abx or "").strip().upper()
+    if not form.is_valid():
+        messages.error(request, "Error saving data.")
+        return redirect(request.path)
 
-                # find matching breakpoint for Site_Org
-                bp = (
-                    BreakpointsTable.objects.filter(
-                        Whonet_Abx=abx_code,
-                        Year=breakpoint_year,
-                        Org__iexact=site_org
-                    ).first()
+    isolates = form.save()
+
+    form = Referred_Form(request.POST, instance=isolates)
+
+
+
+    # determine effective breakpoint year
+    specimen_year = isolates.Spec_Date.year if isolates.Spec_Date else None
+
+    if specimen_year:
+        effective_year = (
+            BreakpointsTable.objects
+            .filter(Year__lte=str(specimen_year))
+            .order_by("-Year")
+            .values_list("Year", flat=True)
+            .first()
+        )
+    else:
+        effective_year = (
+            BreakpointsTable.objects
+            .order_by("-Year")
+            .values_list("Year", flat=True)
+            .first()
+        )
+
+    # resolve organism codes (do not lowercase)
+    resolved_site_org = (isolates.Site_Org or "").strip()
+    resolved_ars_org  = (isolates.ars_OrgCode or "").strip()
+
+  ## FOR MAIN ANIBIOTICS
+    for abx in Antibiotic_List.objects.filter(Show=True):
+
+        abx_code = (abx.Whonet_Abx or "").strip().upper()
+
+        disk_value  = request.POST.get(f"disk_{abx_code}")
+        mic_value   = request.POST.get(f"mic_{abx_code}")
+        disk_enris  = request.POST.get(f"disk_enris_{abx_code}", "").strip()
+        mic_enris   = request.POST.get(f"mic_enris_{abx_code}", "").strip()
+        mic_operand = request.POST.get(f"mic_operand_{abx_code}", "").strip()
+        alert_mic   = f"alert_mic_{abx_code}" in request.POST
+
+        try:
+            disk_value = int(disk_value) if disk_value else None
+        except ValueError:
+            disk_value = None
+
+        try:
+            mic_value = float(mic_value) if mic_value else None
+        except ValueError:
+            mic_value = None
+
+        # Save ONLY if something was entered
+        if disk_value is None and mic_value is None:
+            continue
+
+        entry, _ = AntibioticEntry.objects.update_or_create(
+            ab_idNum_referred=isolates,
+            ab_Abx_code=abx_code,
+            defaults={
+                "ab_AccessionNo": isolates.AccessionNo,
+                "ab_Antibiotic": abx.Antibiotic,
+                "ab_Abx": abx.Abx_code,
+                "ab_Disk_value": disk_value,
+                "ab_Disk_enRIS": disk_enris,
+                "ab_MIC_value": mic_value,
+                "ab_MIC_enRIS": mic_enris,
+                "ab_MIC_operand": mic_operand,
+                "ab_AlertMIC": alert_mic,
+            }
+        )
+
+        # ALWAYS reset breakpoints before re-applying
+        entry.ab_breakpoints_id.clear()
+
+        bp_applied = False
+
+       # apply the disk breakpoints if existing
+        if disk_value is not None:
+            bp_disk = (
+                BreakpointsTable.objects
+                .filter(
+                    Antibiotic_list_id=abx_code,
+                    Year=effective_year,
+                    Test_Method="DISK"
                 )
-
-                # fallback to blank Org
-                if not bp:
-                    bp = (
-                        BreakpointsTable.objects.filter(
-                            Whonet_Abx=abx_code,
-                            Year=breakpoint_year
-                        )
-                        .filter(Org__isnull=True) | BreakpointsTable.objects.filter(
-                            Whonet_Abx=abx_code,
-                            Year=breakpoint_year,
-                            Org=""
-                        )
-                    ).first()
-
-
-                # --- Filter antibiotics by organism + breakpoint availability ---
-                if breakpoint_year and site_org:
-                    # Normalize organism text
-                    org_filter = site_org.strip().lower()
-
-                    bp_main = (
-                        BreakpointsTable.objects.filter(
-                            Year=breakpoint_year,
-                            Org__iexact=org_filter
-                        )
-                    )
-
-                    # fallback: org blank
-                    if not bp_main.exists():
-                        bp_main = BreakpointsTable.objects.filter(
-                            Year=breakpoint_year
-                        ).filter(models.Q(Org="") | models.Q(Org__isnull=True))
-
-                    # Extract WHONET codes from breakpoint table
-                    bp_main_whonet = list(bp_main.values_list("Whonet_Abx", flat=True))
-
-                    antibiotics_main = Antibiotic_List.objects.filter(
-                        Show=True,
-                        Whonet_Abx__in=bp_main_whonet
-                    )
-                else:
-                    # fallback if no year or site_org yet
-                    antibiotics_main = Antibiotic_List.objects.filter(Show=True)
-
-
-                ############# --- For retest antibiotics (use ARS organism code) ---
-                if breakpoint_year and ars_org:
-                    org_filter_retest = ars_org.strip().lower()
-
-                    bp_retest = BreakpointsTable.objects.filter(
-                        Year=breakpoint_year,
-                        Org__iexact=org_filter_retest
-                    )
-
-                    # fallback
-                    if not bp_retest.exists():
-                        bp_retest = BreakpointsTable.objects.filter(
-                            Year=breakpoint_year
-                        ).filter(models.Q(Org="") | models.Q(Org__isnull=True))
-
-                    bp_retest_whonet = list(bp_retest.values_list("Whonet_Abx", flat=True))
-
-                    antibiotics_retest = Antibiotic_List.objects.filter(
-                        Retest=True,
-                        Whonet_Abx__in=bp_retest_whonet
-                    )
-                else:
-                    antibiotics_retest = Antibiotic_List.objects.filter(Retest=True)
-                ############# END 
-
-                disk_value = request.POST.get(f"disk_{abx_code}") or ""
-                mic_value = request.POST.get(f"mic_{abx_code}") or ""
-                disk_enris = (request.POST.get(f"disk_enris_{abx_code}") or "").strip()
-                mic_enris = (request.POST.get(f"mic_enris_{abx_code}") or "").strip()
-                mic_operand = (request.POST.get(f"mic_operand_{abx_code}") or "").strip()
-                alert_mic = f"alert_mic_{abx_code}" in request.POST
-
-                antibiotic_entry, created = AntibioticEntry.objects.update_or_create(
-                    ab_idNum_referred=isolates,
-                    ab_Abx_code=abx_code,
-                    defaults={
-                        "ab_AccessionNo": isolates.AccessionNo,
-                        "ab_Antibiotic": abx.Antibiotic,
-                        "ab_Abx": abx.Abx_code,
-                        "ab_Disk_value": disk_value or None,
-                        "ab_Disk_enRIS": disk_enris or "",
-                        "ab_MIC_value": mic_value or None,
-                        "ab_MIC_enRIS": mic_enris or "",
-                        "ab_MIC_operand": mic_operand,
-                        "ab_R_breakpoint": bp.R_val if bp else "",
-                        "ab_I_breakpoint": bp.I_val if bp else "",
-                        "ab_SDD_breakpoint": bp.SDD_val if bp else "",
-                        "ab_S_breakpoint": bp.S_val if bp else "",
-                        "ab_AlertMIC": alert_mic,
-                        "ab_Alert_val": bp.Alert_val if alert_mic and bp else "",
-                        "ab_Disk_Abx": abx.Disk_Abx,  
-                    },
+                .filter(
+                    Q(Org__iexact=resolved_site_org) |
+                    Q(Org='')
                 )
-
-                if bp is None:
-                    print("NO BREAKPOINT:", abx_code, breakpoint_year, site_org)
-
-
-                if bp:
-                    antibiotic_entry.ab_breakpoints_id.set([bp])
-
-            # --- Handle retest antibiotics (ARS_OrgCode) ---
-            for abx in antibiotics_retest:
-                abx_code = (abx.Whonet_Abx or "").strip().upper()
-
-                bp_retest = (
-                    BreakpointsTable.objects.filter(
-                        Whonet_Abx=abx_code,
-                        Year=breakpoint_year,
-                        Org__iexact=ars_org
-                    ).first()
+                .order_by(
+                    Case(
+                        When(Org__iexact=resolved_site_org, then=0),
+                        When(Org='', then=1),
+                        default=2,
+                    )
                 )
+                .first()
+            )
 
-                # fallback to blank Org
-                if not bp_retest:
-                    bp_retest = (
-                        BreakpointsTable.objects.filter(
-                            Whonet_Abx=abx_code,
-                            Year=breakpoint_year
-                        )
-                        .filter(Org__isnull=True) | BreakpointsTable.objects.filter(
-                            Whonet_Abx=abx_code,
-                            Year=breakpoint_year,
-                            Org=""
-                        )
-                    ).first()
+            if bp_disk:
+                entry.ab_breakpoints_id.add(bp_disk)  # for disk
+                entry.ab_Site_Org = bp_disk.Org
 
-                retest_mic_value = request.POST.get(f"retest_mic_{abx_code}") or ""
-                retest_mic_enris = request.POST.get(f"retest_mic_enris_{abx_code}") or ""
-                retest_mic_operand = request.POST.get(f"retest_mic_operand_{abx_code}") or ""
-                retest_alert_mic = f"retest_alert_mic_{abx_code}" in request.POST
+                entry.ab_R_breakpoint   = bp_disk.R_val
+                entry.ab_I_breakpoint   = bp_disk.I_val
+                entry.ab_SDD_breakpoint = bp_disk.SDD_val
+                entry.ab_S_breakpoint   = bp_disk.S_val
+                bp_applied = True
 
-                retest_entry, created = AntibioticEntry.objects.update_or_create(
-                    ab_idNum_referred=isolates,
-                    ab_Retest_Abx_code=abx_code,
-                    defaults={
-                        "ab_Retest_MICValue": retest_mic_value or None,
-                        "ab_Retest_MIC_enRIS": retest_mic_enris,
-                        "ab_Retest_MIC_operand": retest_mic_operand,
-                        "ab_Retest_Antibiotic": abx.Antibiotic,
-                        "ab_Retest_Abx": abx.Abx_code,
-                        "ab_Ret_R_breakpoint": bp_retest.R_val if bp_retest else None,
-                        "ab_Ret_S_breakpoint": bp_retest.S_val if bp_retest else None,
-                        "ab_Ret_SDD_breakpoint": bp_retest.SDD_val if bp_retest else None,
-                        "ab_Ret_I_breakpoint": bp_retest.I_val if bp_retest else None,
-                        "ab_Retest_AlertMIC": retest_alert_mic,
-                        "ab_Retest_Alert_val": bp_retest.Alert_val if retest_alert_mic and bp_retest else "",
-                        "ab_Retest_Disk_Abx": abx.Disk_Abx,
-                    },
+        # apply the mic breakpoints if existing
+        if mic_value is not None:
+            bp_mic = (
+                BreakpointsTable.objects
+                .filter(
+                    Antibiotic_list_id=abx_code,
+                    Year=effective_year,
+                    Test_Method="MIC"
                 )
+                .filter(
+                    Q(Org__iexact=resolved_site_org) |
+                    Q(Org='')
+                )
+                .order_by(
+                    Case(
+                        When(Org__iexact=resolved_site_org, then=0),
+                        When(Org='', then=1),
+                        default=2,
+                    )
+                )
+                .first()
+            )
 
-                if bp_retest:
-                    retest_entry.ab_breakpoints_id.set([bp_retest])
+            if bp_mic:
+                entry.ab_breakpoints_id.add(bp_mic)  # for mic
+                entry.ab_Site_Org = bp_mic.Org
+                entry.ab_R_breakpoint   = bp_mic.R_val
+                entry.ab_I_breakpoint   = bp_mic.I_val
+                entry.ab_SDD_breakpoint = bp_mic.SDD_val
+                entry.ab_S_breakpoint   = bp_mic.S_val
+                entry.ab_Alert_val = bp_mic.Alert_val if alert_mic else ""
+                bp_applied = True
+            
+        if not bp_applied:
+            entry.ab_Site_Org = None
+            entry.ab_R_breakpoint = None
+            entry.ab_I_breakpoint = None
+            entry.ab_SDD_breakpoint = None
+            entry.ab_S_breakpoint = None
+            entry.ab_Alert_val = ""
 
-            messages.success(request, "Data saved successfully.")
-            return redirect("show_data")
-
-        else:
-            messages.error(request, "Error: Saving unsuccessful")
-            print(form.errors)
-
-    # --- Fallback render ---
-    form = Referred_Form(instance=isolates)
-    return render(request, "home/Referred_form.html", {
-        "form": form,
-        "antibiotics_main": antibiotics_main,
-        "antibiotics_retest": antibiotics_retest,
-        "isolates": isolates,
-        "existing_entries": existing_entries,
-        "retest_entries": retest_entries,
-        "breakpoint_year": breakpoint_year,
-        "edit_mode": True,
-    })
+        entry.save(update_fields=[
+            "ab_AccessionNo",
+            "ab_Site_Org",
+            "ab_Disk_value",
+            "ab_Disk_enRIS",
+            "ab_MIC_value",
+            "ab_MIC_enRIS",
+            "ab_MIC_operand",
+            "ab_AlertMIC",
+            "ab_Alert_val",
+            "ab_R_breakpoint",
+            "ab_I_breakpoint",
+            "ab_SDD_breakpoint",
+            "ab_S_breakpoint",
+        ])
 
 
-#Retrieve all data
+    ## FOR RETEST ANTIBIOITCS
+    for abx in Antibiotic_List.objects.filter(Retest=True):
+        abx_code = (abx.Whonet_Abx or "").strip().upper()
+        disk_value  = request.POST.get(f"retest_disk_{abx_code}")
+        disk_enris  = request.POST.get(f"retest_disk_enris_{abx_code}", "").strip()
+        mic_value   = request.POST.get(f"retest_mic_{abx_code}")
+        mic_enris   = request.POST.get(f"retest_mic_enris_{abx_code}", "").strip()
+        mic_operand = request.POST.get(f"retest_mic_operand_{abx_code}", "").strip()
+        alert_mic   = f"retest_alert_mic_{abx_code}" in request.POST
+
+        
+        try:
+            disk_value = int(disk_value) if disk_value else None
+        except ValueError:
+            disk_value = None
+
+
+        try:
+            mic_value = float(mic_value) if mic_value else None
+        except ValueError:
+            mic_value = None
+
+        if disk_value is None and mic_value is None:
+            continue
+
+        entry, _ = AntibioticEntry.objects.update_or_create(
+            ab_idNum_referred=isolates,
+            ab_Retest_Abx_code=abx_code,
+            defaults={
+                "ab_Retest_Antibiotic": abx.Antibiotic,
+                "ab_Retest_Abx": abx.Abx_code,
+                "ab_Retest_DiskValue": disk_value,
+                "ab_Retest_Disk_enRIS": disk_enris,
+                "ab_Retest_MICValue": mic_value,
+                "ab_Retest_MIC_enRIS": mic_enris,
+                "ab_Retest_MIC_operand": mic_operand,
+                "ab_Retest_AlertMIC": alert_mic,
+            }
+        )
+
+        # ALWAYS reset breakpoints before re-applying
+        entry.ab_breakpoints_id.clear()
+
+        ret_bp_applied = False
+        # apply disk breakpoints for retest antibiotics if existing
+        if disk_value is not None:
+            bp_disk = (
+                BreakpointsTable.objects
+                .filter(
+                    Antibiotic_list_id=abx_code,
+                    Year=effective_year,
+                    Test_Method="DISK"
+                )
+                .filter(
+                    Q(Org__iexact=resolved_ars_org) |
+                    Q(Org='')
+                )
+                .order_by(
+                    Case(
+                        When(Org__iexact=resolved_ars_org, then=0),
+                        When(Org='', then=1),
+                        default=2,
+                    )
+                )
+                .first()
+            )
+
+            if bp_disk:
+                entry.ab_breakpoints_id.add(bp_disk)  # for disk
+                entry.ab_Ret_Org = bp_disk.Org
+                entry.ab_Org_Flag = bp_disk.Emerging_Org_Flag
+                entry.ab_Abx_Flag = bp_disk.Emerging_Abx_Flag
+                entry.ab_Abx_Phenotype = bp_disk.Emerging_Pheno_Flag
+                entry.ab_Abx_Phenotype_Other = bp_disk.Emerging_Pheno_Flag_Other
+                entry.ab_Ret_R_breakpoint   = bp_disk.R_val
+                entry.ab_Ret_I_breakpoint   = bp_disk.I_val
+                entry.ab_Ret_SDD_breakpoint = bp_disk.SDD_val
+                entry.ab_Ret_S_breakpoint   = bp_disk.S_val
+                ret_bp_applied = True
+
+
+        # apply mic breakpoints for retest antibiotics if existing
+        if mic_value is not None:
+            bp_mic = (
+                BreakpointsTable.objects
+                .filter(
+                    Antibiotic_list_id=abx_code,
+                    Year=effective_year,
+                    Test_Method="MIC"
+                )
+                .filter(
+                    Q(Org__iexact=resolved_ars_org) |
+                    Q(Org='')
+                )
+                .order_by(
+                    Case(
+                        When(Org__iexact=resolved_ars_org, then=0),
+                        When(Org='', then=1),
+                        default=2,
+                    )
+                )
+                .first()
+            )
+
+            if bp_mic:
+                entry.ab_breakpoints_id.add(bp_mic)  # for mic
+                entry.ab_Ret_Org = bp_mic.Org
+                entry.ab_Org_Flag = bp_mic.Emerging_Org_Flag
+                entry.ab_Abx_Flag = bp_mic.Emerging_Abx_Flag
+                entry.ab_Abx_Phenotype = bp_mic.Emerging_Pheno_Flag
+                entry.ab_Abx_Phenotype_Other = bp_mic.Emerging_Pheno_Flag_Other
+                entry.ab_Ret_R_breakpoint   = bp_mic.R_val
+                entry.ab_Ret_I_breakpoint   = bp_mic.I_val
+                entry.ab_Ret_SDD_breakpoint = bp_mic.SDD_val
+                entry.ab_Ret_S_breakpoint   = bp_mic.S_val
+                entry.ab_Retest_Alert_val = bp_mic.Alert_val if alert_mic else ""
+                ret_bp_applied = True
+            
+        if not ret_bp_applied:
+            entry.ab_Ret_Org = None
+            entry.ab_Org_Flag = None
+            entry.ab_Abx_Flag = None
+            entry.ab_Abx_Phenotype = None
+            entry.ab_Abx_Phenotype_Other = None
+            entry.ab_Ret_R_breakpoint   = None
+            entry.ab_Ret_I_breakpoint   = None
+            entry.ab_Ret_SDD_breakpoint = None
+            entry.ab_Ret_S_breakpoint   = None
+            entry.ab_Retest_Alert_val = ""
+
+
+        entry.save(update_fields=[
+            "ab_AccessionNo",
+            "ab_Ret_Org",
+            "ab_Org_Flag",
+            "ab_Abx_Flag",
+            "ab_Abx_Phenotype",
+            "ab_Abx_Phenotype_Other",
+            "ab_Retest_DiskValue",
+            "ab_Retest_Disk_enRIS",
+            "ab_Retest_MICValue",
+            "ab_Retest_MIC_enRIS",
+            "ab_Retest_MIC_operand",
+            "ab_Retest_AlertMIC",
+            "ab_Ret_R_breakpoint",
+            "ab_Ret_I_breakpoint",
+            "ab_Ret_SDD_breakpoint",
+            "ab_Ret_S_breakpoint",
+            "ab_Retest_Alert_val",
+        ])
+
+    messages.success(request, "Data saved successfully.")
+    return redirect("show_batches")
+
+
+
+
+
+
+
+################ Retrieve all raw data
 @login_required(login_url="/login/")
 def show_data(request):
+    
     query = request.GET.get("q", "")
     sort_by = request.GET.get('sort', 'Date_of_Entry')  # Default sort field
     order = request.GET.get('order', 'desc')  # Default sort order
@@ -720,10 +1208,7 @@ def show_data(request):
     sort_field = f"-{sort_by}" if order == 'desc' else sort_by
 
     isolates = Referred_Data.objects.prefetch_related(
-        Prefetch(
-            'antibiotic_entries',
-            queryset=AntibioticEntry.objects.order_by('ab_Antibiotic')
-        )
+        'antibiotic_entries'
     ).order_by(sort_field)
 
     if query:
@@ -732,11 +1217,10 @@ def show_data(request):
             Q(First_Name__icontains=query) |
             Q(Last_Name__icontains=query) |
             Q(Patient_ID__icontains=query) |
-            Q(Spec_Type__icontains=query) |
+            Q(Spec_Type__Specimen_code__icontains=query) |  # search in specimen code as well
+            Q(Spec_Type__Specimen_name__icontains=query) |  
             Q(Site_Org__icontains=query) |
-            Q(OrganismCode__icontains=query) |
-            Q(Batch_Code__icontains=query) |
-            Q(Spec_Date__icontains=query) 
+            Q(Batch_Code__icontains=query) 
         )
 
     copied_ids = Final_Data.objects.values_list("f_AccessionNo", flat=True)
@@ -749,351 +1233,846 @@ def show_data(request):
         'page_obj': page_obj,
         'current_sort': sort_by,
         'current_order': order,
-        'copied_ids': copied_ids
+        'copied_ids': copied_ids,
+        'query': query,
     }
 
     return render(request, 'home/tables.html', context)
 
 
+
+
+
+
+
+
 ########### edit data view
+
+
+### working and orgiginal version, but might run into a problem in the future -filtering of specimen year....
+
 # @login_required(login_url="/login/")
+# @transaction.atomic
 # def edit_data(request, id):
-#     # --- Fetch antibiotics lists ---
-#     # whonet_abx_data = BreakpointsTable.objects.filter(Show=True)
-#     # whonet_retest_data = BreakpointsTable.objects.filter(Retest=True)
 
-#         # get all show=True antibiotics
-#     whonet_abx_data = BreakpointsTable.objects.filter(Antibiotic_list__Show=True)
-
-#     # get all retest antibiotics
-#     whonet_retest_data = BreakpointsTable.objects.filter(Antibiotic_list__Retest=True)
-
-#     # --- Get the isolate record ---
+#    # fetch the isolate
 #     isolates = get_object_or_404(Referred_Data, pk=id)
 
-#     # Fetch all entries in one query
-#     all_entries = AntibioticEntry.objects.filter(ab_idNum_referred=isolates)
+#     # # determine breakpoint year based on specimen date
+#     specimen_year = isolates.Spec_Date.year if isolates.Spec_Date else None
 
-#     # Separate them based on the 'retest' condition
-#     existing_entries = all_entries.filter(ab_Abx_code__isnull=False)  # Regular entries
-#     retest_entries = all_entries.filter(ab_Retest_Abx_code__isnull=False)   # Retest entries
+#     if specimen_year:
+#         breakpoint_year = (
+#             BreakpointsTable.objects
+#             .filter(Year__lte=specimen_year)
+#             .order_by("-Year")
+#             .values_list("Year", flat=True)
+#             .first()
+#         )
+#     else:
+#         breakpoint_year = None
 
-#     # --- Handle GET request ---
+#     # helper to get breakpoint year
+#     def get_effective_breakpoint_year():
+#         if breakpoint_year:
+#             return breakpoint_year
+#         return (
+#             BreakpointsTable.objects
+#             .order_by("-Year")
+#             .values_list("Year", flat=True)
+#             .first()
+#         )
+
+
+
+#    # get the display form
 #     if request.method == "GET":
+
 #         form = Referred_Form(instance=isolates)
-#         return render(request, "home/Referred_form.html", {
+
+#         antibiotics_main = (
+#             Antibiotic_List.objects
+#             .filter(Show=True)
+#             .order_by("Antibiotic")
+#         )
+
+#         antibiotics_retest = (
+#             Antibiotic_List.objects
+#             .filter(Retest=True)
+#             .order_by("Antibiotic")
+#         )
+
+#         existing_entries = AntibioticEntry.objects.filter(
+#             ab_idNum_referred=isolates
+#         )
+
+#         retest_entries = existing_entries.exclude(
+#             ab_Retest_Abx_code__isnull=True
+#         )
+
+#         return render(request, "home/edit.html", {
 #             "form": form,
-#             "whonet_abx_data": whonet_abx_data,
-#             "whonet_retest_data": whonet_retest_data,
-#             "edit_mode": True,
 #             "isolates": isolates,
+#             "antibiotics_main": antibiotics_main,
+#             "antibiotics_retest": antibiotics_retest,
 #             "existing_entries": existing_entries,
 #             "retest_entries": retest_entries,
-
+#             "edit_mode": True,
 #         })
 
-#     # --- Handle POST request ---
-#     elif request.method == "POST":
-#         form = Referred_Form(request.POST, instance=isolates)
+#     # save form first before processing antibiotics
+#     old_site_org = (isolates.Site_Org or "").strip()
+#     old_ars_org  = (isolates.ars_OrgCode or "").strip()
 
-#         if form.is_valid():
-#             isolates = form.save(commit=False)
-#             isolates.save()
+#     form = Referred_Form(request.POST, instance=isolates)
+#     if not form.is_valid():
+#         messages.error(request, "Error: Saving unsuccessful")
+#         return redirect("edit_data", id=id)
 
-#             # --- Handle main antibiotics ---
-#             for entry in whonet_abx_data:
-#                 abx_code = (entry.Whonet_Abx or "").strip().upper()
-#                 disk_value = request.POST.get(f"disk_{entry.id}") or ""
-#                 disk_enris = (request.POST.get(f"disk_enris_{entry.id}") or "").strip()
-#                 mic_value = request.POST.get(f"mic_{entry.id}") or ""
-#                 mic_enris = (request.POST.get(f"mic_enris_{entry.id}") or "").strip()
-#                 mic_operand = (request.POST.get(f"mic_operand_{entry.id}") or "").strip()
-#                 alert_mic = f"alert_mic_{entry.id}" in request.POST
+#     isolates = form.save()
 
-#                 try:
-#                     disk_value = int(disk_value) if disk_value.strip() else None
-#                 except ValueError:
-#                     disk_value = None
+#     new_site_org = (isolates.Site_Org or "").strip()
+#     new_ars_org  = (isolates.ars_OrgCode or "").strip()
 
-                
-#                 # Debugging: Print the values before saving
-#                 print(f"Saving values for Antibiotic Entry {entry.id}:", {
-#                     'mic_operand': mic_operand,
-#                     'disk_value': disk_value,
-#                     'disk_enris': disk_enris,
-#                     'mic_value': mic_value,
-#                     'mic_enris': mic_enris,
-#                 })
+    
+#     # resolve organism codes
+#     resolved_site_org = (isolates.Site_Org or "").strip()
+#     resolved_ars_org  = (isolates.ars_OrgCode or "").strip()
 
-#                 # Get or update antibiotic entry
-#                 antibiotic_entry, created = AntibioticEntry.objects.update_or_create(
-#                     ab_idNum_referred=isolates,
-#                     ab_Abx_code=abx_code,
-#                     defaults={
-#                         "ab_AccessionNo": isolates.AccessionNo,
-#                         "ab_Antibiotic": entry.Antibiotic,
-#                         "ab_Abx": entry.Abx_code,
-#                         "ab_Disk_value": disk_value,
-#                         "ab_Disk_enRIS": disk_enris,
-#                         "ab_MIC_value": mic_value or None,
-#                         "ab_MIC_enRIS": mic_enris,
-#                         "ab_MIC_operand": mic_operand,
-#                         "ab_R_breakpoint": entry.R_val or None,
-#                         "ab_I_breakpoint": entry.I_val or None,
-#                         "ab_SDD_breakpoint": entry.SDD_val or None,
-#                         "ab_S_breakpoint": entry.S_val or None,
-#                         "ab_AlertMIC": alert_mic,
-#                         "ab_Alert_val": entry.Alert_val if alert_mic else '',
-#                     }
+
+
+
+#     # delete existing antibiotic entries if organism code changed
+#     if old_site_org != new_site_org:
+#         AntibioticEntry.objects.filter(
+#             ab_idNum_referred=isolates,
+#             ab_Abx_code__isnull=False
+#         ).delete()
+
+#     if old_ars_org != new_ars_org:
+#         AntibioticEntry.objects.filter(
+#             ab_idNum_referred=isolates,
+#             ab_Retest_Abx_code__isnull=False
+#         ).delete()
+
+#     effective_year = get_effective_breakpoint_year()
+
+#    # save the MAIN ANTIBIOTICS (RAW DATA)
+#     antibiotics_main = Antibiotic_List.objects.filter(Show=True)
+
+#     for abx in antibiotics_main:
+#         abx_code = (abx.Whonet_Abx or "").strip().upper()
+
+#         disk_value  = request.POST.get(f"disk_{abx_code}")
+#         mic_value   = request.POST.get(f"mic_{abx_code}")
+#         disk_enris  = request.POST.get(f"disk_enris_{abx_code}", "").strip()
+#         mic_enris   = request.POST.get(f"mic_enris_{abx_code}", "").strip()
+#         mic_operand = request.POST.get(f"mic_operand_{abx_code}", "").strip()
+#         alert_mic   = f"alert_mic_{abx_code}" in request.POST
+
+#         try:
+#             disk_value = int(disk_value) if disk_value else None
+#         except ValueError:
+#             disk_value = None
+
+#         try:
+#             mic_value = float(mic_value) if mic_value else None
+#         except ValueError:
+#             mic_value = None
+
+#         if disk_value is None and mic_value is None:
+#             continue
+
+#         entry, _ = AntibioticEntry.objects.update_or_create(
+#             ab_idNum_referred=isolates,
+#             ab_Abx_code=abx_code,
+#             defaults={
+#                 "ab_AccessionNo": isolates.AccessionNo,
+#                 "ab_Antibiotic": abx.Antibiotic,
+#                 "ab_Abx": abx.Abx_code,
+#                 "ab_Disk_value": disk_value,
+#                 "ab_Disk_enRIS": disk_enris,
+#                 "ab_MIC_value": mic_value,
+#                 "ab_MIC_enRIS": mic_enris,
+#                 "ab_MIC_operand": mic_operand,
+#                 "ab_AlertMIC": alert_mic,
+#             }
+#         )
+
+
+#         entry.ab_breakpoints_id.clear()  
+
+#         bp_applied = False
+      
+#       # apply disk breakpoints
+#         if disk_value is not None:
+#             bp_disk = (
+#                 BreakpointsTable.objects
+#                 .filter(
+#                     Antibiotic_list_id=abx_code,
+#                     Year=effective_year,
+#                     Test_Method="DISK"
 #                 )
-
-#                 antibiotic_entry.ab_breakpoints_id.set([entry])
-
-#             # Separate loop for Retest Data
-#             for retest in whonet_retest_data:
-#                 retest_abx_code = retest.Whonet_Abx
-
-#                 # Fetch user input values for MIC and Disk
-#                 if retest.Disk_Abx:
-#                     retest_disk_value = request.POST.get(f'retest_disk_{retest.id}')
-#                     retest_disk_enris = request.POST.get(f"retest_disk_enris_{retest.id}") or ""
-#                     retest_mic_value = ''
-#                     retest_mic_enris = ''
-#                     retest_mic_operand = ''
-#                     retest_alert_mic = False
-#                 else:
-#                     retest_mic_value = request.POST.get(f'retest_mic_{retest.id}')
-#                     retest_mic_enris = request.POST.get(f"retest_mic_enris_{retest.id}") or ""
-#                     retest_mic_operand = request.POST.get(f'retest_mic_operand_{retest.id}')
-#                     retest_alert_mic = f'retest_alert_mic_{retest.id}' in request.POST
-#                     retest_disk_value = ''
-#                     retest_disk_enris = ''
-
-#                 # Check and update retest mic_operand if needed
-#                 retest_disk_enris = (retest_disk_enris or '').strip() # Ensure it's a string and strip whitespace
-#                 retest_mic_enris = (retest_mic_enris or '').strip()
-#                 retest_mic_operand = (retest_mic_operand or '').strip()
-
-#                 # Convert `retest_disk_value` safely
-#                 retest_disk_value = int(retest_disk_value) if retest_disk_value and retest_disk_value.strip().isdigit() else None
-
-#                 # Debugging: Print the values before saving
-#                 print(f"Saving values for Retest Entry {retest.id}:", {
-#                     'retest_mic_operand': retest_mic_operand,
-#                     'retest_disk_value': retest_disk_value,
-#                     'retest_disk_enris': retest_disk_enris,
-#                     'retest_mic_value': retest_mic_value,
-#                     'retest_mic_enris': retest_mic_enris,
-#                     'retest_alert_mic': retest_alert_mic,
-#                     'retest_alert_val': retest.Alert_val if retest_alert_mic else '',
-#                 })
-
-#                 # Get or update retest antibiotic entry
-#                 retest_entry, created = AntibioticEntry.objects.update_or_create(
-#                     ab_idNum_referred=isolates,
-#                     ab_Retest_Abx_code=retest_abx_code,
-#                     defaults={
-#                         "ab_Retest_DiskValue": retest_disk_value,
-#                         "ab_Retest_Disk_enRIS": retest_disk_enris,
-#                         "ab_Retest_MICValue": retest_mic_value or None,
-#                         "ab_Retest_MIC_enRIS": retest_mic_enris,
-#                         "ab_Retest_MIC_operand": retest_mic_operand,
-#                         "ab_Retest_Antibiotic": retest.Antibiotic,
-#                         "ab_Retest_Abx": retest.Abx_code,
-#                         "ab_Ret_R_breakpoint": retest.R_val or None,
-#                         "ab_Ret_S_breakpoint": retest.S_val or None,
-#                         "ab_Ret_SDD_breakpoint": retest.SDD_val or None,
-#                         "ab_Ret_I_breakpoint": retest.I_val or None,
-#                         "ab_Retest_AlertMIC": retest_alert_mic,
-#                         "ab_Retest_Alert_val": retest.Alert_val if retest_alert_mic else "",
-#                     }
+#                 .filter(
+#                     Q(Org__iexact=resolved_site_org) |
+#                     Q(Org='')
 #                 )
+#                 .order_by(
+#                     Case(
+#                         When(Org__iexact=resolved_site_org, then=0),
+#                         When(Org='', then=1),
+#                         default=2,
+#                     )
+#                 )
+#                 .first()
+#             )
 
-#                 retest_entry.ab_breakpoints_id.set([retest])
+#             if bp_disk:
+#                 entry.ab_breakpoints_id.set([bp_disk])  # for disk
+#                 entry.ab_Site_Org = bp_disk.Org
+#                 entry.ab_R_breakpoint   = bp_disk.R_val
+#                 entry.ab_I_breakpoint   = bp_disk.I_val
+#                 entry.ab_SDD_breakpoint = bp_disk.SDD_val
+#                 entry.ab_S_breakpoint   = bp_disk.S_val
+#                 bp_applied = True
+        
 
-#             messages.success(request, "Data saved successfully.")
-#             return redirect("show_data")
-#         else:
-#             messages.error(request, "Error: Saving unsuccessful")
-#             print(form.errors)
+#        # apply mic breakpoints
+#         if mic_value is not None:
+#             bp_mic = (
+#                 BreakpointsTable.objects
+#                 .filter(
+#                     Antibiotic_list_id=abx_code,
+#                     Year=effective_year,
+#                     Test_Method="MIC"
+#                 )
+#                 .filter(
+#                     Q(Org__iexact=resolved_site_org) |
+#                     Q(Org='')
+#                 )
+#                 .order_by(
+#                     Case(
+#                         When(Org__iexact=resolved_site_org, then=0),
+#                         When(Org='', then=1),
+#                         default=2,
+#                     )
+#                 )
+#                 .first()
+#             )
 
-#     # --- fallback GET render in case POST fails ---
-#     form = Referred_Form(instance=isolates)
-#     existing_entries = AntibioticEntry.objects.filter(ab_idNum_referred=isolates)
-#     return render(request, "home/Referred_form.html", {
-#         "form": form,
-#         "whonet_abx_data": whonet_abx_data,
-#         "whonet_retest_data": whonet_retest_data,
-#         "edit_mode": True,
-#         "isolates": isolates,
-#         "existing_entries": existing_entries,
-#         "retest_entries": retest_entries,
+#             if bp_mic:
+#                 entry.ab_breakpoints_id.set([bp_mic])   # for mic (overrides)
+#                 entry.ab_Site_Org = bp_mic.Org
+#                 entry.ab_R_breakpoint   = bp_mic.R_val
+#                 entry.ab_I_breakpoint   = bp_mic.I_val
+#                 entry.ab_SDD_breakpoint = bp_mic.SDD_val
+#                 entry.ab_S_breakpoint   = bp_mic.S_val
 
-#     })
+#                 entry.ab_Alert_val = bp_mic.Alert_val if alert_mic else ""
+#                 bp_applied = True
+        
+#         if not bp_applied:
+#             entry.ab_Site_Org = None
+#             entry.ab_R_breakpoint = None
+#             entry.ab_I_breakpoint = None
+#             entry.ab_SDD_breakpoint = None
+#             entry.ab_S_breakpoint = None
+#             entry.ab_Alert_val = ""
 
 
+#         entry.save(update_fields=[
+#             "ab_AccessionNo",
+#             "ab_Site_Org",
+#             "ab_Disk_value",
+#             "ab_Disk_enRIS",
+#             "ab_MIC_value",
+#             "ab_MIC_enRIS",
+#             "ab_MIC_operand",
+#             "ab_AlertMIC",
+#             "ab_Alert_val",
+#             "ab_R_breakpoint",
+#             "ab_I_breakpoint",
+#             "ab_SDD_breakpoint",
+#             "ab_S_breakpoint",
+#         ])
+
+
+#     # save the RETEST ANTIBIOTICS arsrl data
+#     antibiotics_retest = Antibiotic_List.objects.filter(Retest=True)
+
+#     for abx in antibiotics_retest:
+#         abx_code = (abx.Whonet_Abx or "").strip().upper()
+
+#         disk_value  = request.POST.get(f"retest_disk_{abx_code}")
+#         disk_enris  = request.POST.get(f"retest_disk_enris_{abx_code}", "").strip()
+       
+#         try:
+#             disk_value = int(disk_value) if disk_value else None
+#         except ValueError:
+#             disk_value = None
+
+        
+#         mic_value   = request.POST.get(f"retest_mic_{abx_code}")
+#         mic_enris   = request.POST.get(f"retest_mic_enris_{abx_code}", "").strip()
+#         mic_operand = request.POST.get(f"retest_mic_operand_{abx_code}", "").strip()
+#         alert_mic   = f"retest_alert_mic_{abx_code}" in request.POST
+
+
+        
+#         try:
+#             mic_value = float(mic_value) if mic_value else None
+#         except ValueError:
+#             mic_value = None
+
+
+#         if disk_value is None and mic_value is None:
+#             continue
+
+#         entry, _ = AntibioticEntry.objects.update_or_create(
+#             ab_idNum_referred=isolates,
+#             ab_Retest_Abx_code=abx_code,
+#             defaults={
+#                 "ab_AccessionNo": isolates.AccessionNo,
+#                 "ab_Retest_Antibiotic": abx.Antibiotic,
+#                 "ab_Retest_Abx": abx.Abx_code,
+#                 "ab_Retest_DiskValue": disk_value,
+#                 "ab_Retest_Disk_enRIS": disk_enris,
+#                 "ab_Retest_MICValue": mic_value,
+#                 "ab_Retest_MIC_enRIS": mic_enris,
+#                 "ab_Retest_MIC_operand": mic_operand,
+#                 "ab_Retest_AlertMIC": alert_mic,
+#             }
+#         )
+
+#         entry.ab_breakpoints_id.clear()  
+
+#         ret_bp_applied = False
+#        # apply retest disk breakpoints
+#         if disk_value is not None:
+#             bp_disk = (
+#                 BreakpointsTable.objects
+#                 .filter(
+#                     Antibiotic_list_id=abx_code,
+#                     Year=effective_year,
+#                     Test_Method="DISK"
+#                 )
+#                 .filter(
+#                     Q(Org__iexact=resolved_ars_org) |
+#                     Q(Org='')
+#                 )
+#                 .order_by(
+#                     Case(
+#                         When(Org__iexact=resolved_ars_org, then=0),
+#                         When(Org='', then=1),
+#                         default=2,
+#                     )
+#                 )
+#                 .first()
+#             )
+
+#             if bp_disk:
+#                 entry.ab_breakpoints_id.set([bp_disk])  # for disk
+#                 entry.ab_Ret_Org = bp_disk.Org
+#                 entry.ab_Ret_R_breakpoint   = bp_disk.R_val
+#                 entry.ab_Ret_I_breakpoint   = bp_disk.I_val
+#                 entry.ab_Ret_SDD_breakpoint = bp_disk.SDD_val
+#                 entry.ab_Ret_S_breakpoint   = bp_disk.S_val
+#                 ret_bp_applied = True
+
+
+#         # apply retest mic breakpoints
+#         if mic_value is not None:
+#             bp_mic = (
+#                 BreakpointsTable.objects
+#                 .filter(
+#                     Antibiotic_list_id=abx_code,
+#                     Year=effective_year,
+#                     Test_Method="MIC"
+#                 )
+#                 .filter(
+#                     Q(Org__iexact=resolved_ars_org) |
+#                     Q(Org='')
+#                 )
+#                 .order_by(
+#                     Case(
+#                         When(Org__iexact=resolved_ars_org, then=0),
+#                         When(Org='', then=1),
+#                         default=2,
+#                     )
+#                 )
+#                 .first()
+#             )
+
+#             if bp_mic:
+#                 entry.ab_breakpoints_id.set([bp_mic])   # for mic (overrides)
+#                 entry.ab_Ret_Org = bp_mic.Org
+#                 entry.ab_Ret_R_breakpoint   = bp_mic.R_val
+#                 entry.ab_Ret_I_breakpoint   = bp_mic.I_val
+#                 entry.ab_Ret_SDD_breakpoint = bp_mic.SDD_val
+#                 entry.ab_Ret_S_breakpoint   = bp_mic.S_val
+#                 entry.ab_Retest_Alert_val = bp_mic.Alert_val if alert_mic else ""
+#                 ret_bp_applied = True
+        
+#         if not ret_bp_applied:
+#             entry.ab_Ret_Org = None
+#             entry.ab_Ret_R_breakpoint = None
+#             entry.ab_Ret_I_breakpoint = None
+#             entry.ab_Ret_SDD_breakpoint = None
+#             entry.ab_Ret_S_breakpoint = None
+#             entry.ab_Retest_Alert_val = ""
+
+
+#         entry.save(update_fields=[
+#             "ab_AccessionNo",
+#             "ab_Ret_Org",
+#             "ab_Retest_DiskValue",
+#             "ab_Retest_Disk_enRIS",
+#             "ab_Retest_MICValue",
+#             "ab_Retest_MIC_enRIS",
+#             "ab_Retest_MIC_operand",
+#             "ab_Retest_AlertMIC",
+#             "ab_Ret_R_breakpoint",
+#             "ab_Ret_I_breakpoint",
+#             "ab_Ret_SDD_breakpoint",
+#             "ab_Ret_S_breakpoint",
+#             "ab_Retest_Alert_val",
+#         ])
+
+#     messages.success(request, "Data saved successfully.")
+#     return redirect("show_data")
+
+
+
+### much safer error-proof version 
 
 @login_required(login_url="/login/")
+@transaction.atomic
 def edit_data(request, id):
-    # --- Fetch antibiotic lists ---
-    # whonet_abx_data = BreakpointsTable.objects.filter(Antibiotic_list__Show=True)
-    # whonet_retest_data = BreakpointsTable.objects.filter(Antibiotic_list__Retest=True)
 
-          # ALWAYS drive the form from Antibiotic_List
-    antibiotics_main = Antibiotic_List.objects.filter(Show=True).order_by("Whonet_Abx")
-    antibiotics_retest = Antibiotic_List.objects.filter(Retest=True).order_by("Whonet_Abx")
-
-
-    # --- Get the isolate record ---
+   # fetch the isolate
     isolates = get_object_or_404(Referred_Data, pk=id)
 
 
-    # --- Get existing antibiotic entries ---
-    all_entries = AntibioticEntry.objects.filter(ab_idNum_referred=isolates)
-    existing_entries = all_entries.filter(ab_Abx_code__isnull=False)
-    retest_entries = all_entries.filter(ab_Retest_Abx_code__isnull=False)
-
-    # --- Handle GET ---
+   # get the display form
     if request.method == "GET":
+
         form = Referred_Form(instance=isolates)
-        return render(request, "home/Referred_form.html", {
+
+        antibiotics_main = (
+            Antibiotic_List.objects
+            .filter(Show=True)
+            .order_by("Antibiotic")
+        )
+
+        antibiotics_retest = (
+            Antibiotic_List.objects
+            .filter(Retest=True)
+            .order_by("Antibiotic")
+        )
+
+        existing_entries = AntibioticEntry.objects.filter(
+            ab_idNum_referred=isolates
+        )
+
+        retest_entries = existing_entries.exclude(
+            ab_Retest_Abx_code__isnull=True
+        )
+
+        return render(request, "home/edit.html", {
             "form": form,
+            "isolates": isolates,
             "antibiotics_main": antibiotics_main,
             "antibiotics_retest": antibiotics_retest,
-            "edit_mode": True,
-            "isolates": isolates,
             "existing_entries": existing_entries,
             "retest_entries": retest_entries,
+            "edit_mode": True,
         })
 
-    # --- Handle POST ---
-    elif request.method == "POST":
-        form = Referred_Form(request.POST, instance=isolates)
-        if form.is_valid():
-            isolates = form.save(commit=False)
-            isolates.save()
+    # save form first before processing antibiotics
+    old_site_org = (isolates.Site_Org or "").strip()
+    old_ars_org  = (isolates.ars_OrgCode or "").strip()
 
-            # --- Handle main antibiotics ---
-            for entry in antibiotics_main:
-                abx_code = (entry.Whonet_Abx or "").strip().upper()
+    form = Referred_Form(request.POST, instance=isolates)
+    if not form.is_valid():
+        messages.error(request, "Error: Saving unsuccessful")
+        return redirect("edit_data", id=id)
 
-                # match field names in your form (Whonet_Abx-based)
-                disk_value = request.POST.get(f"disk_{abx_code}") or ""
-                disk_enris = (request.POST.get(f"disk_enris_{abx_code}") or "").strip()
-                mic_value = request.POST.get(f"mic_{abx_code}") or ""
-                mic_enris = (request.POST.get(f"mic_enris_{abx_code}") or "").strip()
-                mic_operand = (request.POST.get(f"mic_operand_{abx_code}") or "").strip()
-                alert_mic = f"alert_mic_{abx_code}" in request.POST
+    isolates = form.save()
 
-                try:
-                    disk_value = int(disk_value) if disk_value.strip() else None
-                except ValueError:
-                    disk_value = None
 
-                # Save / update main antibiotic
-                antibiotic_entry, created = AntibioticEntry.objects.update_or_create(
-                    ab_idNum_referred=isolates,
-                    ab_Abx_code=abx_code,
-                    defaults={
-                        "ab_AccessionNo": isolates.AccessionNo,
-                        "ab_Antibiotic": entry.Antibiotic,
-                        "ab_Abx": entry.Abx_code,
-                        "ab_Disk_value": disk_value,
-                        "ab_Disk_enRIS": disk_enris,
-                        "ab_MIC_value": mic_value or None,
-                        "ab_MIC_enRIS": mic_enris,
-                        "ab_MIC_operand": mic_operand,
-                        "ab_R_breakpoint": entry.R_val or None,
-                        "ab_I_breakpoint": entry.I_val or None,
-                        "ab_SDD_breakpoint": entry.SDD_val or None,
-                        "ab_S_breakpoint": entry.S_val or None,
-                        "ab_AlertMIC": alert_mic,
-                        "ab_Alert_val": entry.Alert_val if alert_mic else '',
-                        "ab_Disk_Abx": entry.Disk_Abx
-                    }
+    specimen_year = isolates.Spec_Date.year if isolates.Spec_Date else None
+
+    if specimen_year:
+        effective_year = (
+            BreakpointsTable.objects
+            .filter(Year__lte=str(specimen_year))
+            .order_by("-Year")
+            .values_list("Year", flat=True)
+            .first()
+        )
+    else:
+        effective_year = (
+            BreakpointsTable.objects
+            .order_by("-Year")
+            .values_list("Year", flat=True)
+            .first()
+        )
+
+
+
+    new_site_org = (isolates.Site_Org or "").strip()
+    new_ars_org  = (isolates.ars_OrgCode or "").strip()
+
+    
+    # resolve organism codes
+    resolved_site_org = (isolates.Site_Org or "").strip()
+    resolved_ars_org  = (isolates.ars_OrgCode or "").strip()
+
+
+
+
+    # delete existing antibiotic entries if organism code changed
+    if old_site_org != new_site_org:
+        AntibioticEntry.objects.filter(
+            ab_idNum_referred=isolates,
+            ab_Abx_code__isnull=False
+        ).delete()
+
+    if old_ars_org != new_ars_org:
+        AntibioticEntry.objects.filter(
+            ab_idNum_referred=isolates,
+            ab_Retest_Abx_code__isnull=False
+        ).delete()
+
+
+   # save the MAIN ANTIBIOTICS (RAW DATA)
+    antibiotics_main = Antibiotic_List.objects.filter(Show=True)
+
+    for abx in antibiotics_main:
+        abx_code = (abx.Whonet_Abx or "").strip().upper()
+
+        disk_value  = request.POST.get(f"disk_{abx_code}")
+        mic_value   = request.POST.get(f"mic_{abx_code}")
+        disk_enris  = request.POST.get(f"disk_enris_{abx_code}", "").strip()
+        mic_enris   = request.POST.get(f"mic_enris_{abx_code}", "").strip()
+        mic_operand = request.POST.get(f"mic_operand_{abx_code}", "").strip()
+        alert_mic   = f"alert_mic_{abx_code}" in request.POST
+
+        try:
+            disk_value = int(disk_value) if disk_value else None
+        except ValueError:
+            disk_value = None
+
+        try:
+            mic_value = float(mic_value) if mic_value else None
+        except ValueError:
+            mic_value = None
+
+        if disk_value is None and mic_value is None:
+            continue
+
+        entry, _ = AntibioticEntry.objects.update_or_create(
+            ab_idNum_referred=isolates,
+            ab_Abx_code=abx_code,
+            defaults={
+                "ab_AccessionNo": isolates.AccessionNo,
+                "ab_Antibiotic": abx.Antibiotic,
+                "ab_Abx": abx.Abx_code,
+                "ab_Disk_value": disk_value,
+                "ab_Disk_enRIS": disk_enris,
+                "ab_MIC_value": mic_value,
+                "ab_MIC_enRIS": mic_enris,
+                "ab_MIC_operand": mic_operand,
+                "ab_AlertMIC": alert_mic,
+            }
+        )
+
+
+        entry.ab_breakpoints_id.clear()  
+
+        bp_applied = False
+
+      # Apply breakpoints
+        if disk_value is not None:
+            bp_disk = (
+                BreakpointsTable.objects
+                .filter(
+                    Antibiotic_list_id=abx_code,
+                    Year=effective_year,
+                    Test_Method="DISK"
                 )
-                antibiotic_entry.ab_breakpoints_id.set([entry])
-
-            # --- Handle retest antibiotics ---
-            for retest in antibiotics_retest:
-                retest_abx_code = (retest.Whonet_Abx or "").strip().upper()
-
-                if retest.Disk_Abx:
-                    retest_disk_value = request.POST.get(f"retest_disk_{retest_abx_code}")
-                    retest_disk_enris = request.POST.get(f"retest_disk_enris_{retest_abx_code}") or ""
-                    retest_mic_value = ""
-                    retest_mic_enris = ""
-                    retest_mic_operand = ""
-                    retest_alert_mic = False
-                else:
-                    retest_mic_value = request.POST.get(f"retest_mic_{retest_abx_code}")
-                    retest_mic_enris = request.POST.get(f"retest_mic_enris_{retest_abx_code}") or ""
-                    retest_mic_operand = request.POST.get(f"retest_mic_operand_{retest_abx_code}") or ""
-                    retest_alert_mic = f"retest_alert_mic_{retest_abx_code}" in request.POST
-                    retest_disk_value = ""
-                    retest_disk_enris = ""
-
-                # type cleaning
-                retest_disk_value = int(retest_disk_value) if str(retest_disk_value).isdigit() else None
-                retest_disk_enris = retest_disk_enris.strip()
-                retest_mic_enris = retest_mic_enris.strip()
-                retest_mic_operand = retest_mic_operand.strip()
-
-                # Save / update retest entry
-                retest_entry, created = AntibioticEntry.objects.update_or_create(
-                    ab_idNum_referred=isolates,
-                    ab_Retest_Abx_code=retest_abx_code,
-                    defaults={
-                        "ab_Retest_DiskValue": retest_disk_value,
-                        "ab_Retest_Disk_enRIS": retest_disk_enris,
-                        "ab_Retest_MICValue": retest_mic_value or None,
-                        "ab_Retest_MIC_enRIS": retest_mic_enris,
-                        "ab_Retest_MIC_operand": retest_mic_operand,
-                        "ab_Retest_Antibiotic": retest.Antibiotic,
-                        "ab_Retest_Abx": retest.Abx_code,
-                        "ab_Ret_R_breakpoint": retest.R_val or None,
-                        "ab_Ret_I_breakpoint": retest.I_val or None,
-                        "ab_Ret_SDD_breakpoint": retest.SDD_val or None,
-                        "ab_Ret_S_breakpoint": retest.S_val or None,
-                        "ab_Retest_AlertMIC": retest_alert_mic,
-                        "ab_Retest_Alert_val": retest.Alert_val if retest_alert_mic else "",
-                        "ab_Ret_Disk_Abx": retest.Disk_Abx,
-                    }
+                .filter(
+                    Q(Org__iexact=resolved_site_org) |
+                    Q(Org='')
                 )
-                retest_entry.ab_breakpoints_id.set([retest])
+                .order_by(
+                    Case(
+                        When(Org__iexact=resolved_site_org, then=0),
+                        When(Org='', then=1),
+                        default=2,
+                    )
+                )
+                .first()
+            )
 
-            messages.success(request, "Data saved successfully.")
-            return redirect("show_data")
+            if bp_disk:
+                entry.ab_breakpoints_id.set([bp_disk])  # for disk
+                entry.ab_Site_Org = bp_disk.Org
+                entry.ab_R_breakpoint   = bp_disk.R_val
+                entry.ab_I_breakpoint   = bp_disk.I_val
+                entry.ab_SDD_breakpoint = bp_disk.SDD_val
+                entry.ab_S_breakpoint   = bp_disk.S_val
+                bp_applied = True
+        
 
-        else:
-            messages.error(request, "Error: Saving unsuccessful")
-            print(form.errors)
+        # apply mic breakpoints
+        if mic_value is not None:
+            bp_mic = (
+                BreakpointsTable.objects
+                .filter(
+                    Antibiotic_list_id=abx_code,
+                    Year=effective_year,
+                    Test_Method="MIC"
+                )
+                .filter(
+                    Q(Org__iexact=resolved_site_org) |
+                    Q(Org='')
+                )
+                .order_by(
+                    Case(
+                        When(Org__iexact=resolved_site_org, then=0),
+                        When(Org='', then=1),
+                        default=2,
+                    )
+                )
+                .first()
+            )
 
-    # --- fallback render ---
-    form = Referred_Form(instance=isolates)
-    return render(request, "home/Referred_form.html", {
-        "form": form,
-        "antibiotics_main": antibiotics_main,
-        "antibiotics_retest": antibiotics_retest,
-        "edit_mode": True,
-        "isolates": isolates,
-        "existing_entries": existing_entries,
-        "retest_entries": retest_entries,
-    })
+            if bp_mic:
+                entry.ab_breakpoints_id.set([bp_mic])   # for mic (overrides)
+                entry.ab_Site_Org = bp_mic.Org
+                entry.ab_R_breakpoint   = bp_mic.R_val
+                entry.ab_I_breakpoint   = bp_mic.I_val
+                entry.ab_SDD_breakpoint = bp_mic.SDD_val
+                entry.ab_S_breakpoint   = bp_mic.S_val
+
+                entry.ab_Alert_val = bp_mic.Alert_val if alert_mic else ""
+                bp_applied = True
+        
+        if not bp_applied:
+            entry.ab_Site_Org = None
+            entry.ab_R_breakpoint = None
+            entry.ab_I_breakpoint = None
+            entry.ab_SDD_breakpoint = None
+            entry.ab_S_breakpoint = None
+            entry.ab_Alert_val = ""
+
+
+        entry.save(update_fields=[
+            "ab_AccessionNo",
+            "ab_Site_Org",
+            "ab_Disk_value",
+            "ab_Disk_enRIS",
+            "ab_MIC_value",
+            "ab_MIC_enRIS",
+            "ab_MIC_operand",
+            "ab_AlertMIC",
+            "ab_Alert_val",
+            "ab_R_breakpoint",
+            "ab_I_breakpoint",
+            "ab_SDD_breakpoint",
+            "ab_S_breakpoint",
+        ])
+
+
+    # save the RETEST ANTIBIOTICS arsrl data
+    antibiotics_retest = Antibiotic_List.objects.filter(Retest=True)
+
+    for abx in antibiotics_retest:
+        abx_code = (abx.Whonet_Abx or "").strip().upper()
+
+        disk_value  = request.POST.get(f"retest_disk_{abx_code}")
+        disk_enris  = request.POST.get(f"retest_disk_enris_{abx_code}", "").strip()
+       
+        try:
+            disk_value = int(disk_value) if disk_value else None
+        except ValueError:
+            disk_value = None
+
+        
+        mic_value   = request.POST.get(f"retest_mic_{abx_code}")
+        mic_enris   = request.POST.get(f"retest_mic_enris_{abx_code}", "").strip()
+        mic_operand = request.POST.get(f"retest_mic_operand_{abx_code}", "").strip()
+        alert_mic   = f"retest_alert_mic_{abx_code}" in request.POST
+
+
+        
+        try:
+            mic_value = float(mic_value) if mic_value else None
+        except ValueError:
+            mic_value = None
+
+
+        if disk_value is None and mic_value is None:
+            continue
+
+        entry, _ = AntibioticEntry.objects.update_or_create(
+            ab_idNum_referred=isolates,
+            ab_Retest_Abx_code=abx_code,
+            defaults={
+                "ab_AccessionNo": isolates.AccessionNo,
+                "ab_Retest_Antibiotic": abx.Antibiotic,
+                "ab_Retest_Abx": abx.Abx_code,
+                "ab_Retest_DiskValue": disk_value,
+                "ab_Retest_Disk_enRIS": disk_enris,
+                "ab_Retest_MICValue": mic_value,
+                "ab_Retest_MIC_enRIS": mic_enris,
+                "ab_Retest_MIC_operand": mic_operand,
+                "ab_Retest_AlertMIC": alert_mic,
+            }
+        )
+
+        entry.ab_breakpoints_id.clear()  
+
+        ret_bp_applied = False
+       # apply retest disk value breakpoints
+        if disk_value is not None:
+            bp_disk = (
+                BreakpointsTable.objects
+                .filter(
+                    Antibiotic_list_id=abx_code,
+                    Year=effective_year,
+                    Test_Method="DISK"
+                )
+                .filter(
+                    Q(Org__iexact=resolved_ars_org) |
+                    Q(Org='')
+                )
+                .order_by(
+                    Case(
+                        When(Org__iexact=resolved_ars_org, then=0),
+                        When(Org='', then=1),
+                        default=2,
+                    )
+                )
+                .first()
+            )
+
+            if bp_disk:
+                entry.ab_breakpoints_id.set([bp_disk])  # for disk
+                entry.ab_Ret_Org = bp_disk.Org
+                entry.ab_Org_Flag = bp_disk.Emerging_Org_Flag
+                entry.ab_Abx_Flag = bp_disk.Emerging_Abx_Flag
+                entry.ab_Abx_Phenotype = bp_disk.Emerging_Pheno_Flag
+                entry.ab_Abx_Phenotype_Other = bp_disk.Emerging_Pheno_Flag_Other
+                entry.ab_Ret_R_breakpoint   = bp_disk.R_val
+                entry.ab_Ret_I_breakpoint   = bp_disk.I_val
+                entry.ab_Ret_SDD_breakpoint = bp_disk.SDD_val
+                entry.ab_Ret_S_breakpoint   = bp_disk.S_val
+                ret_bp_applied = True
+
+
+        # apply retest mic breakpoints
+        if mic_value is not None:
+            bp_mic = (
+                BreakpointsTable.objects
+                .filter(
+                    Antibiotic_list_id=abx_code,
+                    Year=effective_year,
+                    Test_Method="MIC"
+                )
+                .filter(
+                    Q(Org__iexact=resolved_ars_org) |
+                    Q(Org='')
+                )
+                .order_by(
+                    Case(
+                        When(Org__iexact=resolved_ars_org, then=0),
+                        When(Org='', then=1),
+                        default=2,
+                    )
+                )
+                .first()
+            )
+
+            if bp_mic:
+                entry.ab_breakpoints_id.set([bp_mic])   # for mic (overrides)
+                entry.ab_Ret_Org = bp_mic.Org
+                entry.ab_Org_Flag = bp_mic.Emerging_Org_Flag
+                entry.ab_Abx_Flag = bp_mic.Emerging_Abx_Flag
+                entry.ab_Abx_Phenotype = bp_mic.Emerging_Pheno_Flag
+                entry.ab_Abx_Phenotype_Other = bp_mic.Emerging_Pheno_Flag_Other
+                entry.ab_Ret_R_breakpoint   = bp_mic.R_val
+                entry.ab_Ret_I_breakpoint   = bp_mic.I_val
+                entry.ab_Ret_SDD_breakpoint = bp_mic.SDD_val
+                entry.ab_Ret_S_breakpoint   = bp_mic.S_val
+                entry.ab_Retest_Alert_val = bp_mic.Alert_val if alert_mic else ""
+                ret_bp_applied = True
+        
+        if not ret_bp_applied:
+            entry.ab_Ret_Org = None
+            entry.ab_Org_Flag = None
+            entry.ab_Abx_Flag = None
+            entry.ab_Abx_Phenotype = None
+            entry.ab_Abx_Phenotype_Other = None
+            entry.ab_Ret_R_breakpoint = None
+            entry.ab_Ret_I_breakpoint = None
+            entry.ab_Ret_SDD_breakpoint = None
+            entry.ab_Ret_S_breakpoint = None
+            entry.ab_Retest_Alert_val = ""
+
+
+        entry.save(update_fields=[
+            "ab_AccessionNo",
+            "ab_Ret_Org",
+            "ab_Org_Flag",
+            "ab_Abx_Flag",
+            "ab_Abx_Phenotype",
+            "ab_Abx_Phenotype_Other",
+            "ab_Retest_DiskValue",
+            "ab_Retest_Disk_enRIS",
+            "ab_Retest_MICValue",
+            "ab_Retest_MIC_enRIS",
+            "ab_Retest_MIC_operand",
+            "ab_Retest_AlertMIC",
+            "ab_Ret_R_breakpoint",
+            "ab_Ret_I_breakpoint",
+            "ab_Ret_SDD_breakpoint",
+            "ab_Ret_S_breakpoint",
+            "ab_Retest_Alert_val",
+        ])
+
+    messages.success(request, "Data saved successfully.")
+    return redirect("show_data")
 
 
 
 
-#Deleting Data
+# DELETE DATA VIEW ONE isolate and the associated final data
 @login_required(login_url="/login/")
+@transaction.atomic
 def delete_data(request, id):
     isolate = get_object_or_404(Referred_Data, pk=id)
+
+    # delete corresponding final data FIRST (if it exists)
+    Final_Data.objects.filter(
+        f_AccessionNo=isolate.AccessionNo
+    ).delete()
+
+    # now delete raw data
     isolate.delete()
-    return redirect('show_data')
+
+    messages.success(
+        request,
+        f"Isolate {isolate.AccessionNo} and its final data were deleted."
+    )
+
+    return redirect("show_data")
 
 
+########## PDF GENERATION VIEWS
 
-
+# link callback for xhtml2pdf to handle static and media files DO NOT DELETE!!
 def link_callback(uri, rel):
     """
     Convert HTML URIs to absolute system paths so xhtml2pdf can access images and static files.
@@ -1117,271 +2096,510 @@ def link_callback(uri, rel):
 
 
 
-
+# Generate single PDF report
 @login_required(login_url="/login/")
 def generate_pdf(request, id):
 
-    # ======================================================
-    # ISOLATE
-    # ======================================================
     isolate = get_object_or_404(Referred_Data, pk=id)
 
-    # ======================================================
-    # MASTER ANTIBIOTIC LISTS
-    # ======================================================
-
-    # Sentinel Site / Main panel
-    antibiotic_list = list(
+    # ANTIBIOTIC MASTER LIST
+    abx_master = (
         Antibiotic_List.objects
-        .filter(Show=True)
+        .filter(Show_Print=True, Show_Value=True)
         .order_by("Abx_code")
-        .values_list("Abx_code", flat=True)
+        .values("Whonet_Abx", "Abx_code")
     )
 
-    # Retest / ARSRL panel
-    antibiotic_retest = list(
+    abx_map = {
+        row["Whonet_Abx"]: row["Abx_code"]
+        for row in abx_master
+    }
+
+    retest_master = (
         Antibiotic_List.objects
-        .filter(Show=True, Retest=True)
+        .filter(Show_Print=True, Show_Value=True, Retest=True)
         .order_by("Abx_code")
-        .values_list("Abx_code", flat=True)
+        .values("Whonet_Abx", "Abx_code")
     )
 
-    # ======================================================
-    # ANTIBIOTIC ENTRIES (same isolate)
-    # ======================================================
-    antibiotic_entries = AntibioticEntry.objects.filter(
-        ab_idNum_referred=isolate
-    )
+    retest_map = {
+        row["Whonet_Abx"]: row["Abx_code"]
+        for row in retest_master
+    }
 
-    # ======================================================
-    # GROUP SENTINEL SITE RESULTS
-    # ======================================================
+    # FETCH ALL ANTIBIOTIC ENTRIES FOR THIS ISOLATE
+    entries = AntibioticEntry.objects.filter(ab_idNum_referred=isolate)
+
+    # FETCHED GROUPED ENTRIES
     grouped_entries = {
-        code: {"disk": None, "mic": None}
-        for code in antibiotic_list
+        abx_map[w]: {"disk": None, "mic": None}
+        for w in abx_map
     }
 
-    for entry in antibiotic_entries:
-        code = entry.ab_Abx
-        if code not in grouped_entries:
+    for e in entries:
+        whonet = e.ab_Abx_code
+        if whonet not in abx_map:
             continue
 
-        if entry.ab_Disk_Abx:
-            grouped_entries[code]["disk"] = entry
-        else:
-            grouped_entries[code]["mic"] = entry
+        abx_code = abx_map[whonet]
 
-    # ======================================================
-    # GROUP RETEST / ARSRL RESULTS
-    # ======================================================
+        if e.ab_Disk_Abx:
+            grouped_entries[abx_code]["disk"] = e
+        else:
+            grouped_entries[abx_code]["mic"] = e
+
+    # FETCHED GROUPED RETEST ENTRIES
     grouped_retest = {
-        code: {"disk": None, "mic": None}
-        for code in antibiotic_retest
+        retest_map[w]: {"disk": None, "mic": None}
+        for w in retest_map
     }
 
-    for ret in antibiotic_entries:
-        code = ret.ab_Abx
-        if code not in grouped_retest:
+    for e in entries:
+        whonet = e.ab_Retest_Abx_code
+        if whonet not in retest_map:
             continue
 
-        if ret.ab_Disk_Abx:
-            grouped_retest[code]["disk"] = ret
+        abx_code = retest_map[whonet]
+
+        if e.ab_Disk_Abx:
+            grouped_retest[abx_code]["disk"] = e
         else:
-            grouped_retest[code]["mic"] = ret
+            grouped_retest[abx_code]["mic"] = e
 
-    # ======================================================
-    # LAYOUT LIMITS (KEPT AS REQUESTED)
-    # ======================================================
-    MAX_COLS_SS = 32
-    MAX_ROWS_SS = 2
+    # CHUNKING FOR TABLE DISPLAY
+    MAX_COLS = 29
+    MAX_ROWS = 2
 
-    MAX_COLS_AR = 32
-    MAX_ROWS_AR = 2
+    def chunked(items, size):
+        for i in range(0, len(items), size):
+            yield items[i:i + size]
 
-    # ======================================================
-    # CHUNK HELPER
-    # ======================================================
-    def chunked(iterable, size):
-        for i in range(0, len(iterable), size):
-            yield iterable[i:i + size]
-
-    # ======================================================
-    # APPLY CHUNKING + ROW LIMITS
-    # ======================================================
-    grouped_list = sorted(grouped_entries.items(), key=lambda x: x[0])
     grouped_rows = list(
-        chunked(grouped_list, MAX_COLS_SS)
-    )[:MAX_ROWS_SS]
+        chunked(sorted(grouped_entries.items()), MAX_COLS)
+    )[:MAX_ROWS]
 
-    grouped_ars = sorted(grouped_retest.items(), key=lambda x: x[0])
     grouped_ars_rows = list(
-        chunked(grouped_ars, MAX_COLS_AR)
-    )[:MAX_ROWS_AR]
+        chunked(sorted(grouped_retest.items()), MAX_COLS)
+    )[:MAX_ROWS]
 
-    # ======================================================
-    # CONTEXT
-    # ======================================================
+    # CONTEXT FOR TEMPLATE
     context = {
         "isolate": isolate,
-        "grouped_rows": grouped_rows,              # Sentinel Site
-        "grouped_ars_rows": grouped_ars_rows,      # Retest / ARSRL
+        "grouped_rows": grouped_rows,
+        "grouped_ars_rows": grouped_ars_rows,
         "now": timezone.now(),
         "logo_path": static("assets/img/brand/arsplogo.jpg"),
     }
 
-    # ======================================================
-    # PDF GENERATION
-    # ======================================================
+    # CREATE PDF RESPONSE
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = 'filename="Lab_Result_Report.pdf"'
 
     template = get_template("home/Lab_result.html")
     html = template.render(context)
 
-    pisa_status = pisa.CreatePDF(
-        html,
-        dest=response,
-        link_callback=link_callback
-    )
-
-    if pisa_status.err:
-        return HttpResponse("Error generating PDF")
+    pisa.CreatePDF(html, dest=response, link_callback=link_callback)
 
     return response
 
 
 
+# Generate batch PDF (2 isolates per page)
 
-# Generate batch PDF two isolates per page
-@login_required(login_url="/login/")
-def generate_batch_pdf(request):
-    batch_code = request.GET.get("batch_code")
 
-    if not batch_code:
-        return HttpResponse("Batch code is required.", status=400)
+# @login_required(login_url="/login/")
+# def generate_batch_pdf(request, id):
 
-    # Fetch isolates in this batch
+#    # Fetch batch
+#     batch = get_object_or_404(Batch_Table, pk=id)
+
+#     isolates = (
+#         Referred_Data.objects
+#         .filter(Batch_id=batch)
+#         .order_by("bat_seq")
+#     )
+
+
+#   # chunk isolates into pages (2 per page)
+#     def chunked(qs, size):
+#         for i in range(0, qs.count(), size):
+#             yield qs[i:i + size]
+
+#     isolate_pages = list(chunked(isolates, 2))
+
+#    # antibiotic master list
+#     abx_master = (
+#         Antibiotic_List.objects
+#         .filter(Show_Print=True, Show_Value=True)
+#         .order_by("Abx_code")
+#         .values("Whonet_Abx", "Abx_code")
+#     )
+
+#     abx_map = {
+#         row["Whonet_Abx"]: row["Abx_code"]
+#         for row in abx_master
+#     }
+
+#     retest_master = (
+#         Antibiotic_List.objects
+#         .filter(Show_Print=True, Show_Value=True, Retest=True)
+#         .order_by("Abx_code")
+#         .values("Whonet_Abx", "Abx_code")
+#     )
+
+#     retest_map = {
+#         row["Whonet_Abx"]: row["Abx_code"]
+#         for row in retest_master
+#     }
+
+#    # chunking constants
+#     MAX_COLS = 29
+#     MAX_ROWS = 2
+
+#     def chunk_list(items, size):
+#         for i in range(0, len(items), size):
+#             yield items[i:i + size]
+
+#    # build pages data
+#     pages_data = []
+
+#     for page_isolates in isolate_pages:
+#         page_entries = []
+
+#         for isolate in page_isolates:
+
+#             entries = AntibioticEntry.objects.filter(
+#                 ab_idNum_referred=isolate
+#             )
+
+#             # grouped MAIN
+#             grouped_entries = {
+#                 abx_map[w]: {"disk": None, "mic": None}
+#                 for w in abx_map
+#             }
+
+#             # grouped RETEST
+#             grouped_retest = {
+#                 retest_map[w]: {"disk": None, "mic": None}
+#                 for w in retest_map
+#             }
+
+#             for e in entries:
+#                 # MAIN - site
+#                 if e.ab_Abx_code in abx_map:
+#                     abx_code = abx_map[e.ab_Abx_code]
+#                     if e.ab_Disk_Abx:
+#                         grouped_entries[abx_code]["disk"] = e
+#                     else:
+#                         grouped_entries[abx_code]["mic"] = e
+
+#                 # RETEST - arsrl
+#                 if e.ab_Retest_Abx_code in retest_map:
+#                     abx_code = retest_map[e.ab_Retest_Abx_code]
+#                     if e.ab_Disk_Abx:
+#                         grouped_retest[abx_code]["disk"] = e
+#                     else:
+#                         grouped_retest[abx_code]["mic"] = e
+
+#             # show chunked rows
+#             grouped_rows = list(
+#                 chunk_list(sorted(grouped_entries.items()), MAX_COLS)
+#             )[:MAX_ROWS]
+
+#             grouped_ars_rows = list(
+#                 chunk_list(sorted(grouped_retest.items()), MAX_COLS)
+#             )[:MAX_ROWS]
+
+#             page_entries.append({
+#                 "isolate": isolate,
+#                 "grouped_rows": grouped_rows,
+#                 "grouped_ars_rows": grouped_ars_rows,
+#             })
+
+#         pages_data.append(page_entries)
+
+
+#     context = {
+#         "batch": batch,
+#         "pages": pages_data,
+#         "now": timezone.now(),
+#         "logo_path": static("assets/img/brand/arsplogo.jpg"),
+#     }
+
+# # pdf response
+#     response = HttpResponse(content_type="application/pdf")
+#     response["Content-Disposition"] = 'filename="Batch_Report.pdf"'
+
+#     template = get_template("home/Lab_result_batch.html")
+#     html = template.render(context)
+
+#     pisa.CreatePDF(html, dest=response, link_callback=link_callback)
+
+#     return response
+
+
+
+
+########### Version 2 - for All antibiotics printing
+
+
+@transaction.atomic
+def generate_batch_pdf(request, id):
+
+    # fetch batch isolates
+    batch = get_object_or_404(Batch_Table, pk=id)
+
     isolates = (
         Referred_Data.objects
-        .filter(Batch_Code=batch_code)
-        .order_by("AccessionNo")
-        .prefetch_related("antibiotic_entries")
+        .filter(Batch_id=batch)
+        .order_by("bat_seq")
     )
 
-    if not isolates.exists():
-        return HttpResponse("No isolates found for this batch.", status=404)
+    # paginate: 2 isolates per page
+    def chunked(qs, size):
+        for i in range(0, qs.count(), size):
+            yield qs[i:i + size]
 
-    # Group isolates into pairs (2 per page)
-    isolate_pairs = []
-    temp = []
+    isolate_pages = list(chunked(isolates, 2))
 
-    for isolate in isolates:
-        temp.append(isolate)
-        if len(temp) == 2:
-            isolate_pairs.append(temp)
-            temp = []
+    # these are the constants
+    MAX_COLS = 29
+    MAX_ROWS = 2
 
-    if temp:  # leftover isolate (odd count)
-        isolate_pairs.append(temp)
+    def chunk_list(items, size):
+        for i in range(0, len(items), size):
+            yield items[i:i + size]
 
-    logo_path = static("assets/img/brand/arsplogo.jpg")
+    pages_data = []
 
+    # whonet code map
+    abx_map = dict(
+        Antibiotic_List.objects
+        .values_list("Whonet_Abx", "Abx_code")
+    )
+
+    # build pdf
+    for page_isolates in isolate_pages:
+        page_entries = []
+
+        for isolate in page_isolates:
+
+            site_org = isolate.Site_Org
+            ars_org = isolate.ars_OrgCode
+
+            # fetch the entries
+            entries = AntibioticEntry.objects.filter(
+                ab_idNum_referred=isolate
+            )
+
+            # panels
+            site_panel_abx = set(
+                BreakpointsTable.objects
+                .filter(Org=site_org)
+                .values_list("Abx_code", flat=True)
+                .distinct()
+            )
+
+            ars_panel_abx = set(
+                BreakpointsTable.objects
+                .filter(Org=ars_org)
+                .values_list("Abx_code", flat=True)
+                .distinct()
+            )
+
+            # extract printable antibiotics
+            printable_abx_site = set(
+                Antibiotic_List.objects
+                .filter(Show_Site=True)
+                .values_list("Abx_code", flat=True)
+            )
+
+            printable_abx_ars = set(
+                Antibiotic_List.objects
+                .filter(Show_Ars=True)
+                .values_list("Abx_code", flat=True)
+            )
+
+            # find the encoded antiboitcs
+            encoded_site_abx = set()
+            encoded_ars_abx = set()
+
+
+
+            for e in entries:
+                if e.ab_Abx_code:
+                    abx = abx_map.get(e.ab_Abx_code.strip().upper())
+                    if abx:
+                        encoded_site_abx.add(abx)
+
+                if e.ab_Retest_Abx_code:
+                    abx = abx_map.get(e.ab_Retest_Abx_code.strip().upper())
+                    if abx:
+                        encoded_ars_abx.add(abx)
+
+            # create the panels 
+            site_abx_codes = sorted(
+                (site_panel_abx | encoded_site_abx) & printable_abx_site
+            )
+
+            ars_abx_codes = sorted(
+                (ars_panel_abx | encoded_ars_abx) & printable_abx_ars
+            )
+
+            # group the antibiotics based on panels
+            grouped_site = {
+                abx: {"disk": None, "mic": None}
+                for abx in site_abx_codes
+            }
+
+            grouped_ars = {
+                abx: {"disk": None, "mic": None}
+                for abx in ars_abx_codes
+            }
+
+           # assign the values into groups
+            for e in entries:
+
+                # -sentinel site-
+                if e.ab_Abx_code:
+                    abx = abx_map.get(e.ab_Abx_code.strip().upper())
+                    if abx and abx in grouped_site:
+                        # Prefer DISK if a disk value exists
+                        if e.ab_Disk_value is not None:
+                            grouped_site[abx]["disk"] = e
+
+                        # Otherwise assign MIC only if MIC value exists
+                        elif e.ab_MIC_value is not None:
+                            grouped_site[abx]["mic"] = e
+
+
+                # -arsrl / retest-
+                if e.ab_Retest_Abx_code:
+                    abx = abx_map.get(e.ab_Retest_Abx_code.strip().upper())
+                    if abx and abx in grouped_ars:
+                        if e.ab_Retest_DiskValue is not None:
+                            grouped_ars[abx]["disk"] = e
+                        elif e.ab_Retest_MICValue is not None:
+                            grouped_ars[abx]["mic"] = e
+
+
+            # a chunk for display
+            grouped_rows = list(
+                chunk_list(list(grouped_site.items()), MAX_COLS)
+            )[:MAX_ROWS]
+
+            grouped_ars_rows = list(
+                chunk_list(list(grouped_ars.items()), MAX_COLS)
+            )[:MAX_ROWS]
+
+            page_entries.append({
+                "isolate": isolate,
+                "grouped_rows": grouped_rows,
+                "grouped_ars_rows": grouped_ars_rows,
+            })
+
+        pages_data.append(page_entries)
+
+    # render the pdf
     context = {
-        "batch_code": batch_code,
-        "isolate_pairs": isolate_pairs,
+        "batch": batch,
+        "pages": pages_data,
         "now": timezone.now(),
-        "logo_path": logo_path,
+        "logo_path": static("assets/img/brand/arsplogo.jpg"),
     }
 
     response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = (
-        f'filename="Batch_{batch_code}_Results.pdf"'
-    )
+    response["Content-Disposition"] = 'filename="Batch_Panel_Report.pdf"'
 
-    template = get_template("home/Lab_result_batch.html")
+    template = get_template("home/Lab_result_panel_portrait.html")
     html = template.render(context)
 
-    pisa_status = pisa.CreatePDF(
+    pisa.CreatePDF(
         html,
         dest=response,
         link_callback=link_callback
     )
 
-    if pisa_status.err:
-        return HttpResponse("Error generating PDF", status=500)
-
     return response
 
 
-@login_required(login_url="/login/")
-# generate gram stain
-def generate_gs(request, id):
-    # Get the record from the database using the provided ID
-    try:
-        isolate = Referred_Data.objects.get(pk=id)
-    except Referred_Data.DoesNotExist:
-        return HttpResponse("Error: Data not found.", status=404)
+
+# # generate gram stain report  !!! WILL DELETE THIS LATER
+# @login_required(login_url="/login/")
+
+# def generate_gs(request, id):
+#     # Get the record from the database using the provided ID
+#     try:
+#         isolate = Referred_Data.objects.get(pk=id)
+#     except Referred_Data.DoesNotExist:
+#         return HttpResponse("Error: Data not found.", status=404)
     
-    # Context data to pass to the template
-    context = {
-        'isolate': isolate,
-        'now': timezone.now(),  # Current timestamp
-    }
+#     # Context data to pass to the template
+#     context = {
+#         'isolate': isolate,
+#         'now': timezone.now(),  # Current timestamp
+#     }
 
-    # Create a Django response object with PDF content type
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'inline; filename="Gram_Stain_Report.pdf"'
+#     # Create a Django response object with PDF content type
+#     response = HttpResponse(content_type='application/pdf')
+#     response['Content-Disposition'] = 'inline; filename="Gram_Stain_Report.pdf"'
 
-    # Load and render the template
-    template_path = 'home/GS_result.html'  # Adjust if needed
-    template = get_template(template_path)
-    html = template.render(context)
+#     # Load and render the template
+#     template_path = 'home/GS_result.html'  # Adjust if needed
+#     template = get_template(template_path)
+#     html = template.render(context)
 
-    # Generate PDF using Pisa
-    pisa_status = pisa.CreatePDF(html, dest=response, link_callback=link_callback)
+#     # Generate PDF using Pisa
+#     pisa_status = pisa.CreatePDF(html, dest=response, link_callback=link_callback)
 
-    # Check for errors
-    if pisa_status.err:
-        return HttpResponse(f'Error generating PDF: {html}')
+#     # Check for errors
+#     if pisa_status.err:
+#         return HttpResponse(f'Error generating PDF: {html}')
 
-    return response
-
-
+#     return response
 
 
-@login_required(login_url="/login/")
-# for Quick search
-def search(request):
-   query = request.GET.get('q')
-   items = Referred_Data.objects.filter(AccessionNo__icontains=query)
-   return render (request, 'home/search_results.html',{'items': items, 'query':query})
 
-
-###################### done  edited start #################
+######### QUICK SEARCH VIEW
 
 # @login_required(login_url="/login/")
-# # FOR DROPDOWN ITEMS (Site Code)  
-# def add_dropdown(request):
-#     if request.method == "POST":
-#         site_form = SiteCode_Form(request.POST)  
-#         if site_form.is_valid():      
-#             site_form.save()  
-#             messages.success(request, 'Added Successfully')
-#             return redirect('add_dropdown')  # Redirect after successful POST
-            
-            
-#         else:
-#             messages.error(request, 'Error / Adding Unsuccessful')
-#             print(site_form.errors)
-#     else:
-#         site_form = SiteCode_Form()  # Show an empty form for GET request
-
-#     # Fetch clinic data from the database for dropdown options
-#     site_items = SiteData.objects.all()
-    
-#     return render(request, 'settings/tabs/sitecode_tab.html', {'site_form': site_form, 'site_items': site_items, 'site_upload_form': SiteCode_uploadForm()})
+# # for Quick search
+# def search(request):
+#    query = request.GET.get('q')
+#    items = Referred_Data.objects.filter(AccessionNo__icontains=query)
+#    return render (request, 'home/search_results.html',{'items': items, 'query':query})
 
 
+# Quick Search for both
+@login_required(login_url="/login/")
+def search(request):
+    query = request.GET.get("q", "").strip()
+
+    referred_items = []
+    final_items = []
+
+    if query:
+        referred_items = Referred_Data.objects.filter(
+            AccessionNo__icontains=query
+        ).order_by("-id")
+
+        final_items = Final_Data.objects.filter(
+            f_AccessionNo__icontains=query
+        ).order_by("-id")
+
+    return render(
+        request,
+        "home/search_results.html",
+        {
+            "query": query,
+            "referred_items": referred_items,
+            "final_items": final_items,
+        }
+    )
+
+
+
+############## site code dropdown views
 @login_required(login_url="/login/")
 def add_dropdown(request):
     if request.method != "POST":
@@ -1449,79 +2667,6 @@ def site_view(request):
     return render(request, 'home/SiteCodeView.html', {'page_obj': page_obj})
 
 
-# @login_required(login_url="/login/")
-# def upload_sitecode(request):
-#     if request.method == "POST":
-#         site_upload_form = SiteCode_uploadForm(request.POST, request.FILES)
-
-#         if site_upload_form.is_valid():
-#             site_uploaded_file = site_upload_form.save()
-#             file = site_uploaded_file.File_uploadSite
-
-#             try:
-#                 # Ensure file pointer is at start
-#                 file.open()
-
-#                 # Load file
-#                 if file.name.lower().endswith(".csv"):
-#                     df = pd.read_csv(file, dtype=str)
-#                 elif file.name.lower().endswith((".xlsx", ".xls")):
-#                     df = pd.read_excel(file, dtype=str)
-#                 else:
-#                     messages.error(request, "Unsupported file format.")
-#                     return redirect("add_dropdown")
-
-#                 # Normalize columns
-#                 df.columns = (
-#                     df.columns
-#                     .str.strip()
-#                     .str.replace(" ", "_")
-#                     .str.lower()
-#                 )
-
-#                 df.fillna("", inplace=True)
-
-#                 success = 0
-
-#                 for _, row in df.iterrows():
-#                     site_code = str(row.get("sitecode", "")).strip().upper()
-#                     site_name = str(row.get("sitename", "")).strip()
-
-#                     if not site_code or not site_name:
-#                         continue
-
-#                     SiteData.objects.update_or_create(
-#                         SiteCode=site_code,
-#                         defaults={"SiteName": site_name}
-#                     )
-#                     success += 1
-
-#                 messages.success(
-#                     request,
-#                     f"Upload successful. {success} site codes processed."
-#                 )
-#                 return redirect("site_view")
-
-#             except Exception as e:
-#                 messages.error(request, f"Error processing file: {e}")
-#                 return redirect("add_dropdown")
-
-#         else:
-#             messages.error(request, "Invalid form submission.")
-
-#     else:
-#         site_upload_form = SiteCode_uploadForm()
-
-#     return render(
-#         request,
-#         "settings/tabs/sitecode_tab.html",
-#         {
-#             "site_upload_form": SiteCode_uploadForm,
-#             "site_form": SiteCode_Form,
-#         },
-#     )
-
-
 @login_required(login_url="/login/")
 def upload_sitecode(request):
     if request.method != "POST":
@@ -1585,43 +2730,10 @@ def upload_sitecode(request):
 
 
 
-@login_required(login_url="/login/")
-# auto generate clinic_code based on javascript
-def get_clinic_code(request):
-    site_code = request.GET.get('site_code')
-    site_name = SiteData.objects.filter(SiteCode=site_code).values_list('SiteName', flat=True).first()
-    return JsonResponse({'site_name': site_name})
-
-
-# @login_required(login_url="/login/")
-# def add_breakpoints(request, pk=None):
-#     breakpoint = None  # Initialize breakpoint to avoid UnboundLocalError
-#     bp_upload_form = Breakpoint_uploadForm()
-
-#     if pk:  # Editing an existing breakpoint
-#         breakpoint = get_object_or_404(BreakpointsTable, pk=pk)
-#         breakpoint_form = BreakpointsForm(request.POST or None, instance=breakpoint)
-#         editing = True
-#     else:  # Adding a new breakpoint
-#         breakpoint_form = BreakpointsForm(request.POST or None)
-#         editing = False
-
-#     if request.method == "POST":
-#         if breakpoint_form.is_valid():
-#             breakpoint_form.save()
-#             messages.success(request, "Update Successful")
-#             return redirect('breakpoints_view')  # Redirect to avoid form resubmission
-
-#     return render(request, 'home/Breakpoints.html', {
-#         'form': breakpoint_form,
-#         'editing': editing,  # Pass editing flag to template
-#         'breakpoint': breakpoint,  # Pass breakpoint even if None
-#         'bp_upload_form': bp_upload_form,
-#     })
 
 
 
-
+########## breakpoints views
 @login_required(login_url="/login/")
 def add_breakpoints(request):
     if request.method == "POST":
@@ -1681,7 +2793,7 @@ def breakpoints_view(request):
             Q(Guidelines__icontains=q) |
             Q(Year__icontains=q) |
             Q(Org__icontains=q) |
-            Q(Org_Grp__icontains=q) |
+            Q(Spec_code__icontains=q) |
             Q(Test_Method__icontains=q) |
             Q(Potency__icontains=q) |
             Q(Tier__icontains=q) |
@@ -1717,90 +2829,257 @@ def breakpoints_del(request, id):
 
 
 
+
+
+# works but blindly deletes records with existing whonet_abx code
 # @login_required(login_url="/login/")
-# # for uploading and replacing existing breakpoints data
+# @transaction.atomic
 # def upload_breakpoints(request):
+#     """
+#     Upload and replace BreakpointsTable data from Excel/CSV.
+#     Links to existing Antibiotic_List entries via Whonet_Abx.
+#     Does NOT create or update Antibiotic_List records.
+#     """
 #     if request.method == "POST":
-#         upload_form = Breakpoint_uploadForm(request.POST, request.FILES)
-#         if upload_form.is_valid():
-#             # Save the uploaded file instance
-#             uploaded_file = upload_form.save()
-#             file = uploaded_file.File_uploadBP  # Get the actual file field
-#             print("Uploaded file:", file)  # Debugging statement
+#         bp_upload_form = Breakpoint_uploadForm(request.POST, request.FILES)
+#         if bp_upload_form.is_valid():
+#             uploaded_file = bp_upload_form.save()
+#             file = uploaded_file.File_uploadBP
+#             print("Uploaded file:", file)
+
 #             try:
-#                 # Load file into a DataFrame using file's temporary path
-#                 if file.name.endswith('.csv'):
-#                     df = pd.read_csv(file)  # For CSV files
-                    
-#                 elif file.name.endswith('.xlsx'):
-#                     df = pd.read_excel(file)  # For Excel files
-
+#                 # --- Read uploaded file into DataFrame ---
+#                 if file.name.endswith(".csv"):
+#                     df = pd.read_csv(file)
+#                 elif file.name.endswith((".xls", ".xlsx")):
+#                     df = pd.read_excel(file)
 #                 else:
-#                     messages.error(request, messages.INFO, 'Unsupported file format. Please upload a CSV or Excel file.')
-#                     return redirect('upload_breakpoints')
+#                     messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
+#                     return redirect("upload_breakpoints")
 
-#                 # Check the DataFrame for debugging
-#                 print(df)
-                
-#                 # Check the DataFrame for debugging
-#                 print("DataFrame contents:\n", df.head())  # Print the first few rows
+#                 print("DataFrame contents:\n", df.head())
 
-#                 # Check column and Replace NaN values with empty strings to avoid validation errors
-#                 df.fillna(value={col: "" for col in df.columns}, inplace=True)
+#                 # Clean data
+#                 df.fillna("", inplace=True)
+#                 df.columns = df.columns.str.strip()
 
-
-#                  # Use this to Clear existing records with matching Whonet_Abx values
-#                 whonet_abx_values = df['Whonet_Abx'].unique()
+#                 # Replace existing breakpoints with same WHONET codes
+#                 whonet_abx_values = df["Whonet_Abx"].astype(str).str.strip().unique()
 #                 BreakpointsTable.objects.filter(Whonet_Abx__in=whonet_abx_values).delete()
 
-
-#                 # Insert rows into BreakpointsTable
+#                 # --- Iterate and link ---
+#                 skipped = 0
+#                 linked = 0
 #                 for _, row in df.iterrows():
-#                     # Parse Date_Modified if it's present and valid
-#                     date_modified = None
-#                     if row.get('Date_Modified'):
-#                         date_modified = pd.to_datetime(row['Date_Modified'], errors='coerce')
-#                         if pd.isna(date_modified):
-#                             date_modified = None
+#                     whonet_code = str(row.get("Whonet_Abx", "")).strip().upper()
+#                     if not whonet_code:
+#                         continue
 
-#                     # Create a new instance of BreakpointsTable
+#                     # Try to find matching Antibiotic_List record
+#                     antibiotic_ref = Antibiotic_List.objects.filter(Whonet_Abx=whonet_code).first()
+#                     if not antibiotic_ref:
+#                         skipped += 1
+#                         print(f"⚠️ Skipped: No Antibiotic_List entry for {whonet_code}")
+#                         continue
+
+#                     # Parse date safely
+#                     date_modified = pd.to_datetime(row.get("Date_Modified", ""), errors="coerce")
+#                     if pd.isna(date_modified):
+#                         date_modified = None
+
+#                     # Create BreakpointsTable record linked to Antibiotic_List
 #                     BreakpointsTable.objects.create(
-#                         Show=bool(row.get('Show', False)),
-#                         Retest=bool(row.get('Retest', False)),
-#                         Disk_Abx=bool(row.get('Disk_Abx', False)),
-#                         Year=row.get('Year', ''),
-#                         Org=row.get('Org', ''),
-#                         Guidelines=row.get('Guidelines', ''),
-#                         Tier=row.get('Tier', ''),
-#                         Test_Method=row.get('Test_Method', ''),
-#                         Potency=row.get('Potency', ''),
-#                         Abx_code=row.get('Abx_code', ''),
-#                         Antibiotic=row.get('Antibiotic', ''),
-#                         Alert_val=row.get('Alert_val',''),
-#                         Whonet_Abx=row.get('Whonet_Abx', ''),
-#                         R_val=row.get('R_val', ''),
-#                         I_val=row.get('I_val', ''),
-#                         SDD_val=row.get('SDD_val', ''),
-#                         S_val=row.get('S_val', ''),
+#                         # Show=bool(row.get("Show", False)),
+#                         # Retest=bool(row.get("Retest", False)),
+#                         Disk_Abx=bool(row.get("Disk_Abx", False)),
+#                         Emerging_Org_Flag=bool(row.get("Emerging_Org_Flag", False)), 
+#                         Emerging_Abx_Flag=bool(row.get("Emerging_Abx_Flag", False)), 
+#                         Emerging_Pheno_Flag=row.get("Emerging_Pheno_Flag", ""),
+#                         Year=row.get("Year", ""),
+#                         Org_Grp=row.get("Org_Grp", ""),
+#                         Org=row.get("Org", ""),
+#                         Guidelines=row.get("Guidelines", ""),
+#                         Tier=row.get("Tier", ""),
+#                         Test_Method=row.get("Test_Method", ""),
+#                         Potency=row.get("Potency", ""),
+#                         Abx_code=row.get("Abx_code", ""),
+#                         Antibiotic=row.get("Antibiotic", ""),
+#                         Alert_val=row.get("Alert_val", ""),
+#                         Whonet_Abx=whonet_code,
+#                         R_val=row.get("R_val", ""),
+#                         I_val=row.get("I_val", ""),
+#                         SDD_val=row.get("SDD_val", ""),
+#                         S_val=row.get("S_val", ""),
 #                         Date_Modified=date_modified,
+#                         Antibiotic_list=antibiotic_ref,  # ✅ Link to existing antibiotic
 #                     )
-                
-#                 messages.success(request, messages.INFO, 'File uploaded and data added successfully to the database!')
-#                 return redirect('breakpoints_view')
+#                     linked += 1
+
+#                 messages.success(
+#                     request,
+#                     f"✅ Uploaded successfully: {linked} linked, {skipped} skipped (no match in Antibiotic List)."
+#                 )
+#                 return redirect("breakpoints_view")
 
 #             except Exception as e:
-#                 print("Error during processing:", e)  # Debug statement
+#                 print(" Error during processing:", e)
 #                 messages.error(request, f"Error processing file: {e}")
-#                 return redirect('add_breakpoints')
-#         else:
-#             messages.error(request, messages.INFO, "Form is not valid.")
+#                 return redirect("add_breakpoints")
 
+#         else:
+#             messages.error(request, "Form is not valid.")
 #     else:
 #         upload_form = Breakpoint_uploadForm()
 
-#     return render(request, 'home/Breakpoints.html', {'upload_form': upload_form})
+#     return render(request, "home/Breakpoints.html", {"upload_form": upload_form})
 
 
+
+
+# @login_required(login_url="/login/")
+# @transaction.atomic
+# def upload_breakpoints(request):
+#     """
+#     Upload and replace BreakpointsTable data from Excel/CSV.
+#     Links to existing Antibiotic_List entries via Whonet_Abx.
+#     Does NOT create or update Antibiotic_List records.
+#     """
+#     if request.method == "POST":
+#         bp_upload_form = Breakpoint_uploadForm(request.POST, request.FILES)
+#         if bp_upload_form.is_valid():
+#             uploaded_file = bp_upload_form.save()
+#             file = uploaded_file.File_uploadBP
+#             print("Uploaded file:", file)
+
+#             try:
+#                 # --- Read uploaded file into DataFrame ---
+#                 if file.name.endswith(".csv"):
+#                     df = pd.read_csv(file)
+#                 elif file.name.endswith((".xls", ".xlsx")):
+#                     df = pd.read_excel(file)
+#                 else:
+#                     messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
+#                     return redirect("upload_breakpoints")
+
+#                 print("DataFrame contents:\n", df.head())
+
+#                 # Clean data
+#                 df.fillna("", inplace=True)
+#                 df.columns = df.columns.str.strip()
+
+#                 # --------------------------------------------------
+#                 # SAFE REPLACEMENT LOGIC (full-coverage check)
+#                 # --------------------------------------------------
+
+#                 # Normalize dataframe columns used for comparison
+#                 df["Whonet_Abx"] = df["Whonet_Abx"].astype(str).str.strip().str.upper()
+#                 df["Year"] = df["Year"].astype(str).str.strip()
+#                 df["Test_Method"] = df["Test_Method"].astype(str).str.strip()
+#                 df["Org"] = df["Org"].fillna("").astype(str).str.strip()
+
+#                 # Build uploaded breakpoint identity keys
+#                 uploaded_keys = set(
+#                     zip(
+#                         df["Whonet_Abx"],
+#                         df["Year"],
+#                         df["Test_Method"],
+#                         df["Org"],
+#                     )
+#                 )
+
+#                 # Fetch existing breakpoint identity keys from DB
+#                 existing_bps = BreakpointsTable.objects.filter(
+#                     Whonet_Abx__in=df["Whonet_Abx"].unique()
+#                 ).values_list(
+#                     "Whonet_Abx",
+#                     "Year",
+#                     "Test_Method",
+#                     "Org",
+#                 )
+
+#                 existing_keys = set(
+#                     (w.strip().upper(), y.strip(), t.strip(), (o or "").strip())
+#                     for w, y, t, o in existing_bps
+#                 )
+
+#                 # Only delete if upload fully replaces existing rows
+#                 if existing_keys and not existing_keys.issubset(uploaded_keys):
+#                     raise ValueError(
+#                         "Upload does not fully replace existing breakpoint definitions. "
+#                         "Partial overwrite is not allowed."
+#                     )
+
+#                 # Safe to delete
+#                 BreakpointsTable.objects.filter(
+#                     Whonet_Abx__in=df["Whonet_Abx"].unique()
+#                 ).delete()
+
+
+#                 # --- Iterate and link ---
+#                 skipped = 0
+#                 linked = 0
+#                 for _, row in df.iterrows():
+#                     whonet_code = str(row.get("Whonet_Abx", "")).strip().upper()
+#                     if not whonet_code:
+#                         continue
+
+#                     # Try to find matching Antibiotic_List record
+#                     antibiotic_ref = Antibiotic_List.objects.filter(Whonet_Abx=whonet_code).first()
+#                     if not antibiotic_ref:
+#                         skipped += 1
+#                         print(f"⚠️ Skipped: No Antibiotic_List entry for {whonet_code}")
+#                         continue
+
+#                     # Parse date safely
+#                     date_modified = pd.to_datetime(row.get("Date_Modified", ""), errors="coerce")
+#                     if pd.isna(date_modified):
+#                         date_modified = None
+
+#                     # Create BreakpointsTable record linked to Antibiotic_List
+#                     BreakpointsTable.objects.create(
+#                         # Show=bool(row.get("Show", False)),
+#                         # Retest=bool(row.get("Retest", False)),
+#                         Disk_Abx=bool(row.get("Disk_Abx", False)),
+#                         Emerging_Org_Flag=bool(row.get("Emerging_Org_Flag", False)), 
+#                         Emerging_Abx_Flag=bool(row.get("Emerging_Abx_Flag", False)), 
+#                         Emerging_Pheno_Flag=row.get("Emerging_Pheno_Flag", ""),
+#                         Year=row.get("Year", ""),
+#                         Org=row.get("Org", ""),
+#                         Spec_code=row.get("Spec_code", ""),
+#                         Guidelines=row.get("Guidelines", ""),
+#                         Tier=row.get("Tier", ""),
+#                         Test_Method=row.get("Test_Method", ""),
+#                         Potency=row.get("Potency", ""),
+#                         Abx_code=row.get("Abx_code", ""),
+#                         Antibiotic=row.get("Antibiotic", ""),
+#                         Alert_val=row.get("Alert_val", ""),
+#                         Whonet_Abx=whonet_code,
+#                         R_val=row.get("R_val", ""),
+#                         I_val=row.get("I_val", ""),
+#                         SDD_val=row.get("SDD_val", ""),
+#                         S_val=row.get("S_val", ""),
+#                         Date_Modified=date_modified,
+#                         Antibiotic_list=antibiotic_ref,  # ✅ Link to existing antibiotic
+#                     )
+#                     linked += 1
+
+#                 messages.success(
+#                     request,
+#                     f"✅ Uploaded successfully: {linked} linked, {skipped} skipped (no match in Antibiotic List)."
+#                 )
+#                 return redirect("breakpoints_view")
+
+#             except Exception as e:
+#                 print(" Error during processing:", e)
+#                 messages.error(request, f"Error processing file: {e}")
+#                 return redirect("add_breakpoints")
+
+#         else:
+#             messages.error(request, "Form is not valid.")
+#     else:
+#         upload_form = Breakpoint_uploadForm()
+
+#     return render(request, "home/Breakpoints.html", {"upload_form": upload_form})
 
 
 @login_required(login_url="/login/")
@@ -1811,95 +3090,156 @@ def upload_breakpoints(request):
     Links to existing Antibiotic_List entries via Whonet_Abx.
     Does NOT create or update Antibiotic_List records.
     """
-    if request.method == "POST":
-        bp_upload_form = Breakpoint_uploadForm(request.POST, request.FILES)
-        if bp_upload_form.is_valid():
-            uploaded_file = bp_upload_form.save()
-            file = uploaded_file.File_uploadBP
-            print("Uploaded file:", file)
 
-            try:
-                # --- Read uploaded file into DataFrame ---
-                if file.name.endswith(".csv"):
-                    df = pd.read_csv(file)
-                elif file.name.endswith((".xls", ".xlsx")):
-                    df = pd.read_excel(file)
-                else:
-                    messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
-                    return redirect("upload_breakpoints")
+    if request.method != "POST":
+        return render(
+            request,
+            "home/Breakpoints.html",
+            {"upload_form": Breakpoint_uploadForm()}
+        )
 
-                print("DataFrame contents:\n", df.head())
+    bp_upload_form = Breakpoint_uploadForm(request.POST, request.FILES)
+    if not bp_upload_form.is_valid():
+        messages.error(request, "Form is not valid.")
+        return redirect("add_breakpoints")
 
-                # Clean data
-                df.fillna("", inplace=True)
-                df.columns = df.columns.str.strip()
+    uploaded_file = bp_upload_form.save()
+    file = uploaded_file.File_uploadBP
+    print("Uploaded file:", file)
 
-                # Replace existing breakpoints with same WHONET codes
-                whonet_abx_values = df["Whonet_Abx"].astype(str).str.strip().unique()
-                BreakpointsTable.objects.filter(Whonet_Abx__in=whonet_abx_values).delete()
-
-                # --- Iterate and link ---
-                skipped = 0
-                linked = 0
-                for _, row in df.iterrows():
-                    whonet_code = str(row.get("Whonet_Abx", "")).strip().upper()
-                    if not whonet_code:
-                        continue
-
-                    # Try to find matching Antibiotic_List record
-                    antibiotic_ref = Antibiotic_List.objects.filter(Whonet_Abx=whonet_code).first()
-                    if not antibiotic_ref:
-                        skipped += 1
-                        print(f"⚠️ Skipped: No Antibiotic_List entry for {whonet_code}")
-                        continue
-
-                    # Parse date safely
-                    date_modified = pd.to_datetime(row.get("Date_Modified", ""), errors="coerce")
-                    if pd.isna(date_modified):
-                        date_modified = None
-
-                    # Create BreakpointsTable record linked to Antibiotic_List
-                    BreakpointsTable.objects.create(
-                        # Show=bool(row.get("Show", False)),
-                        # Retest=bool(row.get("Retest", False)),
-                        Disk_Abx=bool(row.get("Disk_Abx", False)),
-                        Year=row.get("Year", ""),
-                        Org_Grp=row.get("Org_Grp", ""),
-                        Org=row.get("Org", ""),
-                        Guidelines=row.get("Guidelines", ""),
-                        Tier=row.get("Tier", ""),
-                        Test_Method=row.get("Test_Method", ""),
-                        Potency=row.get("Potency", ""),
-                        Abx_code=row.get("Abx_code", ""),
-                        Antibiotic=row.get("Antibiotic", ""),
-                        Alert_val=row.get("Alert_val", ""),
-                        Whonet_Abx=whonet_code,
-                        R_val=row.get("R_val", ""),
-                        I_val=row.get("I_val", ""),
-                        SDD_val=row.get("SDD_val", ""),
-                        S_val=row.get("S_val", ""),
-                        Date_Modified=date_modified,
-                        Antibiotic_list=antibiotic_ref,  # ✅ Link to existing antibiotic
-                    )
-                    linked += 1
-
-                messages.success(
-                    request,
-                    f"✅ Uploaded successfully: {linked} linked, {skipped} skipped (no match in Antibiotic List)."
-                )
-                return redirect("breakpoints_view")
-
-            except Exception as e:
-                print("❌ Error during processing:", e)
-                messages.error(request, f"Error processing file: {e}")
-                return redirect("add_breakpoints")
-
+    try:
+        # --------------------------------------------------
+        # READ FILE
+        # --------------------------------------------------
+        if file.name.endswith(".csv"):
+            df = pd.read_csv(file)
+        elif file.name.endswith((".xls", ".xlsx")):
+            df = pd.read_excel(file)
         else:
-            messages.error(request, "Form is not valid.")
-    else:
-        upload_form = Breakpoint_uploadForm()
+            raise ValueError("Unsupported file format")
 
-    return render(request, "home/Breakpoints.html", {"upload_form": upload_form})
+        print("DataFrame preview:\n", df.head())
+
+        # --------------------------------------------------
+        # CLEAN DATA
+        # --------------------------------------------------
+        df.fillna("", inplace=True)
+        df.columns = df.columns.str.strip()
+
+        df["Whonet_Abx"] = df["Whonet_Abx"].astype(str).str.strip().str.upper()
+        df["Year"] = df["Year"].astype(str).str.strip()
+        df["Org"] = df["Org"].astype(str).str.strip()
+        df["Test_Method"] = df["Test_Method"].astype(str).str.strip()
+        df["Spec_code"] = df.get("Spec_code", "").astype(str).str.strip()
+
+        # --------------------------------------------------
+        # SAFE OVERWRITE CHECK
+        # --------------------------------------------------
+        uploaded_keys = set(
+            zip(
+                df["Whonet_Abx"],
+                df["Year"],
+                df["Test_Method"],
+                df["Org"],
+            )
+        )
+
+        existing_keys = set(
+            BreakpointsTable.objects
+            .filter(Whonet_Abx__in=df["Whonet_Abx"].unique())
+            .values_list("Whonet_Abx", "Year", "Test_Method", "Org")
+        )
+
+        if existing_keys and not existing_keys.issubset(uploaded_keys):
+            raise ValueError(
+                "Upload does not fully replace existing breakpoint definitions. "
+                "Partial overwrite is not allowed."
+            )
+
+        # --------------------------------------------------
+        # DELETE OLD BREAKPOINTS
+        # --------------------------------------------------
+        BreakpointsTable.objects.filter(
+            Whonet_Abx__in=df["Whonet_Abx"].unique()
+        ).delete()
+
+        # --------------------------------------------------
+        # CREATE NEW BREAKPOINTS
+        # --------------------------------------------------
+        skipped = 0
+        linked = 0
+
+        for _, row in df.iterrows():
+            whonet_code = row["Whonet_Abx"]
+            if not whonet_code:
+                continue
+
+            antibiotic_ref = (
+                Antibiotic_List.objects
+                .filter(Whonet_Abx=whonet_code)
+                .first()
+            )
+
+            if not antibiotic_ref:
+                skipped += 1
+                print(f"⚠️ Skipped: No Antibiotic_List entry for {whonet_code}")
+                continue
+
+            date_modified = pd.to_datetime(
+                row.get("Date_Modified", ""),
+                errors="coerce"
+            )
+            if pd.isna(date_modified):
+                date_modified = None
+
+            print(
+                f"✔ Linking breakpoint → "
+                f"{whonet_code} → Antibiotic_List.id={antibiotic_ref.id}"
+            )
+
+            BreakpointsTable.objects.create(
+                Antibiotic_list=antibiotic_ref,
+
+                Whonet_Abx=whonet_code,
+                Antibiotic=row.get("Antibiotic", ""),
+                Abx_code=row.get("Abx_code", ""),
+
+                Guidelines=row.get("Guidelines", ""),
+                Year=row.get("Year", ""),
+                Org=row.get("Org", ""),
+                Spec_code=row.get("Spec_code", ""),
+
+                Test_Method=row.get("Test_Method", ""),
+                Tier=row.get("Tier", ""),
+                Potency=row.get("Potency", ""),
+
+                Disk_Abx=bool(row.get("Disk_Abx", False)),
+                Emerging_Org_Flag=bool(row.get("Emerging_Org_Flag", False)),
+                Emerging_Abx_Flag=bool(row.get("Emerging_Abx_Flag", False)),
+                Emerging_Pheno_Flag=row.get("Emerging_Pheno_Flag", ""),
+
+                R_val=row.get("R_val", ""),
+                I_val=row.get("I_val", ""),
+                SDD_val=row.get("SDD_val", ""),
+                S_val=row.get("S_val", ""),
+                Alert_val=row.get("Alert_val", ""),
+
+                Date_Modified=date_modified,
+            )
+
+            linked += 1
+
+        messages.success(
+            request,
+            f"✅ Uploaded successfully: {linked} linked, "
+            f"{skipped} skipped (no Antibiotic_List match)."
+        )
+        return redirect("breakpoints_view")
+
+    except Exception as e:
+        print("❌ Error during processing:", e)
+        messages.error(request, f"Error processing file: {e}")
+        return redirect("add_breakpoints")
 
 
 
@@ -1914,6 +3254,9 @@ def export_breakpoints(request):
             # "Show": obj.Show,
             # "Retest": obj.Retest,
             "Disk_Abx": obj.Disk_Abx,
+            "Emerging_Org_Flag": obj.Emerging_Org_Flag,
+            "Emerging_Abx_Flag": obj.Emerging_Abx_Flag,
+            "Emerging_Pheno_Flag": obj.Emerging_Pheno_Flag,
             "Year": obj.Year,
             "Org_Grp" :obj.Org_Grp,
             "Org": obj.Org,
@@ -1962,7 +3305,7 @@ def abxentry_view(request):
 
         # Get all values and interpretations for ordinary antibiotics
         value = entry.ab_Disk_value or entry.ab_MIC_value
-        RIS = entry.ab_Disk_RIS or entry.ab_MIC_RIS
+        RIS = entry.ab_Disk_enRIS or entry.ab_MIC_enRIS
         Operand = entry.ab_MIC_operand or None
 
         if accession_no not in abx_data:
@@ -1981,32 +3324,36 @@ def abxentry_view(request):
     return render(request, 'home/AntibioticentryView.html', context)
 
 
-
+############ Specimen
 
 @login_required(login_url="/login/")
 # View to display all specimen types
 def specimen_list(request):
-    specimen_items = SpecimenTypeModel.objects.all()
-    return render(request, 'home/SpecimenView.html', {'specimen_items': specimen_items})
+    q = request.GET.get("q", "").strip()
+    sort_by = request.GET.get('sort', 'Specimen_code')  # Default sort field
+    order = request.GET.get('order', 'desc')  # Default sort order
+
+    sort_field = f"-{sort_by}" if order == 'desc' else sort_by
+    specimen_items = SpecimenTypeModel.objects.all().order_by(sort_field)
+
+    if q:
+        specimen_items = specimen_items.filter(
+            Q(Specimen_code__icontains=q) |
+            Q(Specimen_name__icontains=q) 
+        )
+    paginator = Paginator(specimen_items, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
 
 
-# @login_required(login_url="/login/")
-# # View to add or edit a specimen type
-# def add_specimen(request):
-#     if request.method == 'POST':
-#         specimen_form = SpecimenTypeForm(request.POST)
-#         if specimen_form.is_valid():
-#             specimen_form.save()
-#             return redirect('add_specimen')  # Redirect after saving
-#     else:
-#         form = SpecimenTypeForm()  # Empty form for new specimen
-    
-#     return render(request, 'settings/tabs/specimen_tab.html', {'specimen_form': specimen_form})
+    return render(request, 'home/SpecimenView.html', {'specimen_items': specimen_items, 'page_obj': page_obj, 'q': q, 'sort_by': sort_by, 'order': order})
+
 
 
 
 @login_required(login_url="/login/")
 def add_specimen(request):
+    
     if request.method != "POST":
         return redirect("/settings/?tab=specimen")
 
@@ -2026,18 +3373,28 @@ def add_specimen(request):
 
 @login_required(login_url="/login/")
 # Edit an existing specimen
+@login_required(login_url="/login/")
 def edit_specimen(request, pk):
     specimen = get_object_or_404(SpecimenTypeModel, pk=pk)
 
-    if request.method == 'POST':
-        form = SpecimenTypeForm(request.POST, instance=specimen)  # Pre-fill with existing data
+    if request.method == "POST":
+        form = SpecimenTypeForm(request.POST, instance=specimen)
         if form.is_valid():
             form.save()
-            return redirect('specimen_list')  # Redirect after saving
+            return redirect("specimen_list")
     else:
-        form = SpecimenTypeForm(instance=specimen)  # Load existing data
-    
-    return render(request, 'home/SpecimenEdit.html', {'form': form, 'specimen': specimen})
+        form = SpecimenTypeForm(instance=specimen)
+
+    return render(
+        request,
+        "home/SpecimenEdit.html",
+        {
+            "form": form,
+            "specimen": specimen,
+            "editing": True,   
+        }
+    )
+
 
 
 @login_required(login_url="/login/")
@@ -2049,6 +3406,105 @@ def delete_specimen(request, pk):
 
 
 
+@login_required(login_url="/login/")
+@transaction.atomic
+def upload_specimen_code(request):
+
+    if request.method == "POST":
+        specimen_upload = SpecimenUploadForm(request.POST, request.FILES)
+
+        if specimen_upload.is_valid():
+            uploaded_file = specimen_upload.save()
+            file = uploaded_file.File_uploadSpec
+
+            try:
+                if file.name.endswith(".csv"):
+                    df = pd.read_csv(file, dtype=str)
+                elif file.name.endswith((".xls", ".xlsx")):
+                    df = pd.read_excel(file, dtype=str)
+                else:
+                    messages.error(request, "Unsupported file format.")
+                    return redirect("upload_specimen_code")
+
+                # Normalize columns
+                df.columns = (
+                    df.columns
+                    .str.strip()
+                    .str.lower()
+                )
+
+                REQUIRED_COL = "specimen_code"
+                if REQUIRED_COL not in df.columns:
+                    messages.error(
+                        request,
+                        "Missing required column: Specimen_code"
+                    )
+                    return redirect("upload_specimen_code")
+
+                skipped = 0
+                updated = 0
+                created = 0
+
+                for idx, row in df.iterrows():
+                    specimen_code = str(row.get("specimen_code", "")).strip().lower()
+
+                    if not specimen_code:
+                        skipped += 1
+                        continue
+
+                    flag = str(row.get("emerging_spec_flag", "")).strip().upper() in [
+                        "1", "true", "yes", "y"
+                    ]
+
+                    grp_code = str(row.get("specimen_code_grp", "")).strip().lower()
+                    grp_obj = None
+                    if grp_code:
+                        grp_obj, _ = SpecimenTypeModel.objects.get_or_create(
+                            Specimen_code=grp_code
+                        )
+
+                    obj, created_flag = SpecimenTypeModel.objects.update_or_create(
+                        Specimen_code=specimen_code,
+                        defaults={
+                            "Emerging_Spec_Flag": flag,
+                            "Specimen_name": row.get("specimen_name", ""),
+                            "Specimen_Code_Grp": grp_obj,
+                            "Specimen_Grp_Name": row.get("specimen_grp_name", ""),
+                        }
+                    )
+
+                    if created_flag:
+                        created += 1
+                    else:
+                        updated += 1
+
+                messages.success(
+                    request,
+                    f"✅ Upload complete: {created} created, {updated} updated, {skipped} skipped."
+                )
+                return redirect("specimen_list")
+
+            except Exception as e:
+                messages.error(request, f"❌ Error processing file: {e}")
+                return redirect("upload_specimen_code")
+
+        messages.error(request, "Form is not valid.")
+
+    return render(request, "Settings.html", {
+        "specimen_upload": SpecimenUploadForm()
+    })
+
+
+@login_required(login_url="/login/")
+def delete_all_specimens(request):
+    SpecimenTypeModel.objects.all().delete()
+    messages.success(request, "All specimen types have been deleted successfully.")
+    return redirect('specimen_list')  # Redirect to the specimen list view
+
+
+
+
+####### Download Antibiotic Entries
 
 @login_required(login_url="/login/")
 def export_Antibioticentry(request):
@@ -2059,22 +3515,32 @@ def export_Antibioticentry(request):
         data.append({
             "ab_idNumber_egasp": obj.ab_idNum_referred.AccessionNo if obj.ab_idNum_referred else None,
             "Accession_No": obj.ab_AccessionNo,
+            "Site_Org": obj.ab_Site_Org,
             "Antibiotic": obj.ab_Antibiotic,
             "Abx_code": obj.ab_Abx_code,
             "Abx": obj.ab_Abx,
             "Disk_value": obj.ab_Disk_value,
-            "Disk_RIS": obj.ab_Disk_RIS,
+            "Disk_enRIS": obj.ab_Disk_enRIS,
             "MIC_operand": obj.ab_MIC_operand,
             "MIC_value": obj.ab_MIC_value,
-            "MIC_RIS": obj.ab_MIC_RIS,
+            "MIC_enRIS": obj.ab_MIC_enRIS,
+            "Ars_Org":obj.ab_Ret_Org,
             "Retest_Antibiotic": obj.ab_Retest_Antibiotic,
             "Retest_Abx_code": obj.ab_Retest_Abx_code,
             "Retest_Abx": obj.ab_Retest_Abx,
             "Retest_DiskValue": obj.ab_Retest_DiskValue,
-            "Retest_Disk_RIS": obj.ab_Retest_Disk_RIS,
+            "Retest_Disk_enRIS": obj.ab_Retest_Disk_enRIS,
             "Ret_MIC_Operand": obj.ab_Retest_MIC_operand,
             "Retest_MICValue": obj.ab_Retest_MICValue,
-            "Retest_MIC_RIS": obj.ab_Retest_MIC_RIS,
+            "Retest_MIC_enRIS": obj.ab_Retest_MIC_enRIS,
+            "ab_R_breakpoint": obj.ab_R_breakpoint,
+            "ab_I_breakpoint": obj.ab_I_breakpoint,
+            "ab_SDD_breakpoint": obj.ab_SDD_breakpoint,
+            "ab_S_breakpoint":obj.ab_S_breakpoint,
+            "ab_Ret_R_breakpoint": obj.ab_Ret_R_breakpoint,
+            "ab_Ret_I_breakpoint": obj.ab_Ret_I_breakpoint,
+            "ab_Ret_SDD_breakpoint": obj.ab_Ret_SDD_breakpoint,
+            "ab_Ret_S_breakpoint": obj.ab_Ret_S_breakpoint
         })
     
     # Define file path
@@ -2088,31 +3554,8 @@ def export_Antibioticentry(request):
     return FileResponse(open(file_path, "rb"), as_attachment=True, filename="AntibioticEntry_referred.xlsx")
 
 
-# @login_required(login_url="/login/")
-# #Address Book
-# #Contact Form not working
-# def add_contact(request):
-#     if request.method == "POST":
-#         contact_form = ContactForm(request.POST)  
-#         if contact_form.is_valid():           
-#             contact_form.save()  
-#             messages.success(request, 'Added Successfully')
-#             return redirect('add_contact')  # Redirect after successful POST
-            
-            
-#         else:
-#             messages.error(request, 'Error / Adding Unsuccessful')
-#             print(contact_form.errors)
-#     else:
-#         contact_form = ContactForm()  # Show an empty form for GET request
 
-#     # Fetch clinic data from the database for dropdown options
-#     contacts = arsStaff_Details.objects.all()
-    
-#     return render(request, 'settings/tab/contact_tab.html', {'contact_form': contact_form, 'contacts': contacts})
-
-
-
+######## Contact Details views
 @login_required(login_url="/login/")
 def add_contact(request):
     if request.method != "POST":
@@ -2160,273 +3603,12 @@ def get_ars_staff_details(request):
     else:
         return JsonResponse({'error': 'Staff not found'}, status=404)
 
-    
-
-@login_required(login_url="/login/")
-#for province and city fields
-def upload_locations(request):
-    if request.method == "POST":
-        upload_form = LocationUploadForm(request.POST, request.FILES)
-        
-        if upload_form.is_valid():
-            uploaded_file = upload_form.save()
-            file = uploaded_file.file  # Get the uploaded file
-            
-            print("Uploaded file:", file)  # Debugging statement
-
-            try:
-                # Load file into a DataFrame based on file type
-                if file.name.endswith('.csv'):
-                    df = pd.read_csv(file)
-                elif file.name.endswith('.xlsx'):
-                    df = pd.read_excel(file)
-                else:
-                    messages.error(request, 'Unsupported file format. Please upload a CSV or Excel file.')
-                    return redirect('upload_locations')
-
-                print("DataFrame contents:\n", df.head())  # Debugging statement
-
-                # Fill NaN values to avoid errors
-                df.fillna("", inplace=True)
-
-                # Loop through rows and save Provinces and Cities
-                for _, row in df.iterrows():
-                    provincename = row.get('Province', '').strip()
-                    cityname = row.get('City', '').strip()
-
-                    if not provincename or not cityname:
-                        continue  # Skip empty rows
-
-                    # Get or create province
-                    province, _ = Province.objects.get_or_create(provincename=provincename)
-
-                    # Get or create city linked to the province
-                    City.objects.get_or_create(cityname=cityname, province=province)
-
-                messages.success(request, "File uploaded successfully and data added!")
-                return redirect('add_location')
-
-            except Exception as e:
-                print("Error:", e)
-                messages.error(request, f"Error processing file: {e}")
-                return redirect('upload_locations')
-        else:
-            messages.error(request, "Invalid form submission.")
-
-    else:
-        upload_form = LocationUploadForm()
-
-    return render(request, 'home/Add_location.html', {'upload_form': upload_form})
-
-
-@login_required(login_url="/login/")
-def add_location(request, id=None):
-    provinces = Province.objects.all()  # Renamed 'province' to 'provinces' for clarity
-    upload_form = LocationUploadForm()  
-    if request.method == "POST":
-        form = CityForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Location added successfully!")
-            return redirect("add_location")  # Use the correct URL name
-        else:
-            messages.error(request, "Please correct the errors below.")
-    else:
-        form = CityForm()
-
-    return render(request, "home/Add_location.html", {"form": form, "provinces": provinces, "upload_form": upload_form})
 
 
 
 
 
-
-
-
-
-
-@login_required(login_url="/login/")
-def view_locations(request):
-    # Fetch all provinces, sorted by province name
-    provinces = Province.objects.prefetch_related(
-        Prefetch('cities', queryset=City.objects.order_by('cityname'))  # Sort cities by city name
-    ).order_by('provincename')  # Sort provinces by province name
-
-    return render(request, 'home/view_locations.html', {'provinces': provinces})
-
-
-@login_required(login_url="/login/")
-def delete_cities(request):
-    City.objects.all().delete()
-    Province.objects.all().delete()
-    messages.success(request, "All records have been deleted successfully.")
-    return redirect('view_locations')  # Redirect to the table view
-
-@login_required(login_url="/login/")
-def delete_city(request, id):
-    city_items = get_object_or_404(City, pk=id)
-    city_items.delete()
-    return redirect('view_locations')
-
-
-
-
-#download combined table
-# def download_combined_table(request):
-#     # Fetch all Egasp_Data entries
-#     referred_data_entries = Referred_Data.objects.all()
-
-#     # Fetch all unique antibiotic codes (both initial and retest), excluding None values
-#     unique_antibiotics_raw = (
-#         AntibioticEntry.objects
-#         .values_list('ab_Abx_code', 'ab_Retest_Abx_code').distinct()
-#     )
-
-#     # Flatten and clean the list (avoid duplicates)
-#     antibiotic_set = set()
-#     for abx_code, retest_code in unique_antibiotics_raw:
-#         if abx_code:
-#             antibiotic_set.add(abx_code)
-#         if retest_code:
-#             antibiotic_set.add(retest_code)
-
-#     # Sort the antibiotics alphabetically
-#     sorted_antibiotics = sorted(antibiotic_set)
-
-#     # Create the HTTP response for CSV download
-#     response = HttpResponse(content_type='text/csv')
-#     response['Content-Disposition'] = 'attachment; filename="combined_table.csv"'
-
-#     # Create a CSV writer
-#     writer = csv.writer(response)
-
-#     # Write the header row
-#     header = [
-#             "Batch_id", "Hide", "Copy_data", "Batch_Name", "Batch_Code", "Date_of_Entry", "RefNo", "BatchNo", "Total_batch",
-#             "AccessionNo", "AccessionNoGen", "Default_Year", "SiteCode", "Site_Name", "Referral_Date", "Patient_ID",
-#             "First_Name", "Mid_Name", "Last_Name", "Date_Birth", "Age", "Age_Verification", "Sex", "Date_Admis", "Nosocomial",
-#             "Diagnosis", "Diagnosis_ICD10", "Ward", "Service_Type", "Spec_Num", "Spec_Date", "Spec_Type", "Reason", "Growth",
-#             "Urine_ColCt", "ampC", "ESBL", "CARB", "MBL", "BL", "MR", "mecA", "ICR", "OtherResMech", "Site_Pre", "Site_Org",
-#             "Site_Pos", "OrganismCode", "Comments", "ars_ampC", "ars_ESBL", "ars_CARB", "ars_ECIM", "ars_MCIM", "ars_EC_MCIM",
-#             "ars_MBL", "ars_BL", "ars_MR", "ars_mecA", "ars_ICR", "ars_Pre", "ars_Post", "ars_OrgCode", "ars_OrgName",
-#             "ars_ct_ctl", "ars_tz_tzl", "ars_cn_cni", "ars_ip_ipi", "ars_reco_Code", "ars_reco", "SiteName", "Status",
-#             "Month_Date", "Day_Date", "Year_Date", "RefDate", "Start_AccNo", "End_AccNo", "No_Isolates", "BatchNumber",
-#             "TotalBatchNumber", "Concordance_Check", "Concordance_by", "Concordance_by_Initials", "abx_code"
-#         ]
-
-#     # Add antibiotic-related headers
-#     for abx in sorted_antibiotics:
-#         is_disk_abx = BreakpointsTable.objects.filter(Whonet_Abx=abx, Disk_Abx=True).exists()
-#         if not is_disk_abx:  # Add _Op fields only for MIC antibiotics
-#             header.append(f'{abx}_Op')
-#         header.append(f'{abx}_Val')
-#         header.append(f'{abx}_RIS')
-#         if not is_disk_abx:  # Add RT_Op fields only for MIC antibiotics
-#             header.append(f'{abx}_RT_Op')
-#         header.append(f'{abx}_RT_Val')
-#         header.append(f'{abx}_RT_RIS')
-
-#     writer.writerow(header)
-
-#     # Now write each data row
-#     for referred_entry in referred_data_entries:
-#         row = [
-#             # Batch details
-#             referred_entry.Batch_id, referred_entry.Hide, referred_entry.Copy_data,
-#             referred_entry.Batch_Name, referred_entry.Batch_Code, referred_entry.Date_of_Entry,
-#             referred_entry.RefNo, referred_entry.BatchNo, referred_entry.Total_batch,
-
-#             # Accession and site info
-#             referred_entry.AccessionNo, referred_entry.AccessionNoGen, referred_entry.Default_Year,
-#             referred_entry.SiteCode, referred_entry.Site_Name, referred_entry.Referral_Date,
-
-#             # Patient info
-#             referred_entry.Patient_ID, referred_entry.First_Name, referred_entry.Mid_Name,
-#             referred_entry.Last_Name, referred_entry.Date_Birth, referred_entry.Age,
-#             referred_entry.Age_Verification, referred_entry.Sex,
-
-#             # Hospital and diagnosis info
-#             referred_entry.Date_Admis, referred_entry.Nosocomial, referred_entry.Diagnosis,
-#             referred_entry.Diagnosis_ICD10, referred_entry.Ward, referred_entry.Service_Type,
-
-#             # Specimen details
-#             referred_entry.Spec_Num, referred_entry.Spec_Date, referred_entry.Spec_Type,
-#             referred_entry.Reason, referred_entry.Growth, referred_entry.Urine_ColCt,
-
-#             # Resistance mechanisms
-#             referred_entry.ampC, referred_entry.ESBL, referred_entry.CARB, referred_entry.MBL,
-#             referred_entry.BL, referred_entry.MR, referred_entry.mecA, referred_entry.ICR,
-#             referred_entry.OtherResMech,
-
-#             # Site and organism info
-#             referred_entry.Site_Pre, referred_entry.Site_Org, referred_entry.Site_Pos,
-#             referred_entry.OrganismCode, referred_entry.Comments,
-
-#             # ARS results
-#             referred_entry.ars_ampC, referred_entry.ars_ESBL, referred_entry.ars_CARB,
-#             referred_entry.ars_ECIM, referred_entry.ars_MCIM, referred_entry.ars_EC_MCIM,
-#             referred_entry.ars_MBL, referred_entry.ars_BL, referred_entry.ars_MR,
-#             referred_entry.ars_mecA, referred_entry.ars_ICR, referred_entry.ars_Pre,
-#             referred_entry.ars_Post, referred_entry.ars_OrgCode, referred_entry.ars_OrgName,
-#             referred_entry.ars_ct_ctl, referred_entry.ars_tz_tzl, referred_entry.ars_cn_cni,
-#             referred_entry.ars_ip_ipi, referred_entry.ars_reco_Code, referred_entry.ars_reco,
-
-#             # Reporting and meta info
-#             referred_entry.SiteName, referred_entry.Status, referred_entry.Month_Date,
-#             referred_entry.Day_Date, referred_entry.Year_Date, referred_entry.RefDate,
-#             referred_entry.Start_AccNo, referred_entry.End_AccNo, referred_entry.No_Isolates,
-#             referred_entry.BatchNumber, referred_entry.TotalBatchNumber,
-
-#             # Concordance and antibiotic info
-#             referred_entry.Concordance_Check, referred_entry.Concordance_by,
-#             referred_entry.Concordance_by_Initials, referred_entry.abx_code,
-#         ]
-
-#         # Fetch related antibiotics for this Egasp entry, sorted
-#         antibiotics = AntibioticEntry.objects.filter(ab_idNum_referred=referred_entry).order_by('ab_Abx_code')
-
-#         # Create a mapping for quick lookup
-#         abx_data = {}
-#         for antibiotic in antibiotics:
-#             if antibiotic.ab_Abx_code:
-#                 abx_data[antibiotic.ab_Abx_code] = {
-#                     '_Val': antibiotic.ab_Disk_value or antibiotic.ab_MIC_value,
-#                     '_RIS': antibiotic.ab_Disk_RIS or antibiotic.ab_MIC_RIS,
-#                     '_Op': antibiotic.ab_MIC_operand or '',
-#                 }
-#             if antibiotic.ab_Retest_Abx_code:
-#                 abx_data[antibiotic.ab_Retest_Abx_code] = {
-#                     'RT_Val': antibiotic.ab_Retest_DiskValue or antibiotic.ab_Retest_MICValue,
-#                     'RT_RIS': antibiotic.ab_Retest_Disk_RIS or antibiotic.ab_Retest_MIC_RIS,
-#                     'RT_Op': antibiotic.ab_Retest_MIC_operand or '',
-#                 }
-
-#         # Now add antibiotic fields in the sorted order
-#         for abx in sorted_antibiotics:
-#             is_disk_abx = BreakpointsTable.objects.filter(Whonet_Abx=abx, Disk_Abx=True).exists()
-#             if abx in abx_data:
-#                 if not is_disk_abx:  # Add _Op field only for MIC antibiotics
-#                     row.append(abx_data[abx].get('_Op', ''))
-#                 row.append(abx_data[abx].get('_Val', ''))
-#                 row.append(abx_data[abx].get('_RIS', ''))
-#                 if not is_disk_abx:  # Add RT_Op field only for MIC antibiotics
-#                     row.append(abx_data[abx].get('RT_Op', ''))
-#                 row.append(abx_data[abx].get('RT_Val', ''))
-#                 row.append(abx_data[abx].get('RT_RIS', ''))
-#             else:
-#                 # If no data for this antibiotic, add empty columns
-#                 if not is_disk_abx:
-#                     row.append('')  # Empty _Op field
-#                 row.extend(['', ''])  # Empty _Val and _RIS fields
-#                 if not is_disk_abx:
-#                     row.append('')  # Empty RT_Op field
-#                 row.extend(['', ''])  # Empty RT_Val and RT_RIS fields
-
-#         writer.writerow(row)
-
-#     return response
-
-
+########## Download Combined Table
 def is_blank(value):
     return value in [None, '', 0]
 
@@ -2451,24 +3633,111 @@ def download_combined_table(request):
     }
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
-    response['Content-Disposition'] = 'attachment; filename="combined_table.csv"'
+    response['Content-Disposition'] = 'attachment; filename="combined_raw_data.csv"'
     response.write('\ufeff')  # UTF-8 BOM
     writer = csv.writer(response)
 
 
     # Static fields (as you defined)
     static_fields = [
-        "Batch_id", "Hide", "Copy_data", "Batch_Name", "Batch_Code", "Date_of_Entry", "RefNo", "BatchNo", "Total_batch",
-            "AccessionNo", "AccessionNoGen", "Default_Year", "SiteCode", "Site_Name", "Referral_Date", "Patient_ID",
-            "First_Name", "Mid_Name", "Last_Name", "Date_Birth", "Age", "Age_Verification", "Sex", "Date_Admis", "Nosocomial",
-            "Diagnosis", "Diagnosis_ICD10", "Ward", "Service_Type", "Spec_Num", "Spec_Date", "Spec_Type", "Reason", "Growth",
-            "Urine_ColCt", "ampC", "ESBL", "CARB", "MBL", "BL", "MR", "mecA", "ICR", "OtherResMech", "Site_Pre", "Site_Org",
-            "Site_Pos", "OrganismCode", "Comments", "ars_ampC", "ars_ESBL", "ars_CARB", "ars_ECIM", "ars_MCIM", "ars_EC_MCIM",
-            "ars_MBL", "ars_BL", "ars_MR", "ars_mecA", "ars_ICR", "ars_Pre", "ars_Post", "ars_OrgCode", "ars_OrgName",
-            "ars_ct_ctl", "ars_tz_tzl", "ars_cn_cni", "ars_ip_ipi", "ars_reco_Code", "ars_reco", "SiteName", "Status",
-            "Month_Date", "Day_Date", "Year_Date", "RefDate", "Start_AccNo", "End_AccNo", "No_Isolates", "BatchNumber",
-            "TotalBatchNumber", "Concordance_Check", "Concordance_by", "Concordance_by_Initials", "abx_code"
-    ]
+    "bat_seq",
+    "Batch_id",
+    "Hide",
+    "Copy_data",
+    "Batch_Name",
+    "Batch_Code",
+    "Date_of_Entry",
+    "Date_Modified",
+    "RefNo",
+    "BatchNo",
+    "Total_batch",
+    "AccessionNo",
+    "AccessionNoGen",
+    "Default_Year",
+    "SiteCode",
+    "Site_Name",
+    "Referral_Date",
+
+    "Patient_ID",
+    "First_Name",
+    "Mid_Name",
+    "Last_Name",
+    "Date_Birth",
+    "Age",
+    "Emerging_Flag_Age",
+    "Sex",
+    "Date_Admis",
+    "Nosocomial",
+    "Diagnosis",
+    "Diagnosis_ICD10",
+    "Ward",
+    "Ward_Type",
+    "Service_Type",
+
+    "Spec_Num",
+    "Spec_Date",
+    "Spec_Type",
+    "Reason",
+    "Growth",
+    "Urine_ColCt",
+
+    "ampC",
+    "ESBL",
+    "CARB",
+    "MBL",
+    "BL",
+    "MR",
+    "mecA",
+    "ICR",
+    "OtherResMech",
+
+    "Site_Pre",
+    "Site_Org",
+    "Site_OrgName",
+    "Site_Pos",
+    "Comments",
+
+    "ars_ampC",
+    "ars_ESBL",
+    "ars_CARB",
+    "ars_ECIM",
+    "ars_MCIM",
+    "ars_EC_MCIM",
+    "ars_MBL",
+    "ars_BL",
+    "ars_MR",
+    "ars_mecA",
+    "ars_ICR",
+    "ars_Pre",
+    "ars_Post",
+    "ars_OrgCode",
+    "ars_OrgName",
+    "ars_ct_ctl",
+    "ars_tz_tzl",
+    "ars_cn_cni",
+    "ars_ip_ipi",
+    "ars_reco_Code",
+    "ars_description",
+    "ars_reco",
+
+    "arsp_Encoder",
+    "arsp_Enc_Lic",
+    "arsp_Checker",
+    "arsp_Chec_Lic",
+    "arsp_Verifier",
+    "arsp_Ver_Lic",
+    "arsp_LabManager",
+    "arsp_Lab_Lic",
+    "arsp_Head",
+    "arsp_Head_Lic",
+    "Date_Accomplished_ARSP",
+
+    "x_mrse",
+    "x_mrsamrse",
+    "x_entbac",
+    "edta",
+]
+
 
     header = static_fields[:]
     for abx in sorted_antibiotics:
@@ -2492,7 +3761,7 @@ def download_combined_table(request):
                     abx_data[code] = {}
                 if not is_blank(ab.ab_MIC_value) or not is_blank(ab.ab_Disk_value):
                     val = ab.ab_Disk_value if not is_blank(ab.ab_Disk_value) else f"{ab.ab_MIC_operand or ''}{ab.ab_MIC_value}"
-                    ris = ab.ab_Disk_RIS or ab.ab_MIC_RIS
+                    ris = ab.ab_Disk_enRIS or ab.ab_MIC_enRIS
                     abx_data[code].update({
                         '_Val': val,
                         '_RIS': ris,
@@ -2505,7 +3774,7 @@ def download_combined_table(request):
                     abx_data[code] = {}
                 if not is_blank(ab.ab_Retest_MICValue) or not is_blank(ab.ab_Retest_DiskValue):
                     rt_val = ab.ab_Retest_DiskValue if not is_blank(ab.ab_Retest_DiskValue) else f"{ab.ab_Retest_MIC_operand or ''}{ab.ab_Retest_MICValue}"
-                    rt_ris = ab.ab_Retest_Disk_RIS or ab.ab_Retest_MIC_RIS
+                    rt_ris = ab.ab_Retest_Disk_enRIS or ab.ab_Retest_MIC_enRIS
                     abx_data[code].update({
                         'RT_Val': rt_val,
                         'RT_RIS': rt_ris,
@@ -2539,456 +3808,858 @@ def read_uploaded_file(uploaded_file):
         raise ValueError("Unsupported file format. Please upload a CSV or Excel file.")
 
 
+### helper for copy data to final
+def nz(val):
+    """Normalize NULLs for non-nullable CharFields"""
+    return val if val not in (None,) else ""
 
-#for uploading data in tables referred data and antibiotics entries
-# def upload_combined_table(request):
-#     form = WGSProjectForm()
-#     referred_upload = ReferredData_upload()
 
 
-#     if request.method == "POST" and request.FILES.get("ReferredDataFile"):
-#         referred_upload = ReferredUploadForm(request.POST, request.FILES)
-#         if referred_upload.is_valid():
-#             try:
-#                 upload = referred_upload.save()
-#                 df = read_uploaded_file(upload.ReferredDataFile)
-#                 df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
-#             except Exception as e:
-#                 messages.error(request, f"Error processing FASTQ file: {e}")
-#                 return render(request, "home/Tables.html", {
-#                     "form": form,
-#                     "fastq_form": referred_upload,
-#                 })
 
-#     # if request.method == 'POST':
-#     #     upload_form = ReferredUploadForm(request.POST, request.FILES)
-        
-#     #     if upload_form.is_valid():  # Changed from 'form' to 'upload_form'
-#     #         uploaded_file = request.FILES['ReferredDataFile']
-#     #         csv_file = TextIOWrapper(uploaded_file.file, encoding='utf-8')
-#     #         reader = csv.DictReader(csv_file)
 
-#             # for row in reader:
-#             #     accession_no = row.get('AccessionNo', '').strip()
-#             #     if not accession_no:
-#             #         continue  # Skip rows without accession number
+### copy batch
 
-#             for row in df:
-#                 accession_no = row.get('AccessionNo', '').strip()
-#                 if not accession_no:
-#                     continue  # Skip rows without accession number
-                
-#                 # Helper function to parse dates
-#                 def parse_date_field(date_str):
-#                     if not date_str or date_str.strip() == '':
-#                         return None
-#                     return parse_date(date_str.strip())
-                
-#                 # Helper function to parse integers
-#                 def parse_int_field(int_str):
-#                     if not int_str or int_str.strip() == '':
-#                         return None
-#                     try:
-#                         return int(int_str.strip())
-#                     except ValueError:
-#                         return None
-                
-#                 # Helper function to parse booleans
-#                 def parse_bool_field(bool_str):
-#                     if not bool_str or bool_str.strip() == '':
-#                         return False
-#                     return bool_str.strip().lower() in ['true', '1', 'yes']
 
-#                 # Get or create Batch_Table instance if needed
-#                 batch_id = None
-#                 batch_id_str = row.get('Batch_id', '').strip()
-#                 if batch_id_str:
-#                     try:
-#                         batch_id = Batch_Table.objects.get(id=int(batch_id_str))
-#                     except (Batch_Table.DoesNotExist, ValueError):
-#                         batch_id = None
 
-#                 # Create or update the Referred Data Record
-#                 referred_data, created = Referred_Data.objects.update_or_create(
-#                     AccessionNo=accession_no,
-#                     defaults={
-#                         'Batch_id': batch_id,
-#                         'Hide': parse_bool_field(row.get('Hide')),
-#                         'Copy_data': parse_bool_field(row.get('Copy_data')),
-#                         'Batch_Name': row.get('Batch_Name', '').strip(),
-#                         'Batch_Code': row.get('Batch_Code', '').strip(),
-#                         'RefNo': row.get('RefNo', '').strip(),
-#                         'BatchNo': row.get('BatchNo', '').strip(),
-#                         'Total_batch': row.get('Total_batch', '').strip(),
-#                         'AccessionNoGen': row.get('AccessionNoGen', '').strip(),
-#                         'Default_Year': parse_date_field(row.get('Default_Year')),
-#                         'SiteCode': row.get('SiteCode', '').strip(),
-#                         'Site_Name': row.get('Site_Name', '').strip(),
-#                         'Referral_Date': parse_date_field(row.get('Referral_Date')),
-#                         'Patient_ID': row.get('Patient_ID', '').strip(),
-#                         'First_Name': row.get('First_Name', '').strip(),
-#                         'Mid_Name': row.get('Mid_Name', '').strip(),
-#                         'Last_Name': row.get('Last_Name', '').strip(),
-#                         'Date_Birth': parse_date_field(row.get('Date_Birth')),
-#                         'Age': row.get('Age', '').strip(),
-#                         'Age_Verification': row.get('Age_Verification', '').strip(),
-#                         'Sex': row.get('Sex', '').strip(),
-#                         'Date_Admis': parse_date_field(row.get('Date_Admis')),
-#                         'Nosocomial': row.get('Nosocomial', 'n/a'),
-#                         'Diagnosis': row.get('Diagnosis', '').strip(),
-#                         'Diagnosis_ICD10': row.get('Diagnosis_ICD10', '').strip(),
-#                         'Ward': row.get('Ward', '').strip(),
-#                         'Service_Type': row.get('Service_Type', 'n/a'),
-#                         'Spec_Num': row.get('Spec_Num', '').strip(),
-#                         'Spec_Date': parse_date_field(row.get('Spec_Date')),
-#                         'Spec_Type': row.get('Spec_Type', '').strip(),
-#                         'Reason': row.get('Reason', 'n/a'),
-#                         'Growth': row.get('Growth', '').strip(),
-#                         'Urine_ColCt': row.get('Urine_ColCt', '').strip(),
-#                         'ampC': row.get('ampC', 'n/a'),
-#                         'ESBL': row.get('ESBL', 'n/a'),
-#                         'CARB': row.get('CARB', 'n/a'),
-#                         'MBL': row.get('MBL', 'n/a'),
-#                         'BL': row.get('BL', 'n/a'),
-#                         'MR': row.get('MR', 'n/a'),
-#                         'mecA': row.get('mecA', 'n/a'),
-#                         'ICR': row.get('ICR', 'n/a'),
-#                         'OtherResMech': row.get('OtherResMech', '').strip(),
-#                         'Site_Pre': row.get('Site_Pre', '').strip(),
-#                         'Site_Org': row.get('Site_Org', '').strip(),
-#                         'Site_Pos': row.get('Site_Pos', '').strip(),
-#                         'OrganismCode': row.get('OrganismCode', '').strip(),
-#                         'Comments': row.get('Comments', '').strip(),
-#                         'ars_ampC': row.get('ars_ampC', 'n/a'),
-#                         'ars_ESBL': row.get('ars_ESBL', 'n/a'),
-#                         'ars_CARB': row.get('ars_CARB', 'n/a'),
-#                         'ars_ECIM': row.get('ars_ECIM', 'n/a'),
-#                         'ars_MCIM': row.get('ars_MCIM', 'n/a'),
-#                         'ars_EC_MCIM': row.get('ars_EC_MCIM', 'n/a'),
-#                         'ars_MBL': row.get('ars_MBL', 'n/a'),
-#                         'ars_BL': row.get('ars_BL', 'n/a'),
-#                         'ars_MR': row.get('ars_MR', 'n/a'),
-#                         'ars_mecA': row.get('ars_mecA', 'n/a'),
-#                         'ars_ICR': row.get('ars_ICR', 'n/a'),
-#                         'ars_Pre': row.get('ars_Pre', '').strip(),
-#                         'ars_Post': row.get('ars_Post', '').strip(),
-#                         'ars_OrgCode': row.get('ars_OrgCode', '').strip(),
-#                         'ars_OrgName': row.get('ars_OrgName', '').strip(),
-#                         'ars_ct_ctl': row.get('ars_ct_ctl', '').strip(),
-#                         'ars_tz_tzl': row.get('ars_tz_tzl', '').strip(),
-#                         'ars_cn_cni': row.get('ars_cn_cni', '').strip(),
-#                         'ars_ip_ipi': row.get('ars_ip_ipi', '').strip(),
-#                         'ars_reco_Code': row.get('ars_reco_Code', '').strip(),
-#                         'ars_reco': row.get('ars_reco', '').strip(),
-#                         'SiteName': row.get('SiteName', '').strip(),
-#                         'Status': row.get('Status', 'n/a'),
-#                         'Month_Date': parse_date_field(row.get('Month_Date')),
-#                         'Day_Date': parse_date_field(row.get('Day_Date')),
-#                         'Year_Date': parse_date_field(row.get('Year_Date')),
-#                         'RefDate': parse_date_field(row.get('RefDate')),
-#                         'Start_AccNo': parse_int_field(row.get('Start_AccNo')),
-#                         'End_AccNo': parse_int_field(row.get('End_AccNo')),
-#                         'No_Isolates': parse_int_field(row.get('No_Isolates')),
-#                         'BatchNumber': parse_int_field(row.get('BatchNumber')),
-#                         'TotalBatchNumber': parse_int_field(row.get('TotalBatchNumber')),
-#                         'Concordance_Check': row.get('Concordance_Check', '').strip(),
-#                         'Concordance_by': row.get('Concordance_by', '').strip(),
-#                         'Concordance_by_Initials': row.get('Concordance_by_Initials', '').strip(),
-#                         'abx_code': row.get('abx_code', '').strip(),
-#                         'arsp_Encoder': row.get('arsp_Encoder', '').strip(),
-#                         'arsp_Enc_Lic': row.get('arsp_Enc_Lic', '').strip(),
-#                         'arsp_Checker': row.get('arsp_Checker', '').strip(),
-#                         'arsp_Chec_Lic': row.get('arsp_Chec_Lic', '').strip(),
-#                         'arsp_Verifier': row.get('arsp_Verifier', '').strip(),
-#                         'arsp_Ver_Lic': row.get('arsp_Ver_Lic', '').strip(),
-#                         'arsp_LabManager': row.get('arsp_LabManager', '').strip(),
-#                         'arsp_Lab_Lic': row.get('arsp_Lab_Lic', '').strip(),
-#                         'arsp_Head': row.get('arsp_Head', '').strip(),
-#                         'arsp_Head_Lic': row.get('arsp_Head_Lic', '').strip(),
-#                         'Date_Accomplished_ARSP': parse_date_field(row.get('Date_Accomplished_ARSP')),
-#                     }
-#                 )
 
-#                 # Clear previous antibiotics for this entry
-#                 AntibioticEntry.objects.filter(ab_idNum_referred=referred_data).delete()
+# @login_required(login_url="/login/")
+# @transaction.atomic
+# def copy_batch_to_final(request, batch_id):
+    
+#     def to_bool(val):
+#         if isinstance(val, bool):
+#             return val
+#         if isinstance(val, str):
+#             return val.lower() in ("true", "1", "yes", "y")
+#         return False
 
-#                 # Loop over antibiotics in the row
-#                 for field in row:
-#                     if field.endswith('_Val'):
-#                         abx_code = field.replace('_Val', '')
-#                         val = row.get(f'{abx_code}_Val', '').strip()
-#                         ris = row.get(f'{abx_code}_RIS', '').strip()
-#                         operand = row.get(f'{abx_code}_Op', '').strip()
+#     batch = get_object_or_404(Batch_Table, pk=batch_id)
 
-#                         rt_val = row.get(f'{abx_code}_RT_Val', '').strip()
-#                         rt_ris = row.get(f'{abx_code}_RT_RIS', '').strip()
-#                         rt_operand = row.get(f'{abx_code}_RT_Op', '').strip()
+#     isolates = Referred_Data.objects.filter(
+#         Batch_id=batch
+#     )
 
-#                         if not val and not rt_val:
-#                             continue  # Skip if no values at all
+#     copied = 0
 
-#                         is_disk_abx = BreakpointsTable.objects.filter(
-#                             Whonet_Abx=abx_code, Disk_Abx=True
-#                         ).exists()
+#     for isolate in isolates:
 
-#                         abx_entry = AntibioticEntry(
-#                             ab_idNum_referred=referred_data,
-#                             ab_AccessionNo=accession_no,
-#                             ab_Abx_code=abx_code,
-#                         )
+#         raw_entries = AntibioticEntry.objects.filter(
+#             ab_idNum_referred=isolate
+#         )
 
-#                         if is_disk_abx:
-#                             abx_entry.ab_Disk_value = int(val) if val else None
-#                             abx_entry.ab_Disk_RIS = ris if ris else ''
-#                             abx_entry.ab_Retest_DiskValue = int(rt_val) if rt_val else None
-#                             abx_entry.ab_Retest_Disk_RIS = rt_ris if rt_ris else ''
-#                         else:
-#                             abx_entry.ab_MIC_value = float(val) if val else None
-#                             abx_entry.ab_MIC_RIS = ris if ris else ''
-#                             abx_entry.ab_MIC_operand = operand if operand else ''
-#                             abx_entry.ab_Retest_MICValue = float(rt_val) if rt_val else None
-#                             abx_entry.ab_Retest_MIC_RIS = rt_ris if rt_ris else ''
-#                             abx_entry.ab_Retest_MIC_operand = rt_operand if rt_operand else ''
+#         # final data
+#         final_obj, _ = Final_Data.objects.update_or_create(
+#             f_AccessionNo=isolate.AccessionNo,
+#             defaults={
 
-#                         abx_entry.save()
+#                 # ===== BATCH / META =====
+#                 "f_bat_seq": isolate.bat_seq,
+#                 "f_Batch_id": isolate.Batch_id,
+#                 "f_Hide": getattr(isolate, "Hide", False),
+#                 "f_Batch_Code": isolate.Batch_Code,
+#                 "f_Batch_Name": isolate.Batch_Name,
+#                 "f_RefNo": isolate.RefNo,
+#                 "f_BatchNo": isolate.BatchNo,
+#                 "f_Total_batch": isolate.Total_batch,
 
-#                         # Link antibiotic to matching breakpoints
-#                         bp_matches = BreakpointsTable.objects.filter(Whonet_Abx=abx_code)
-#                         if bp_matches.exists():
-#                             abx_entry.ab_breakpoints_id.set(bp_matches)
+#                 "f_AccessionNoGen": getattr(isolate, "AccessionNoGen", ""),
 
-#             messages.success(request, "CSV uploaded and data imported successfully.")
-#             return redirect('show_data')
-#         else:
-#             messages.error(request, 'Form validation failed. Please check your file.')
-#     else:
-#         upload_form = ReferredUploadForm()
+#                 "f_SiteCode": isolate.SiteCode,
+#                 "f_Site_Name": isolate.Site_Name,
+#                 "f_Referral_Date": isolate.Referral_Date,
 
-#     return render(request, 'tables.html', {'upload_form': upload_form})
+#                 # ===== PATIENT =====
+#                 "f_Patient_ID": isolate.Patient_ID,
+#                 "f_First_Name": isolate.First_Name,
+#                 "f_Mid_Name": isolate.Mid_Name,
+#                 "f_Last_Name": isolate.Last_Name,
+#                 "f_Date_Birth": isolate.Date_Birth,
+#                 "f_Age": isolate.Age,
+#                 "f_Sex": isolate.Sex,
+
+#                 "f_Date_Admis": isolate.Date_Admis,
+#                 "f_Nosocomial": isolate.Nosocomial,
+#                 "f_Diagnosis": isolate.Diagnosis,
+#                 "f_Diagnosis_ICD10": isolate.Diagnosis_ICD10,
+#                 "f_Ward": isolate.Ward,
+#                 "f_Ward_Type": isolate.Ward_Type,
+#                 "f_Service_Type": isolate.Service_Type,
+
+#                 # ===== SPECIMEN =====
+#                 "f_Spec_Num": isolate.Spec_Num,
+#                 "f_Spec_Date": isolate.Spec_Date,
+#                 "f_Spec_Type": isolate.Spec_Type,
+#                 "f_Reason": isolate.Reason,
+#                 "f_Growth": isolate.Growth,
+#                 "f_Urine_ColCt": isolate.Urine_ColCt,
+
+#                 # ===== PHENOTYPE =====
+#                 "f_ampC": isolate.ampC,
+#                 "f_ESBL": isolate.ESBL,
+#                 "f_CARB": isolate.CARB,
+#                 "f_MBL": isolate.MBL,
+#                 "f_BL": isolate.BL,
+#                 "f_MR": isolate.MR,
+#                 "f_mecA": isolate.mecA,
+#                 "f_ICR": isolate.ICR,
+#                 "f_OtherResMech": isolate.OtherResMech,
+
+#                 # ===== SENTINEL ORGANISM =====
+#                 "f_Site_Pre": nz(isolate.Site_Pre),
+#                 "f_Site_Org": nz(isolate.Site_Org),
+#                 "f_Site_OrgName": nz(isolate.Site_OrgName),
+#                 "f_Site_Pos": nz(isolate.Site_Pos),
+#                 "f_Comments": nz(isolate.Comments),
+
+#                 # ===== ARSRL =====
+#                 "f_ars_ampC": isolate.ars_ampC,
+#                 "f_ars_ESBL": isolate.ars_ESBL,
+#                 "f_ars_CARB": isolate.ars_CARB,
+#                 "f_ars_ECIM": isolate.ars_ECIM,
+#                 "f_ars_MCIM": isolate.ars_MCIM,
+#                 "f_ars_EC_MCIM": isolate.ars_EC_MCIM,
+#                 "f_ars_MBL": isolate.ars_MBL,
+#                 "f_ars_BL": isolate.ars_BL,
+#                 "f_ars_MR": isolate.ars_MR,
+#                 "f_ars_mecA": isolate.ars_mecA,
+#                 "f_ars_ICR": isolate.ars_ICR,
+
+#                 "f_ars_Pre": nz(isolate.ars_Pre),
+#                 "f_ars_Post": nz(isolate.ars_Post),
+#                 "f_ars_OrgCode": nz(isolate.ars_OrgCode),
+#                 "f_ars_OrgName": nz(isolate.ars_OrgName),
+
+#                 "f_ars_ct_ctl": isolate.ars_ct_ctl,
+#                 "f_ars_tz_tzl": isolate.ars_tz_tzl,
+#                 "f_ars_cn_cni": isolate.ars_cn_cni,
+#                 "f_ars_ip_ipi": isolate.ars_ip_ipi,
+
+#                 "f_ars_reco_Code": isolate.ars_reco_Code,
+#                 "f_ars_description": isolate.ars_description,
+#                 "f_ars_reco": isolate.ars_reco,
+
+#                 # ===== SIGNATORIES =====
+#                 "f_arsp_Encoder": isolate.arsp_Encoder,
+#                 "f_arsp_Enc_Lic": isolate.arsp_Enc_Lic,
+#                 "f_arsp_Checker": isolate.arsp_Checker,
+#                 "f_arsp_Chec_Lic": isolate.arsp_Chec_Lic,
+#                 "f_arsp_Verifier": isolate.arsp_Verifier,
+#                 "f_arsp_Ver_Lic": isolate.arsp_Ver_Lic,
+#                 "f_arsp_LabManager": isolate.arsp_LabManager,
+#                 "f_arsp_Lab_Lic": isolate.arsp_Lab_Lic,
+#                 "f_arsp_Head": isolate.arsp_Head,
+#                 "f_arsp_Head_Lic": isolate.arsp_Head_Lic,
+#                 "f_Date_Accomplished_ARSP": isolate.Date_Accomplished_ARSP,
+
+#                 # ===== EXTRA =====
+#                 "f_x_mrse": getattr(isolate, "x_mrse", ""),
+#                 "f_x_mrsamrse": getattr(isolate, "x_mrsamrse", ""),
+#                 "f_x_entbac": getattr(isolate, "x_entbac", ""),
+#                 "f_edta": getattr(isolate, "edta", ""),
+#             }
+#         )
+
+
+#         # reset final antibiotics
+#         Final_AntibioticEntry.objects.filter(
+#             ab_idNum_f_referred=final_obj
+#         ).delete()
+
+#         # copy abx and breakopints
+#         for e in raw_entries:
+
+#             fe = Final_AntibioticEntry(
+#                 ab_idNum_f_referred=final_obj,
+
+#                 ab_AccessionNo=e.ab_AccessionNo,
+#                 ab_RefNo=e.ab_RefNo,
+
+#                 ab_Antibiotic=e.ab_Antibiotic,
+#                 ab_Abx_code=e.ab_Abx_code,
+#                 ab_Abx=e.ab_Abx,
+
+#                 ab_Disk_value=e.ab_Disk_value,
+#                 ab_Disk_enRIS=e.ab_Disk_enRIS,
+
+#                 ab_MIC_operand=e.ab_MIC_operand,
+#                 ab_MIC_value=e.ab_MIC_value,
+#                 ab_MIC_enRIS=e.ab_MIC_enRIS,
+
+#                 ab_AlertMIC=e.ab_AlertMIC,
+
+#                 ab_Retest_Antibiotic=e.ab_Retest_Antibiotic,
+#                 ab_Retest_Abx_code=e.ab_Retest_Abx_code,
+#                 ab_Retest_Abx=e.ab_Retest_Abx,
+
+#                 ab_Retest_DiskValue=e.ab_Retest_DiskValue,
+#                 ab_Retest_Disk_enRIS=e.ab_Retest_Disk_enRIS,
+
+#                 ab_Retest_MIC_operand=e.ab_Retest_MIC_operand,
+#                 ab_Retest_MICValue=e.ab_Retest_MICValue,
+#                 ab_Retest_MIC_enRIS=e.ab_Retest_MIC_enRIS,
+
+#                 ab_Retest_AlertMIC=e.ab_Retest_AlertMIC,
+#             )
+
+#             # REQUIRED FOR M2M
+#             fe.save()
+
+
+
+#             # COPY BREAKPOINT RELATION
+#             raw_bps = e.ab_breakpoints_id.all()
+#             if raw_bps.exists():
+#                 fe.ab_breakpoints_id.add(*raw_bps)
+
+
+#             # COPY BREAKPOINT VALUES
+#             fe.ab_Site_Org = e.ab_Site_Org
+#             fe.ab_R_breakpoint = e.ab_R_breakpoint
+#             fe.ab_I_breakpoint = e.ab_I_breakpoint
+#             fe.ab_SDD_breakpoint = e.ab_SDD_breakpoint
+#             fe.ab_S_breakpoint = e.ab_S_breakpoint
+
+#             fe.ab_Ret_Org = e.ab_Ret_Org
+#             fe.ab_Org_Flag = to_bool(e.ab_Org_Flag)
+#             fe.ab_Abx_Flag = to_bool(e.ab_Abx_Flag)
+#             fe.ab_Abx_Phenotype = (e.ab_Abx_Phenotype or "").strip()
+#             fe.ab_Ret_R_breakpoint = e.ab_Ret_R_breakpoint
+#             fe.ab_Ret_I_breakpoint = e.ab_Ret_I_breakpoint
+#             fe.ab_Ret_SDD_breakpoint = e.ab_Ret_SDD_breakpoint
+#             fe.ab_Ret_S_breakpoint = e.ab_Ret_S_breakpoint
+
+#             fe.ab_Alert_val = e.ab_Alert_val
+#             fe.ab_Retest_Alert_val = e.ab_Retest_Alert_val
+            
+            
+#             fe.save(update_fields=[
+#                 "ab_Site_Org",
+#                 "ab_R_breakpoint",
+#                 "ab_I_breakpoint",
+#                 "ab_SDD_breakpoint",
+#                 "ab_S_breakpoint",
+#                 "ab_Ret_Org",
+#                 "ab_Org_Flag",
+#                 "ab_Abx_Flag",
+#                 "ab_Abx_Phenotype",
+#                 "ab_Ret_R_breakpoint",
+#                 "ab_Ret_I_breakpoint",
+#                 "ab_Ret_SDD_breakpoint",
+#                 "ab_Ret_S_breakpoint",
+#                 "ab_Alert_val",
+#                 "ab_Retest_Alert_val",
+#             ])
+
+#         copied += 1
+
+#     messages.success(
+#         request,
+#         f"{copied} isolates from batch {batch.bat_Batch_Name} "
+#         f"copied to Final successfully. Breakpoints preserved."
+#     )
+
+#     return redirect("show_data")
+
 
 
 @login_required(login_url="/login/")
-def copy_data_to_final(request, id):
-    """
-    Copies all data from Referred_Data and its AntibioticEntries
-    into Final_Data and Final_AntibioticEntry.
-    """
-    try:
-        isolates = get_object_or_404(Referred_Data, pk=id) # Fetch the Referred_Data record
-        all_entries = AntibioticEntry.objects.filter(ab_idNum_referred=isolates) # Fetch related AntibioticEntry records
+@transaction.atomic
+def copy_batch_to_final(request, batch_id):
 
-        with transaction.atomic():
-            # --- Create or Update Final_Data ---
-            final_obj, created = Final_Data.objects.update_or_create(
-                f_AccessionNo=isolates.AccessionNo,
-                defaults={
-                    # Batch info
-                    "f_Batch_Code": getattr(isolates, "Batch_Code", ""),
-                    "f_Batch_Name": getattr(isolates, "Batch_Name", ""),
-                    "f_RefNo": getattr(isolates, "RefNo", None),
-                    "f_BatchNo": getattr(isolates, "BatchNo", ""),
-                    "f_Total_batch": getattr(isolates, "Total_batch", ""),
-                    "f_SiteCode": getattr(isolates, "Site_Code", ""),
-                    "f_Site_Name": getattr(isolates, "Site_Name", ""),
-                    "f_Referral_Date": getattr(isolates, "Referral_Date", None),
+    def to_bool(val):
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, str):
+            return val.lower() in ("true", "1", "yes", "y")
+        return False
 
-                    # Patient Info
-                    "f_Patient_ID": getattr(isolates, "Patient_ID", ""),
-                    "f_First_Name": getattr(isolates, "First_Name", ""),
-                    "f_Mid_Name": getattr(isolates, "Mid_Name", ""),
-                    "f_Last_Name": getattr(isolates, "Last_Name", ""),
-                    "f_Date_Birth": getattr(isolates, "Date_Birth", None),
-                    "f_Age": getattr(isolates, "Age", ""),
-                    "f_Sex": getattr(isolates, "Sex", ""),
-                    "f_Date_Admis": getattr(isolates, "Date_Admis", None),
-                    "f_Diagnosis": getattr(isolates, "Diagnosis", ""),
-                    "f_Diagnosis_ICD10": getattr(isolates, "Diagnosis_ICD10", ""),
-                    "f_Ward": getattr(isolates, "Ward", ""),
-                    "f_Ward_Type": getattr(isolates, "Ward_Type", ""),
-                    "f_Service_Type": getattr(isolates, "Service_Type", "n/a"),
+    batch = get_object_or_404(Batch_Table, pk=batch_id)
 
-                    # Specimen
-                    "f_Spec_Num": getattr(isolates, "Spec_Num", ""),
-                    "f_Spec_Date": getattr(isolates, "Spec_Date", None),
-                    "f_Spec_Type": getattr(isolates, "Spec_Type", ""),
-                    "f_Growth": getattr(isolates, "Growth", ""),
-                    "f_Urine_ColCt": getattr(isolates, "Urine_ColCt", ""),
+    isolates = Referred_Data.objects.filter(
+        Batch_id=batch
+    )
 
-                    # Organism
-                    "f_Site_Pre": getattr(isolates, "Site_Pre", ""),
-                    "f_Site_Org": getattr(isolates, "Site_Org", ""),
-                    "f_Site_Pos": getattr(isolates, "Site_Pos", ""),
-                    "f_OrganismCode": getattr(isolates, "OrganismCode", ""),
-                    "f_Comments": getattr(isolates, "Comments", ""),
-                },
-            )
+    copied = 0
+    last_final_obj = None 
 
-            # --- Clear existing entries in Final_AntibioticEntry ---
-            Final_AntibioticEntry.objects.filter(ab_idNum_f_referred=final_obj).delete() 
 
-            # --- Copy each AntibioticEntry record ---
-            for entry in all_entries: 
-                final_entry = Final_AntibioticEntry.objects.create(
-                    ab_idNum_f_referred=final_obj,
-                    ab_AccessionNo=entry.ab_AccessionNo,
-                    ab_RefNo=getattr(isolates, "RefNo", ""),
-                    ab_Antibiotic=entry.ab_Antibiotic,
-                    ab_Abx_code=entry.ab_Abx_code,
-                    ab_Abx=entry.ab_Abx,
-                    ab_Disk_value=entry.ab_Disk_value,
-                    ab_Disk_RIS=entry.ab_Disk_RIS,
-                    ab_Disk_enRIS=entry.ab_Disk_enRIS,
-                    ab_MIC_operand=entry.ab_MIC_operand,
-                    ab_MIC_value=entry.ab_MIC_value,
-                    ab_MIC_RIS=entry.ab_MIC_RIS,
-                    ab_MIC_enRIS=entry.ab_MIC_enRIS,
-                    ab_R_breakpoint=entry.ab_R_breakpoint,
-                    ab_I_breakpoint=entry.ab_I_breakpoint,
-                    ab_SDD_breakpoint=entry.ab_SDD_breakpoint,
-                    ab_S_breakpoint=entry.ab_S_breakpoint,
-                    ab_Retest_Antibiotic=entry.ab_Retest_Antibiotic,
-                    ab_Retest_Abx_code=entry.ab_Retest_Abx_code,
-                    ab_Retest_Abx=entry.ab_Retest_Abx,
-                    ab_Retest_DiskValue=entry.ab_Retest_DiskValue,
-                    ab_Retest_Disk_RIS=entry.ab_Retest_Disk_RIS,
-                    ab_Retest_Disk_enRIS=entry.ab_Retest_Disk_enRIS,
-                    ab_Retest_MIC_operand=entry.ab_Retest_MIC_operand,
-                    ab_Retest_MICValue=entry.ab_Retest_MICValue,
-                    ab_Retest_MIC_RIS=entry.ab_Retest_MIC_RIS,
-                    ab_Retest_MIC_enRIS=entry.ab_Retest_MIC_enRIS,
-                    ab_Ret_R_breakpoint=entry.ab_Ret_R_breakpoint,
-                    ab_Ret_I_breakpoint=entry.ab_Ret_I_breakpoint,
-                    ab_Ret_SDD_breakpoint=entry.ab_Ret_SDD_breakpoint,
-                    ab_Ret_S_breakpoint=entry.ab_Ret_S_breakpoint,
+    for isolate in isolates:
+
+        spec_obj = None
+        if isolate.Spec_Type:
+                spec_obj = SpecimenTypeModel.objects.filter(
+                    Specimen_code=isolate.Spec_Type
+                ).first()
+                raw_entries = AntibioticEntry.objects.filter(
+                    ab_idNum_referred=isolate
                 )
 
-                # Copy M2M breakpoints
-                final_entry.ab_breakpoints_id.set(entry.ab_breakpoints_id.all())
 
-            messages.success(
-                request,
-                f"Data successfully copied to Final_Data (Accession: {isolates.AccessionNo})."
+
+        # ================= FINAL DATA =================
+        final_obj, _ = Final_Data.objects.update_or_create(
+            f_AccessionNo=isolate.AccessionNo,
+            defaults={
+
+                # ===== BATCH / META =====
+                "f_bat_seq": isolate.bat_seq,
+                "f_Batch_id": isolate.Batch_id,
+                "f_Hide": getattr(isolate, "Hide", False),
+                "f_Batch_Code": isolate.Batch_Code,
+                "f_Batch_Name": isolate.Batch_Name,
+                "f_RefNo": isolate.RefNo,
+                "f_BatchNo": isolate.BatchNo,
+                "f_Total_batch": isolate.Total_batch,
+
+                "f_AccessionNoGen": getattr(isolate, "AccessionNoGen", ""),
+
+                "f_SiteCode": isolate.SiteCode,
+                "f_Site_Name": isolate.Site_Name,
+                "f_Referral_Date": isolate.Referral_Date,
+
+                # ===== PATIENT =====
+                "f_Patient_ID": isolate.Patient_ID,
+                "f_First_Name": isolate.First_Name,
+                "f_Mid_Name": isolate.Mid_Name,
+                "f_Last_Name": isolate.Last_Name,
+                "f_Date_Birth": isolate.Date_Birth,
+                "f_Age": isolate.Age,
+                "f_Sex": isolate.Sex,
+
+                "f_Date_Admis": isolate.Date_Admis,
+                "f_Nosocomial": isolate.Nosocomial,
+                "f_Diagnosis": isolate.Diagnosis,
+                "f_Diagnosis_ICD10": isolate.Diagnosis_ICD10,
+                "f_Ward": isolate.Ward,
+                "f_Ward_Type": isolate.Ward_Type,
+                "f_Service_Type": isolate.Service_Type,
+
+                # ===== SPECIMEN =====
+                "f_Spec_Num": isolate.Spec_Num,
+                "f_Spec_Date": isolate.Spec_Date,
+                "f_Reason": isolate.Reason,
+                "f_Growth": isolate.Growth,
+                "f_Urine_ColCt": isolate.Urine_ColCt,
+
+                # ===== PHENOTYPE =====
+                "f_ampC": isolate.ampC,
+                "f_ESBL": isolate.ESBL,
+                "f_CARB": isolate.CARB,
+                "f_MBL": isolate.MBL,
+                "f_BL": isolate.BL,
+                "f_MR": isolate.MR,
+                "f_mecA": isolate.mecA,
+                "f_ICR": isolate.ICR,
+                "f_OtherResMech": isolate.OtherResMech,
+
+
+                "f_Spec_Type": spec_obj,
+
+
+                # ===== SENTINEL ORGANISM =====
+                "f_Site_Pre": nz(isolate.Site_Pre),
+                "f_Site_Org": nz(isolate.Site_Org),
+                "f_Site_OrgName": nz(isolate.Site_OrgName),
+                "f_Site_Pos": nz(isolate.Site_Pos),
+                "f_Comments": nz(isolate.Comments),
+
+                # ===== ARSRL =====
+                "f_ars_ampC": isolate.ars_ampC,
+                "f_ars_ESBL": isolate.ars_ESBL,
+                "f_ars_CARB": isolate.ars_CARB,
+                "f_ars_ECIM": isolate.ars_ECIM,
+                "f_ars_MCIM": isolate.ars_MCIM,
+                "f_ars_EC_MCIM": isolate.ars_EC_MCIM,
+                "f_ars_MBL": isolate.ars_MBL,
+                "f_ars_BL": isolate.ars_BL,
+                "f_ars_MR": isolate.ars_MR,
+                "f_ars_mecA": isolate.ars_mecA,
+                "f_ars_ICR": isolate.ars_ICR,
+
+                "f_ars_Pre": nz(isolate.ars_Pre),
+                "f_ars_Post": nz(isolate.ars_Post),
+                "f_ars_OrgCode": nz(isolate.ars_OrgCode),
+                "f_ars_OrgName": nz(isolate.ars_OrgName),
+
+                "f_ars_ct_ctl": isolate.ars_ct_ctl,
+                "f_ars_tz_tzl": isolate.ars_tz_tzl,
+                "f_ars_cn_cni": isolate.ars_cn_cni,
+                "f_ars_ip_ipi": isolate.ars_ip_ipi,
+
+                "f_ars_reco_Code": isolate.ars_reco_Code,
+                "f_ars_description": isolate.ars_description,
+                "f_ars_reco": isolate.ars_reco,
+
+                # ===== SIGNATORIES =====
+                "f_arsp_Encoder": isolate.arsp_Encoder,
+                "f_arsp_Enc_Lic": isolate.arsp_Enc_Lic,
+                "f_arsp_Checker": isolate.arsp_Checker,
+                "f_arsp_Chec_Lic": isolate.arsp_Chec_Lic,
+                "f_arsp_Verifier": isolate.arsp_Verifier,
+                "f_arsp_Ver_Lic": isolate.arsp_Ver_Lic,
+                "f_arsp_LabManager": isolate.arsp_LabManager,
+                "f_arsp_Lab_Lic": isolate.arsp_Lab_Lic,
+                "f_arsp_Head": isolate.arsp_Head,
+                "f_arsp_Head_Lic": isolate.arsp_Head_Lic,
+                "f_Date_Accomplished_ARSP": isolate.Date_Accomplished_ARSP,
+
+                # ===== EXTRA =====
+                "f_x_mrse": getattr(isolate, "x_mrse", ""),
+                "f_x_mrsamrse": getattr(isolate, "x_mrsamrse", ""),
+                "f_x_entbac": getattr(isolate, "x_entbac", ""),
+                "f_edta": getattr(isolate, "edta", ""),
+            }
+        )
+
+
+        last_final_obj = final_obj  # 🔑 TRACK ACTIVE ISOLATE
+
+        # ================= RESET FINAL ANTIBIOTICS =================
+        Final_AntibioticEntry.objects.filter(
+            ab_idNum_f_referred=final_obj
+        ).delete()
+
+        # ================= COPY ANTIBIOTICS + BREAKPOINTS =================
+        for e in raw_entries:
+
+            fe = Final_AntibioticEntry(
+                ab_idNum_f_referred=final_obj,
+
+                ab_AccessionNo=e.ab_AccessionNo,
+                ab_RefNo=e.ab_RefNo,
+
+                ab_Antibiotic=e.ab_Antibiotic,
+                ab_Abx_code=e.ab_Abx_code,
+                ab_Abx=e.ab_Abx,
+
+                ab_Disk_value=e.ab_Disk_value,
+                ab_Disk_enRIS=e.ab_Disk_enRIS,
+
+                ab_MIC_operand=e.ab_MIC_operand,
+                ab_MIC_value=e.ab_MIC_value,
+                ab_MIC_enRIS=e.ab_MIC_enRIS,
+
+                ab_AlertMIC=e.ab_AlertMIC,
+
+                ab_Retest_Antibiotic=e.ab_Retest_Antibiotic,
+                ab_Retest_Abx_code=e.ab_Retest_Abx_code,
+                ab_Retest_Abx=e.ab_Retest_Abx,
+
+                ab_Retest_DiskValue=e.ab_Retest_DiskValue,
+                ab_Retest_Disk_enRIS=e.ab_Retest_Disk_enRIS,
+
+                ab_Retest_MIC_operand=e.ab_Retest_MIC_operand,
+                ab_Retest_MICValue=e.ab_Retest_MICValue,
+                ab_Retest_MIC_enRIS=e.ab_Retest_MIC_enRIS,
+
+                ab_Retest_AlertMIC=e.ab_Retest_AlertMIC,
             )
+
+            fe.save()
+
+            raw_bps = e.ab_breakpoints_id.all()
+            if raw_bps.exists():
+                fe.ab_breakpoints_id.add(*raw_bps)
+
+            fe.ab_Site_Org = e.ab_Site_Org
+            fe.ab_R_breakpoint = e.ab_R_breakpoint
+            fe.ab_I_breakpoint = e.ab_I_breakpoint
+            fe.ab_SDD_breakpoint = e.ab_SDD_breakpoint
+            fe.ab_S_breakpoint = e.ab_S_breakpoint
+
+            fe.ab_Ret_Org = e.ab_Ret_Org
+            fe.ab_Org_Flag = to_bool(e.ab_Org_Flag)
+            fe.ab_Abx_Flag = to_bool(e.ab_Abx_Flag)
+            fe.ab_Abx_Phenotype = (e.ab_Abx_Phenotype or "").strip()
+            fe.ab_Abx_Phenotype_Other = (e.ab_Abx_Phenotype_Other or "").strip()
+
+            fe.ab_Ret_R_breakpoint = e.ab_Ret_R_breakpoint
+            fe.ab_Ret_I_breakpoint = e.ab_Ret_I_breakpoint
+            fe.ab_Ret_SDD_breakpoint = e.ab_Ret_SDD_breakpoint
+            fe.ab_Ret_S_breakpoint = e.ab_Ret_S_breakpoint
+
+            fe.ab_Alert_val = e.ab_Alert_val
+            fe.ab_Retest_Alert_val = e.ab_Retest_Alert_val
+
+            fe.save(update_fields=[
+                "ab_Site_Org",
+                "ab_R_breakpoint",
+                "ab_I_breakpoint",
+                "ab_SDD_breakpoint",
+                "ab_S_breakpoint",
+                "ab_Ret_Org",
+                "ab_Org_Flag",
+                "ab_Abx_Flag",
+                "ab_Abx_Phenotype",
+                "ab_Abx_Phenotype_Other",
+                "ab_Ret_R_breakpoint",
+                "ab_Ret_I_breakpoint",
+                "ab_Ret_SDD_breakpoint",
+                "ab_Ret_S_breakpoint",
+                "ab_Alert_val",
+                "ab_Retest_Alert_val",
+            ])
+
+        copied += 1
+
+    # 🔑 SESSION ISOLATE SET ONCE, AFTER COPY
+    if last_final_obj:
+        request.session["current_final_isolate_id"] = last_final_obj.id
+
+    messages.success(
+        request,
+        f"{copied} isolates from batch {batch.bat_Batch_Name} "
+        f"copied to Final successfully. Breakpoints preserved."
+    )
+
+    return redirect("show_data")
+
+
+
+### undo batch copy
+@login_required(login_url="/login/")
+@transaction.atomic
+def undo_copy_batch_to_final(request, batch_id):
+    try:
+        # Get batch
+        batch = get_object_or_404(Batch_Table, pk=batch_id)
+
+        # Get all referred isolates in this batch
+        isolates = Referred_Data.objects.filter(
+            Batch_id=batch
+        )
+
+        if not isolates.exists():
+            messages.warning(
+                request,
+                "No referred isolates found for this batch."
+            )
+            return redirect("show_data")
+
+        accession_numbers = isolates.values_list(
+            "AccessionNo", flat=True
+        )
+
+        # Find corresponding Final_Data records
+        final_qs = Final_Data.objects.filter(
+            f_AccessionNo__in=accession_numbers
+        )
+
+        if not final_qs.exists():
+            messages.warning(
+                request,
+                "No Final Data records found to undo for this batch."
+            )
+            return redirect("show_data")
+
+        # Delete Final Antibiotic Entries first
+        Final_AntibioticEntry.objects.filter(
+            ab_idNum_f_referred__in=final_qs
+        ).delete()
+
+         # 2. CLEAR THE SESSION (The Fix)
+        # If the isolate currently being edited is in this batch, remove it from session
+        current_session_id = request.session.get("current_final_isolate_id")
+        if current_session_id and final_qs.filter(pk=current_session_id).exists():
+            request.session.pop("current_final_isolate_id", None)
+
+        # Delete Final Data records
+        deleted_count, _ = final_qs.delete()
+
+        messages.success(
+            request,
+            f"Undo successful: {deleted_count} Final records "
+            f"from batch {batch.bat_Batch_Name} were removed."
+        )
 
         return redirect("show_data")
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        messages.error(request, f"⚠️ Error copying data: {e}")
+        messages.error(
+            request,
+            f"Error undoing batch copy: {e}"
+        )
         return redirect("show_data")
-    
 
+
+
+
+
+##### copy one isolate only
+@login_required(login_url="/login/")
+@transaction.atomic
+def copy_data_to_final(request, id):
+    
+    def to_bool(val):
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, str):
+            return val.lower() in ("true", "1", "yes", "y")
+        return False
+        
+
+    isolate = get_object_or_404(Referred_Data, pk=id)
+
+    raw_entries = AntibioticEntry.objects.filter(
+        ab_idNum_referred=isolate
+    )
+
+    # fnial data
+    final_obj, _ = Final_Data.objects.update_or_create(
+        f_AccessionNo=isolate.AccessionNo,
+        defaults={
+
+            # batch meta
+            "f_bat_seq": isolate.bat_seq,
+            "f_Batch_id": isolate.Batch_id,
+            "f_Hide": isolate.Hide if hasattr(isolate, "Hide") else False,
+            "f_Batch_Code": isolate.Batch_Code,
+            "f_Batch_Name": isolate.Batch_Name,
+            "f_RefNo": isolate.RefNo,
+            "f_BatchNo": isolate.BatchNo,
+            "f_Total_batch": isolate.Total_batch,
+
+            "f_AccessionNoGen": getattr(isolate, "AccessionNoGen", ""),
+
+            "f_SiteCode": isolate.SiteCode,
+            "f_Site_Name": isolate.Site_Name,
+            "f_Referral_Date": isolate.Referral_Date,
+
+            # PATIENT 
+            "f_Patient_ID": isolate.Patient_ID,
+            "f_First_Name": isolate.First_Name,
+            "f_Mid_Name": isolate.Mid_Name,
+            "f_Last_Name": isolate.Last_Name,
+            "f_Date_Birth": isolate.Date_Birth,
+            "f_Age": isolate.Age,
+            "f_Sex": isolate.Sex,
+
+            "f_Date_Admis": isolate.Date_Admis,
+            "f_Nosocomial": isolate.Nosocomial,
+            "f_Diagnosis": isolate.Diagnosis,
+            "f_Diagnosis_ICD10": isolate.Diagnosis_ICD10,
+            "f_Ward": isolate.Ward,
+            "f_Ward_Type": isolate.Ward_Type,
+            "f_Service_Type": isolate.Service_Type,
+
+            # SPECIMEN 
+            "f_Spec_Num": isolate.Spec_Num,
+            "f_Spec_Date": isolate.Spec_Date,
+            "f_Spec_Type": isolate.Spec_Type,
+            "f_Reason": isolate.Reason,
+            "f_Growth": isolate.Growth,
+            "f_Urine_ColCt": isolate.Urine_ColCt,
+
+            # PHENOTYPE 
+            "f_ampC": isolate.ampC,
+            "f_ESBL": isolate.ESBL,
+            "f_CARB": isolate.CARB,
+            "f_MBL": isolate.MBL,
+            "f_BL": isolate.BL,
+            "f_MR": isolate.MR,
+            "f_mecA": isolate.mecA,
+            "f_ICR": isolate.ICR,
+            "f_OtherResMech": isolate.OtherResMech,
+
+            # SENTINEL ORGANISM 
+            "f_Site_Pre": nz(isolate.Site_Pre),
+            "f_Site_Org": nz(isolate.Site_Org),
+            "f_Site_OrgName": nz(isolate.Site_OrgName),
+            "f_Site_Pos": nz(isolate.Site_Pos),
+            "f_Comments": nz(isolate.Comments),
+
+            # ARSRL
+            "f_ars_ampC": isolate.ars_ampC,
+            "f_ars_ESBL": isolate.ars_ESBL,
+            "f_ars_CARB": isolate.ars_CARB,
+            "f_ars_ECIM": isolate.ars_ECIM,
+            "f_ars_MCIM": isolate.ars_MCIM,
+            "f_ars_EC_MCIM": isolate.ars_EC_MCIM,
+            "f_ars_MBL": isolate.ars_MBL,
+            "f_ars_BL": isolate.ars_BL,
+            "f_ars_MR": isolate.ars_MR,
+            "f_ars_mecA": isolate.ars_mecA,
+            "f_ars_ICR": isolate.ars_ICR,
+
+            "f_ars_Pre": nz(isolate.ars_Pre),
+            "f_ars_Post": nz(isolate.ars_Post),
+            "f_ars_OrgCode": nz(isolate.ars_OrgCode),
+            "f_ars_OrgName": nz(isolate.ars_OrgName),
+
+            "f_ars_ct_ctl": isolate.ars_ct_ctl,
+            "f_ars_tz_tzl": isolate.ars_tz_tzl,
+            "f_ars_cn_cni": isolate.ars_cn_cni,
+            "f_ars_ip_ipi": isolate.ars_ip_ipi,
+
+            "f_ars_reco_Code": isolate.ars_reco_Code,
+            "f_ars_description": isolate.ars_description,
+            "f_ars_reco": isolate.ars_reco,
+
+            # SIGNATORIES
+            "f_arsp_Encoder": isolate.arsp_Encoder,
+            "f_arsp_Enc_Lic": isolate.arsp_Enc_Lic,
+            "f_arsp_Checker": isolate.arsp_Checker,
+            "f_arsp_Chec_Lic": isolate.arsp_Chec_Lic,
+            "f_arsp_Verifier": isolate.arsp_Verifier,
+            "f_arsp_Ver_Lic": isolate.arsp_Ver_Lic,
+            "f_arsp_LabManager": isolate.arsp_LabManager,
+            "f_arsp_Lab_Lic": isolate.arsp_Lab_Lic,
+            "f_arsp_Head": isolate.arsp_Head,
+            "f_arsp_Head_Lic": isolate.arsp_Head_Lic,
+            "f_Date_Accomplished_ARSP": isolate.Date_Accomplished_ARSP,
+
+            # EXTRA
+            "f_x_mrse": getattr(isolate, "x_mrse", ""),
+            "f_x_mrsamrse": getattr(isolate, "x_mrsamrse", ""),
+            "f_x_entbac": getattr(isolate, "x_entbac", ""),
+            "f_edta": getattr(isolate, "edta", ""),
+        }
+    )
+
+    # RESET FINAL ANTIBIOTICS
+    Final_AntibioticEntry.objects.filter(
+        ab_idNum_f_referred=final_obj
+    ).delete()
+
+    # COPY ABX AND BREAKPOINTS
+    for e in raw_entries:
+
+        fe = Final_AntibioticEntry(
+            ab_idNum_f_referred=final_obj,
+
+            ab_AccessionNo=e.ab_AccessionNo,
+            ab_RefNo=e.ab_RefNo,
+
+            ab_Antibiotic=e.ab_Antibiotic,
+            ab_Abx_code=e.ab_Abx_code,
+            ab_Abx=e.ab_Abx,
+
+            ab_Disk_value=e.ab_Disk_value,
+            ab_Disk_enRIS=e.ab_Disk_enRIS,
+
+            ab_MIC_operand=e.ab_MIC_operand,
+            ab_MIC_value=e.ab_MIC_value,
+            ab_MIC_enRIS=e.ab_MIC_enRIS,
+
+            ab_AlertMIC=e.ab_AlertMIC,
+
+            ab_Retest_Antibiotic=e.ab_Retest_Antibiotic,
+            ab_Retest_Abx_code=e.ab_Retest_Abx_code,
+            ab_Retest_Abx=e.ab_Retest_Abx,
+
+            ab_Retest_DiskValue=e.ab_Retest_DiskValue,
+            ab_Retest_Disk_enRIS=e.ab_Retest_Disk_enRIS,
+
+            ab_Retest_MIC_operand=e.ab_Retest_MIC_operand,
+            ab_Retest_MICValue=e.ab_Retest_MICValue,
+            ab_Retest_MIC_enRIS=e.ab_Retest_MIC_enRIS,
+
+            ab_Retest_AlertMIC=e.ab_Retest_AlertMIC,
+        )
+
+        # SAVE IT FIRST
+        fe.save()
+
+        # COPY THE BREAKPOINTS
+        raw_bps = e.ab_breakpoints_id.all()
+        if raw_bps.exists():
+            fe.ab_breakpoints_id.add(*raw_bps)
+        
+
+        fe.ab_Site_Org = e.ab_Site_Org
+        fe.ab_R_breakpoint = e.ab_R_breakpoint
+        fe.ab_I_breakpoint = e.ab_I_breakpoint
+        fe.ab_SDD_breakpoint = e.ab_SDD_breakpoint
+        fe.ab_S_breakpoint = e.ab_S_breakpoint
+
+        fe.ab_Ret_Org = e.ab_Ret_Org
+        fe.ab_Org_Flag = to_bool(e.ab_Org_Flag)
+        fe.ab_Abx_Flag = to_bool(e.ab_Abx_Flag)
+        fe.ab_Abx_Phenotype = (e.ab_Abx_Phenotype or "").strip()
+        fe.ab_Abx_Phenotype_Other = (e.ab_Abx_Phenotype_Other or "").strip()
+        fe.ab_Ret_R_breakpoint = e.ab_Ret_R_breakpoint
+        fe.ab_Ret_I_breakpoint = e.ab_Ret_I_breakpoint
+        fe.ab_Ret_SDD_breakpoint = e.ab_Ret_SDD_breakpoint
+        fe.ab_Ret_S_breakpoint = e.ab_Ret_S_breakpoint
+
+        fe.ab_Alert_val = e.ab_Alert_val
+        fe.ab_Retest_Alert_val = e.ab_Retest_Alert_val
+
+        fe.save(update_fields=[
+            "ab_Site_Org",
+            "ab_R_breakpoint",
+            "ab_I_breakpoint",
+            "ab_SDD_breakpoint",
+            "ab_S_breakpoint",
+            "ab_Ret_Org",
+            "ab_Org_Flag",
+            "ab_Abx_Flag",
+            "ab_Abx_Phenotype",
+            "ab_Abx_Phenotype_Other",
+            "ab_Ret_R_breakpoint",
+            "ab_Ret_I_breakpoint",
+            "ab_Ret_SDD_breakpoint",
+            "ab_Ret_S_breakpoint",
+            "ab_Alert_val",
+            "ab_Retest_Alert_val",
+        ])
+
+
+    messages.success(
+        request,
+        f"Final data copied successfully for Accession {isolate.AccessionNo}. "
+        f"Breakpoints copied correctly."
+    )
+
+    return redirect("show_data")
+
+
+
+
+### undo copy of one isolate only
 @login_required(login_url="/login/")
 def undo_copy_to_final(request, id):
-    """
-    Copies all data from Referred_Data and its AntibioticEntries
-    into Final_Data and Final_AntibioticEntry.
-    """
     try:
-        isolates = get_object_or_404(Final_Data, pk=id) # Fetch the Referred_Data record
-        all_entries = Final_AntibioticEntry.objects.filter(ab_idNum_f_referred=isolates) # Fetch related AntibioticEntry records
+        # id here is Referred_Data.id
+        isolate = get_object_or_404(Referred_Data, pk=id)
 
         with transaction.atomic():
-            # --- Create or Update Final_Data ---
-            raw_obj, created = Referred_Data.objects.update_or_create(
-                AccessionNo=isolates.f_AccessionNo,
-                defaults={
-                    # Batch info
-                    "Batch_Code": getattr(isolates, "f_Batch_Code", ""),
-                    "Batch_Name": getattr(isolates, "f_Batch_Name", ""),
-                    "RefNo": getattr(isolates, "f_RefNo", None),
-                    "BatchNo": getattr(isolates, "f_BatchNo", ""),
-                    "Total_batch": getattr(isolates, "f_Total_batch", ""),
-                    "SiteCode": getattr(isolates, "f_Site_Code", ""),
-                    "Site_Name": getattr(isolates, "f_Site_Name", ""),
-                    "Referral_Date": getattr(isolates, "f_Referral_Date", None),
 
-                    # Patient Info
-                    "Patient_ID": getattr(isolates, "f_Patient_ID", ""),
-                    "First_Name": getattr(isolates, "f_First_Name", ""),
-                    "Mid_Name": getattr(isolates, "f_Mid_Name", ""),
-                    "Last_Name": getattr(isolates, "f_Last_Name", ""),
-                    "Date_Birth": getattr(isolates, "f_Date_Birth", None),
-                    "Age": getattr(isolates, "f_Age", ""),
-                    "Sex": getattr(isolates, "f_Sex", ""),
-                    "Date_Admis": getattr(isolates, "f_Date_Admis", None),
-                    "Diagnosis": getattr(isolates, "f_Diagnosis", ""),
-                    "Diagnosis_ICD10": getattr(isolates, "f_Diagnosis_ICD10", ""),
-                    "Ward": getattr(isolates, "f_Ward", ""),
-                    "Ward_Type": getattr(isolates, "f_Ward_Type", ""),
-                    "Service_Type": getattr(isolates, "f_Service_Type", "n/a"),
-
-                    # Specimen
-                    "Spec_Num": getattr(isolates, "f_Spec_Num", ""),
-                    "Spec_Date": getattr(isolates, "f_Spec_Date", None),
-                    "Spec_Type": getattr(isolates, "f_Spec_Type", ""),
-                    "Growth": getattr(isolates, "f_Growth", ""),
-                    "Urine_ColCt": getattr(isolates, "f_Urine_ColCt", ""),
-
-                    # Organism
-                    "Site_Pre": getattr(isolates, "f_Site_Pre", ""),
-                    "Site_Org": getattr(isolates, "f_Site_Org", ""),
-                    "Site_Pos": getattr(isolates, "f_Site_Pos", ""),
-                    "OrganismCode": getattr(isolates, "f_OrganismCode", ""),
-                    "Comments": getattr(isolates, "f_Comments", ""),
-                },
+            #  Delete FINAL data by AccessionNo
+            final_qs = Final_Data.objects.filter(
+                f_AccessionNo=isolate.AccessionNo
             )
 
-            # --- Clear existing entries in AntibioticEntry ---
-            AntibioticEntry.objects.filter(ab_idNum_referred=raw_obj).delete() 
+            # Delete related Final_AntibioticEntry first
+            Final_AntibioticEntry.objects.filter(
+                ab_idNum_f_referred__in=final_qs
+            ).delete()
 
-            # --- Copy each AntibioticEntry record ---
-            for entry in all_entries: 
-                raw_entry = AntibioticEntry.objects.create(
-                    ab_idNum_f_referred=raw_obj,
-                    ab_AccessionNo=entry.ab_AccessionNo,
-                    ab_RefNo=getattr(isolates, "RefNo", ""),
-                    ab_Antibiotic=entry.ab_Antibiotic,
-                    ab_Abx_code=entry.ab_Abx_code,
-                    ab_Abx=entry.ab_Abx,
-                    ab_Disk_value=entry.ab_Disk_value,
-                    ab_Disk_RIS=entry.ab_Disk_RIS,
-                    ab_Disk_enRIS=entry.ab_Disk_enRIS,
-                    ab_MIC_operand=entry.ab_MIC_operand,
-                    ab_MIC_value=entry.ab_MIC_value,
-                    ab_MIC_RIS=entry.ab_MIC_RIS,
-                    ab_MIC_enRIS=entry.ab_MIC_enRIS,
-                    ab_R_breakpoint=entry.ab_R_breakpoint,
-                    ab_I_breakpoint=entry.ab_I_breakpoint,
-                    ab_SDD_breakpoint=entry.ab_SDD_breakpoint,
-                    ab_S_breakpoint=entry.ab_S_breakpoint,
-                    ab_Retest_Antibiotic=entry.ab_Retest_Antibiotic,
-                    ab_Retest_Abx_code=entry.ab_Retest_Abx_code,
-                    ab_Retest_Abx=entry.ab_Retest_Abx,
-                    ab_Retest_DiskValue=entry.ab_Retest_DiskValue,
-                    ab_Retest_Disk_RIS=entry.ab_Retest_Disk_RIS,
-                    ab_Retest_Disk_enRIS=entry.ab_Retest_Disk_enRIS,
-                    ab_Retest_MIC_operand=entry.ab_Retest_MIC_operand,
-                    ab_Retest_MICValue=entry.ab_Retest_MICValue,
-                    ab_Retest_MIC_RIS=entry.ab_Retest_MIC_RIS,
-                    ab_Retest_MIC_enRIS=entry.ab_Retest_MIC_enRIS,
-                    ab_Ret_R_breakpoint=entry.ab_Ret_R_breakpoint,
-                    ab_Ret_I_breakpoint=entry.ab_Ret_I_breakpoint,
-                    ab_Ret_SDD_breakpoint=entry.ab_Ret_SDD_breakpoint,
-                    ab_Ret_S_breakpoint=entry.ab_Ret_S_breakpoint,
+            # Delete Final_Data record
+            deleted_count, _ = final_qs.delete()
+
+            if deleted_count == 0:
+                messages.warning(
+                    request,
+                    "No final data copy found to undo."
                 )
-
-                # Copy M2M breakpoints
-                raw_entry.ab_breakpoints_id.set(entry.ab_breakpoints_id.all())
-
-            messages.success(
-                request,
-                f"Data successfully copied to Raw Data (Accession: {isolates.f_AccessionNo})."
-            )
+            else:
+                messages.success(
+                    request,
+                    "Final data copy successfully removed."
+                )
 
         return redirect("show_data")
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        messages.error(request, f" Error copying data: {e}")
+        messages.error(request, f"Error undoing final copy: {e}")
         return redirect("show_data")
+
+
 
     
 #### uploading referred data
@@ -3176,14 +4847,12 @@ def upload_combined_table(request):
 
 
 
+############ FIELD MAPPER TOOL ############
 
-
-
+ # this is the updated field mapper tool with temp file saving and session management
 @login_required
 def field_mapper_tool(request):
-    """
-    STEP 1: Upload a raw file and preview headers for mapping.
-    """
+    # upload a raw file and preview headers for mapping.
     if request.method == "POST" and request.FILES.get("raw_file"):
         uploaded_file = request.FILES["raw_file"]
 
@@ -3240,451 +4909,357 @@ def field_mapper_tool(request):
 
         return render(request, "home/map_fields.html", context)
 
-    # --- GET request (upload step) ---
+
     return render(request, "home/upload_raw.html")
 
 
+# AJAX endpoint to save/update a field mapping used in the field mapper tool
+@login_required
+@require_POST
+def update_field_mapping(request):
+    import json
 
-#integreated download of demogs and antibiotic entries
+    data = json.loads(request.body)
+    raw_field = data.get("raw_field")
+    mapped_field = data.get("mapped_field", "").strip()
 
-# Generate Mapped Excel optimized version
-# @login_required
-# def generate_mapped_excel(request):
-#     """
-#     Generate mapped Excel with:
-#       - Demogs sheet (non-antibiotic fields only)
-#       - Antibiotic_Entries sheet (AccessionNo, Year, and for each antibiotic):
-#             <ABX>_ND, <ABX>_ND_RIS, <ABX>_NM, <ABX>_NM_RIS, <ABX>_MIC_op
-    
-#     Optimized: Builds all columns in a dict, then creates DataFrame once with pd.concat()
-#     """
-#     if request.method != "POST":
-#         return redirect("field_mapper_tool")
+    if not raw_field:
+        return JsonResponse({"status": "error", "msg": "Missing raw_field"}, status=400)
 
-#     try:
-#         import re
+    if mapped_field == "":
+        #  Clear mapping
+        FieldMapping.objects.filter(
+            user=request.user,
+            raw_field=raw_field
+        ).delete()
+    else:
+        FieldMapping.objects.update_or_create(
+            user=request.user,
+            raw_field=raw_field,
+            defaults={"mapped_field": mapped_field, "field_type": data.get("field_type", "demog")},
+        )
 
-#         # --- Load mapping JSON ---
-#         mapping_json = request.POST.get("mapping", "{}")
-#         try:
-#             mapping = json.loads(mapping_json)
-#         except Exception:
-#             mapping = {}
-
-#         # --- Get file info from session ---
-#         temp_file_path = request.session.get("temp_file_path")
-#         temp_file_name = request.session.get("temp_file_name", "uploaded.xlsx")
-
-#         if not temp_file_path or not os.path.exists(temp_file_path):
-#             messages.error(request, "File not found. Please upload again.")
-#             return redirect("field_mapper_tool")
-
-#         # --- Read file ---
-#         if temp_file_name.lower().endswith(".csv"):
-#             df = pd.read_csv(temp_file_path)
-#         else:
-#             df = pd.read_excel(temp_file_path)
-
-#         # --- Apply saved mappings ---
-#         for raw_field, mapped_field in mapping.items():
-#             if mapped_field:
-#                 FieldMapping.objects.update_or_create(
-#                     user=request.user,
-#                     raw_field=raw_field,
-#                     defaults={"mapped_field": mapped_field},
-#                 )
-
-#         mapped_cols = {r: m for r, m in mapping.items() if m}
-#         if mapped_cols:
-#             df.rename(columns=mapped_cols, inplace=True)
-
-#         df.columns = [str(c).strip() for c in df.columns]
-
-#         # --- Detect accession column ---
-#         acc_col_candidates = [c for c in df.columns if re.search(r"accession", c, re.IGNORECASE)]
-#         acc_col = acc_col_candidates[0] if acc_col_candidates else None
-
-#         if not acc_col:
-#             messages.error(request, "No accession number column found.")
-#             return redirect("field_mapper_tool")
-
-#         # --- Identify antibiotic columns ---
-#         abx_columns = [c for c in df.columns if re.search(r"_(nd|nm)", c, re.IGNORECASE)]
-#         abx_bases = sorted(set(re.sub(r"_(nd|nm).*", "", c, flags=re.IGNORECASE) for c in abx_columns))
-
-#         # --- Helper: Split operand from MIC value ---
-#         def split_operand(val):
-#             if pd.isna(val):
-#                 return "", ""
-#             val = str(val).strip()
-#             if not val:
-#                 return "", ""
-#             m = re.match(r"^(<=|>=|<|>|=|≤|≥)?\s*([\d\.]+)$", val)
-#             if m:
-#                 return m.group(1) or "", m.group(2) or ""
-#             return "", val
-
-#         # --- Safely get column data as Series of correct length ---
-#         def safe_get_series(colname):
-#             if colname in df.columns:
-#                 s = df[colname]
-#                 if isinstance(s, pd.Series):
-#                     return s
-#             return pd.Series([""] * len(df))
-
-#         # --- Extract Year from accession ---
-#         def extract_year(acc):
-#             if pd.isna(acc):
-#                 return ""
-#             acc = str(acc).strip().upper()
-#             m = re.match(r"(\d{2})ARS", acc)
-#             return f"20{m.group(1)}" if m else ""
-
-#         # --- Build Antibiotic Entries DataFrame using dict + pd.concat() ---
-#         # Start with base columns
-#         abx_data = {
-#             acc_col: df[acc_col].astype(str).values,
-#             "Year": df[acc_col].apply(extract_year).values,
-#         }
-
-#         # --- Process each antibiotic base and collect all new columns ---
-#         for base in abx_bases:
-#             base_upper = base.upper()
-
-#             mic_col = next(
-#                 (c for c in df.columns if re.fullmatch(fr"{base}_NM\d*", c, flags=re.IGNORECASE)), 
-#                 None
-#             )
-#             mic_ris_col = next(
-#                 (c for c in df.columns if re.fullmatch(fr"{base}_NM\d*_RIS", c, flags=re.IGNORECASE)), 
-#                 None
-#             )
-#             disk_col = next(
-#                 (c for c in df.columns if re.fullmatch(fr"{base}_ND\d*", c, flags=re.IGNORECASE)), 
-#                 None
-#             )
-#             disk_ris_col = next(
-#                 (c for c in df.columns if re.fullmatch(fr"{base}_ND\d*_RIS", c, flags=re.IGNORECASE)), 
-#                 None
-#             )
-
-#             # --- MIC values + operands ---
-#             mic_series = safe_get_series(mic_col)
-#             mic_operands, mic_values = zip(*[split_operand(v) for v in mic_series])
-            
-#             abx_data[f"{base_upper}_NM"] = list(mic_values)
-#             abx_data[f"{base_upper}_NM_RIS"] = (
-#                 safe_get_series(mic_ris_col)
-#                 .replace(["N", "n"], "")
-#                 .fillna("")
-#                 .str.upper()
-#                 .values
-#             )
-#             abx_data[f"{base_upper}_MIC_op"] = list(mic_operands)
-
-#             # --- Disk values (no operand) ---
-#             abx_data[f"{base_upper}_ND"] = safe_get_series(disk_col).values
-#             abx_data[f"{base_upper}_ND_RIS"] = (
-#                 safe_get_series(disk_ris_col)
-#                 .replace(["N", "n"], "")
-#                 .fillna("")
-#                 .str.upper()
-#                 .values
-#             )
-
-#         # --- Create DataFrame once from dict (no repeated inserts) ---
-#         abx_df = pd.DataFrame(abx_data)
-
-#         # --- Remove antibiotic columns from Demogs ---
-#         pattern = re.compile(r"_(nd|nm|ris|mic_op)$", re.IGNORECASE)
-#         demogs_df = df[[c for c in df.columns if not pattern.search(c)]]
-
-#         # --- Write Excel with two sheets ---
-#         output = io.BytesIO()
-#         with pd.ExcelWriter(output, engine="openpyxl") as writer:
-#             demogs_df.to_excel(writer, index=False, sheet_name="Demogs")
-#             abx_df.to_excel(writer, index=False, sheet_name="Antibiotic_Entries")
-
-#         output.seek(0)
-
-#         # --- Clean up and return response ---
-#         cleanup_temp_file(temp_file_path, request)
-#         response = HttpResponse(
-#             output.getvalue(),
-#             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-#         )
-#         base_name = os.path.splitext(temp_file_name)[0]
-#         response["Content-Disposition"] = f'attachment; filename="{base_name}_Mapped.xlsx"'
-
-#         messages.success(request, "✅ Mapped Excel created — clean Demogs + Antibiotic sheet!")
-#         return response
-
-#     except Exception as e:
-#         import traceback
-#         traceback.print_exc()
-#         messages.error(request, f"⚠️ Error generating mapped file: {e}")
-#         return redirect("field_mapper_tool")
+    return JsonResponse({"status": "ok"})
 
 
+
+# clear all saved mappings for the user
 @login_required
 def clear_mappings(request):
-    """
-    Clear all saved field mappings for the current user.
-    """
+
     if request.method == "POST":
         FieldMapping.objects.filter(user=request.user).delete()
         messages.success(request, "Your saved field mappings were cleared.")
     return redirect("field_mapper_tool")
 
 
+# helped function to delete temp file after download
+@login_required
 def cleanup_temp_file(file_path, request):
-    """
-    Helper function to delete temporary file and clear session.
-    """
+   
     if file_path and os.path.exists(file_path):
             os.remove(file_path)
 
 
+@login_required
+def download_mapping_summary(request):
+    # function to normalize strings for comparison 
+    def normalize(val):
+        return re.sub(r"[^a-z0-9]", "", str(val).lower())
+
+   # load uploaded file headers
+    temp_path = request.session.get("temp_file_path")
+    original_name = request.session.get("temp_file_name", "mapping_summary")
+
+    if not temp_path or not os.path.exists(temp_path):
+        messages.error(request, "Temporary file not found. Please upload again.")
+        return redirect("field_mapper_tool")
+
+    if temp_path.endswith(".csv"):
+        df = pd.read_csv(temp_path, nrows=0)
+    else:
+        df = pd.read_excel(temp_path, nrows=0)
+
+    uploaded_headers = list(df.columns)
+
+  # load saved mappings
+    mappings = FieldMapping.objects.filter(user=request.user)
+
+    mapped_norm = {
+        normalize(m.raw_field) for m in mappings
+    }
 
 
+    # load database columns
+    
+    final_fields = [
+        f.name for f in Final_Data._meta.fields
+        if f.name != "id"
+    ]
+
+    abx_fields = list(
+        Antibiotic_List.objects.values_list("Whonet_Abx", flat=True)
+        .distinct()
+        .order_by("Whonet_Abx")
+    )
+
+    database_columns = sorted(set(final_fields + abx_fields))
+
+    db_norm = {
+        normalize(c) for c in database_columns
+    }
+
+    # determine unmapped headers
+    uploaded_norm_map = {
+        normalize(h): h for h in uploaded_headers
+    }
+
+    unmapped_headers = [
+        original_name
+        for norm, original_name in uploaded_norm_map.items()
+        if norm not in mapped_norm and norm not in db_norm
+    ]
+
+   # build dataframes for each sheet
+    df_db = pd.DataFrame({
+        "Database_Column_Name": database_columns
+    })
+
+    df_uploaded = pd.DataFrame({
+        "Uploaded_Column_Name": uploaded_headers
+    })
+
+    df_unmapped = pd.DataFrame({
+        "Unmapped_Column_Name": unmapped_headers
+    })
+
+    # create 3 sheet excel file
+    safe_name = os.path.splitext(original_name)[0]
+    filename = f"{safe_name}_FIELD_MAPPING_SUMMARY.xlsx"
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    with pd.ExcelWriter(response, engine="openpyxl") as writer:
+        df_db.to_excel(writer, index=False, sheet_name="Database_Columns")
+        df_uploaded.to_excel(writer, index=False, sheet_name="Uploaded_Columns")
+        df_unmapped.to_excel(writer, index=False, sheet_name="Unmapped_Columns")
+
+    return response
+
+
+
+
+def extract_antibiotics(df):
+    """
+    Antibiotic extraction rules (STRICT):
+    - Disk:     <ABX>_ND<potency>
+    - Disk RIS: <ABX>_ND<potency>_RIS
+    - MIC OP:   <ABX>_NM_OP
+    - MIC:      <ABX>_NM
+    - MIC RIS:  <ABX>_NM_RIS
+    """
+
+    def clean_series(s):
+        if isinstance(s, pd.DataFrame):
+            s = s.iloc[:, 0]
+        if not isinstance(s, pd.Series):
+            s = pd.Series(s)
+        return (
+            s.replace([None, "None", "nan", "NaN", "NAN", "null"], "")
+             .fillna("")
+             .astype(str)
+        )
+
+    def split_operand(val):
+        if not val:
+            return "", ""
+        m = re.match(r"^(<=|>=|<|>|=)?\s*([\d.]+)$", str(val).strip())
+        return (m.group(1) or "", m.group(2)) if m else ("", val)
+
+    cols = list(df.columns)
+    abx_df = pd.DataFrame(index=df.index)
+
+   # disk VALUES + RIS no operands
+    disk_vals = [c for c in cols if re.fullmatch(r"[A-Za-z]+_ND\d+", c)]
+
+    for col in disk_vals:
+        abx_df[col.upper()] = clean_series(df[col]).str.upper()
+
+        ris_col = f"{col}_RIS"
+        if ris_col in df.columns:
+            abx_df[f"{col.upper()}_RIS"] = clean_series(df[ris_col]).str.upper()
+        else:
+            abx_df[f"{col.upper()}_RIS"] = ""
+
+    # mic VALUES + OPS + RIS
+    mic_vals = [c for c in cols if re.fullmatch(r"[A-Za-z]+_NM", c)]
+
+    for col in mic_vals:
+        base = col[:-3]  # remove _NM
+
+        ops, vals = [], []
+        for v in clean_series(df[col]):
+            op, val = split_operand(v)
+            ops.append(op)
+            vals.append(val.upper())
+
+        abx_df[f"{base.upper()}_NM_OP"] = ops
+        abx_df[f"{base.upper()}_NM"] = vals
+
+        ris_col = f"{col}_RIS"
+        if ris_col in df.columns:
+            abx_df[f"{base.upper()}_NM_RIS"] = clean_series(df[ris_col]).str.upper()
+        else:
+            abx_df[f"{base.upper()}_NM_RIS"] = ""
+
+    return abx_df
+
+
+
+# WORKING VERSION AND CORRECTED ERROR IN DEMOGRAPHICS MAPPING
 @login_required
 def generate_mapped_excel(request):
-    """
-    Generate mapped Excel with:
-      - Demogs sheet (non-antibiotic fields only)
-      - Antibiotic_Entries sheet (AccessionNo, Year, and for each antibiotic):
-            <ABX>_ND, <ABX>_ND_RIS, <ABX>_NM, <ABX>_NM_RIS, <ABX>_MIC_op
-    
-    Optimized: Builds all columns in a dict, then creates DataFrame once with pd.concat()
-    """
     if request.method != "POST":
         return redirect("field_mapper_tool")
 
     try:
-        import re
+        import os, io, re
+        import pandas as pd
+        from django.http import HttpResponse
+        from django.contrib import messages
+        from apps.home.models import FieldMapping  # this ensures the model is imported
 
-        # --- Load mapping JSON ---
-        mapping_json = request.POST.get("mapping", "{}")
-        try:
-            mapping = json.loads(mapping_json)
-        except Exception:
-            mapping = {}
+        # -HELPER FUNCTIONS-
 
-        # --- Get file info from session ---
+        # Clean series function to standardize data formatting and missing values
+        def clean_series(s):
+            if isinstance(s, pd.DataFrame):
+                s = s.iloc[:, 0]
+            if not isinstance(s, pd.Series):
+                s = pd.Series(s)
+            return s.replace([None, "None", "nan", "NaN", "NAN", "null"], "").fillna("").astype(str)
+
+        # Split operand function for MIC values
+        def split_operand(val):
+            if not val: return "", ""
+            m = re.match(r"^(<=|>=|<|>|=)?\s*([\d.]+)$", str(val).strip())
+            return (m.group(1) or "", m.group(2)) if m else ("", val)
+
+        # --- Load File ---
         temp_file_path = request.session.get("temp_file_path")
         temp_file_name = request.session.get("temp_file_name", "uploaded.xlsx")
 
         if not temp_file_path or not os.path.exists(temp_file_path):
-            messages.error(request, "File not found. Please upload again.")
+            messages.error(request, "File not found.")
             return redirect("field_mapper_tool")
 
-        # --- Read file ---
-        if temp_file_name.lower().endswith(".csv"):
-            df = pd.read_csv(temp_file_path)
-        else:
-            df = pd.read_excel(temp_file_path)
-
-        # --- Apply saved mappings ---
-        for raw_field, mapped_field in mapping.items():
-            if mapped_field:
-                FieldMapping.objects.update_or_create(
-                    user=request.user,
-                    raw_field=raw_field,
-                    defaults={"mapped_field": mapped_field},
-                )
-
-        mapped_cols = {r: m for r, m in mapping.items() if m}
-        if mapped_cols:
-            df.rename(columns=mapped_cols, inplace=True)
-
+        df = pd.read_csv(temp_file_path) if temp_file_name.lower().endswith(".csv") else pd.read_excel(temp_file_path)
         df.columns = [str(c).strip() for c in df.columns]
-
-        # --- Detect accession column ---
-        acc_col_candidates = [c for c in df.columns if re.search(r"accession", c, re.IGNORECASE)]
-        acc_col = acc_col_candidates[0] if acc_col_candidates else None
-
-        if not acc_col:
-            messages.error(request, "No accession number column found.")
-            return redirect("field_mapper_tool")
-
-        # --- Identify antibiotic columns ---
-        abx_columns = [c for c in df.columns if re.search(r"_(nd|nm)", c, re.IGNORECASE)]
-        abx_bases = sorted(set(re.sub(r"_(nd|nm).*", "", c, flags=re.IGNORECASE) for c in abx_columns))
-
-        # --- Helper: Split operand from MIC value ---
-        def split_operand(val):
-            if pd.isna(val):
-                return "", ""
-            val = str(val).strip()
-            if not val:
-                return "", ""
-            m = re.match(r"^(<=|>=|<|>|=|≤|≥)?\s*([\d\.]+)$", val)
-            if m:
-                return m.group(1) or "", m.group(2) or ""
-            return "", val
-
-        # --- Safely get column data as Series of correct length ---
-        def safe_get_series(colname):
-            if colname in df.columns:
-                s = df[colname]
-                if isinstance(s, pd.Series):
-                    return s
-            return pd.Series([""] * len(df))
-
-        # --- Extract Year from accession ---
-        def extract_year(acc):
-            if pd.isna(acc):
-                return ""
-            acc = str(acc).strip().upper()
-            m = re.match(r"(\d{2})ARS", acc)
-            return f"20{m.group(1)}" if m else ""
-
-        # --- Build Antibiotic Entries DataFrame using dict + pd.concat() ---
-        # Start with base columns
-        abx_data = {
-            acc_col: df[acc_col].astype(str).values,
-            "Year": df[acc_col].apply(extract_year).values,
-        }
-
-        # --- Process each antibiotic base and collect all new columns ---
-        for base in abx_bases:
-            base_upper = base.upper()
-
-            mic_col = next(
-                (c for c in df.columns if re.fullmatch(fr"{base}_NM\d*", c, flags=re.IGNORECASE)), 
-                None
-            )
-            mic_ris_col = next(
-                (c for c in df.columns if re.fullmatch(fr"{base}_NM\d*_RIS", c, flags=re.IGNORECASE)), 
-                None
-            )
-            disk_col = next(
-                (c for c in df.columns if re.fullmatch(fr"{base}_ND\d*", c, flags=re.IGNORECASE)), 
-                None
-            )
-            disk_ris_col = next(
-                (c for c in df.columns if re.fullmatch(fr"{base}_ND\d*_RIS", c, flags=re.IGNORECASE)), 
-                None
-            )
-
-            # --- MIC values + operands ---
-            mic_series = safe_get_series(mic_col)
-            mic_operands, mic_values = zip(*[split_operand(v) for v in mic_series])
-            
-            abx_data[f"{base_upper}_NM"] = list(mic_values)
-            abx_data[f"{base_upper}_NM_RIS"] = (
-                safe_get_series(mic_ris_col)
-                .replace(["N", "n"], "")
-                .fillna("")
-                .str.upper()
-                .values
-            )
-            abx_data[f"{base_upper}_NM_op"] = list(mic_operands)
-
-            # --- Disk values (no operand) ---
-            abx_data[f"{base_upper}_ND"] = safe_get_series(disk_col).values
-            abx_data[f"{base_upper}_ND_RIS"] = (
-                safe_get_series(disk_ris_col)
-                .replace(["N", "n"], "")
-                .fillna("")
-                .str.upper()
-                .values
-            )
-
-        # --- Create DataFrame once from dict (no repeated inserts) ---
-        abx_df = pd.DataFrame(abx_data)
-
-        # --- Remove ALL antibiotic columns from Demogs ---
-        # Exclude any column that contains antibiotic bases identified earlier
-        demogs_cols = []
-        abx_bases_upper = [base.upper() for base in abx_bases]
         
-        for col in df.columns:
-            # Check if column name starts with any antibiotic base
-            is_abx = any(col.upper().startswith(base) for base in abx_bases_upper)
-            if not is_abx:
-                demogs_cols.append(col)
-        
-        demogs_df = df[demogs_cols]
+        # Build original col_map BEFORE any renaming
+        col_map = {c.lower(): c for c in df.columns}
 
-        # --- Write Excel with two sheets ---
+        # accession and year extraction
+        acc_col = next((c for c in df.columns if "accession" in c.lower()), None)
+        spec_date_col = next((c for c in df.columns if "spec" in c.lower() and "date" in c.lower()), None)
+        year_vals = [""] * len(df)
+        if spec_date_col:
+            year_vals = pd.to_datetime(df[spec_date_col], errors="coerce").dt.year.apply(lambda x: "" if pd.isna(x) else str(int(x))).tolist()
+
+        # build antibiotic entries
+        abx_df = pd.DataFrame()
+        abx_df["f_AccessionNo"] = clean_series(df[acc_col]) if acc_col else ""
+        abx_df["Year"] = year_vals
+
+        # Disk & MIC Loops - Using col_map to find real column names - ensures disk antibiotics are captured correctly
+
+        # Disk columns
+        disk_cols = [c for c in col_map if re.fullmatch(r"[a-z]+_nd\d+", c)]
+        for lc in disk_cols:
+            real = col_map[lc]
+            ris_lc = f"{lc}_ris"
+            raw_vals = df[real]
+            if isinstance(raw_vals, pd.DataFrame): raw_vals = raw_vals.iloc[:, 0]
+            disk_vals = pd.to_numeric(raw_vals, errors="coerce").astype("Int64").astype(str)
+            disk_vals = ["" if v == "<NA>" else v for v in disk_vals]
+            abx_df[real.upper()] = disk_vals
+            if ris_lc in col_map:
+                ris_series = df[col_map[ris_lc]]
+                if isinstance(ris_series, pd.DataFrame): ris_series = ris_series.iloc[:, 0]
+                abx_df[f"{real.upper()}_RIS"] = clean_series(ris_series).str.upper()
+            else:
+                abx_df[f"{real.upper()}_RIS"] = ""
+        # MIC columns
+        mic_cols = [c for c in col_map if re.fullmatch(r"[a-z]+_nm", c)]
+        for lc in mic_cols:
+            real = col_map[lc]
+            base = real[:-3]
+            ris_lc = f"{lc}_ris"
+            target_col = df[real]
+            if isinstance(target_col, pd.DataFrame): target_col = target_col.iloc[:, 0]
+            ops, vals = [], []
+            for v in clean_series(target_col):
+                op, val = split_operand(v)
+                ops.append(op)
+                vals.append(val.upper())
+            abx_df[f"{base.upper()}_NM_OP"] = ops
+            abx_df[f"{base.upper()}_NM"] = vals
+            if ris_lc in col_map:
+                ris_series = df[col_map[ris_lc]]
+                if isinstance(ris_series, pd.DataFrame): ris_series = ris_series.iloc[:, 0]
+                abx_df[f"{base.upper()}_NM_RIS"] = clean_series(ris_series).str.upper()
+            else:
+                abx_df[f"{base.upper()}_NM_RIS"] = ""
+
+        # Build demogs dataframe
+        user_mappings = FieldMapping.objects.filter(user=request.user, mapped_field__isnull=False)
+        rename_dict = {m.raw_field: m.mapped_field for m in user_mappings}
+
+        # Filter for strictly non-antibiotic columns
+        demogs_cols = [
+            c for c in df.columns 
+            if not re.search(r"_(nd\d+|nm)(_ris)?$", c, re.I)
+        ]
+
+        # Create the demogs slice and rename them based on model fields
+        demogs_df = df[demogs_cols].copy()
+        demogs_df.rename(columns=rename_dict, inplace=True)
+
+        # Clean all data in demogs
+        for c in demogs_df.columns:
+            demogs_df[c] = clean_series(demogs_df[c])
+
+       # output to excel
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             demogs_df.to_excel(writer, index=False, sheet_name="Demogs")
             abx_df.to_excel(writer, index=False, sheet_name="Antibiotic_Entries")
 
         output.seek(0)
-
-        # --- Clean up and return response ---
-        cleanup_temp_file(temp_file_path, request)
-        response = HttpResponse(
-            output.getvalue(),
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        response = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         base_name = os.path.splitext(temp_file_name)[0]
         response["Content-Disposition"] = f'attachment; filename="{base_name}_Mapped.xlsx"'
-
-        messages.success(request, "✅ Mapped Excel created — clean Demogs + Antibiotic sheet!")
         return response
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        messages.error(request, f"⚠️ Error generating mapped file: {e}")
+        messages.error(request, f"⚠️ Error: {e}")
         return redirect("field_mapper_tool")
+
+
+
+
 
 
 
 ############# Antibiotics Configuration
 
-# @login_required(login_url="/login/")
-# def add_antibiotics(request, pk=None):
-#     """
-#     Add or edit antibiotic entries.
-#     - If pk provided: edit mode
-#     - Otherwise: add new
-#     """
-#     antibiotic = None
-#     abx_upload_form = Antibiotics_uploadForm()
-
-#     # --- Determine form mode ---
-#     if pk:
-#         antibiotic = get_object_or_404(Antibiotic_List, pk=pk)
-#         antibiotic_form = AntibioticsForm(request.POST or None, instance=antibiotic)
-#         editing = True
-#     else:
-#         antibiotic_form = AntibioticsForm(request.POST or None)
-#         editing = False
-
-#     # --- Handle POST ---
-#     if request.method == "POST":
-#         if antibiotic_form.is_valid():
-#             saved_antibiotic = antibiotic_form.save(commit=False)
-#             saved_antibiotic.save()
-#             if editing:
-#                 messages.success(request, f"Antibiotic '{saved_antibiotic.Antibiotic}' updated successfully.")
-#             else:
-#                 messages.success(request, f"Antibiotic '{saved_antibiotic.Antibiotic}' added successfully.")
-#             return redirect('antibiotics_view')
-#         else:
-#             messages.error(request, "Form validation failed. Please check your inputs.")
-
-#     # --- Render template ---
-#     return render(request, '/settings/#antibiotics_tab', {
-#         'form':  antibiotic_form,
-#         'editing': editing,
-#         'antibiotic': antibiotic,
-#         'abx_upload_form': abx_upload_form,
-#     })
-
-
 @login_required(login_url="/login/")
 def add_antibiotics(request):
-    """
-    Add antibiotics only (no edit).
-    Upload form remains on settings page.
-    """
-
     if request.method == "POST":
         form = AntibioticsForm(request.POST)
 
@@ -3704,8 +5279,7 @@ def add_antibiotics(request):
 @login_required(login_url="/login/")
 def edit_antibiotics(request, pk):
     antibiotic = get_object_or_404(Antibiotic_List, pk=pk)
-    abx_upload_form = Antibiotics_uploadForm()  # kept, as requested
-
+    abx_upload_form = Antibiotics_uploadForm()  
     if request.method == "POST":
         form = AntibioticsForm(request.POST, instance=antibiotic)
 
@@ -3715,7 +5289,7 @@ def edit_antibiotics(request, pk):
                 request,
                 f"Antibiotic '{antibiotic.Antibiotic}' updated successfully."
             )
-            # Go back to settings, antibiotics tab
+
             return redirect("/settings/?tab=antibiotics")
 
         messages.error(request, "Form validation failed. Please check your inputs.")
@@ -3724,24 +5298,21 @@ def edit_antibiotics(request, pk):
 
     return render(
         request,
-        "home/Antibiotic_list.html",   # ✅ SEPARATE EDIT PAGE
+        "home/Antibiotic_list.html",   # SEPARATE EDIT PAGE
         {
             "form": form,
             "antibiotic": antibiotic,
             "abx_upload_form": abx_upload_form,
-            "editing": True,        # optional, but fine for template labels
+            "editing": True,        # to indicate edit mode # optional but useful
         },
     )
-
-
-
 
 
 @login_required(login_url="/login/")
 def antibiotics_view(request):
     q = request.GET.get("q", "").strip()
 
-    antibiotics = Antibiotic_List.objects.all().order_by("-Date_Modified")
+    antibiotics = Antibiotic_List.objects.all().order_by("Whonet_Abx")
 
     if q:
         antibiotics = antibiotics.filter(
@@ -3832,6 +5403,9 @@ def upload_antibiotics(request):
                         Whonet_Abx=row.get('Whonet_Abx', ''),   # lookup field
                         defaults={
                             'Show': bool(row.get('Show', False)),
+                            'Show_Site': bool(row.get('Show_Site', False)),
+                            'Show_Ars': bool(row.get('Show_Ars', False)),
+                            'Show_Value': bool(row.get('Show_Value', False)),
                             'Retest': bool(row.get('Retest', False)),
                             'Disk_Abx': bool(row.get('Disk_Abx', False)),
                             'Test_Method': row.get('Test_Method', ''),
@@ -3876,6 +5450,9 @@ def export_antibiotics(request):
         data.append({
             "Show": obj.Show,
             "Retest": obj.Retest,
+            "Show_Site": obj.Show_Site,
+            "Show_Ars": obj.Show_Ars,
+            "Show_Value": obj.Show_Value,
             "Disk_Abx": obj.Disk_Abx,
             "Guidelines": obj.Guidelines,
             "Tier": obj.Tier,
@@ -3912,8 +5489,6 @@ def delete_all_antibiotics(request):
 
 
 ######################## Organism 
-
-
 @login_required(login_url="/login/")
 def add_organism(request):
 
@@ -3955,23 +5530,11 @@ def edit_organism(request, pk):
     })
 
 
-
-# @login_required(login_url="/login/")
-# #View existing breakpoints
-# def view_organism(request):
-#     organism = Organism_List.objects.all().order_by('Whonet_Org_Code')
-#     paginator = Paginator(organism, 20)
-#     page_number = request.GET.get('page')
-#     page_obj = paginator.get_page(page_number)
-#     return render(request, 'home/Organism_view.html',{ 'organisms':organism,  'page_obj': page_obj})
-
-
-
 @login_required(login_url="/login/")
 def view_organism(request):
     q = request.GET.get("q", "").strip()
 
-    organisms = Organism_List.objects.all()
+    organisms = Organism_List.objects.order_by("Whonet_Org_Code")
 
     if q:
         organisms = organisms.filter(
@@ -3995,7 +5558,7 @@ def view_organism(request):
 
     return render(request, "home/Organism_view.html", {
         "page_obj": page_obj,
-        "organisms": organisms,
+        "organisms": page_obj.object_list,  # optional cleanup
         "search_query": q,
     })
 
@@ -4134,6 +5697,7 @@ def export_organisms(request):
     return FileResponse(open(file_path, "rb"), as_attachment=True, filename="Organism_list.xlsx")
 
 
+
 @login_required(login_url="/login/")
 def get_organism_name(request):
     org_code = request.GET.get("org_code")
@@ -4155,6 +5719,8 @@ def get_organism_name(request):
     return JsonResponse({field_key: org[field_key]})
 
 
+
+
 ############ TAT Process Configuration
 @login_required(login_url="/login/")
 def TAT_process(request, id=None):
@@ -4172,3 +5738,745 @@ def TAT_process(request, id=None):
         form = TAT_form()
 
     return render(request, "home/Add_TAT.html", {"form": form, "process": process, "upload_form": upload_form})
+
+
+
+############ Emerging Resistance
+@login_required(login_url="/login/")
+def add_emerging_age(request):
+
+    if request.method == "POST":
+        eme_form = Emerge_Pheno_Form(request.POST)
+
+        if eme_form.is_valid():
+            eme_form.save()
+            messages.success(request, "You have successfully created an Emerging Resistance Criteria")
+        else:
+            messages.error(request, "Form validation failed. Please check your inputs.")
+
+    # Always return to Settings → Emerging
+    return redirect("/settings/?tab=emerging")
+
+
+@login_required(login_url="/login/")
+def view_eme_age(request):
+    criteria = Emerging_Filter_Age.order_by("Eme_Organism")
+
+    paginator = Paginator(criteria, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, "home/Emerge_Phen_View.html", {
+        "page_obj": page_obj,
+        "criteria": page_obj.object_list,  # optional cleanup
+    })
+
+
+@login_required(login_url="/login/")
+def edit_eme_age(request, pk):
+    criteria = get_object_or_404(Emerging_Filter_Age, pk=pk)
+    eme_upload_form = Eme_Crit_Upload_Form()
+
+    if request.method == "POST":
+        eme_form = Emerge_Pheno_Form(request.POST, instance=criteria)
+
+        if eme_form.is_valid():
+            eme_form.save()
+            messages.success(request, "Emerging Criteria updated successfully.")
+            return redirect("settings_page")  # clean redirect
+
+        messages.error(request, "Form validation failed. Please check your inputs.")
+    else:
+        eme_form = Emerge_Pheno_Form(instance=criteria)
+
+    return render(request, "settings/settings_page.html", {
+        "eme_form": eme_form,
+        "criteria": criteria,
+        "eme_upload_form": eme_upload_form,
+        "active_tab": "emerging",   
+    })
+
+
+
+
+
+
+# download list of emerging
+@login_required(login_url="/login/")
+def download_emerging_csv(request):
+    queryset = (
+        Referred_Data.objects
+        .filter(
+            Emerging_Flag_Age=True,
+            Specimen_Type__Emerging_Spec_Flag=True,
+            antibiotic_entries__ab_breakpoints_id__Emerging_Abx_Flag=True,
+        )
+        .distinct()
+        .prefetch_related("antibiotic_entries")
+    )
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="emerging_cases.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "Accession No",
+        "Age",
+        "Specimen",
+        "Antibiotics"
+    ])
+
+    for case in queryset:
+        antibiotics = ", ".join(
+            ab.ab_Abx_code for ab in case.antibiotic_entries.all()
+        )
+
+        writer.writerow([
+            case.AccessionNo,
+            case.Age,
+            str(case.Specimen_Type),
+            antibiotics
+        ])
+
+    return response
+
+
+########### Phenotypes --- PRE
+
+@login_required(login_url="/login/")
+def add_phenotype_pre(request):
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=pheno_pre_tab")
+
+    form = Phenotype_Pre_Form(request.POST)
+
+    
+    context = {
+        "pheno_pre_form": form,
+        "editing": False,
+    }
+
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Phenotype (Pre) added successfully.")
+    else:
+        messages.error(request, "Failed to add Phenotype (Pre).")
+        print(form.errors)
+
+    return redirect("/settings/?tab=pheno_pre_tab")
+
+
+
+
+@login_required(login_url="/login/")
+def edit_phenotype_pre(request, pk):
+
+    phenotype = get_object_or_404(Phenotype_Pre, pk=pk)
+
+    form = Phenotype_Pre_Form(instance=phenotype)
+
+    context = {
+        "pheno_pre_form": form,
+        "editing": True,
+        "edit_id": phenotype.id,
+    }
+
+    return render(
+    request,
+    "home/Pheno_Pre.html",
+    {
+        "form": Phenotype_Pre_Form(instance=phenotype),
+        "object": phenotype,
+    }
+)
+
+
+
+
+@login_required(login_url="/login/")
+def update_phenotype_pre(request, id):
+
+    phenotype = get_object_or_404(Phenotype_Pre, pk=pk)
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=pheno_pre_tab")
+
+    form = Phenotype_Pre_Form(request.POST, instance=phenotype)
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Phenotype (Pre) updated successfully.")
+    else:
+        messages.error(request, "Failed to update Phenotype (Pre).")
+        print(form.errors)
+
+    return redirect("/settings/?tab=pheno_pre_tab")
+
+
+
+@login_required(login_url="/login/")
+def upload_phenotype_pre(request):
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=pheno_pre_tab")
+
+    pheno_pre_upload_form = Pheno_pre_upForm(request.POST, request.FILES)
+
+    if not pheno_pre_upload_form.is_valid():
+        messages.error(request, "Invalid upload file.")
+        return redirect("/settings/?tab=pheno_pre_tab")
+
+    file = request.FILES["File_Pheno_pre"]
+
+
+    Phenotype_Pre.objects.all().delete()
+
+    try:
+        if file.name.endswith(".csv"):
+            df = pd.read_csv(file)
+        else:
+            df = pd.read_excel(file)
+
+        for _, row in df.iterrows():
+            Phenotype_Pre.objects.create(
+                Pre_Phenotypes=row.get("Pre_Phenotypes")
+            )
+
+        messages.success(request, "Phenotype (Pre) uploaded successfully.")
+
+    except Exception as e:
+        messages.error(request, "Upload failed.")
+        print(e)
+
+    return redirect("view_phenotype_pre")
+
+
+@login_required(login_url="/login/")
+def delete_phenotype_pre(request, pk):
+
+    phenotype = get_object_or_404(Phenotype_Pre, pk=pk)
+    phenotype.delete()
+
+    messages.success(request, "Phenotype (Pre) deleted.")
+    return redirect("/settings/?tab=pheno_pre_tab")
+
+
+@login_required(login_url="/login/")
+def delete_all_phenotype_pre(request):
+
+    if request.method == "POST":
+        Phenotype_Pre.objects.all().delete()
+        messages.success(request, "All Phenotype (Pre) records deleted.")
+
+    return redirect("/settings/?tab=pheno_pre_tab")
+
+
+
+@login_required(login_url="/login/")
+# View to display all specimen types
+def view_phenotype_pre(request):
+    q = request.GET.get("q", "").strip()
+    sort_by = request.GET.get('sort', 'Pre_Phenotypes')  # Default sort field
+    order = request.GET.get('order', 'desc')  # Default sort order
+
+    sort_field = f"-{sort_by}" if order == 'desc' else sort_by
+    pheno_pre_items = Phenotype_Pre.objects.all().order_by(sort_field)
+
+    if q:
+        pheno_pre_items = pheno_pre_items.filter(
+            Q(Pre_Phenotypes__icontains=q)
+        )
+
+    paginator = Paginator(pheno_pre_items, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+
+    return render(request, 'home/Pheno_Pre_View.html', {'pheno_pre_items': pheno_pre_items, 'page_obj': page_obj, 'q': q, 'sort_by': sort_by, 'order': order})
+
+
+
+
+
+################ Phenotypes --- POST
+
+
+@login_required(login_url="/login/")
+def add_phenotype_post(request):
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=pheno_post_tab")
+
+    form = Phenotype_Post_Form(request.POST)
+
+    context = {
+        "pheno_post_form": form,
+        "editing": False,
+    }
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Phenotype (Post) added successfully.")
+    else:
+        messages.error(request, "Failed to add Phenotype (Post).")
+        print(form.errors)
+
+    return redirect("/settings/?tab=pheno_post_tab")
+
+
+@login_required(login_url="/login/")
+def view_phenotype_post(request):
+
+    q = request.GET.get("q", "").strip()
+
+    phenotype_posts = Phenotype_Post.objects.all()
+
+    if q:
+        phenotype_posts = phenotype_posts.filter(
+            Post_Phenotypes__icontains=q
+        )
+
+    phenotype_posts = phenotype_posts.order_by("Post_Phenotypes")
+
+    paginator = Paginator(phenotype_posts, 25)  # rows per page
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "q": q,
+    }
+
+    return render(
+        request,
+        "home/Pheno_Post_View.html",
+        context
+    )
+
+
+@login_required(login_url="/login/")
+def upload_phenotype_post(request):
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=pheno_post_tab")
+
+    upload_file = request.FILES.get("File_Pheno_post")
+
+    if not upload_file:
+        messages.error(request, "No file selected for upload.")
+        return redirect("/settings/?tab=pheno_post_tab")
+
+    # Save uploaded file (optional audit trail)
+    Pheno_upload_Post.objects.create(File_Pheno_post=upload_file)
+
+    try:
+        # Read file
+        if upload_file.name.endswith(".csv"):
+            df = pd.read_csv(upload_file)
+        else:
+            df = pd.read_excel(upload_file)
+
+        # Normalize column names
+        df.columns = [c.strip() for c in df.columns]
+
+        # Expected column name
+        expected_column = "Post_Phenotypes"
+
+        if expected_column not in df.columns:
+            messages.error(
+                request,
+                f"Missing required column: {expected_column}"
+            )
+            return redirect("/settings/?tab=pheno_post_tab")
+
+        # OVERWRITE existing data
+        Phenotype_Post.objects.all().delete()
+
+        phenotype_objects = []
+        for value in df[expected_column].dropna():
+            phenotype_objects.append(
+                Phenotype_Post(
+                    Post_Phenotypes=str(value).strip()
+                )
+            )
+
+        Phenotype_Post.objects.bulk_create(phenotype_objects)
+
+        messages.success(
+            request,
+            f"{len(phenotype_objects)} Phenotype (Post) records uploaded successfully."
+        )
+
+    except Exception as e:
+        messages.error(request, f"Upload failed: {str(e)}")
+
+    return redirect("/settings/?tab=pheno_post_tab")
+
+
+
+@login_required(login_url="/login/")
+def edit_phenotype_post(request, pk):
+
+    phenotype_post = get_object_or_404(Phenotype_Post, pk=pk)
+    form = Phenotype_Post_Form(instance=phenotype_post)
+
+    context = {
+        "form": form,
+        "object": phenotype_post,
+        "editing": True,
+    }
+
+    return render(
+        request,
+        "home/Pheno_Post.html",
+        context
+    )
+
+
+
+@login_required(login_url="/login/")
+def update_phenotype_post(request, pk):
+
+    phenotype_post = get_object_or_404(Phenotype_Post, pk=pk)
+
+    if request.method != "POST":
+        return redirect("view_phenotype_post")
+
+    form = Phenotype_Post_Form(
+        request.POST,
+        instance=phenotype_post
+    )
+
+    if form.is_valid():
+        form.save()
+        messages.success(
+            request,
+            "Phenotype (Post) updated successfully."
+        )
+    else:
+        messages.error(
+            request,
+            "Failed to update Phenotype (Post)."
+        )
+        print(form.errors)
+
+    return redirect("view_phenotype_post")
+
+
+
+
+
+@login_required(login_url="/login/")
+def delete_phenotype_post(request, pk):
+
+    phenotype_post = get_object_or_404(Phenotype_Post, pk=pk)
+
+    phenotype_post.delete()
+
+    messages.success(
+        request,
+        "Phenotype (Post) deleted successfully."
+    )
+
+    return redirect("view_phenotype_post")
+
+################ Recommendations
+
+
+@login_required(login_url="/login/")
+def add_recommendation_item(request):
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=recommendation_tab")
+
+    form = Recco_item_Form(request.POST)
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Recommendation item added successfully.")
+    else:
+        messages.error(request, "Failed to add recommendation item.")
+        print(form.errors)
+
+    return redirect("/settings/?tab=recommendation_tab")
+
+
+
+
+@login_required(login_url="/login/")
+def upload_recommendation_items(request):
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=recommendation_tab")
+
+    reco_desc_upload = request.FILES.get("File_reco_desc")
+
+    if not reco_desc_upload:
+        messages.error(request, "No file selected for upload.")
+        return redirect("/settings/?tab=recommendation_tab")
+
+    # optional: keep upload record
+    Reco_item_upload.objects.create(File_reco_desc=reco_desc_upload)
+
+    try:
+        if reco_desc_upload.name.endswith(".csv"):
+            df = pd.read_csv(reco_desc_upload)
+        else:
+            df = pd.read_excel(reco_desc_upload)
+
+        df.columns = [c.strip() for c in df.columns]
+
+        required_cols = {"RecoCode", "Description"}
+        if not required_cols.issubset(df.columns):
+            messages.error(
+                request,
+                "File must contain columns: RecoCode, Description"
+            )
+            return redirect("/settings/?tab=recommendation_tab")
+
+        # overwrite existing
+        Recommendation_items.objects.all().delete()
+
+        objs = [
+            Recommendation_items(
+                RecoCode=str(row["RecoCode"]).strip(),
+                Description=str(row["Description"]).strip()
+            )
+            for _, row in df.iterrows()
+            if pd.notna(row["RecoCode"])
+        ]
+
+        Recommendation_items.objects.bulk_create(objs)
+
+        messages.success(
+            request,
+            f"{len(objs)} recommendation items uploaded successfully."
+        )
+
+    except Exception as e:
+        messages.error(request, f"Upload failed: {e}")
+
+    return redirect("/settings/?tab=recommendation_tab")
+
+
+
+@login_required(login_url="/login/")
+def view_recommendation_items(request):
+
+    q = request.GET.get("q", "").strip()
+
+    recommendation_items = Recommendation_items.objects.all()
+
+    if q:
+        recommendation_items = recommendation_items.filter(
+            RecoCode__icontains=q
+        ) | recommendation_items.filter(
+            Description__icontains=q
+        )
+
+    recommendation_items = recommendation_items.order_by("RecoCode")
+
+    paginator = Paginator(recommendation_items, 25)  # rows per page
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "q": q,
+    }
+
+    return render(
+        request,
+        "home/Recommendation_View.html",
+        context
+    )
+
+
+
+def edit_recommendation_item(request, pk):
+
+    item = get_object_or_404(Recommendation_items, pk=pk)
+
+    if request.method == "POST":
+        form = Recco_item_Form(request.POST, instance=item)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Recommendation item updated successfully.")
+            return redirect("view_recommendation_items")
+        else:
+            messages.error(request, "Failed to update recommendation item.")
+            print(form.errors)
+    else:
+        form = Recco_item_Form(instance=item)
+
+    context = {
+        "form": form,
+        "object": item,
+        "editing": True,
+    }
+
+    return render(
+        request,
+        "home/Recommendation_Edit.html",
+        context
+    )
+
+
+@login_required(login_url="/login/")
+def delete_recommendation_item(request, pk):
+
+    item = get_object_or_404(Recommendation_items, pk=pk)
+
+    if request.method == "POST":
+        item.delete()
+        messages.success(request, "Recommendation item deleted successfully.")
+        return redirect("view_recommendation_items")
+
+    # fallback for GET (confirm via JS already)
+    item.delete()
+    messages.success(request, "Recommendation item deleted successfully.")
+    return redirect("view_recommendation_items")
+
+
+
+
+@require_GET
+def get_recommendation_description(request):
+
+    reco_code = request.GET.get("reco_code")
+
+    if not reco_code:
+        return JsonResponse({"description": ""})
+
+    try:
+        reco = Recommendation_items.objects.get(RecoCode=reco_code)
+        return JsonResponse({"description": reco.Description})
+    except Recommendation_items.DoesNotExist:
+        return JsonResponse({"description": ""})
+
+
+
+################  PROJECTS
+
+@login_required
+def projects_page(request):
+
+    active_tab = request.GET.get("tab", "wgs_classification")
+
+    referred_list = (
+        Referred_Data.objects
+        .all()
+        .order_by("-Date_Modified", "-id")
+    )
+
+    context = {
+        "active_tab": active_tab,
+        "referred_list": referred_list,
+        "editing": False,
+    }
+
+    return render(
+        request,
+        "projects/Projects.html",
+        context
+    )
+
+
+
+@login_required
+def update_wgs_classification_inline(request, accession_no):
+
+    if request.method != "POST":
+        return redirect("/projects/?tab=wgs_classification")
+
+    referred = get_object_or_404(
+        Referred_Data,
+        AccessionNo=accession_no
+    )
+
+    classification, _ = Classification_Table.objects.get_or_create(
+        Class_idNumReferred=referred,
+        defaults={"Class_AccessionNo": referred.AccessionNo}
+    )
+
+    classification.Class_Chk_Emerging = "Class_Chk_Emerging" in request.POST
+    classification.Class_Chk_Satscan = "Class_Chk_Satscan" in request.POST
+    classification.Class_Chk_Serotyping = "Class_Chk_Serotyping" in request.POST
+    classification.Class_Chk_GHRU_all = "Class_Chk_GHRU_all" in request.POST
+    classification.Class_Chk_GHRU_Neo = "Class_Chk_GHRU_Neo" in request.POST
+    classification.Class_Chk_Tricycle = "Class_Chk_Tricycle" in request.POST
+
+    classification.save()
+
+    messages.success(
+        request,
+        f"WGS classification updated for {accession_no}"
+    )
+
+    return redirect("/projects/?tab=wgs_classification")
+
+
+
+@login_required
+def wgs_classification_view(request, accession_no):
+
+    # Always resolve referred data first
+    referred = get_object_or_404(
+        Referred_Data,
+        AccessionNo=accession_no
+    )
+
+    # Create or fetch classification row
+    classification, created = Classification_Table.objects.get_or_create(
+        Class_idNumReferred=referred,
+        defaults={
+            "Class_AccessionNo": referred.AccessionNo
+        }
+    )
+
+    if request.method == "POST":
+        form = Classification_Form(
+            request.POST,
+            instance=classification
+        )
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    obj = form.save(commit=False)
+                    obj.Class_AccessionNo = referred.AccessionNo
+                    obj.Class_idNumReferred = referred
+                    obj.save()
+
+                messages.success(
+                    request,
+                    "WGS classification updated successfully."
+                )
+                return redirect("projects_page")
+
+            except Exception as e:
+                messages.error(
+                    request,
+                    f"Error saving classification: {e}"
+                )
+
+        else:
+            messages.error(
+                request,
+                "Failed to update WGS classification."
+            )
+    else:
+        form = Classification_Form(instance=classification)
+
+    return render(
+        request,
+        "projects/Classification.html",
+        {
+            "form": form,
+            "referred": referred,
+            "editing": True,
+        }
+    )

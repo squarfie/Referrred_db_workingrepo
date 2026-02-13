@@ -1,7 +1,7 @@
 {% extends 'layouts/base.html' %}
 {% load static %} 
+{% load final_filters %} 
 {% load widget_tweaks %}
-{% load custom_filters %}
 
 {% block title %}View Antibiotic Entries{% endblock title %}
 
@@ -33,7 +33,11 @@
           <a href="{% url 'export_Antibioticentry' %}" class="btn btn-neutral btn-sm" style="height: fit-content">
               Export/Download
           </a>  
+          <button class="btn btn-sm btn-secondary" onclick="history.back()">
+            <i class="fas fa-arrow-left mr-1"></i>Back
+          </button>
         </div>
+        
         </div>
     </div>
   </div>
@@ -86,7 +90,7 @@
                   {% for abx_code in abx_codes %}
                     {% with values|dict_lookup:abx_code as abx_info %}
                       {% if abx_info %}
-                        <td style="text-align: center;">{{abx_info.Operand|default:''}}{{ abx_info.value|default:'' }}</td>
+                        <td style="text-align: center;">{{ abx_info.Operand|default:''}}{{ abx_info.value|default:'' }}</td>
                         <td style="text-align: center;">{{ abx_info.RIS|default:'' }}</td>
                       {% else %}
                         <td></td>

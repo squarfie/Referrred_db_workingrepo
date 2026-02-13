@@ -1,0 +1,196 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %} Emerging Phenotypes {% endblock title %}
+{% block content %}
+
+<!-- HEADER -->
+<div class="header pb-6" style="height: 100px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%); opacity: 0.6;"></div>
+
+<!-- Header Section -->
+  <div class="container-fluid" style="position: relative; z-index: 2;">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">
+            <i class="fas fa-database mr-2"></i>Emerging Resistance Criteria
+          </h6>
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+              <li class="breadcrumb-item"><a href="{% url 'settings_page' %}">Settings</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Emerging Criteria</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+ </div>
+
+
+<!-- MAIN -->
+<div class="container-fluid mt-3">
+  <div class="card shadow" style="border-top:3px solid #2d9cad;">
+
+    <!-- CARD HEADER -->
+    <div class="card-header border-0" style="background: linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h3 class="mb-0 text-primary">
+            <i class="fas fa-chart-line mr-2"></i>Emerging Phenotype Rules
+          </h3>
+        </div>
+        <div class="col-md-6 text-right">
+          <a href="#" class="btn btn-sm btn-success">
+            <i class="fas fa-plus mr-1"></i>Add New
+          </a>
+          <button class="btn btn-sm btn-secondary" onclick="history.back()">
+            <i class="fas fa-arrow-left mr-1"></i>Back
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTE -->
+    <div class="card-body border-bottom">
+      <div class="alert"
+           style="background:linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
+                  border-left:4px solid #2d9cad;">
+        <i class="fas fa-info-circle mr-2 text-primary"></i>
+        Define conditions for detecting emerging resistance. 
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-responsive" style="max-height:500px; overflow:auto;">
+      <table class="table table-hover align-items-center table-flush">
+        <thead class="thead-light"
+               style="position:sticky; top:0; z-index:10;
+                      background:linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);">
+        
+          <tr>
+            <th></th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Organism</th>
+            <th></th>
+            <th>Specimen</th>
+            <th>All Rule</th>
+            <th>Any Rule</th>
+            <th></th>
+            <th>Antibiotic</th>
+            <th>Interp</th>
+            <th>All Rule</th>
+            <th>Any Rule</th>
+            <th></th>
+            <th>Age</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for obj in page_obj %}
+          <tr>
+            <a href="{% url 'edit_eme_pheno' pk=obj.pk %}" class="btn btn-sm mr-1" style="background: linear-gradient(135deg, #7ec97e 0%, #5fb85f 100%); color: white; border: none;" title="Edit">
+                <i class="fa fa-pencil-alt"></i>
+              </a>
+            <td>{{ obj.Eme_Date_Start|date:"Y-m-d" }}</td>
+            <td>{{ obj.Eme_Date_End|date:"Y-m-d" }}</td>
+
+            <td><strong class="text-primary">{{ obj.Eme_Organism|default:"—" }}</strong></td>
+            <td>{{ obj.Eme_SpecimenType|default:"—" }}</td>
+
+            <td>
+              {% if obj.Eme_Con_All_Spec %}
+                <span class="badge badge-success"><i class="fas fa-check"></i></span>
+              {% else %}
+                <span class="badge badge-secondary">—</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if obj.Eme_Con_Any_Spec %}
+                <span class="badge badge-success"><i class="fas fa-check"></i></span>
+              {% else %}
+                <span class="badge badge-secondary">—</span>
+              {% endif %}
+            </td>
+
+            <td><strong class="text-info">{{ obj.Eme_Antibiotic|default:"—" }}</strong></td>
+
+            <td>
+              <span class="badge badge-primary">
+                {{ obj.get_Eme_Interpretation_display|default:"—" }}
+              </span>
+            </td>
+
+            <td>
+              {% if obj.Eme_Con_All_Abx %}
+                <span class="badge badge-warning"><i class="fas fa-check"></i></span>
+              {% else %}
+                <span class="badge badge-secondary">—</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if obj.Eme_Con_Any_Abx %}
+                <span class="badge badge-warning"><i class="fas fa-check"></i></span>
+              {% else %}
+                <span class="badge badge-secondary">—</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if obj.Eme_Age %}
+                {{ obj.Eme_Operand_Age }} {{ obj.Eme_Age }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="11" class="text-center py-5 text-muted">
+              <i class="ni ni-folder-17" style="font-size:3rem;"></i>
+              <p class="mt-2 mb-0">No rules defined</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- FOOTER / PAGINATION -->
+    <div class="card-footer py-4 bg-light">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          Page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong>
+        </div>
+        <div class="col-md-6">
+          <nav>
+            <ul class="pagination justify-content-end mb-0">
+              {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                  <i class="fas fa-angle-left"></i>
+                </a>
+              </li>
+              {% endif %}
+              {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                  <i class="fas fa-angle-right"></i>
+                </a>
+              </li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock content %}

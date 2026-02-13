@@ -3,7 +3,9 @@
 
 from sqlalchemy import create_engine
 import pandas as pd
-
+from django.db import models
+from django.db.models import Q
+from apps.home.models import *
 
 #creating a connection to postgresql
 try:
@@ -77,3 +79,85 @@ def generate_codes(site_code, referral_date_obj, ref_no_raw, batch_no, total_bat
 
 
 
+#### ADD THIS STARTING FROM HERE ###########
+
+
+## working code (spec code filtering not added yet)
+def get_filtered_antibiotics(breakpoint_year, resolved_org, *, retest=False):
+    """
+    Returns Antibiotic_List filtered by breakpoint availability.
+    Matches organism-specific breakpoints first, then generic ones.
+    """
+
+    qs = Antibiotic_List.objects.all()
+
+
+    if retest:
+        qs = qs.filter(Retest=True)
+    else:
+        qs = qs.filter(Show=True)
+
+
+    if not breakpoint_year:
+        return qs.order_by("Antibiotic")
+
+
+    bp_qs = BreakpointsTable.objects.filter(
+        Year=breakpoint_year
+    )
+
+ 
+    if resolved_org:
+        resolved_org = resolved_org.strip()
+
+        if retest:
+            # ARSRL / retest organism
+            bp_qs = bp_qs.filter(
+                Q(Org__iexact=resolved_org) |
+                Q(Org__isnull=True) |
+                Q(Org="")
+            )
+        else:
+            # Sentinel organism
+            bp_qs = bp_qs.filter(
+                Q(Org__iexact=resolved_org) |
+                Q(Org__isnull=True) |
+                Q(Org="")
+            )
+
+
+    if not bp_qs.exists():
+        return qs.order_by("Antibiotic")
+
+    whonet_codes = (
+        bp_qs
+        .values_list("Whonet_Abx", flat=True)
+        .distinct()
+    )
+
+    return (
+        qs
+        .filter(Whonet_Abx__in=whonet_codes)
+        .order_by("Antibiotic")
+    )
+
+
+
+
+
+
+def resolve_organism_name(org_code):
+    """
+    Converts 'sau' → 'Staphylococcus aureus'
+    """
+    if not org_code:
+        return None
+
+    org = (
+        Organism_List.objects
+        .filter(Whonet_Org_Code__iexact=org_code)
+        .values_list("Organism", flat=True)
+        .first()
+    )
+
+    return org

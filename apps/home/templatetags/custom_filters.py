@@ -1,3 +1,4 @@
+import re
 from django import template
 from operator import attrgetter
 
@@ -161,3 +162,10 @@ def multi_sort(queryset, fields):
 def getattr(obj, attr_name):
     """Template filter to dynamically get object attribute."""
     return getattr(obj, attr_name, "")
+
+
+@register.filter
+def break_long_words(value, width=20):
+    if not value:
+        return value
+    return re.sub(r'(\S{%d})' % width, r'\1 ', value)

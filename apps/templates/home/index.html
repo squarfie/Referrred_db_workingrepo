@@ -52,7 +52,7 @@
 
     <div class="header-index">
         <h1>Antimicrobial Resistance Surveillance Program</h1>
-        <p>AST Results Management System</p>
+        <p style="font-size: 20px; font-weight: 300;">AST Results Management System</p>
 
         <div class="badge-group">
             <div class="badge"><span class="badge-icon">🔬</span>Emerging Pathogens</div>
@@ -131,7 +131,7 @@
                               <i class="fas fa-medkit"></i>
                             </div>
                             <h5 class="card-title">Antibiotics</h5>
-                            <p class="card-description">View All Antibiotic Data</p>
+                            <p class="card-description">View Antibiotics</p>
                             <div class="card-arrow">
                               <i class="ni ni-curved-next"></i>
                             </div>
@@ -143,7 +143,7 @@
 
                     <!-- Batch Management Card -->
                     <div class="col-lg-3 col-md-6 col-sm-12">
-                      <a href="{% url 'show_batches' %}" class="preview-card-link">
+                      <a href="{% url 'review_batches' %}" class="preview-card-link">
                         <div class="preview-card">
                           <div class="card-background" style="--card-color: linear-gradient(135deg, #64c8ff 0%, #5e72e4 100%);"></div>
                           <div class="card-content">
@@ -189,8 +189,8 @@
   
 
     <!-- Page content -->
-    <div class="container-fluid mt--6 index-font">
-      <!-- <div class="row">
+    <div class="container-fluid mt--8 index-font">
+    <!-- <div class="row">
         <div class="col-xl-8">
           <div class="card bg-default">
             <div class="card-header bg-transparent">
@@ -244,8 +244,8 @@
             </div>
           </div>
         </div>
-      </div> -->
-   
+      </div>
+    -->
 
       <div class="row">
         <div class="col-xl-12 ">
@@ -253,10 +253,9 @@
             <div class="card-header border-0">
               <div class="row align-items-center">
                 <div class="col">
-                  <h3 class="mb-0">All Records</h3>
+                  <h3 class="mb-0">Final Data Records</h3>
                   
                 </div>
-                <div class="row"></div>
                 <div class="col md-6 d-flex justify-content-end">
                   <form id="search-input" class="navbar-search navbar-search-light form-inline mr-sm-3 " id="navbar-search-main">
                     <div class="form-group mb-0">
@@ -274,7 +273,7 @@
                 </div> </div>
               </div>
             </div>
-            <div class="table-responsive" style="background: linear-gradient(135deg, #e3f0ff 0%, #f9f9f9 100%); box-shadow: 0 8px 24px rgba(0,0,0,0.08);">
+            <div class="table-responsive" style="background: linear-gradient(135deg, #e3f0ff 0%, #f9f9f9 100%); box-shadow: 0 8px 24px rgba(0,0,0,0.08); max-height: 300px;  overflow-y: auto; overflow-x: auto;">
               <!-- Projects table -->
               <table class="table align-items-center table-flush table-hover">
                 <thead class="thead-dark" >
@@ -282,10 +281,6 @@
                     <th scope="col" class="sort" data-sort="Egasp_Id" style="color: white; text-align: center;">Accession No.</th>
                     <th scope="col" class="sort" data-sort="Laboratory" style="color: white; text-align: center;">Site Code</th>
                     <th scope="col" class="sort" data-sort="Clinic" style="color: white; text-align: center;">Referral Date</th>
-                    <th scope="col" class="sort" data-sort="Consult_Date" style="color: white; text-align: center;">Patient ID</th>
-                    <th scope="col" style="color: white; text-align: center;">First Name</th>
-                    <th scope="col" class="sort" data-sort="Uic_Ptid" style="color: white; text-align: center;">Middle Name</th>
-                    <th scope="col" class="sort" data-sort="Clinic_Code" style="color: white; text-align: center;">Last Name</th>
                     <th scope="col" style="color: white; text-align: center;">Specimen no.</th>
                     <th scope="col" style="color: white; text-align: center;">Specimen Date</th>
                     <th scope="col" style="color: white; text-align: center;">Specimen type</th>
@@ -297,25 +292,19 @@
                 <tbody class="list">
                   {% for isolate in isolates %}
                  <tr>
-                  <td style="text-align: center;">{{isolate.AccessionNo}}</td>
-                  <td style="text-align: center;">{{isolate.SiteCode}}</td>
-                  <td style="text-align: center;">{{isolate.Referral_Date}}</td>
-                  <td style="text-align: center;">{{isolate.Patient_ID}}</td>
-                  <td style="text-align: center;">{{isolate.First_Name}}</td>
-                  <td style="text-align: center;">{{isolate.Mid_Name}}</td>
-                  <td style="text-align: center;">{{isolate.Last_Name}}</td>
-                  <td style="text-align: center;">{{isolate.Spec_Num}}</td>
-                  <td style="text-align: center;">{{isolate.Spec_Date}}</td>
-                  <td style="text-align: center;">{{isolate.Spec_Type}}</td>
-                  <td style="text-align: center;">{{isolate.ars_OrgName}}</td>
+                  <td style="text-align: center;">{{isolate.f_AccessionNo}}</td>
+                  <td style="text-align: center;">{{isolate.f_SiteCode}}</td>
+                  <td style="text-align: center;">{{isolate.f_Referral_Date}}</td>
+                  <td style="text-align: center;">{{isolate.f_Spec_Num}}</td>
+                  <td style="text-align: center;">{{isolate.f_Spec_Date}}</td>
+                  <td style="text-align: center;">{{isolate.f_Spec_Type}}</td>
+                  <td style="text-align: center;">{{isolate.f_ars_OrgName}}</td>
                
-               
-  
-                     
-                      <td><a href="{%url 'generate_pdf' isolate.id %}" class="text-danger"> <i class="fa fa-print" aria-hidden="true"></i> View/Print </a></td>
+              
                       <td style="text-align: center;">
-                        <a href="{% url 'edit_data' isolate.id %}" class="btn btn-sm btn-primary" style="color: #f9f9f9;">Add Data</a>
+                        <a href="{% url 'edit_final_data' isolate.id %}" class="btn btn-sm btn-primary" style="color: #f9f9f9;">Edit Final</a>
                     </td>
+
 
   
   

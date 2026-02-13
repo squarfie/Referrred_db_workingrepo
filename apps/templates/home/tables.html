@@ -50,7 +50,7 @@
     <h1>
       <i class="fas fa-database mr-2"></i>View Records
     </h1>
-    <p>View, search, and manage all laboratory records</p>
+    <p>View, search, and manage raw data records</p>
     <div class="badge-group">
       <span class="badge">
         <i class="badge-icon fas fa-flask"></i>
@@ -77,14 +77,25 @@
           </h4>
           <div class="d-flex gap-2 flex-wrap">
             <a class="btn btn-primary btn-sm" href="{% url 'batch_create_view' %}" title="Create a new batch">
-              <i class="fas fa-plus mr-1"></i>Add New Batch
+              <i class="fas fa-plus mr-1"></i>Add Batch
             </a>
-            <a class="btn btn-secondary btn-sm" href="{% url 'review_batches' %}" title="Review existing batches">
-              <i class="fas fa-check-circle mr-1"></i>Review Batches
+          <a class="btn btn-info btn-sm" href="{% url 'show_batches' %}" title="Review existing batches">
+              <i class="fas fa-check-circle mr-1"></i>Show Previous
             </a>
             <a class="btn btn-info btn-sm" href="{% url 'abxentry_view' %}" title="Enter antibiotic results">
               <i class="fas fa-microscope mr-1"></i>Antibiotic Results
             </a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'review_batches' %}" title="Review existing batches">
+              <i class="fa fa-bell mr-1"></i>Batch Overview
+            </a>
+
+            <a class="btn btn-success btn-sm"
+               href="{% url 'download_combined_table' %}">
+              <i class="ni ni-cloud-download-95 btn-success"></i>
+              Download Raw
+            </a>
+        
+
           </div>
         </div>
 
@@ -116,18 +127,22 @@
                 <button type="submit" class="btn btn-primary btn-sm flex-grow-1 flex-lg-grow-0">
                   <i class="fas fa-search mr-1"></i>Search
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm flex-grow-1 flex-lg-grow-0" onclick="clearSearch()">
-                  <i class="fas fa-redo mr-1"></i>Reset
-                </button>
+                  <button type="button"
+                          class="btn btn-secondary btn-sm"
+                          onclick="window.location.href = window.location.pathname">
+                    <i class="fas fa-redo mr-1"></i>Reset
+                  </button>
+
               </div>
             </form>
           </div>
 
           <!-- Table -->
-          <div class="table-responsive">
+          <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
             <table class="table table-hover align-items-center mb-0">
               <thead class="table-dark">
                 <tr>
+                  <th>No.</th>
                   <th class="text-center">
                     <i class="fas fa-cogs mr-1"></i>ACTION
                   </th>
@@ -178,6 +193,11 @@
                   <th class="text-center">
                     <i class="fas fa-print mr-1"></i>PRINT
                   </th>
+                  
+                  <th class="text-center">
+                   <i class="fa fa-pencil-alt mr-1" ></i>Edit Author
+                  </th>
+
                 </tr>
               </thead>
 
@@ -185,7 +205,8 @@
                 {% for isolate in page_obj %}
                 <tr class="searchable-row"
                     data-search-text="{{ isolate.AccessionNo }} {{ isolate.First_Name }} {{ isolate.Last_Name }} {{ isolate.Spec_Type }}">
-
+    </td>
+                  <td>{{isolate.bat_seq}}</td>
                   <!-- ACTION COLUMN -->
                   <td class="text-center">
                     <div class="btn-group btn-group-sm" role="group">
@@ -201,11 +222,30 @@
                         <i class="fa fa-trash"></i>
                       </button>
 
+
                       <button type="button" class="btn btn-outline-info"
                               onclick="if(confirm('Copy this isolate to Final Data?')) window.location.href='{% url 'copy_data_to_final' isolate.id %}'"
-                              title="Copy to final data">
+                              title="Copy this isolate to Final data">
                         <i class="fas fa-copy"></i>
                       </button>
+                      <button
+                        type="button"
+                        class="btn btn-outline-info btn-sm"
+                        title="Copy entire batch to Final Data"
+                        onclick="return confirm(
+                          'Copy ALL isolates in batch {{ isolate.Batch_id.bat_Batch_Name }} to Final Data?\n\nThis will overwrite existing Final records.'
+                        ) && (window.location.href='{% url 'copy_batch_to_final' isolate.Batch_id.id %}')"
+                      >
+                        <i class="fa fa-share"></i>
+                      </button>
+                      {% if isolate.AccessionNo in copied_ids %}
+                      <button type="button" class="btn btn-outline-danger"
+                              onclick="if(confirm('Undo finalization and remove from Final Data?')) window.location.href='{% url 'undo_copy_to_final' isolate.id %}'"
+                              title="Remove this isolate in final data?">
+                        <i class="fas fa-undo"></i>
+                      </button>
+                    {% endif %}
+
                     </div>
                   </td>
 
@@ -233,6 +273,7 @@
                     <div class="record-info">
                       <div><strong class="text-primary">Name:</strong> {{ isolate.First_Name }} {{ isolate.Last_Name }}</div>
                       <div><strong class="text-primary">ID:</strong> {{ isolate.Patient_ID }}</div>
+                      <div><strong class="text-primary">Admission:</strong> {{ isolate.Date_Admis }}</div>
                       <div><strong class="text-primary">Age:</strong> {{ isolate.Age }}</div>
                       <div><strong class="text-primary">Sex:</strong> {{ isolate.Sex }}</div>
                     </div>
@@ -242,9 +283,10 @@
                   <td colspan="2">
                     <div class="record-info">
                       <div><strong class="text-primary">Date:</strong> {{ isolate.Spec_Date }}</div>
-                      <div><strong class="text-primary">Admission:</strong> {{ isolate.Date_Admis }}</div>
                       <div><strong class="text-primary">Number:</strong> {{ isolate.Spec_Num }}</div>
                       <div><strong class="text-primary">Type:</strong> {{ isolate.Spec_Type }}</div>
+                      <div><strong class="text-primary">Site Org:</strong> {{ isolate.Site_Org }}</div>
+                      <div><strong class="text-primary">Ars Org:</strong> {{ isolate.ars_OrgCode }}</div>
                     </div>
                   </td>
 
@@ -279,7 +321,7 @@
                                           {% if antibiotic_entry.ab_MIC_operand %}
                                               {{ antibiotic_entry.ab_MIC_operand }}
                                           {% endif %}
-                                          {% if antibiotic_entry.ab_MIC_value %}
+                                          {% if antibiotic_entry.ab_MIC_value|floatformat:"-3" %}
                                           {{ antibiotic_entry.ab_MIC_value }}
                                            {% endif %}
                                       </strong>
@@ -306,7 +348,8 @@
 
                                   {% if retest.ab_Retest_DiskValue %}
                                       Retest Disk: <strong>{{ retest.ab_Retest_DiskValue }}</strong>
-                                      <strong class="text-danger">{{ retest.ab_Retest_Disk_RIS }}</strong>
+                                      <strong> {{retest.ab_Retest_Disk_enRIS}}</strong> 
+                                      &nbsp;<strong class="text-danger">{{ retest.ab_Retest_Disk_RIS}}</strong>
                                   {% endif %}
 
                                   {% if retest.ab_Retest_DiskValue and retest.ab_Retest_MICValue %}, {% endif %}
@@ -317,10 +360,11 @@
                                           {% if retest.ab_Retest_MIC_operand %}
                                               {{ retest.ab_Retest_MIC_operand }}
                                           {% endif %}
-                                          {{ retest.ab_Retest_MICValue }}
+                                          {{ retest.ab_Retest_MICValue|floatformat:"-3" }}
+                                          {{retest.ab_Retest_MIC_enRIS}} 
+                                          &nbsp; <strong class="text-danger">{{ retest.ab_Retest_MIC_RIS }}</strong>
                                       </strong>
-                                      <strong class="text-danger">{{ retest.ab_Retest_MIC_RIS }}</strong>
-
+              
                                       {% if retest.ab_Retest_AlertMIC %}
                                           &nbsp; <strong class="text-info">Alert:</strong>
                                           {{ retest.ab_Retest_Alert_val }}
@@ -337,12 +381,35 @@
                   <!-- PRINT COLUMN -->
                   <td class="text-center">
                     <div class="btn-group btn-group-sm" role="group">
-                      <a href="{% url 'generate_pdf' isolate.id %}" class="btn btn-outline-info" title="Generate Lab Result PDF" target="_blank">
+                      <!-- <a href="{% url 'generate_pdf' isolate.id %}" class="btn btn-outline-info" title="Generate Lab Result PDF" target="_blank">
                         <i class="fa fa-file-pdf"></i>
-                      </a>
-                      <a href="{% url 'generate_gs' isolate.id %}" class="btn btn-outline-success" title="Generate Gram Stain">
-                        <i class="fa fa-microscope"></i>
-                      </a>
+                      </a> -->
+                            {% if isolate.Batch_id %}
+                            <a href="{% url 'generate_batch_pdf' isolate.Batch_id.id %}"
+                              class="btn btn-outline-info"
+                              title="Generate Batch PDF"
+                              target="_blank">
+                              <i class="fa fa-file-pdf"></i>
+                            </a>
+                            {% endif %}
+
+
+                    </div>
+                  </td>
+
+                <td class="text-center">
+                    <div class="btn-group btn-group-sm" role="group">
+                      <!-- <a href="{% url 'generate_pdf' isolate.id %}" class="btn btn-outline-info" title="Generate Lab Result PDF" target="_blank">
+                        <i class="fa fa-file-pdf"></i>
+                      </a> -->
+                                        
+                    <a href="{% url 'batch_edit_view' isolate.Batch_id.id %}"
+                          class="btn btn-outline-info"
+                          title="Edit Batch">
+                          <i class="fa fa-pencil-alt"></i>
+                        </a>
+
+                            
                     </div>
                   </td>
 
@@ -512,12 +579,17 @@
   });
 
   // Clear search functionality
-  function clearSearch() {
-    document.getElementById("globalSearch").value = "";
-    document.querySelectorAll(".searchable-row").forEach(r => r.style.display = "");
-    // Optional: Reset the form
-    document.querySelector('form').submit();
-  }
+function clearSearch() {
+  const searchInput = document.getElementById("globalSearch");
+  if (searchInput) searchInput.value = "";
+
+  document.querySelectorAll(".searchable-row")
+    .forEach(r => r.style.display = "");
+
+  // OPTIONAL: clean URL (no navigation)
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
 
   // Add some styling improvements
   document.addEventListener('DOMContentLoaded', function() {

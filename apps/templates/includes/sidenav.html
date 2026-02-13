@@ -50,14 +50,20 @@
           </li> -->
           <li class="nav-item">
             <a class="nav-link" href="{% url 'batch_create_view' %}">
-              <i class="ni ni-folder-17 text-primary"></i>
-              <span class="nav-link-text">New Batch</span>
+              <i class="fa fa-plus text-primary"></i>
+              <span class="nav-link-text">Add Batch</span>
             </a>
           </li>
           <li class="nav-item">
             <a class="nav-link {% if 'tables' in segment %} active {% endif %}" href="{% url 'show_data' %}">
               <i class="ni ni-bullet-list-67 text-primary"></i>
-              <span class="nav-link-text">View Records</span>
+              <span class="nav-link-text">View Raw Data</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if 'tables' in segment %} active {% endif %}" href="{% url 'show_final_table' %}">
+              <i class="fa fa-suitcase text-primary"></i>
+              <span class="nav-link-text">View Final Data</span>
             </a>
           </li>
           <li class="nav-item">
@@ -66,7 +72,20 @@
               <span class="nav-link-text">WGS Data</span>
             </a>
           </li>
-         
+       
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'upload_wgs_view' %}">
+              <i class="fa fa-paperclip text-primary"></i>
+              <span class="nav-link-text">Projects</span>
+            </a>
+          </li>
+<!--          
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'projects_page' %}">
+              <i class="ni ni-briefcase-24 text-primary"></i>
+              <span class="nav-link-text">Projects</span>
+            </a>
+          </li> -->
              
         </ul>
         <!-- Divider -->
@@ -95,21 +114,16 @@
               <span class="nav-link-text">Field Mapping Tool</span>
             </a>
           </li>
-           <li class="nav-item">
+           <!-- <li class="nav-item">
             <a class="nav-link" 
-               href="{% url 'upload_wgs_view' %}">
+               href="#">
               <i class="ni ni-cloud-upload-96 text-warning"></i>
               <span class="nav-link-text ">Upload Data</span>
             </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" 
-               href="{% url 'download_combined_table' %}">
-              <i class="ni ni-cloud-download-95 text-warning"></i>
-              <span class="nav-link-text ">Download Table</span>
-            </a>
+          </li> -->
+
           </ul>
-          </li>
+          
             <div>
             <hr class="my-3" />
           <h6 class="navbar-heading p-0 text-muted">
@@ -121,7 +135,7 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'settings_page' %}">
                         <i class="fa fa-cogs text-info"></i>
-                        <span class="nav-link-text">System Settings</span>
+                        <span class="nav-link-text">Settings</span>
                     </a>
                 </li>
                                 <!-- <li class="nav-item">

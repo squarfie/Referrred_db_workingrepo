@@ -3,12 +3,14 @@
 {% load widget_tweaks %}
 {% load custom_filters %}
 
-{% block title %} Create Batch {% endblock title %}
+{% block title %}
+  {% if editing %}Edit Batch{% else %}Create Batch{% endif %}
+{% endblock title %}
+
 
 {% block stylesheets %}
   <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
-  <link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
-  <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+
 {% endblock stylesheets %}
 
 {% block content %}
@@ -48,7 +50,9 @@
 
   <div class="header-content" >
     <h1 style="color: aliceblue;"><i class="fas fa-database mr-3" style="color: aliceblue;"></i>Batch Form</h1>
-    <p>Create new records </p>
+          <i class="ni ni-single-02 mr-2"></i>
+          {% if editing %}Edit Batch{% else %}Create New Batch{% endif %}
+
     <div class="badge-group">
       <span class="badge">
         <i class="badge-icon fas fa-info-circle"></i>
@@ -77,11 +81,19 @@
         </div>
 
         <div class="card-body">
-          <form method="POST" action="{% url 'batch_create_view' %}" id="accession-form" novalidate>
+          <form method="POST"
+              action="{% if editing %}
+                        {% url 'batch_edit_view' batch.id %}
+                      {% else %}
+                        {% url 'batch_create_view' %}
+                      {% endif %}"
+              id="accession-form"
+      novalidate>
+
             {% csrf_token %}
 
             <!-- Overwrite Confirmation Alert -->
-            {% if confirm_overwrite %}
+            {% if not editing and confirm_overwrite %}
               <div class="alert alert-warning">
                 <i class="fa fa-exclamation-triangle mr-2"></i>
                 <strong>Batch already exists.</strong> Confirm overwrite to replace it.
@@ -102,7 +114,14 @@
                   </a>
                 </div>
                 {{ form.bat_SiteCode|append_attr:"class: form-control" }}
+                
+                {% if editing %}
+                  <input type="hidden"
+                        name="bat_SiteCode"
+                        value="{{ form.bat_SiteCode.value }}">
+                {% endif %}
               </div>
+
               <div class="form-group col-md-3">
                 <label class="form-control-label">Referral Date</label>
                 {{ form.bat_Referral_Date|append_attr:"class: form-control" }}
@@ -188,6 +207,7 @@
               </div>
             </div>
 
+
             <!-- Action Buttons -->
             <div class="d-flex justify-content-end gap-3 mt-5 flex-wrap">
               {% if confirm_overwrite %}
@@ -198,15 +218,18 @@
                   <i class="fas fa-times mr-2"></i>Cancel
                 </a>
               {% else %}
-                <button type="submit" class="btn btn-primary btn-lg">
-                  <i class="ni ni-fat-add mr-2"></i>Save Batch
-                </button>
+                  <button type="submit"
+                      class="btn {% if editing %}btn-warning{% else %}btn-primary{% endif %} btn-lg">
+                <i class="ni {% if editing %}ni-ruler-pencil{% else %}ni-fat-add{% endif %} mr-2"></i>
+                {% if editing %}Update Batch{% else %}Save Batch{% endif %}
+              </button>
+
               {% endif %}
               <button type="button" class="btn btn-secondary btn-lg" onclick="refresh()">
                 <i class="ni ni-bell-55 mr-2"></i>Refresh
               </button>
               <a href="{% url 'show_batches' %}" class="btn btn-primary btn-lg">
-                <i class="ni ni-bullet-list-67 mr-2"></i>View Recent
+                <i class="ni ni-bullet-list-67 mr-2"></i>View Batches
               </a>
             </div>
           </form>
@@ -227,7 +250,7 @@
 {% endblock content %}
 
 {% block javascripts %}
-<script>
+<!-- <script>
   // Scroll to top functionality
   const mybutton = document.getElementById("myBtn");
   window.onscroll = function() {
@@ -330,4 +353,172 @@
     bindStaffField('#id_bat_Head',        '#id_bat_Head_Lic', 'bat_Head_Lic');
   });
 </script>
+ -->
+<script>
+  
+$(document).ready(function () {
+  const IS_EDITING = {{ editing|yesno:"true,false" }};
+  /* =====================================================
+     FIELD REFERENCES
+  ===================================================== */
+  const $siteCode    = $('#id_bat_SiteCode');
+  const $refDate     = $('#id_bat_Referral_Date');
+  const $batchNum    = $('#id_bat_BatchNo');
+  const $refNo       = $('#id_bat_RefNo');
+  const $totalBatch  = $('#id_bat_Total_batch');
+  const $siteNameGen = $('#id_bat_Site_NameGen');
+  const $batchName   = $('#id_bat_Batch_Name');
+
+
+  
+  if (IS_EDITING) {
+  $siteCode
+    .prop('readonly', true)
+    .addClass('bg-light')
+    .css('pointer-events', 'none');
+
+  $refDate.prop('readonly', true).addClass('bg-light');
+  $batchNum.prop('readonly', true).addClass('bg-light');
+  $refNo.prop('readonly', true).addClass('bg-light');
+  $totalBatch.prop('readonly', true).addClass('bg-light');
+  $batchName.prop('readonly', true).addClass('bg-light');
+
+  $siteNameGen.prop('readonly', true).addClass('bg-light');
+}
+
+
+  /* =====================================================
+     UTILITIES
+  ===================================================== */
+  function debounce(fn, delay) {
+    let timer;
+    return function () {
+      clearTimeout(timer);
+      timer = setTimeout(fn, delay);
+    };
+  }
+
+  /* =====================================================
+     BATCH NAME GENERATION
+     (ALWAYS ACTIVE — CREATE + EDIT)
+  ===================================================== */
+  function generateBatchName() {
+
+
+    const site  = $siteCode.val();
+    const date  = $refDate.val();
+    const batch = $batchNum.val();
+    const ref   = $refNo.val();
+    const total = $totalBatch.val();
+
+    if (!site || !date || !batch || !total || !ref) {
+      $batchName.val('');
+      return;
+    }
+
+    // YYYY-MM-DD → MMDDYYYY
+    const parts = date.split('-');
+    const dateClean = parts[1] + parts[2] + parts[0];
+
+    $batchName.val(
+      `${site}_${dateClean}_${batch}.${total}_${ref}`
+    );
+  }
+
+  const debouncedGenerateBatchName = debounce(generateBatchName, 300);
+
+  /* =====================================================
+     SITE CODE → SITE NAME LOOKUP
+     + BATCH NAME UPDATE
+  ===================================================== */
+  $siteCode.on('change', function () {
+    const site = this.value;
+
+    if (!site) {
+      $siteNameGen.val('');
+      $batchName.val('');
+      return;
+    }
+
+    $.ajax({
+      url: "{% url 'get_clinic_code' %}",
+      data: { site_code: site },
+      dataType: 'json',
+      success: function (data) {
+        $siteNameGen.val(data.site_name || '');
+        generateBatchName();   // ✅ always update batch name
+      },
+      error: function () {
+        console.error("Site lookup failed");
+      }
+    });
+  });
+
+  /* =====================================================
+     INPUT LISTENERS
+     (CREATE + EDIT)
+  ===================================================== */
+  $refNo.on('input change', debouncedGenerateBatchName);
+  $refDate.on('input change', debouncedGenerateBatchName);
+  $batchNum.on('input change', debouncedGenerateBatchName);
+  $totalBatch.on('input change', debouncedGenerateBatchName);
+
+  /* =====================================================
+     STAFF → LICENSE AUTO-FILL
+  ===================================================== */
+  function bindStaffField(staffSelector, licenseSelector, licenseKey) {
+    $(staffSelector).on('change', function () {
+      const staffId = $(this).val();
+
+      if (!staffId) {
+        $(licenseSelector).val('');
+        return;
+      }
+
+      $.ajax({
+        url: "{% url 'get_ars_staff_details' %}",
+        data: {
+          ars_staff_id: staffId,
+          license_field: licenseKey
+        },
+        dataType: 'json',
+        success: function (data) {
+          $(licenseSelector).val(data[licenseKey] || '');
+        },
+        error: function () {
+          console.error("Staff license lookup failed:", staffSelector);
+        }
+      });
+    });
+  }
+
+  bindStaffField('#id_bat_Encoder',    '#id_bat_Enc_Lic',  'bat_Enc_Lic');
+  bindStaffField('#id_bat_Checker',    '#id_bat_Chec_Lic', 'bat_Chec_Lic');
+  bindStaffField('#id_bat_Verifier',   '#id_bat_Ver_Lic',  'bat_Ver_Lic');
+  bindStaffField('#id_bat_LabManager', '#id_bat_Lab_Lic',  'bat_Lab_Lic');
+  bindStaffField('#id_bat_Head',       '#id_bat_Head_Lic', 'bat_Head_Lic');
+
+  /* =====================================================
+     INITIAL PAGE LOAD (EDIT MODE SUPPORT)
+  ===================================================== */
+  $siteCode.trigger('change');
+  $('#id_bat_Encoder').trigger('change');
+  $('#id_bat_Checker').trigger('change');
+  $('#id_bat_Verifier').trigger('change');
+  $('#id_bat_LabManager').trigger('change');
+  $('#id_bat_Head').trigger('change');
+
+
+    // Refresh form
+window.refresh = function () {
+  document.getElementById('accession-form').reset();
+};
+
+
+});
+</script>
+
+
+
+
 {% endblock javascripts %}

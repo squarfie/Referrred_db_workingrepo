@@ -1,0 +1,390 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+<style>
+@page {
+    size: 330mm 216mm;
+    margin: 0.8cm;
+}
+
+body {
+    font-family: Calibri, Trebuchet MS, sans-serif;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+th, td {
+    border: 0.6px solid #000;
+    font-size: 8.5px;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.8px;
+    line-height: .96;
+}
+
+.gray-background {
+    background: #e4dede;
+    font-weight: bold;
+}
+
+.mic {
+    background: #e4dede;
+    font-size: 8px;
+}
+
+.page-break {
+    page-break-before: always;
+}
+
+.header-container table,
+.header-container th,
+.header-container td {
+    border: none !important;
+    padding: 2px;
+}
+</style>
+</head>
+
+<body>
+
+{% for page in pages %}
+
+<!-- ================= PAGE HEADER ================= -->
+    <div class="header-container">
+        <table>
+            <tr>
+            <th style="width:40%; text-align:right;">
+            
+                {% if logo_path %}
+                <img src="{{ logo_path }}"  style="width: 200px; height: auto;" />
+                {% else %}
+                <p>Logo not available</p>
+                {% endif %}
+            </th>
+            <th style="padding-left: 5px; text-align: left; font-size: 10px;" colspan="8">
+                <p style="text-align: center;">
+                <strong>Research Institute for Tropical Medicine - Department of Health </strong>
+                <br><strong>Antimicrobial Resistance Surveillance Reference Laboratory</strong>
+                <br > <span style="font-size: 8px;">9002 Research Drive, Filinvest Corporate City, Alabang, Muntinlupa City 1781 Philippines</span> 
+                <br> <span style="font-size: 8px;">T: (632) 809-9763 / 807-2628 to 32 loc. 243 | F: (632) 809-9763</span>
+                <br><span style="font-size: 8px;"><a href="http://www.ritm.gov.ph/"><strong>www.ritm.gov.ph</strong></a> <strong>| ISO 9001:2008 Certified</strong> </span>
+                </p>
+        </th>
+                    <th style="padding-left: 5px; text-align: left; font-size: 10px;" colspan="8">
+                <p>
+                </p>
+        </th>
+        </tr>
+    </table>
+</div>
+    
+<table>
+<tbody>
+
+<tr>
+    <th colspan="4" style="border:none;">ARSRL-RITM {% now "Y" %}</th>
+    <th colspan="37" style="border:none; font-size:14px;">
+        <strong>CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}</strong>
+    </th>
+</tr>
+
+{% for isolate_data in page %}
+{% with isolate=isolate_data.isolate %}
+{% with grouped_rows=isolate_data.grouped_rows %}
+{% with grouped_ars_rows=isolate_data.grouped_ars_rows %}
+
+<!-- ================= ISOLATE HEADER ================= -->
+<tr>
+    <td class="gray-background" colspan="4">Patient's Information</td>
+    <td class="gray-background" colspan="4">Identification</td>
+    <td class="gray-background" colspan="33">
+        Antibiogram by disk diffusion (mm) / MIC (ug/mL)
+    </td>
+</tr>
+
+<!-- ================= MAIN ANTIBIOTIC TABLE ================= -->
+            {% for row in grouped_rows %}
+
+            <!-- ANTIBIOTIC HEADER ROW -->
+            <tr>
+                {% if forloop.first %}
+                    <!-- bat_seq spans 2 rows -->
+                    <td rowspan="2"
+                        style="font-size:9px; text-align:left; border-right:0; border-bottom:0;">
+                        <strong>{{ isolate.bat_seq }}</strong>
+                    </td>
+
+                    <!-- patient name spans 2 rows -->
+                    <td rowspan="2"
+                        colspan="3"
+                        style="font-size:10px; text-align:left; border-right:1px solid gray; border-bottom:0; border-left: 0;">
+                        <strong>{{ isolate.Last_Name }}, {{ isolate.First_Name }}</strong>
+                    </td>
+
+                    <!-- Sentinel Site Results spans 2 rows -->
+                    <td colspan="4"
+                        style="font-size:9px; text-align:center; border-right:1px solid black; border-bottom:0;">
+                        <strong>Sentinel Site Results</strong>
+                        <div style="padding-top:3px; text-align: left; font-size: 8px;">  
+                        </div>
+                    </td>
+                {% else %}
+                    <!-- keep grid for next blocks -->
+                     <td colspan="4" style="border-top: 0; border-bottom: 0; border-right:1px solid black;"></td>
+                    <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"></td>
+                {% endif %}
+
+                <!-- spacer -->
+                <td>&nbsp;</td>
+
+                {% for abx, data in row %}
+                    <th style="padding: 2px;">{{ abx }}</th>
+                {% endfor %}
+                
+                {% if forloop.first %}
+                    <th colspan="3" style="border-bottom: 0;">Remarks</th>
+                {% endif%}
+            </tr>
+
+            <!-- DISK ROW -->
+            <tr>
+                {% if forloop.first %}
+                <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: le;">{{ isolate.Site_Pre }}</td>
+                <td><strong>DISK</strong></td>
+                {% endif%}
+
+                {% if not forloop.first %}
+                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black;"></td>
+                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: left;">{{isolate.Site_Pos}}</td>
+                    <td><strong>DISK</strong></td>
+                {% endif %}
+
+            
+                {% for abx, data in row %}
+                    <td style="font-size:7px;">
+                        {{ data.disk.ab_Disk_value|default_if_none:"&nbsp;"|safe }} <br>
+                        {{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe}}
+                    </td>
+                {% endfor %}
+                {% if forloop.first %}
+                <td colspan="3" rowspan="5" style="border-top:0; border-bottom:1px solid black; border-right:1px solid black; text-align: left; vertical-align: top;">{{isolate.Comments}}</td>
+
+                {% endif%}
+
+            </tr>
+
+            <!-- MIC ROW -->
+            <tr>
+                  {% if forloop.first %}
+                 <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black;"></td>
+                <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black;">
+                        <div style="padding-top:3px; text-align: left; font-size: 9px;">
+                           <strong> <i>{{ isolate.Site_OrgName }}</i> </strong>
+                        </div>
+                </td>
+                <td><strong>MIC</strong></td>
+                  {% endif %}
+                
+                  {% if not forloop.first %}
+                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black;"></td>
+                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black"></td>
+                    <td><strong>MIC</strong></td>
+                {% endif %}
+
+                {% for abx, data in row %}
+                    <td class="mic" style="font-size:7px;">
+                        {{ data.mic.ab_MIC_operand }}
+                        {{ data.mic.ab_MIC_value|floatformat:2|default_if_none:"&nbsp;"|safe }} <br>
+                        {{ data.mic.ab_MIC_enRIS|default_if_none:"&nbsp;"|safe }}
+                    </td>
+                {% endfor %}
+            </tr>
+
+            {% endfor %}
+
+                        {% for row in grouped_ars_rows %}
+
+                        <!-- Antibiotic headers -->
+                        <tr>
+                            {% if forloop.first %}
+                                <td style="font-size:9px; text-indent:1%; border-right:1px solid gray; text-align:left; border-bottom: 0; border-top: 0;"
+                                    colspan="4">
+                                </td>
+
+                                <td style="font-size:9px; border-right:1px solid gray; text-align:center; border-bottom:0"
+                                    colspan="4">
+                                    <strong>ARSRL Results</strong>
+                                </td>
+                            {% else %}
+                                <!-- empty cells to keep column alignment -->
+                                <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
+                                <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"></td>
+                            {% endif %}
+
+                            <!-- spacer before antibiotics -->
+                            <td>&nbsp;</td>
+
+                            {% for abx, data in row %}
+                                <th>{{ abx }}</th>
+                            {% endfor %}
+                                {% if forloop.first %}
+                                <th colspan="3" style="border-bottom: 0;">Confirmatory Tests:</th>
+                                {% endif%}
+                                {%if not forloop.first %}
+                               <td style="font-size: 7px;">ampC</td>
+                               <td style="font-size: 7px;">CN/CNI</td>
+                               <td style="font-size: 7px;">{{isolate.ars_cn_cni|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
+                        </tr>
+
+
+                        <!-- DISK ROW -->
+                        <tr>
+                            
+                             {% if forloop.first %}
+                            <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
+                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">{{isolate.ars_Pre}}</td>
+                            <td><strong>DISK</strong></td>
+                            {% endif %}
+
+                            {% if not forloop.first %}
+                            <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
+                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"> {{isolate.ars_Post}}</td>
+                            <td><strong>DISK</strong></td>
+                            {% endif %}
+
+                            {% for abx, data in row %}
+                                <td>
+                                    {{ data.disk.ab_Retest_DiskValue|default_if_none:"&nbsp;"|default:"&nbsp;"|safe }}
+                                </td>
+                            {% endfor %}
+
+                            {%if forloop.first %}
+                               <td style="font-size: 7px; border-bottom: 0;">ESBL</td>
+                               <td style="font-size: 7px;">CT/CTL</td>
+                               <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
+                            {%if not forloop.first %}
+                               <td style="font-size: 7px;">MBL</td>
+                               <td style="font-size: 7px;">IP/IPI</td>
+                               <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
+
+
+                        </tr>
+
+                        <!-- MIC ROW -->
+                        <tr>
+                            {% if forloop.first %}
+                            <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
+                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"><strong><i>{{isolate.ars_OrgName}}</i></strong></td>
+                            <td><strong>MIC</strong></td>
+                            {% endif %}
+
+                            {% if not forloop.first %}
+                            <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
+                            <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
+                            <td><strong>MIC</strong></td>
+                            {% endif %}
+
+                            {% for abx, data in row %}
+                                <td class="mic" style="font-size: 7px;">
+                                    {{ data.mic.ab_Retest_MIC_operand }}
+                                    {{ data.mic.ab_Retest_MICValue|floatformat:2|default_if_none:"&nbsp;"|default:"&nbsp;"|safe }}
+                                </td>
+                            {% endfor %}
+
+                            {% if forloop.first %}
+                            <td style="border-top: 0;">&nbsp;</td>
+                            <td style="font-size: 7px;">TZ/TZL</td>
+                            <td style="font-size: 7px;">{{isolate.ars_tz_tzl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% endif %}
+                            {% if not forloop.first %}
+                            <td style="border-top: 0;" colspan="3">&nbsp;</td>
+                       
+                            {% endif %}
+
+                        </tr>
+
+                        {% endfor %}
+
+
+
+
+
+
+
+                <!-- ================= RECOMMENDATION ================= -->
+            <tr>
+                 <th colspan="41" style="font-size: 10px; text-align: left; vertical-align: top; padding: 2px; border-bottom: 0;"><strong>Recommendation</strong></th>
+            </tr>
+            <tr>
+                 <td colspan="41" style="height: 50px; font-size: 10px; text-align: left; vertical-align: top; padding: 2px; border-top: 0;"><br> {{isolate.Recommendation}}</td>
+            </tr>
+
+
+
+
+{% endwith %}
+{% endwith %}
+{% endwith %}
+{% endfor %}
+
+{% if page|length == 1 %}
+<tr>
+    <td colspan="41" style="height: 300px; border: none;"></td>
+</tr>
+{% endif %}
+
+<!-- ================= SIGNATURES ================= -->
+
+     <tr>
+                <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0; border-top: 0;"> <strong>Date:</strong></td>
+                <td colspan="4" style="border-left: 0; border-right: 0; border-top: 0;"> </td>
+                <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0; border-top: 0;"><strong>Encoded by:</strong></td>
+                <td colspan="5" style="border-left: 0; border-right: 0; border-top: 0;">{{isolate.arsp_Encoder}}</td>
+                <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0; border-top: 0;"><strong>Checked by:</strong></td>
+                <td colspan="6" style="border-left: 0; border-right: 0; border-top: 0;">{{isolate.arsp_Checker}}</td>
+                <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0; border-top: 0;"><strong>Verified by:</strong></td>
+                <td colspan="10" style="border-left: 0; border-right: 0; border-top: 0;">{{isolate.arsp_Verifier}} / {{isolate.arsp_LabManager}}</td>
+                <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0; border-top: 0;"><strong>Noted by:</strong></td>
+                <td colspan="6" style="border-left: 0; border-right: 0; border-top: 0;">{{isolate.arsp_Head}}</td>
+            </tr>
+            <tr style="height: 12px;">
+                <td colspan="2" style="border: none;"></td>
+                <td colspan="4"  style="border: none;"></td>
+                <td colspan="2" style="border: none;"><strong></strong></td>
+                <td colspan="6"  style="border: none;">{{isolate.arsp_Enc_Lic}}</td>
+                <td colspan="2"  style="border: none;"></td>
+                <td colspan="6"  style="border: none;">{{isolate.arsp_Chec_Lic }}</td>
+                <td colspan="2"  style="border: none;"></td>
+                <td colspan="9"  style="border: none;">{{isolate.arsp_Ver_Lic}}   {{isolate.arsp_Lab_Lic}}</td>
+                <td colspan="2"  style="border: none;"></td>
+                <td colspan="6"  style="border: none;">{{isolate.arsp_Head_Lic}}</td>
+            </tr>
+            <tr>
+                  <th colspan="41" style="font-size: 9px; border: 1px solid black;"><strong>THIS CONFIFMATORY TEST RESULTS ARE FOR THE LABORATORY WHOSE NAME
+                    IS INDICATED AT THE TOP OF THIS PAGE. IF THESE RESULTS DO NOT BEAR THE NAME OF YOUR LABORATORY, KINDLY DISREGARD AND RETURN TO ARSRL
+                  </strong></th>
+            </tr>
+
+
+</tbody>
+</table>
+
+{% if not forloop.last %}
+<div class="page-break"></div>
+{% endif %}
+
+{% endfor %}
+
+</body>
+</html>

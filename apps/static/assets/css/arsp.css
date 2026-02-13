@@ -39,10 +39,7 @@
   box-sizing: border-box;
 }
 
-body,
-html {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
+
 
 /* =========================================================
    BACKGROUND ANIMATIONS (PRESERVED)
@@ -1334,3 +1331,6 @@ select.form-control {
   }
   .header-actions .btn { margin-left: 0; margin-right: 8px; margin-bottom: 6px; }
 }
+
+
+

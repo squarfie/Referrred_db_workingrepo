@@ -1,0 +1,132 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %} Edit Phenotype (Post) {% endblock title %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+{% endblock stylesheets %}
+
+{% block content %}
+
+<div class="header pb-6"
+     style="height: 180px;
+            background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%);
+            position: relative;
+            overflow: hidden;">
+
+<div class="header pb-6" style="height: 180px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%); opacity: 0.6;"></div>
+  <div class="container-fluid" style="position: relative; z-index: 1;">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">
+            <i class="fas fa-database mr-2"></i>Phenotype Post Database
+          </h6>
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+              <li class="breadcrumb-item"><a href="{% url 'settings_page' %}">Settings</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Edit Phenotype Post</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="container-fluid mt-7">
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+
+      <div class="card shadow-sm">
+
+        <!-- HEADER -->
+        <div class="card-header d-flex justify-content-between align-items-center"
+             style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+                    border-bottom: 2px solid #d1e8ed;">
+
+          <h5 class="card-title mb-0">
+            <i class="fas fa-vials mr-2"></i>
+            {% if editing %}Edit{% else %}Add{% endif %} Phenotype (Post)
+          </h5>
+
+          <a href="{% url 'view_phenotype_post' %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-table mr-1"></i> View All
+          </a>
+        </div>
+        <!-- BODY -->
+        <div class="card-body">
+
+          <form method="POST"
+                action="{% if editing %}{% url 'update_phenotype_post' object.id %}{% else %}{% url 'add_phenotype_post' %}{% endif %}"
+                autocomplete="on"
+                id="phenoPostForm">
+
+            {% csrf_token %}
+
+            <!-- MAIN FIELD -->
+            <div class="row">
+
+              <div class="col-md-12 mb-3">
+                <label>
+                  <i class="fas fa-tag mr-1"></i> Post Phenotype
+                </label>
+
+                {{ form.Post_Phenotypes|add_class:"form-control"|attr:"placeholder:Enter phenotype description" }}
+
+                <small class="helper-text">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  Descriptive phenotype definition (Post)
+                </small>
+              </div>
+
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="fas fa-save mr-2"></i>
+                {% if editing %}Update{% else %}Submit{% endif %} Phenotype
+              </button>
+
+              <button type="button"
+                      class="btn btn-success px-4"
+                      onclick="refresh()">
+                <i class="fas fa-eraser mr-2"></i> Clear
+              </button>
+
+              <button type="button"
+                      class="btn btn-secondary px-4"
+                      onclick="history.back()">
+                <i class="fas fa-arrow-left mr-2"></i> Back
+              </button>
+
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function refresh() {
+  if (confirm("Clear all form fields?")) {
+    document.getElementById("phenoPostForm").reset();
+  }
+}
+</script>
+
+{% endblock content %}

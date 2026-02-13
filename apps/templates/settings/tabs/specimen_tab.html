@@ -20,26 +20,66 @@
 
     <h5 class="card-title mb-0">
       <i class="fas fa-vial mr-2"></i>
-      {% if editing %}Edit{% else %}Create New{% endif %} Specimen Type
+      {% if editing %}Edit{% else %}Add{% endif %} Specimen Code
     </h5>
 
     <a href="{% url 'specimen_list' %}" class="btn btn-sm btn-primary">
-      <i class="fas fa-table mr-1"></i> View All Specimens
+      <i class="fas fa-table mr-1"></i> View All
     </a>
   </div>
 
   <!-- BODY -->
   <div class="card-body">
 
-    <form method="POST"
-          action="{% url 'add_specimen' %}"
-          autocomplete="on"
-          id="specimenForm">
+<form method="POST"
+      action="{% if editing %}
+                {% url 'edit_specimen' specimen.id %}
+              {% else %}
+                {% url 'add_specimen' %}
+              {% endif %}"
+      id="specimenForm">
+
 
       {% csrf_token %}
 
       <!-- FORM FIELDS -->
+                  <div class="row mb-4">
+
+                <div class="col-md-6">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-toggle="modal"
+                            data-target="#UploadSpecimenModal">
+                        <i class="fas fa-file-upload mr-1"></i> Upload CSV / Excel
+                    </button>
+                </div>
+            </div>
+
+          <div class="row">
+            <div class="col-md-12 mb-4">
+
+              <div class="p-3 rounded"
+                  style="
+                    background: linear-gradient(135deg, #eef7fa 0%, #e3f1f5 100%);
+                    border: 1px solid #d1e8ed;
+                  ">
+
+                <div class="form-check">
+                  {{ specimen_form.Emerging_Spec_Flag|add_class:"form-check-input" }}
+                   
+                  <label class="form-check-label ml-3">
+                    <i class="fas fa-eye mr-1 text-info"></i> Monitor this specimen for Emerging Resistance
+                  </label>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+         
+
       <div class="row">
+
 
         <div class="col-md-6 mb-3">
           <label>
@@ -63,6 +103,31 @@
           </small>
         </div>
 
+
+
+      </div>
+
+      <div class="row">
+          <div class="col-md-6 mb-3">
+          <label>
+            <i class="ni ni-archive-2 mr-1"></i> Specimen Group Code
+          </label>
+          {{ specimen_form.Specimen_Code_Grp|add_class:"form-control"|attr:"placeholder:Enter specimen group code" }}
+          <small class="helper-text">
+            <i class="fas fa-info-circle mr-1"></i>
+            Define one specimen code for multiple specimen types (ex: pf, ab, di --> fl)
+          </small>
+        </div>
+          <div class="col-md-6 mb-3">
+          <label>
+            <i class="ni ni-badge mr-1"></i> Specimen Group Name
+          </label>
+          {{ specimen_form.Specimen_Grp_Name|add_class:"form-control"|attr:"placeholder:Enter specimen group name" }}
+          <small class="helper-text">
+            <i class="fas fa-info-circle mr-1"></i>
+            Specify name of the specimen group (ex. Fluid)
+          </small>
+        </div>
       </div>
 
       <!-- ACTION BUTTONS -->
@@ -91,11 +156,59 @@
   </div>
 </div>
 
+
+<!-- UPLOAD MODAL -->
+<div class="modal fade" id="UploadSpecimenModal" tabindex="-1">
+    <form method="POST"
+          action="{% url 'upload_specimen_code' %}"
+          enctype="multipart/form-data"
+          onsubmit="return confirmOverwrite();">
+
+        {% csrf_token %}
+
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-top:4px solid #2d9cad;">
+
+                <div class="modal-header"
+                     style="background: linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
+                            border-bottom:2px solid #d1e8ed;">
+
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-upload mr-2"></i> Upload Specimen Codes
+                    </h5>
+
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    {{ specimen_upload.File_uploadSpec }}
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+
+            </div>
+        </div>
+    </form>
+</div>
+
+
+
 <script>
 function refresh() {
   if (confirm('Are you sure you want to clear all form fields?')) {
     document.getElementById("specimenForm").reset();
   }
+}
+</script>
+
+<script>
+function confirmOverwrite() {
+    return confirm("⚠️ Uploading will replace all existing breakpoints. Continue?");
 }
 </script>
 
