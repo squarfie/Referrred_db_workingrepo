@@ -1,240 +1,527 @@
 {% extends "layouts/base.html" %}
 {% load static %}
-{% block title %}Upload Raw Data{% endblock %}
 
+{% block title %}Field Mapper Tool{% endblock %}
 
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
+<style>
+
+/* ── HEADER ── */
+.header-inner { position: relative; z-index: 2; width: 100%; }
+.header-content { color: white; margin-bottom: 0.5rem; }
+.header-content h1 {
+  font-size: 2rem; font-weight: 700; margin-bottom: 6px;
+  background: linear-gradient(135deg, #00bcd4 0%, #26c6da 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.header-content p { font-size: 1rem; font-weight: 300; color: rgba(200,220,255,0.85); }
+
+.hdr-breadcrumb {
+  display: flex; align-items: center; gap: 0.35rem;
+  background: rgba(255,255,255,0.1); padding: 5px 14px;
+  border-radius: 20px; list-style: none; margin: 0;
+  backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.14);
+  width: fit-content;
+}
+.hdr-breadcrumb .bc-item { font-size: 0.8rem; color: rgba(200,220,255,0.8); }
+.hdr-breadcrumb .bc-item a { color: rgba(200,220,255,0.9); text-decoration: none; transition: color 0.15s; }
+.hdr-breadcrumb .bc-item a:hover { color: #00bcd4; }
+.hdr-breadcrumb .bc-item + .bc-item::before { content:'/'; margin-right:0.35rem; opacity:.4; }
+.hdr-breadcrumb .bc-item.active { color: #00bcd4; font-weight: 700; }
+
+.hdr-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 0 1rem;
+}
+.btn-hdr {
+  font-size: 0.77rem; font-weight: 700;
+  padding: 0.38rem 1rem; border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.1); color: #fff;
+  cursor: pointer; transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  backdrop-filter: blur(6px);
+}
+.btn-hdr:hover { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.45); color: #fff; }
+
+/* ── PAGE LAYOUT ── */
+.mapper-page {
+  background: #f5f8fc;
+  min-height: 100vh;
+  padding: 2.5rem 1.5rem 4rem;
+}
+.mapper-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── STEPS BANNER ── */
+.steps-banner {
+  background: #fff;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  position: relative;
+}
+.steps-banner::before {
+  content: '';
+  position: absolute;
+  top: 2.15rem; left: calc(12.5% + 16px); right: calc(12.5% + 16px);
+  height: 2px;
+  background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+  opacity: 0.2;
+  pointer-events: none;
+}
+.step-item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.5rem; text-align: center;
+}
+.step-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; font-weight: 800;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(30,90,150,0.3);
+  position: relative; z-index: 1;
+  flex-shrink: 0;
+}
+.step-label {
+  font-size: 0.73rem; font-weight: 600;
+  color: var(--primary-dark);
+  line-height: 1.3;
+}
+
+/* ── MAIN CARD ── */
+.mapper-card {
+  background: #fff;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+}
+.mapper-card-header {
+  padding: 1.1rem 1.5rem;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.mapper-card-header h3 {
+  font-size: 1rem; font-weight: 700; color: #fff; margin: 0;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.mapper-card-body { padding: 1.75rem; }
+
+/* ── FORM ELEMENTS ── */
+.field-label {
+  font-size: 0.82rem; font-weight: 700;
+  color: var(--primary-dark);
+  display: flex; align-items: center; gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.field-label i { color: var(--secondary-color); }
+.field-hint { font-size: 0.74rem; color: #6b7a99; margin-top: 0.35rem; }
+
+.styled-select {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1.5px solid var(--border-light);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: var(--primary-dark);
+  background: #fff;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231e5a96' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+.styled-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(30,90,150,0.12);
+}
+
+/* ── FILE DROP ZONE ── */
+.file-drop {
+  border: 2px dashed var(--border-light);
+  border-radius: 10px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  background: #fafbfc;
+  transition: all 0.2s;
+  position: relative;
+}
+.file-drop:hover, .file-drop.dragover {
+  border-color: var(--secondary-color);
+  background: rgba(0,188,212,0.04);
+}
+.file-drop input[type=file] { display: none; }
+.file-drop .drop-icon {
+  width: 52px; height: 52px; border-radius: 12px;
+  background: rgba(0,188,212,0.1);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 0.75rem;
+  font-size: 1.4rem; color: var(--secondary-color);
+  transition: transform 0.2s;
+}
+.file-drop:hover .drop-icon { transform: translateY(-3px); }
+.file-drop .drop-title { font-size: 0.88rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 0.25rem; }
+.file-drop .drop-sub   { font-size: 0.76rem; color: #6b7a99; }
+.file-drop .drop-badge {
+  display: inline-flex; gap: 0.4rem; margin-top: 0.75rem; flex-wrap: wrap; justify-content: center;
+}
+.fmt-tag {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem; border-radius: 20px;
+  background: rgba(30,90,150,0.08); color: var(--primary-color);
+  border: 1px solid rgba(30,90,150,0.15);
+}
+
+/* ── FILE PREVIEW ── */
+.file-preview {
+  display: none;
+  background: rgba(30,90,150,0.05);
+  border: 1px solid rgba(30,90,150,0.15);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  align-items: center; gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+.file-preview.show { display: flex; }
+.file-preview .fp-icon {
+  width: 40px; height: 40px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: #fff; flex-shrink: 0;
+}
+.file-preview .fp-name { font-size: 0.83rem; font-weight: 700; color: var(--primary-dark); }
+.file-preview .fp-size { font-size: 0.73rem; color: #6b7a99; margin-top: 0.1rem; }
+.file-preview .fp-remove {
+  margin-left: auto; background: none; border: none;
+  color: #aaa; cursor: pointer; font-size: 1.1rem;
+  transition: color 0.15s;
+}
+.file-preview .fp-remove:hover { color: var(--danger); }
+
+/* ── DIVIDER ── */
+.form-divider { border: none; border-top: 1px solid var(--border-light); margin: 1.5rem 0; }
+
+/* ── SUBMIT BUTTON ── */
+.btn-submit {
+  width: 100%;
+  padding: 0.85rem;
+  border-radius: 10px; border: none;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: #fff; font-size: 0.92rem; font-weight: 700;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  box-shadow: 0 4px 14px rgba(30,90,150,0.3);
+  letter-spacing: 0.2px;
+}
+.btn-submit:hover {
+  background: linear-gradient(135deg, var(--primary-dark), #082847);
+  box-shadow: 0 6px 20px rgba(30,90,150,0.4);
+  transform: translateY(-1px);
+}
+.btn-submit:active { transform: translateY(0); }
+
+.card-foot {
+  padding: 0.9rem 1.5rem;
+  border-top: 1px solid var(--border-light);
+  background: #fafbfc;
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.76rem; color: #6b7a99;
+}
+.card-foot i { color: var(--success); }
+
+/* ── HELP CARD ── */
+.help-card {
+  background: #fff;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.help-card-header {
+  padding: 0.9rem 1.5rem;
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.help-card-header h4 { font-size: 0.92rem; font-weight: 700; color: #fff; margin: 0; }
+.help-card-body { padding: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media(max-width:540px) { .help-card-body { grid-template-columns: 1fr; } }
+
+.help-section h5 {
+  font-size: 0.82rem; font-weight: 800;
+  color: var(--primary-dark); margin-bottom: 0.6rem;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.help-section h5 i { color: var(--secondary-color); font-size: 0.85rem; }
+.help-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.help-list li {
+  font-size: 0.78rem; color: #4a5568;
+  display: flex; align-items: flex-start; gap: 0.45rem; line-height: 1.4;
+}
+.help-list li::before {
+  content: '›'; color: var(--secondary-color); font-weight: 700;
+  font-size: 1rem; flex-shrink: 0; line-height: 1.2;
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px) {
+  .steps-banner { grid-template-columns: repeat(2, 1fr); }
+  .steps-banner::before { display: none; }
+  .mapper-page { padding: 1.5rem 1rem 3rem; }
+}
+</style>
+{% endblock stylesheets %}
 
 {% block content %}
 
-<!-- Header Section -->
- <div class="header bg-primary pb-6" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
-    <span class="mask bg-gradient-default opacity-3"></span>
+<!-- Header -->
+<div class="header-container">
+  <div class="background-animation-wrapper" aria-hidden="true">
+    <div class="grid-bg"></div>
+    <div class="particles">
+      <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+      <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+      <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+    </div>
+    <div class="scanner"></div>
+    <div class="scanner"></div>
+    <div class="scanner"></div>
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+    <div class="overlay"></div>
+  </div>
+
   <div class="container-fluid">
-    <div class="header-body">
-      <div class="row align-items-center py-4">
-        <div class="col-lg-6 col-7">
-          <h6 class="h2 text-white d-inline-block mb-0">Field Mapper Tool</h6>
-          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
-            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
-              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
-              <li class="breadcrumb-item active" aria-current="page">Upload Raw Data</li>
-            </ol>
-          </nav>
-        </div>
-        <div class="col-lg-6 col-5 text-right">
-          <button class="btn btn-sm btn-neutral" onclick="history.back()">Back</button>
-        </div>
+    <div class="header-inner">
+      <div class="header-content mt-3">
+        <h1>Field Mapper Tool</h1>
+        <p>Map your raw data columns to the correct database fields</p>
+      </div>
+      <div class="hdr-row">
+        <ol class="hdr-breadcrumb">
+          <li class="bc-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+          <li class="bc-item active">Upload Raw Data</li>
+        </ol>
+        <button class="btn-hdr" onclick="history.back()">
+          <i class="ni ni-bold-left"></i> Back
+        </button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Main Content -->
-<div class="container-fluid mt--6">
-  <div class="row justify-content-center">
-    <div class="col-lg-8 col-md-10">
-      <div class="card shadow">
-        <!-- Card Header -->
-        <div class="card-header border-0 bg-primary">
-          <div class="row align-items-center">
-            <div class="col">
-              <h3 class="mb-0 text-white">
-                <i class="fas fa-map mr-2"></i>Upload Referred Data for Mapping
-              </h3>
-            </div>
-          </div>
-        </div>
+<!-- Page Body -->
+<div class="mapper-page">
+  <div class="mapper-inner">
 
-        <!-- Card Body -->
-        <div class="card-body">
-          <!-- Instructions -->
-          <div class="alert alert-info mb-4" role="alert">
-            <h4 class="alert-heading">
-              <i class="fas fa-info-circle mr-2"></i>Instructions
-            </h4>
-            <hr>
-            <p class="mb-2"><strong>Step 1:</strong> Upload your Excel (.xlsx, .xls) or CSV (.csv) file</p>
-            <p class="mb-2"><strong>Step 2:</strong> Map your raw column headers to model fields</p>
-            <p class="mb-0"><strong>Step 3:</strong> Download the mapped Excel file</p>
-          </div>
+    <!-- Steps Banner -->
+    <div class="steps-banner">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-label">Select Target Dataset</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-label">Upload Excel / CSV</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-label">Map Columns to Fields</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-label">Download Mapped File</div>
+      </div>
+    </div>
 
-          <!-- Upload Form -->
-          <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            
-            <div class="form-group">
-              <label class="form-control-label" for="raw_file">
-                <i class="fas fa-file-excel text-success mr-1"></i>Select File
-              </label>
-              <div class="custom-file">
-                <input type="file" 
-                       name="raw_file" 
-                       id="raw_file"
-                       accept=".xlsx,.xls,.csv" 
-                       class="custom-file-input" 
-                       required>
-                <label class="custom-file-label" for="raw_file" >Choose file...</label>
-              </div>
-              <small class="form-text text-muted">
-                <i class="fas fa-exclamation-circle mr-1"></i>
-                Supported formats: Excel (.xlsx, .xls) and CSV (.csv)
-              </small>
-            </div>
-
-            <!-- File Preview Info -->
-            <div id="file-info" class="alert alert-secondary d-none mb-4" role="alert">
-              <div class="d-flex align-items-center">
-                <div class="mr-3">
-                  <i class="fas fa-file-alt fa-2x text-primary"></i>
-                </div>
-                <div>
-                  <h5 class="mb-1">Selected File</h5>
-                  <p class="mb-0" id="file-name-display"></p>
-                  <small class="text-muted" id="file-size-display"></small>
-                </div>
-              </div>
-            </div>
-
-            <div class="text-center mt-4">
-              <button type="submit" class="btn btn-success btn-lg">
-                <i class="ni ni-send mr-2"></i>Continue to Mapping
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <!-- Card Footer -->
-        <div class="card-footer bg-light">
-          <div class="row align-items-center">
-            <div class="col">
-              <small class="text-muted">
-                <i class="fas fa-shield-alt mr-1"></i>
-                Your data is processed securely and temporarily stored only for mapping purposes.
-              </small>
-            </div>
-          </div>
-        </div>
+    <!-- Main Card -->
+    <div class="mapper-card">
+      <div class="mapper-card-header">
+        <h3><i class="fas fa-map-signs"></i> Upload Raw Data for Mapping</h3>
       </div>
 
-      <!-- Help Card -->
-      <div class="card shadow mt-4">
-        <div class="card-header bg-gradient-warning">
-          <h4 class="mb-0 text-white">
-            <i class="fas fa-question-circle mr-2"></i>Need Help?
-          </h4>
-        </div>
-        <div class="card-body">
-          <h5 class="text-primary">Supported File Formats:</h5>
-          <ul>
-            <li><strong>Excel Files:</strong> .xlsx, .xls</li>
-            <li><strong>CSV Files:</strong> .csv (comma-separated values)</li>
+      <div class="mapper-card-body">
+        <form method="post" enctype="multipart/form-data" id="mapperForm">
+          {% csrf_token %}
+
+          <!-- Target Dataset -->
+          <div class="mb-4">
+            <label class="field-label">
+              <i class="fas fa-database"></i> Select Target Dataset
+            </label>
+            <select name="target_model" class="styled-select" required>
+              <option value="">— Select Target Model —</option>
+              <option value="referred">Referred Data</option>
+              <option value="final">Final Data</option>
+            </select>
+            <div class="field-hint">Choose which database model you want to map the uploaded file to.</div>
+          </div>
+
+          <hr class="form-divider">
+
+          <!-- File Upload -->
+          <div class="mb-4">
+            <label class="field-label">
+              <i class="fas fa-file-upload"></i> Upload Data File
+            </label>
+
+            <div class="file-drop" id="dropZone" onclick="document.getElementById('raw_file').click()">
+              <div class="drop-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+              <div class="drop-title">Click to browse or drag &amp; drop</div>
+              <div class="drop-sub">Your file will be used for column mapping only</div>
+              <div class="drop-badge">
+                <span class="fmt-tag">XLSX</span>
+                <span class="fmt-tag">XLS</span>
+                <span class="fmt-tag">CSV</span>
+              </div>
+              <input type="file" name="raw_file" id="raw_file"
+                     accept=".xlsx,.xls,.csv" required>
+            </div>
+
+            <!-- File Preview -->
+            <div class="file-preview" id="filePreview">
+              <div class="fp-icon"><i class="fas fa-file-alt"></i></div>
+              <div>
+                <div class="fp-name" id="fpName">—</div>
+                <div class="fp-size" id="fpSize">—</div>
+              </div>
+              <button type="button" class="fp-remove" id="fpRemove" title="Remove file">
+                <i class="fas fa-times-circle"></i>
+              </button>
+            </div>
+
+            <div class="field-hint mt-2">Supported: Excel (.xlsx, .xls) and CSV (.csv)</div>
+          </div>
+
+          <hr class="form-divider">
+
+          <!-- Submit -->
+          <button type="submit" class="btn-submit" id="submitBtn" disabled>
+            <i class="ni ni-send"></i> Continue to Mapping
+          </button>
+
+        </form>
+      </div>
+
+      <div class="card-foot">
+        <i class="fas fa-shield-alt"></i>
+        Uploaded files are temporarily stored for mapping purposes only and are not saved permanently.
+      </div>
+    </div>
+
+    <!-- Help Card -->
+    <div class="help-card">
+      <div class="help-card-header">
+        <h4><i class="fas fa-question-circle mr-2"></i>Help &amp; Tips</h4>
+      </div>
+      <div class="help-card-body">
+        <div class="help-section">
+          <h5><i class="fas fa-file-alt"></i> Supported Formats</h5>
+          <ul class="help-list">
+            <li>Excel Workbook (.xlsx)</li>
+            <li>Legacy Excel (.xls)</li>
+            <li>Comma-Separated Values (.csv)</li>
           </ul>
-          
-          <h5 class="text-primary mt-3">Tips:</h5>
-          <ul>
-            <li>Ensure your file has column headers in the first row</li>
-            <li>Column headers should be descriptive and unique</li>
-            <li>Remove any merged cells or complex formatting</li>
+        </div>
+        <div class="help-section">
+          <h5><i class="fas fa-lightbulb"></i> Tips for Best Results</h5>
+          <ul class="help-list">
+            <li>Column headers must be in the first row</li>
+            <li>Ensure all column names are unique</li>
+            <li>Avoid merged or blank cells</li>
             <li>Large files may take longer to process</li>
           </ul>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- Styles -->
-<style>
-.alert-info {
-  background-color: #d1ecf1;
-  border-color: #bee5eb;
-  color: #0c5460;
-}
+  </div><!-- /mapper-inner -->
+</div><!-- /mapper-page -->
 
-.custom-file-label {
-  background-color: #f6f9fc;
-  border: 1px solid #cad1d7;
-  padding-right: 6.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.custom-file-label::after {
-  content: "Browse";
-  background-color: #5e72e4;
-  color: white;
-  width: 6rem;
-  text-align: center;
-}
-
-.btn-lg {
-  padding: 0.875rem 2rem;
-  font-size: 1rem;
-}
-
-.card-shadow {
-  box-shadow: 0 0 2rem 0 rgba(136, 152, 170, 0.15);
-}
-
-input[type="file"] {
-  color: transparent;
-}
-
-
-</style>
-
-{% endblock %}
-
-<!-- JavaScript -->
-{% block javascripts %}
 <script>
-// Update file input label and show file info
-document.getElementById('raw_file').addEventListener('change', function(e) {
-  var file = e.target.files[0];
-  
-  if (file) {
-    // Update custom file input label
-    var label = e.target.nextElementSibling;
-    label.textContent = file.name;
-    
-    // Show file info
-    var fileInfo = document.getElementById('file-info');
-    var fileName = document.getElementById('file-name-display');
-    var fileSize = document.getElementById('file-size-display');
-    
-    fileName.textContent = file.name;
-    
-    // Format file size
-    var size = file.size;
-    var sizeStr = '';
-    if (size < 1024) {
-      sizeStr = size + ' bytes';
-    } else if (size < 1024 * 1024) {
-      sizeStr = (size / 1024).toFixed(2) + ' KB';
-    } else {
-      sizeStr = (size / (1024 * 1024)).toFixed(2) + ' MB';
-    }
-    fileSize.textContent = 'Size: ' + sizeStr;
-    
-    fileInfo.classList.remove('d-none');
-  }
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('raw_file');
+const preview    = document.getElementById('filePreview');
+const fpName     = document.getElementById('fpName');
+const fpSize     = document.getElementById('fpSize');
+const fpRemove   = document.getElementById('fpRemove');
+const submitBtn  = document.getElementById('submitBtn');
+const selectEl   = document.querySelector('select[name="target_model"]');
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(2) + ' MB';
+}
+
+function showFile(file) {
+  fpName.textContent = file.name;
+  fpSize.textContent = formatBytes(file.size);
+  preview.classList.add('show');
+  checkReady();
+}
+
+function clearFile() {
+  fileInput.value = '';
+  preview.classList.remove('show');
+  checkReady();
+}
+
+function checkReady() {
+  const hasFile   = fileInput.files && fileInput.files.length > 0;
+  const hasTarget = selectEl.value !== '';
+  submitBtn.disabled = !(hasFile && hasTarget);
+  submitBtn.style.opacity = submitBtn.disabled ? '0.5' : '1';
+}
+
+fileInput.addEventListener('change', function () {
+  if (this.files[0]) showFile(this.files[0]);
+  else clearFile();
 });
 
-// Form validation
-document.querySelector('form').addEventListener('submit', function(e) {
-  var fileInput = document.getElementById('raw_file');
-  
-  if (!fileInput.files || fileInput.files.length === 0) {
-    e.preventDefault();
-    alert('Please select a file to upload.');
-    return false;
-  }
-  
-  // Show loading state
-  var submitBtn = e.target.querySelector('button[type="submit"]');
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+fpRemove.addEventListener('click', clearFile);
+selectEl.addEventListener('change', checkReady);
+
+// Drag & drop
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('dragover');
 });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx','xls','csv'].includes(ext)) {
+    alert('Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.');
+    return;
+  }
+  try { const dt = new DataTransfer(); dt.items.add(file); fileInput.files = dt.files; } catch(ex){}
+  showFile(file);
+});
+
+// Initial state
+checkReady();
 </script>
+
 {% endblock %}

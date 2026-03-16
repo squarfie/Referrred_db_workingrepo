@@ -1,0 +1,250 @@
+{% extends 'layouts/base.html' %}
+{% load final_filters %}
+{% block title %}Antibiotic Entry{% endblock %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div class="header bg-primary pb-6" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
+    <span class="mask bg-gradient-default opacity-3"></span>
+  <div class="container-fluid">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">Final Data Summary</h6>
+        </div>
+        <div class="col-lg-6 col-5 text-right">
+          <button class="btn btn-sm btn-success" onclick="history.back()">Back</button>
+           <a href="{% url 'export_Final_Antibioticentry' %}" class="btn btn-neutral btn-sm" style="height: fit-content">
+              Export/Download
+          </a>  
+
+          <a class="btn btn-sm btn-neutral" href="{% url 'upload_wgs_view' %}">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Data
+          </a>
+          <a class="btn btn-sm btn-danger" href="{% url 'delete_all_final_antibiotic' %}">
+            <i class="fa fa-trash mr-1"></i>Delete All
+          </a>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="container-fluid mt--6">
+  <div class="card shadow">
+
+    <!-- CARD HEADER -->
+    <div class="card-header border-0" style="background: linear-gradient(135deg, #2c4ebe 0%, #65e7e5 100%);">
+      <div class="row align-items-center">
+        <div class="col">
+          <h3 class="mb-0 text-white">
+            <i class="ni ni-world mr-2"></i>Final Antibiotic Records
+          </h3>
+        </div>
+        <div class="col text-right">
+          <span class="badge badge-light badge-lg">
+            <strong>{{ total_records }}</strong> Total Records
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEARCH + DELETE -->
+    <div class="card-body border-bottom">
+      <div class="row align-items-center">
+
+        <!-- SEARCH -->
+        <div class="col-md-6 mb-3 mb-md-0">
+          <div class="input-group input-group-alternative">
+            <div class="input-group-prepend">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+            </div>
+            <input id="search-input" class="form-control" placeholder="Search..." type="text" onkeyup="searchTable()">
+            <div class="input-group-append">
+              <button class="btn btn-outline-secondary" onclick="clearSearch()"><i class="fas fa-times"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- DELETE BY DATE -->
+        <div class="col-md-6">
+          <form method="POST" action="{% url 'delete_finalantibiotic_by_date' %}" class="form-inline justify-content-md-end">
+            {% csrf_token %}
+            <label class="mr-2 mb-0"><strong>Delete by Date:</strong></label>
+            <input type="date" name="upload_date" class="form-control form-control-sm mr-2" required>
+            <button type="submit" class="btn btn-sm btn-warning"><i class="fa fa-trash mr-1"></i>Delete</button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-responsive">
+      <table id="fastq-table" class="table align-items-center table-flush">
+
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>Accession No.</th>
+
+            {% for abx_code in abx_codes %}
+              <th>{{ abx_code }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+
+        <tbody class="list">
+          {% for accession_no, values in abx_data.items %}
+            <tr>
+
+              <!-- DELETE BUTTON -->
+              <td>
+                {% with item_id=values|dict_lookup:'item_id' %}
+                  {% if item_id %}
+                    <button type="button" class="btn btn-danger btn-sm delete-btn"
+                            data-toggle="modal" 
+                            data-target="#deleteAccessionModal"
+                            data-url="{% url 'delete_final_antibiotic' item_id %}"
+                            data-accession="{{ accession_no }}">
+                      Delete
+                    </button>
+                  {% else %}
+                    <span class="text-muted">–</span>
+                  {% endif %}
+                {% endwith %}
+              </td>
+
+              <!-- ACCESSION -->
+              <td>{{ accession_no }}</td>
+
+              <!-- ANTIBIOTIC COLUMNS (CLEANED!) -->
+              {% for abx_code in abx_codes %}
+                <td style="text-align:center;">
+                  {{ values|dict_lookup:abx_code|clean_nan }}
+                </td>
+              {% endfor %}
+
+            </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="card-footer py-4 bg-white">
+      <div class="row align-items-center">
+
+        <!-- GO TO PAGE -->
+        <div class="col-md-4">
+          <form method="get" class="form-inline">
+            <label class="mr-2 text-primary">Go to page:</label>
+            <input type="number" name="page" min="1" max="{{ page_obj.paginator.num_pages }}"
+                   value="{{ page_obj.number }}" class="form-control form-control-sm mr-2" style="width: 70px;">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-arrow-right"></i></button>
+          </form>
+        </div>
+
+        <!-- PAGE INFO -->
+        <div class="col-md-4 text-center">
+          <span class="text-primary">
+            Page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong>
+          </span>
+        </div>
+
+        <!-- PAGE CONTROLS -->
+        <div class="col-md-4">
+          <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-end mb-0">
+
+              {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page=1"><i class="fas fa-angle-double-left"></i></a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}"><i class="fas fa-angle-left"></i></a></li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-left"></i></span></li>
+                <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-left"></i></span></li>
+              {% endif %}
+
+              {% for num in page_obj.paginator.page_range %}
+                {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                  {% if num == page_obj.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                  {% else %}
+                    <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+
+              {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}"><i class="fas fa-angle-right"></i></a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}"><i class="fas fa-angle-double-right"></i></a></li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-right"></i></span></li>
+                <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-right"></i></span></li>
+              {% endif %}
+
+            </ul>
+          </nav>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal fade" id="deleteAccessionModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="fa fa-exclamation-triangle mr-2"></i> Confirm Delete</h5>
+        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+
+      <form method="POST" id="deleteAccessionForm">
+        {% csrf_token %}
+        <div class="modal-body text-center">
+          <p class="lead">Are you sure you want to delete <strong id="accessionDisplay"></strong>?</p>
+          <p class="text-muted">This will permanently delete all antibiotic entries.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button class="btn btn-danger">Delete</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+$(document).ready(function(){
+    $('.delete-btn').click(function(){
+        $('#deleteAccessionForm').attr('action', $(this).data('url'));
+        $('#accessionDisplay').text($(this).data('accession'));
+    });
+});
+
+function searchTable() {
+    let filter = document.getElementById("search-input").value.toLowerCase();
+    let rows = document.querySelectorAll("#fastq-table tbody tr");
+    rows.forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(filter) ? "" : "none";
+    });
+}
+
+function clearSearch() {
+    document.getElementById("search-input").value = "";
+    searchTable();
+}
+</script>
+{% endblock javascripts %}

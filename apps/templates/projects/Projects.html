@@ -1,98 +1,832 @@
 {% extends 'layouts/base.html' %}
 {% load static %}
+{% load widget_tweaks %}
 
 {% block title %}Projects Database{% endblock %}
 
 {% block stylesheets %}
 <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
 <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<style>
+/* ── Shared tab chrome ───────────────────────────────────────── */
+.hover-lift {
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0,0,0,.10) !important;
+}
+.icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto .9rem;
+  flex-shrink: 0;
+}
+.btn-upload-grad {
+  background: linear-gradient(135deg,#11cdef,#1171ef);
+  color: #fff;
+  border: none;
+}
+.btn-upload-grad:hover {
+  background: linear-gradient(135deg,#0da5c0,#0e5ac9);
+  color: #fff;
+}
+
+/* ── WGS card grid ───────────────────────────────────────────── */
+.wgs-card {
+  border: 1px solid #e9ecef;
+  border-radius: .75rem;
+  overflow: hidden;
+  transition: all .2s ease;
+}
+.wgs-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.09) !important;
+}
+.wgs-card .card-body {
+  padding: 1.4rem 1.25rem;
+}
+.wgs-card .card-title {
+  font-size: .9rem;
+  font-weight: 700;
+  margin-bottom: .2rem;
+}
+.wgs-card .card-subtitle {
+  font-size: .78rem;
+  color: #8898aa;
+  margin-bottom: 1rem;
+}
+
+/* ── Section heading ─────────────────────────────────────────── */
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #32325d;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: .6rem;
+  margin-bottom: 1.4rem;
+}
+
+/* ── Final Data upload panel ─────────────────────────────────── */
+#fd-upload-form .custom-file-label::after { content: "Browse"; }
+</style>
 {% endblock stylesheets %}
 
 {% block content %}
 
 <div class="container-fluid mt-5">
-  <h2><i class="fas fa-cogs mr-2"></i> Projects Database</h2>
+  <h2><i class="fas fa-cogs mr-2"></i> Upload Final Data</h2>
   <br>
 
   <div class="row">
 
-    <!-- LEFT SIDEBAR -->
+    <!-- ════════ LEFT SIDEBAR ════════ -->
     <div class="col-md-4 col-lg-3">
       <div class="card">
 
         <div class="card-header"
-             style="background: linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
+             style="background:linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
                     border-bottom:2px solid #d1e8ed;">
-          <h5 class="card-title mb-0">Project</h5>
+          <h5 class="card-title mb-0">Final Data</h5>
         </div>
 
         <div class="list-group list-group-flush" role="tablist">
 
-          <a class="list-group-item list-group-item-action active"
+          <a class="list-group-item list-group-item-action {% if active_tab == 'wgs_classification' %}active{% endif %}"
              data-toggle="list"
              href="#wgs_classification"
-             role="tab"
-             aria-controls="wgs_classification">
+             role="tab">
             <i class="fa fa-bug mr-2"></i> WGS Classification
           </a>
 
-          <a class="list-group-item list-group-item-action"
+          <a class="list-group-item list-group-item-action {% if active_tab == 'wgs_upload' %}active{% endif %}"
              data-toggle="list"
              href="#wgs_upload"
-             role="tab"
-             aria-controls="wgs_upload">
-            <i class="fas fa-pills mr-2"></i> Upload WGS
+             role="tab">
+            <i class="fas fa-dna mr-2"></i> Upload WGS
+          </a>
+
+          <a class="list-group-item list-group-item-action {% if active_tab == 'final_data_upload' %}active{% endif %}"
+             data-toggle="list"
+             href="#final_data_upload"
+             role="tab">
+            <i class="fas fa-file-excel mr-2 text-success"></i> Upload Final Data
           </a>
 
         </div>
       </div>
     </div>
 
-    <!-- RIGHT CONTENT -->
+    <!-- ════════ RIGHT CONTENT ════════ -->
     <div class="col-md-8 col-lg-9">
-
       <div class="settings-container">
-
         <div class="tab-content settings-tab-content">
 
-          <!-- WGS CLASSIFICATION TAB -->
-          <div class="tab-pane fade show active"
-               id="wgs_classification"
-               role="tabpanel">
+          <!-- ── WGS CLASSIFICATION ── -->
+          <div class="tab-pane fade {% if active_tab == 'wgs_classification' %}show active{% endif %}"
+               id="wgs_classification" role="tabpanel">
             {% include "projects/tabs/wgs_classification.html" %}
           </div>
 
-          <!-- WGS UPLOAD TAB -->
-          <div class="tab-pane fade"
-               id="wgs_upload"
-               role="tabpanel">
-            {% include "projects/tabs/wgs_upload.html" %}
-          </div>
+          <!-- ── WGS UPLOAD ── -->
+          <div class="tab-pane fade {% if active_tab == 'wgs_upload' %}show active{% endif %}"
+               id="wgs_upload" role="tabpanel">
 
-        </div>
+            <div class="section-heading">
+              <i class="ni ni-atom text-primary"></i>
+              Whole Genome Sequencing Data
+            </div>
+            <p class="text-muted small mb-4">
+              Upload bioinformatics analysis results from your WGS pipeline.
+            </p>
 
+            <div class="row">
+
+              <!-- FastQ -->
+              <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card wgs-card shadow-sm h-100 hover-lift">
+                  <div class="card-body text-center">
+                    <div class="icon-circle" style="background:linear-gradient(135deg,#2dce89,#2dcecc);">
+                      <i class="ni ni-cloud-upload-96 text-white" style="font-size:1.5rem;"></i>
+                    </div>
+                    <div class="card-title">FastQ Summary</div>
+                    <div class="card-subtitle">Read quality metrics</div>
+                    <button class="btn btn-upload-grad btn-sm btn-block"
+                            data-toggle="modal" data-target="#UploadModal">
+                      <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+                    </button>
+                    <a href="{% url 'show_fastq' %}"
+                       class="btn btn-outline-secondary btn-sm btn-block mt-2">
+                      <i class="ni ni-folder-17 mr-1"></i>View Data
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Gambit -->
+              <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card wgs-card shadow-sm h-100 hover-lift">
+                  <div class="card-body text-center">
+                    <div class="icon-circle" style="background:linear-gradient(135deg,#5e72e4,#825ee4);">
+                      <i class="ni ni-chart-bar-32 text-white" style="font-size:1.5rem;"></i>
+                    </div>
+                    <div class="card-title">Gambit</div>
+                    <div class="card-subtitle">Species identification</div>
+                    <button class="btn btn-upload-grad btn-sm btn-block"
+                            data-toggle="modal" data-target="#GambitModal">
+                      <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+                    </button>
+                    <a href="{% url 'show_gambit' %}"
+                       class="btn btn-outline-secondary btn-sm btn-block mt-2">
+                      <i class="ni ni-folder-17 mr-1"></i>View Data
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- MLST -->
+              <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card wgs-card shadow-sm h-100 hover-lift">
+                  <div class="card-body text-center">
+                    <div class="icon-circle" style="background:linear-gradient(135deg,#fb6340,#fbb140);">
+                      <i class="ni ni-atom text-white" style="font-size:1.5rem;"></i>
+                    </div>
+                    <div class="card-title">MLST</div>
+                    <div class="card-subtitle">Sequence typing</div>
+                    <button class="btn btn-upload-grad btn-sm btn-block"
+                            data-toggle="modal" data-target="#MlstModal">
+                      <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+                    </button>
+                    <a href="{% url 'show_mlst' %}"
+                       class="btn btn-outline-secondary btn-sm btn-block mt-2">
+                      <i class="ni ni-folder-17 mr-1"></i>View Data
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- CheckM2 -->
+              <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card wgs-card shadow-sm h-100 hover-lift">
+                  <div class="card-body text-center">
+                    <div class="icon-circle" style="background:linear-gradient(135deg,#11cdef,#1171ef);">
+                      <i class="ni ni-check-bold text-white" style="font-size:1.5rem;"></i>
+                    </div>
+                    <div class="card-title">CheckM2</div>
+                    <div class="card-subtitle">Genome quality</div>
+                    <button class="btn btn-upload-grad btn-sm btn-block"
+                            data-toggle="modal" data-target="#Checkm2Modal">
+                      <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+                    </button>
+                    <a href="{% url 'show_checkm2' %}"
+                       class="btn btn-outline-secondary btn-sm btn-block mt-2">
+                      <i class="ni ni-folder-17 mr-1"></i>View Data
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Assembly Scan -->
+              <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card wgs-card shadow-sm h-100 hover-lift">
+                  <div class="card-body text-center">
+                    <div class="icon-circle" style="background:linear-gradient(135deg,#f5365c,#f56036);">
+                      <i class="ni ni-settings text-white" style="font-size:1.5rem;"></i>
+                    </div>
+                    <div class="card-title">Assembly Scan</div>
+                    <div class="card-subtitle">Assembly metrics</div>
+                    <button class="btn btn-upload-grad btn-sm btn-block"
+                            data-toggle="modal" data-target="#AssemblyModal">
+                      <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+                    </button>
+                    <a href="{% url 'show_assembly' %}"
+                       class="btn btn-outline-secondary btn-sm btn-block mt-2">
+                      <i class="ni ni-folder-17 mr-1"></i>View Data
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AMRFinderPlus -->
+              <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card wgs-card shadow-sm h-100 hover-lift">
+                  <div class="card-body text-center">
+                    <div class="icon-circle" style="background:linear-gradient(135deg,#8965e0,#bc65e0);">
+                      <i class="ni ni-lock-circle-open text-white" style="font-size:1.5rem;"></i>
+                    </div>
+                    <div class="card-title">AMRFinderPlus</div>
+                    <div class="card-subtitle">Resistance genes</div>
+                    <button class="btn btn-upload-grad btn-sm btn-block"
+                            data-toggle="modal" data-target="#AmrfinderModal">
+                      <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+                    </button>
+                    <a href="{% url 'show_amrfinder' %}"
+                       class="btn btn-outline-secondary btn-sm btn-block mt-2">
+                      <i class="ni ni-folder-17 mr-1"></i>View Data
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- /row -->
+          </div><!-- /wgs_upload pane -->
+
+          <!-- ── FINAL DATA UPLOAD ── -->
+          <div class="tab-pane fade {% if active_tab == 'final_data_upload' %}show active{% endif %}"
+               id="final_data_upload" role="tabpanel">
+
+            <div class="card shadow-sm border-0">
+              <div class="card-header d-flex align-items-center justify-content-between"
+                   style="background:linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);
+                          border-bottom:2px solid #b2d8df;">
+                <h5 class="mb-0">
+                  <i class="fas fa-file-excel mr-2 text-success"></i> Upload Final Data
+                </h5>
+                <span class="badge badge-info px-3 py-2">
+                  <i class="fas fa-database mr-1"></i> Final Data &amp; Antibiotic Entries
+                </span>
+              </div>
+
+              <div class="card-body">
+
+                <div class="alert alert-light border mb-4">
+                  <h6 class="alert-heading mb-2">
+                    <i class="fas fa-info-circle mr-1 text-info"></i> How to use
+                  </h6>
+                  <ul class="mb-0 pl-4 small">
+                    <li>Upload an <strong>.xlsx</strong> file matching the ARSRL referral database format.</li>
+                    <li>Any sheet without an <code>accession_no</code> column is skipped.</li>
+                    <li>Antibiotic columns are auto-detected (<code>&lt;code&gt;_nd&lt;disk&gt;</code>, <code>&lt;code&gt;_nm</code>, and matching <code>_ris</code> columns).</li>
+                    <li>Enable <strong>Overwrite existing records</strong> to update records already in the database.</li>
+                  </ul>
+                </div>
+
+                <div id="fd-upload-form">
+                  <div class="form-group">
+                    <label for="fdFileInput" class="font-weight-bold">
+                      <i class="fas fa-upload mr-1"></i> Select Excel File
+                    </label>
+                    <div class="custom-file">
+                      <input type="file" class="custom-file-input" id="fdFileInput" accept=".xlsx,.xls">
+                      <label class="custom-file-label" for="fdFileInput" id="fdFileLabel">Choose file…</label>
+                    </div>
+                    <small class="form-text text-muted mt-1">Accepted: <code>.xlsx</code> / <code>.xls</code></small>
+                  </div>
+
+                  <div class="form-group form-check mt-3">
+                    <input type="checkbox" class="form-check-input" id="fdOverwrite">
+                    <label class="form-check-label" for="fdOverwrite">
+                      Overwrite existing records
+                      <i class="fas fa-question-circle text-secondary ml-1"
+                         data-toggle="tooltip"
+                         title="If checked, records with matching accession numbers will be updated and their antibiotic entries replaced."></i>
+                    </label>
+                  </div>
+
+                  <div class="d-flex align-items-center mt-4">
+                    <button id="fdUploadBtn"
+                            class="btn btn-success px-4"
+                            onclick="submitFinalDataUpload()"
+                            disabled>
+                      <i class="fas fa-database mr-2"></i> Upload &amp; Save
+                    </button>
+                    <span id="fdUploadSpinner" class="ml-3 d-none">
+                      <i class="fas fa-spinner fa-spin text-success mr-1"></i>
+                      <span class="text-muted small">Processing, please wait…</span>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Progress -->
+                <div id="fdProgressWrap" class="mt-4 d-none">
+                  <div class="progress" style="height:6px;">
+                    <div id="fdProgressBar"
+                         class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                         style="width:100%"></div>
+                  </div>
+                </div>
+
+                <!-- Results -->
+                <div id="fdResultPanel" class="mt-4 d-none">
+                  <h6 class="font-weight-bold mb-3">
+                    <i class="fas fa-clipboard-check mr-1"></i> Upload Summary
+                  </h6>
+
+                  <div class="row text-center mb-3">
+                    <div class="col-6 col-md-3 mb-2">
+                      <div class="card border-success h-100">
+                        <div class="card-body p-2">
+                          <div class="h3 font-weight-bold text-success mb-0" id="fdStatCreated">0</div>
+                          <div class="small text-muted">Created</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-2">
+                      <div class="card border-info h-100">
+                        <div class="card-body p-2">
+                          <div class="h3 font-weight-bold text-info mb-0" id="fdStatUpdated">0</div>
+                          <div class="small text-muted">Updated</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-2">
+                      <div class="card border-warning h-100">
+                        <div class="card-body p-2">
+                          <div class="h3 font-weight-bold text-warning mb-0" id="fdStatSkipped">0</div>
+                          <div class="small text-muted">Skipped</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-2">
+                      <div class="card border-danger h-100">
+                        <div class="card-body p-2">
+                          <div class="h3 font-weight-bold text-danger mb-0" id="fdStatErrors">0</div>
+                          <div class="small text-muted">Errors</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="fdErrorDetails" class="d-none">
+                    <div class="alert alert-danger py-2 px-3 mb-2">
+                      <strong><i class="fas fa-exclamation-triangle mr-1"></i> Row Errors</strong>
+                      <small class="text-muted ml-2">(first 20 shown)</small>
+                    </div>
+                    <div class="table-responsive" style="max-height:240px;overflow-y:auto;">
+                      <table class="table table-sm table-bordered mb-0">
+                        <thead class="thead-light">
+                          <tr><th>Sheet</th><th>Row</th><th>Accession No.</th><th>Error</th></tr>
+                        </thead>
+                        <tbody id="fdErrorTableBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <button class="btn btn-outline-secondary btn-sm mt-3" onclick="resetFinalUpload()">
+                    <i class="fas fa-redo mr-1"></i> Upload Another File
+                  </button>
+                </div><!-- /fdResultPanel -->
+
+              </div><!-- /card-body -->
+            </div><!-- /card -->
+          </div><!-- /final_data_upload pane -->
+
+        </div><!-- /tab-content -->
       </div>
-    </div>
-
-  </div>
+    </div><!-- /col right -->
+  </div><!-- /row -->
 </div>
 
+<!-- ═══════════════════════════════════════════════
+     WGS UPLOAD MODALS
+═══════════════════════════════════════════════ -->
+
+<!-- FastQ -->
+<div class="modal fade" id="UploadModal" tabindex="-1" role="dialog">
+  <form method="POST" action="{% url 'upload_fastq' %}" enctype="multipart/form-data"
+        onsubmit="return confirmWgsOverwrite(this);">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header bg-gradient-success text-white py-3">
+          <h5 class="modal-title text-sm">
+            <i class="ni ni-cloud-upload-96 mr-2"></i>FastQ Summary
+          </h5>
+          <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <label class="form-control-label small font-weight-bold">Choose File</label>
+          {{ fastq_form.fastqfile|add_class:"form-control-file" }}
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Gambit -->
+<div class="modal fade" id="GambitModal" tabindex="-1" role="dialog">
+  <form method="POST" action="{% url 'upload_gambit' %}" enctype="multipart/form-data"
+        onsubmit="return confirmWgsOverwrite(this);">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header bg-gradient-primary text-white py-3">
+          <h5 class="modal-title text-sm">
+            <i class="ni ni-chart-bar-32 mr-2"></i>Gambit
+          </h5>
+          <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <label class="form-control-label small font-weight-bold">Choose File</label>
+          {{ gambit_form.GambitFile|add_class:"form-control-file" }}
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- MLST -->
+<div class="modal fade" id="MlstModal" tabindex="-1" role="dialog">
+  <form method="POST" action="{% url 'upload_mlst' %}" enctype="multipart/form-data"
+        onsubmit="return confirmWgsOverwrite(this);">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header bg-gradient-warning text-white py-3">
+          <h5 class="modal-title text-sm">
+            <i class="ni ni-atom mr-2"></i>MLST
+          </h5>
+          <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <label class="form-control-label small font-weight-bold">Choose File</label>
+          {{ mlst_form.Mlstfile|add_class:"form-control-file" }}
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- CheckM2 -->
+<div class="modal fade" id="Checkm2Modal" tabindex="-1" role="dialog">
+  <form method="POST" action="{% url 'upload_checkm2' %}" enctype="multipart/form-data"
+        onsubmit="return confirmWgsOverwrite(this);">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header bg-gradient-info text-white py-3">
+          <h5 class="modal-title text-sm">
+            <i class="ni ni-check-bold mr-2"></i>CheckM2
+          </h5>
+          <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <label class="form-control-label small font-weight-bold">Choose File</label>
+          {{ checkm2_form.Checkm2file|add_class:"form-control-file" }}
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Assembly Scan -->
+<div class="modal fade" id="AssemblyModal" tabindex="-1" role="dialog">
+  <form method="POST" action="{% url 'upload_assembly' %}" enctype="multipart/form-data"
+        onsubmit="return confirmWgsOverwrite(this);">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header bg-gradient-danger text-white py-3">
+          <h5 class="modal-title text-sm">
+            <i class="ni ni-settings mr-2"></i>Assembly Scan
+          </h5>
+          <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <label class="form-control-label small font-weight-bold">Choose File</label>
+          {{ assembly_form.Assemblyfile|add_class:"form-control-file" }}
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- AMRFinderPlus -->
+<div class="modal fade" id="AmrfinderModal" tabindex="-1" role="dialog">
+  <form method="POST" action="{% url 'upload_amrfinder' %}" enctype="multipart/form-data"
+        onsubmit="return confirmWgsOverwrite(this);">
+    {% csrf_token %}
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header text-white py-3"
+             style="background:linear-gradient(135deg,#8965e0,#bc65e0);">
+          <h5 class="modal-title text-sm">
+            <i class="ni ni-lock-circle-open mr-2"></i>AMRFinderPlus
+          </h5>
+          <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <label class="form-control-label small font-weight-bold">Choose File</label>
+          {{ amrfinder_form.Amrfinderfile|add_class:"form-control-file" }}
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════ -->
 <script>
+// ── Tab: restore from URL param ──────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", function () {
+  $('[data-toggle="tooltip"]').tooltip();
 
   const params = new URLSearchParams(window.location.search);
   const tab = params.get("tab");
-
-  if (!tab) return;
-
-  const trigger = document.querySelector(
-    `a[data-toggle="list"][href="#${tab}"]`
-  );
-
-  if (trigger) {
-    trigger.click();
+  if (tab) {
+    const trigger = document.querySelector(`a[data-toggle="list"][href="#${tab}"]`);
+    if (trigger) trigger.click();
   }
+
+  // custom-file label
+  document.getElementById('fdFileInput').addEventListener('change', function () {
+    const name = this.files[0] ? this.files[0].name : 'Choose file…';
+    document.getElementById('fdFileLabel').textContent = name;
+    document.getElementById('fdUploadBtn').disabled = !this.files[0];
+  });
 });
+
+// ── WGS modal overwrite confirm ──────────────────────────────────────────────
+function confirmWgsOverwrite() {
+  return confirm("⚠️ WARNING: Uploading will overwrite existing data.\n\nAre you sure you want to continue?");
+}
+
+// ── Final Data upload (AJAX) ─────────────────────────────────────────────────
+
+// This version shows the real HTTP status + raw server response when JSON
+// parsing fails, so you can see the actual Django error immediately.
+
+function submitFinalDataUpload() {
+  const fileInput = document.getElementById('fdFileInput');
+  if (!fileInput.files.length) return;
+
+  const overwrite = document.getElementById('fdOverwrite').checked;
+  const fd = new FormData();
+  fd.append('final_data_file', fileInput.files[0]);
+  fd.append('overwrite', overwrite ? 'true' : 'false');
+
+  document.getElementById('fdUploadBtn').disabled = true;
+  document.getElementById('fdUploadSpinner').classList.remove('d-none');
+  document.getElementById('fdProgressWrap').classList.remove('d-none');
+  document.getElementById('fdResultPanel').classList.add('d-none');
+
+  fetch("{% url 'upload_final_data' %}", {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    body: fd,
+  })
+  .then(async res => {
+    const text = await res.text();   // read raw text FIRST
+
+    // ── If the server sent back HTML it means 302/404/403/500 ──
+    if (!res.ok || text.trimStart().startsWith('<')) {
+
+      // Extract Django error message from the HTML if DEBUG=True
+      const titleMatch = text.match(/<title>(.*?)<\/title>/i);
+      const h1Match    = text.match(/<h1[^>]*>(.*?)<\/h1>/i);
+      const friendly   = titleMatch ? titleMatch[1] : (h1Match ? h1Match[1] : 'Unknown server error');
+
+      showFdAlert('danger',
+        `HTTP ${res.status} — Server returned HTML instead of JSON.<br>` +
+        `<strong>${escHtml(friendly)}</strong><br>` +
+        `<small class="text-muted">Check Django terminal / DevTools → Network for full details.</small>`
+      );
+      document.getElementById('fdUploadSpinner').classList.add('d-none');
+      document.getElementById('fdProgressWrap').classList.add('d-none');
+      document.getElementById('fdUploadBtn').disabled = false;
+      return;
+    }
+
+    // ── Parse JSON ────────────────────────────────────────────
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      showFdAlert('danger', `JSON parse error: ${e.message}<br><pre style="font-size:.75rem;max-height:120px;overflow:auto;">${escHtml(text.slice(0,500))}</pre>`);
+      document.getElementById('fdUploadSpinner').classList.add('d-none');
+      document.getElementById('fdProgressWrap').classList.add('d-none');
+      document.getElementById('fdUploadBtn').disabled = false;
+      return;
+    }
+
+    document.getElementById('fdUploadSpinner').classList.add('d-none');
+    document.getElementById('fdProgressWrap').classList.add('d-none');
+
+    if (!data.success) {
+      // Show server trace if present (only available when DEBUG=True)
+      const traceHtml = data.trace
+        ? `<details class="mt-2"><summary class="small text-muted">Server traceback</summary>` +
+          `<pre style="font-size:.7rem;max-height:200px;overflow:auto;">${escHtml(data.trace)}</pre></details>`
+        : '';
+      showFdAlert('danger', `${escHtml(data.error || 'Upload failed.')}${traceHtml}`);
+      document.getElementById('fdUploadBtn').disabled = false;
+      return;
+    }
+
+    showFdResults(data);
+  })
+  .catch(err => {
+    document.getElementById('fdUploadSpinner').classList.add('d-none');
+    document.getElementById('fdProgressWrap').classList.add('d-none');
+    showFdAlert('danger', `Network error: ${escHtml(err.message)}`);
+    document.getElementById('fdUploadBtn').disabled = false;
+  });
+}
+
+
+// ─── Keep all helpers below unchanged ────────────────────────────────────────
+
+function showFdResults(data) {
+  document.getElementById('fdStatCreated').textContent = data.created  || 0;
+  document.getElementById('fdStatUpdated').textContent = data.updated  || 0;
+  document.getElementById('fdStatSkipped').textContent = data.skipped  || 0;
+  document.getElementById('fdStatErrors').textContent  = (data.errors || []).length;
+
+  const errPanel = document.getElementById('fdErrorDetails');
+  const errBody  = document.getElementById('fdErrorTableBody');
+  errBody.innerHTML = '';
+
+  if (data.errors && data.errors.length) {
+    errPanel.classList.remove('d-none');
+    data.errors.slice(0, 20).forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escHtml(e.sheet||'')}</td>
+                      <td>${escHtml(String(e.row||''))}</td>
+                      <td><code>${escHtml(e.accession||'')}</code></td>
+                      <td class="text-danger small">${escHtml(e.error||'')}</td>`;
+      errBody.appendChild(tr);
+    });
+  } else {
+    errPanel.classList.add('d-none');
+  }
+  document.getElementById('fdResultPanel').classList.remove('d-none');
+}
+
+function resetFinalUpload() {
+  document.getElementById('fdFileInput').value = '';
+  document.getElementById('fdFileLabel').textContent = 'Choose file…';
+  document.getElementById('fdOverwrite').checked = false;
+  document.getElementById('fdUploadBtn').disabled = true;
+  document.getElementById('fdResultPanel').classList.add('d-none');
+  const alert = document.getElementById('fdGlobalAlert');
+  if (alert) alert.remove();
+}
+
+function showFdAlert(type, htmlMsg) {
+  const existing = document.getElementById('fdGlobalAlert');
+  if (existing) existing.remove();
+  const div = document.createElement('div');
+  div.id = 'fdGlobalAlert';
+  div.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+  div.innerHTML = `${htmlMsg}<button type="button" class="close" data-dismiss="alert">&times;</button>`;
+  document.getElementById('fd-upload-form').after(div);
+}
+
+function getCookie(name) {
+  let v = null;
+  document.cookie.split(';').forEach(c => {
+    c = c.trim();
+    if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+  });
+  return v;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showFdResults(data) {
+  document.getElementById('fdStatCreated').textContent = data.created  || 0;
+  document.getElementById('fdStatUpdated').textContent = data.updated  || 0;
+  document.getElementById('fdStatSkipped').textContent = data.skipped  || 0;
+  document.getElementById('fdStatErrors').textContent  = (data.errors || []).length;
+
+  const errPanel = document.getElementById('fdErrorDetails');
+  const errBody  = document.getElementById('fdErrorTableBody');
+  errBody.innerHTML = '';
+
+  if (data.errors && data.errors.length) {
+    errPanel.classList.remove('d-none');
+    data.errors.slice(0, 20).forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${esc(e.sheet||'')}</td><td>${esc(String(e.row||''))}</td>
+                      <td><code>${esc(e.accession||'')}</code></td>
+                      <td class="text-danger small">${esc(e.error||'')}</td>`;
+      errBody.appendChild(tr);
+    });
+  } else {
+    errPanel.classList.add('d-none');
+  }
+  document.getElementById('fdResultPanel').classList.remove('d-none');
+}
+
+function resetFinalUpload() {
+  document.getElementById('fdFileInput').value = '';
+  document.getElementById('fdFileLabel').textContent = 'Choose file…';
+  document.getElementById('fdOverwrite').checked = false;
+  document.getElementById('fdUploadBtn').disabled = true;
+  document.getElementById('fdResultPanel').classList.add('d-none');
+}
+
+function showFdAlert(type, msg) {
+  const existing = document.getElementById('fdGlobalAlert');
+  if (existing) existing.remove();
+  const div = document.createElement('div');
+  div.id = 'fdGlobalAlert';
+  div.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+  div.innerHTML = `${esc(msg)}<button type="button" class="close" data-dismiss="alert">&times;</button>`;
+  document.getElementById('fd-upload-form').after(div);
+}
+
+function getCookie(name) {
+  let v = null;
+  document.cookie.split(';').forEach(c => {
+    c = c.trim();
+    if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+  });
+  return v;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
 
 {% endblock %}

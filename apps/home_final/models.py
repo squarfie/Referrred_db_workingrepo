@@ -34,12 +34,12 @@ class Final_Data(models.Model):
     f_ReasonChoices = (
         ('n/a','n/a'),
         ('a & d','a & d'),
-        ('a','confirmation of org and ast'),
-        ('b','for ast only'),
-        ('c','difficult to ID'),
-        ('d','for serotyping'),
-        ('e','for research'),
-        ('o','Others')
+        ('a','a'),
+        ('b','b'),
+        ('c','c'),
+        ('d','d'),
+        ('e','e'),
+        ('o','o')
     )
 
     Growth_Choice = (
@@ -220,16 +220,20 @@ class Final_Data(models.Model):
         self.f_Mid_Name   = self.f_Mid_Name or ""
         self.f_Last_Name  = self.f_Last_Name or ""
 
+        if self.f_SiteCode:
+            site = SiteData.objects.filter(SiteCode=self.f_SiteCode).first()
+        if site:
+                self.f_Site_Name = site.SiteName
 
         if self.f_Age in ("", " ", None):
             self.f_Age = None
+    
 
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.f_AccessionNo
 
-        
 
     class Meta:
         db_table = "Final_Data"
@@ -245,12 +249,6 @@ class Final_Data(models.Model):
         ]
 
 
-
-class FinalData_upload(models.Model):
-    FinalDataFile = models.FileField(upload_to='uploads/final/', null=True, blank=True)
-
-    class Meta:
-        db_table ="FinalData_upload"
 
 
 
@@ -445,3 +443,87 @@ class Classification_Table(models.Model):
                 name="unique_classification_per_isolate"
             )
         ]
+
+
+### CONCORDANCE ANALYSIS TABLES
+class ConcordanceReport(models.Model):
+
+    batch = models.ForeignKey(
+        Batch_Table,
+        on_delete=models.CASCADE,
+        related_name="concordance_reports",
+        null=True,
+        blank=True
+    )
+
+    final_data = models.ForeignKey(
+        Final_Data,
+        on_delete=models.CASCADE,
+        related_name="concordance_reports",
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    total_isolates = models.IntegerField(default=0)
+    total_pairs = models.IntegerField(default=0)
+
+    concordant_pairs = models.IntegerField(default=0)
+    vmd = models.IntegerField(default=0)
+    md = models.IntegerField(default=0)
+    minor = models.IntegerField(default=0)
+
+    total_deviation = models.IntegerField(default=0)
+    critical_deviation = models.IntegerField(default=0)
+
+    ast_concordance_rate = models.FloatField(default=0)
+    critical_deviation_rate = models.FloatField(default=0)
+    total_deviation_rate = models.FloatField(default=0)
+
+    genus_match = models.IntegerField(default=0)
+    species_match = models.IntegerField(default=0)
+    genus_rate = models.FloatField(default=0)
+    species_rate = models.FloatField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["batch"],
+                condition=models.Q(final_data__isnull=True),
+                name="unique_batch_concordance"
+            ),
+            models.UniqueConstraint(
+                fields=["final_data"],
+                condition=models.Q(final_data__isnull=False),
+                name="unique_accession_concordance"
+            ),
+        ]
+
+
+class ConcordanceDetail(models.Model):
+
+    report = models.ForeignKey(
+        ConcordanceReport,
+        on_delete=models.CASCADE,
+        related_name="details"
+    )
+
+    accession_no = models.CharField(max_length=100)
+    isolate_id = models.IntegerField()
+
+    organism = models.CharField(max_length=255)
+    antibiotic = models.CharField(max_length=255)
+
+    site_ris = models.CharField(max_length=3)
+    ars_ris = models.CharField(max_length=3)
+
+    deviation_code = models.CharField(max_length=1, null=True, blank=True)
+    is_discordant = models.BooleanField(default=False)
+
+    genus_con = models.CharField(max_length=1, null=True, blank=True)
+    species_con = models.CharField(max_length=1, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.accession_no} - {self.antibiotic} ({self.deviation_code})"

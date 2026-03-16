@@ -1,0 +1,997 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<style>
+/* ============================================================
+   CONCORDANCE SNAPSHOT REPORT DETAIL - ARSP THEME
+   ============================================================ */
+
+.page-wrapper {
+  background: linear-gradient(135deg, #0f1423 0%, #1a1f3a 50%, #1a2a4a 100%);
+  min-height: 100vh;
+  padding: 2rem 0 4rem;
+}
+
+/* ── Page Header ─────────────────────────────────────────── */
+.page-header {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 2rem 2.5rem;
+  border: 1px solid rgba(0, 188, 212, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  margin-bottom: 1.75rem;
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0 0 0.25rem;
+  background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.report-id-badge {
+  background: rgba(0, 188, 212, 0.15);
+  border: 1px solid rgba(0, 188, 212, 0.35);
+  color: #00bcd4;
+  padding: 0.25rem 0.85rem;
+  border-radius: 50px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.page-subtitle {
+  color: rgba(200, 220, 255, 0.65);
+  font-size: 0.95rem;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Action buttons */
+.btn-export-excel {
+  background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+  color: white;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 6px 18px rgba(26, 188, 156, 0.3);
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-export-excel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(26, 188, 156, 0.45);
+  color: white;
+}
+
+.btn-export-pdf {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 6px 18px rgba(231, 76, 60, 0.3);
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-export-pdf:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(231, 76, 60, 0.45);
+  color: white;
+}
+
+.btn-back {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(200, 220, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.7rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-back:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: white;
+  border-color: rgba(255,255,255,0.3);
+  transform: translateY(-2px);
+}
+
+/* ── Metadata Card ───────────────────────────────────────── */
+.meta-card {
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 12px 44px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  border: none;
+  margin-bottom: 1.75rem;
+}
+
+.meta-card-header {
+  background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%);
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.meta-card-header h5 {
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+}
+
+.meta-item {
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid #f0f4f8;
+  border-right: 1px solid #f0f4f8;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.meta-item:nth-child(2n) { border-right: none; }
+.meta-item:nth-last-child(-n+2) { border-bottom: none; }
+
+.meta-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0,188,212,0.12) 0%, rgba(26,188,156,0.12) 100%);
+  border: 1px solid rgba(0,188,212,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.meta-icon i {
+  color: #00bcd4;
+  font-size: 1rem;
+}
+
+.meta-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #90a4ae;
+  margin: 0 0 0.2rem;
+}
+
+.meta-value {
+  font-size: 0.97rem;
+  font-weight: 600;
+  color: #1e3a5f;
+  margin: 0;
+}
+
+.meta-value.highlight {
+  color: #00bcd4;
+  font-weight: 700;
+}
+
+/* ── Stats Section ───────────────────────────────────────── */
+.stats-divider {
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00bcd4, #1abc9c, transparent);
+  margin: 0 2rem;
+  border-radius: 3px;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+.stat-item {
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+  border-right: 1px solid #f0f4f8;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.stat-item:last-child { border-right: none; }
+.stat-item:hover { background: rgba(0,188,212,0.03); }
+
+.stat-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 15%; right: 15%;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--stat-color);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.stat-item:hover::after { transform: scaleX(1); }
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: #90a4ae;
+  margin-bottom: 0.6rem;
+}
+
+.stat-number {
+  font-size: 2.4rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.stat-sub {
+  font-size: 0.82rem;
+  color: #90a4ae;
+  font-weight: 500;
+}
+
+.s-total  { --stat-color: #00bcd4; }
+.s-total  .stat-number { color: #00bcd4; }
+
+.s-pairs  { --stat-color: #5a85dd; }
+.s-pairs  .stat-number { color: #5a85dd; }
+
+.s-conc   { --stat-color: #1abc9c; }
+.s-conc   .stat-number { color: #1abc9c; }
+
+.s-rate   { --stat-color: #00bcd4; }
+.s-rate   .stat-number {
+  background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Error stats row */
+.error-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  background: linear-gradient(135deg, #fafbfc 0%, #f5f7fa 100%);
+  border-top: 1px solid #f0f4f8;
+}
+
+.error-stat-item {
+  padding: 1.5rem;
+  text-align: center;
+  border-right: 1px solid #eef1f5;
+  position: relative;
+  overflow: hidden;
+}
+
+.error-stat-item:last-child { border-right: none; }
+
+.error-stat-item::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--err-color);
+}
+
+.error-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: #90a4ae;
+  margin-bottom: 0.5rem;
+}
+
+.error-number {
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.e-vmd { --err-color: #e74c3c; }
+.e-vmd .error-number { color: #e74c3c; }
+
+.e-md  { --err-color: #e67e22; }
+.e-md  .error-number { color: #e67e22; }
+
+.e-minor { --err-color: #90a4ae; }
+.e-minor .error-number { color: #78909c; }
+
+/* ── Detail Table Card ───────────────────────────────────── */
+.detail-card {
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 12px 44px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  border: none;
+}
+
+.detail-card-header {
+  background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
+  padding: 1.25rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-card-header h5 {
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.row-count-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.5px;
+}
+
+/* ── Detail Table ────────────────────────────────────────── */
+.detail-table {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.detail-table thead {
+  background: linear-gradient(135deg, #f0f4f8 0%, #e8edf2 100%);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.detail-table thead th {
+  padding: 1rem 1.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #1e3a5f;
+  border: none;
+  border-bottom: 2px solid #d1e8ed;
+  white-space: nowrap;
+}
+
+.detail-table tbody td {
+  padding: 1rem 1.25rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f4f8;
+  color: #3d4f6e;
+}
+
+.detail-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.detail-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(0,188,212,0.04), rgba(26,188,156,0.04));
+}
+
+.detail-table tbody tr:last-child td { border-bottom: none; }
+
+/* Cell styles */
+.isolate-cell {
+  font-weight: 700;
+  color: #00bcd4;
+  font-size: 0.9rem;
+}
+
+.organism-cell {
+  font-style: italic;
+  color: #455a64;
+  font-weight: 500;
+}
+
+.antibiotic-cell {
+  font-weight: 600;
+  color: #1e3a5f;
+}
+
+.ris-cell {
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.ris-r { color: #e74c3c; }
+.ris-i { color: #e67e22; }
+.ris-s { color: #1abc9c; }
+
+/* Category badges */
+.cat-badge {
+  padding: 0.4rem 1rem;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.cat-concordant {
+  background: linear-gradient(135deg, #d4f4dd, #b7f0c7);
+  color: #0f5132;
+  border: 1px solid #a5d6a7;
+}
+
+.cat-very-major {
+  background: linear-gradient(135deg, #ffd4d4, #ffb8b8);
+  color: #721c24;
+  border: 1px solid #f48fb1;
+}
+
+.cat-major {
+  background: linear-gradient(135deg, #fff3cd, #ffe082);
+  color: #7d4e00;
+  border: 1px solid #ffcc80;
+}
+
+.cat-minor {
+  background: linear-gradient(135deg, #eceff1, #cfd8dc);
+  color: #455a64;
+  border: 1px solid #b0bec5;
+}
+
+/* Empty state */
+.empty-state {
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  background: rgba(0,188,212,0.08);
+  border: 2px dashed rgba(0,188,212,0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+}
+
+.empty-icon i { font-size: 2rem; color: rgba(0,188,212,0.45); }
+.empty-state h5 { color: #607d8b; font-weight: 700; margin-bottom: 0.4rem; }
+.empty-state p { color: #90a4ae; font-size: 0.9rem; }
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 992px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .meta-grid { grid-template-columns: 1fr; }
+  .meta-item { border-right: none; }
+  .meta-item:nth-last-child(-n+2) { border-bottom: 1px solid #f0f4f8; }
+  .meta-item:last-child { border-bottom: none; }
+}
+
+@media (max-width: 768px) {
+  .page-header { padding: 1.5rem; }
+  .page-header .d-flex { flex-direction: column; gap: 1rem; align-items: flex-start !important; }
+  .page-title { font-size: 1.5rem; }
+  .action-buttons { flex-wrap: wrap; gap: 0.5rem; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .error-stats-row { grid-template-columns: 1fr; }
+  .error-stat-item { border-right: none; border-bottom: 1px solid #eef1f5; }
+  .error-stat-item:last-child { border-bottom: none; }
+}
+</style>
+
+<div class="page-wrapper">
+  <div class="container-fluid px-4">
+
+    <!-- ══════════════ PAGE HEADER ══════════════ -->
+    <div class="page-header">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="page-title">
+            <i class="fas fa-file-medical-alt"></i>
+            Concordance Report Snapshot
+            <span class="report-id-badge">#{{ report.id }}</span>
+          </h1>
+          <p class="page-subtitle">Detailed concordance analysis snapshot report</p>
+        </div>
+        <div class="action-buttons d-flex gap-2">
+          <a href="{% url 'export_concordance_report_excel' report.id %}" class="btn-export-excel">
+            <i class="fas fa-file-excel"></i> Excel
+          </a>
+          <a href="{% url 'export_concordance_report_pdf' report.id %}" class="btn-export-pdf" target="_blank">
+            <i class="fas fa-file-pdf"></i> PDF
+          </a>
+          <button class="btn-back" onclick="history.back()">
+            <i class="fas fa-arrow-left"></i> Back
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ METADATA + STATS CARD ══════════════ -->
+    <div class="meta-card">
+
+      <!-- Metadata header -->
+      <div class="meta-card-header">
+        <i class="fas fa-info-circle" style="color:#00bcd4; font-size:1.1rem;"></i>
+        <h5>Report Information</h5>
+      </div>
+
+      <!-- Metadata grid -->
+      <div class="meta-grid">
+
+        <div class="meta-item">
+          <div class="meta-icon"><i class="fas fa-barcode"></i></div>
+          <div>
+            <p class="meta-label">Accession Number</p>
+            <p class="meta-value highlight">
+              {% if report.final_data %}
+                {{ report.final_data.f_AccessionNo }}
+              {% else %}
+                <span style="color:#90a4ae; font-style:italic; font-weight:500;">Not available</span>
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="meta-item">
+          <div class="meta-icon"><i class="fas fa-layer-group"></i></div>
+          <div>
+            <p class="meta-label">Batch</p>
+            <p class="meta-value">
+              {% if report.batch %}
+                {{ report.batch.bat_Batch_Name }}
+              {% else %}
+                <span style="color:#90a4ae; font-style:italic; font-weight:500;">Not available</span>
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="meta-item">
+          <div class="meta-icon"><i class="far fa-calendar-alt"></i></div>
+          <div>
+            <p class="meta-label">Generated On</p>
+            <p class="meta-value">{{ report.created_at|date:"M d, Y" }}
+              <span style="color:#90a4ae; font-size:0.85rem; margin-left:0.4rem;">{{ report.created_at|date:"H:i" }}</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="meta-item">
+          <div class="meta-icon"><i class="fas fa-user"></i></div>
+          <div>
+            <p class="meta-label">Generated By</p>
+            <p class="meta-value">{{ report.created_by }}</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Gradient divider -->
+      <div class="stats-divider my-0"></div>
+
+      <!-- Primary stats row -->
+      <div class="stats-row">
+
+        <div class="stat-item s-total">
+          <p class="stat-label"><i class="fas fa-vials me-1"></i>Total Isolates</p>
+          <div class="stat-number">{{ report.total_isolates }}</div>
+          <p class="stat-sub">Samples</p>
+        </div>
+
+        <div class="stat-item s-pairs">
+          <p class="stat-label"><i class="fas fa-layer-group me-1"></i>Total Comparisons</p>
+          <div class="stat-number">{{ report.total_pairs }}</div>
+          <p class="stat-sub">AST pairs</p>
+        </div>
+
+        <div class="stat-item s-conc">
+          <p class="stat-label"><i class="fas fa-check-double me-1"></i>Concordant</p>
+          <div class="stat-number">{{ report.concordant_pairs }}</div>
+          <p class="stat-sub">Matches</p>
+        </div>
+
+        <div class="stat-item s-rate">
+          <p class="stat-label"><i class="fas fa-percentage me-1"></i>Concordance Rate</p>
+          <div class="stat-number">{{ report.ast_concordance_rate }}%</div>
+          <p class="stat-sub">Overall accuracy</p>
+        </div>
+
+      </div>
+
+      <!-- Error stats row -->
+      <div class="error-stats-row">
+
+        <div class="error-stat-item e-vmd">
+          <p class="error-label"><i class="fas fa-times-circle me-1"></i>Very Major Errors (VMD)</p>
+          <div class="error-number">{{ report.vmd }}</div>
+        </div>
+
+        <div class="error-stat-item e-md">
+          <p class="error-label"><i class="fas fa-exclamation-circle me-1"></i>Major Errors (MD)</p>
+          <div class="error-number">{{ report.md }}</div>
+        </div>
+
+        <div class="error-stat-item e-minor">
+          <p class="error-label"><i class="fas fa-minus-circle me-1"></i>Minor Errors</p>
+          <div class="error-number">{{ report.minor }}</div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ══════════════ DETAIL TABLE ══════════════ -->
+    <div class="detail-card">
+
+      <div class="detail-card-header">
+        <h5>
+          <i class="fas fa-table"></i>
+          Discordant AST Results
+        </h5>
+        <span class="row-count-badge">
+          {{ details|length }} ROW{{ details|length|pluralize }}
+        </span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table detail-table">
+          <thead>
+            <tr>
+              <th><i class="fas fa-fingerprint me-1"></i>Isolate ID</th>
+              <th><i class="fas fa-bacteria me-1"></i>Organism</th>
+              <th><i class="fas fa-capsules me-1"></i>Antibiotic</th>
+              <th class="text-center">Site RIS</th>
+              <th class="text-center">ARS RIS</th>
+              <th class="text-center">Category</th>
+            </tr>
+          </thead>
+<tbody>
+  {% with has_rows=False %}
+    {% for row in details %}
+      {% if row.deviation_code != "S" %}
+        {% with has_rows=True %}
+        <tr>
+
+          <td class="isolate-cell">{{ row.isolate_id }}</td>
+
+          <td class="organism-cell">
+            {{ row.organism }}
+          </td>
+
+          <td class="antibiotic-cell">
+            {{ row.antibiotic }}
+          </td>
+
+          <!-- Site RIS -->
+          <td class="ris-cell">
+            <span class="
+              {% if row.site_ris == 'R' %}ris-r
+              {% elif row.site_ris == 'I' %}ris-i
+              {% else %}ris-s{% endif %}
+            ">
+              {{ row.site_ris }}
+            </span>
+          </td>
+
+          <!-- ARS RIS -->
+          <td class="ris-cell">
+            <span class="
+              {% if row.ars_ris == 'R' %}ris-r
+              {% elif row.ars_ris == 'I' %}ris-i
+              {% else %}ris-s{% endif %}
+            ">
+              {{ row.ars_ris }}
+            </span>
+          </td>
+
+          <!-- Deviation Badge -->
+          <td class="text-center">
+            {% if row.deviation_code == "A" %}
+              <span class="cat-badge cat-very-major">
+                <i class="fas fa-times-circle" style="font-size:0.75rem;"></i>
+                Very Major
+              </span>
+            {% elif row.deviation_code == "B" %}
+              <span class="cat-badge cat-major">
+                <i class="fas fa-exclamation-circle" style="font-size:0.75rem;"></i>
+                Major
+              </span>
+            {% elif row.deviation_code == "C" %}
+              <span class="cat-badge cat-minor">
+                <i class="fas fa-minus-circle" style="font-size:0.75rem;"></i>
+                Minor
+              </span>
+            {% endif %}
+          </td>
+
+        </tr>
+        {% endwith %}
+      {% endif %}
+    {% empty %}
+    <tr>
+      <td colspan="6">
+        <div class="empty-state">
+          <div class="empty-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h5>No Discordant Records</h5>
+          <p>All AST comparisons are concordant for this batch.</p>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+     {% endwith %}
+
+</tbody>
+        </table>
+
+      </div>
+
+   </div>
+<!-- ══════════════ BATCH SNAPSHOT DETAIL TABLE ══════════════ -->
+<div class="detail-card mt-4">
+
+  <div class="detail-card-header">
+    <h5>
+      <i class="fas fa-vials"></i>
+      Deviation Details
+    </h5>
+    <span class="row-count-badge">
+      {{ details|length }} ROW{{ details|length|pluralize }}
+    </span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table detail-table">
+      <thead>
+        <tr>
+          <th>Isolate ID</th>
+          <th>Organism</th>
+          <th>Antibiotic</th>
+          <th class="text-center">Site RIS</th>
+          <th class="text-center">ARS RIS</th>
+          <th class="text-center">Deviation</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for row in details %}
+        <tr>
+
+          <td class="isolate-cell">
+            {{ row.isolate_id }}
+          </td>
+
+          <td class="organism-cell">
+            {{ row.organism }}
+          </td>
+
+          <td class="antibiotic-cell">
+            {{ row.antibiotic }}
+          </td>
+
+          <!-- Site RIS -->
+          <td class="ris-cell">
+            <span class="
+              {% if row.site_ris == 'R' %}ris-r
+              {% elif row.site_ris == 'I' %}ris-i
+              {% else %}ris-s{% endif %}
+            ">
+              {{ row.site_ris }}
+            </span>
+          </td>
+
+          <!-- ARS RIS -->
+          <td class="ris-cell">
+            <span class="
+              {% if row.ars_ris == 'R' %}ris-r
+              {% elif row.ars_ris == 'I' %}ris-i
+              {% else %}ris-s{% endif %}
+            ">
+              {{ row.ars_ris }}
+            </span>
+          </td>
+
+          <!-- Deviation -->
+          <td class="text-center">
+            {% if row.deviation_code == "S" %}
+              <span class="cat-badge cat-concordant">
+                <i class="fas fa-check-circle"></i> Concordant
+              </span>
+            {% elif row.deviation_code == "A" %}
+              <span class="cat-badge cat-very-major">
+                <i class="fas fa-times-circle"></i> Very Major
+              </span>
+            {% elif row.deviation_code == "B" %}
+              <span class="cat-badge cat-major">
+                <i class="fas fa-exclamation-circle"></i> Major
+              </span>
+            {% elif row.deviation_code == "C" %}
+              <span class="cat-badge cat-minor">
+                <i class="fas fa-minus-circle"></i> Minor
+              </span>
+            {% else %}
+              <span class="cat-badge cat-minor">
+                Unknown
+              </span>
+            {% endif %}
+          </td>
+
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <div class="empty-icon">
+                <i class="fas fa-file-alt"></i>
+              </div>
+              <h5>No Snapshot Records</h5>
+              <p>No comparison records were generated for this batch.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+
+    </table>
+  </div>
+
+</div>
+    <!-- /TABLE 2 -->
+<!-- ══════════════ ORGANISM IDENTIFICATION TABLE ══════════════ -->
+<div class="detail-card mt-4">
+
+  <div class="detail-card-header">
+    <h5>
+      <i class="fas fa-dna"></i>
+      Organism Identification Concordance
+    </h5>
+    <span class="row-count-badge">
+      {{ genus_total }} ISOLATE{{ genus_total|pluralize }}
+    </span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table detail-table">
+      <thead>
+        <tr>
+          <th>Accession No</th>
+          <th>Site Organism</th>
+          <th>ARSRL Organism</th>
+          <th class="text-center">Genus Match</th>
+          <th class="text-center">Species Match</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for iso in isolates %}
+        <tr>
+
+          <td class="isolate-cell">
+            {{ iso.f_AccessionNo }}
+          </td>
+
+          <td class="organism-cell">
+            {{ iso.f_Site_OrgName }}
+          </td>
+
+          <td class="organism-cell">
+            {{ iso.f_ars_OrgName }}
+          </td>
+
+          <!-- GENUS MATCH -->
+          <td class="text-center">
+            {% if iso.f_Site_Org == iso.f_ars_OrgCode %}
+              <span class="cat-badge cat-concordant">
+                <i class="fas fa-check-circle"></i> Match
+              </span>
+            {% else %}
+              <span class="cat-badge cat-major">
+                <i class="fas fa-times-circle"></i> Mismatch
+              </span>
+            {% endif %}
+          </td>
+
+          <!-- SPECIES MATCH -->
+          <td class="text-center">
+            {% if iso.f_Site_OrgName == iso.f_ars_OrgName %}
+              <span class="cat-badge cat-concordant">
+                <i class="fas fa-check-circle"></i> Match
+              </span>
+            {% else %}
+              <span class="cat-badge cat-minor">
+                <i class="fas fa-times-circle"></i> Mismatch
+              </span>
+            {% endif %}
+          </td>
+
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5">
+            <div class="empty-state">
+              <div class="empty-icon">
+                <i class="fas fa-dna"></i>
+              </div>
+              <h5>No Isolates Found</h5>
+              <p>No organism identification data available for this batch.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+
+      <!-- SUMMARY FOOTER -->
+      <tfoot>
+        <tr style="background:#f5f7fa; font-weight:700;">
+          <td colspan="3" class="text-end">Genus Concordance:</td>
+          <td class="text-center">{{ genus_match }} / {{ genus_total }} ({{ genus_rate }}%)</td>
+          <td></td>
+        </tr>
+        <tr style="background:#f5f7fa; font-weight:700;">
+          <td colspan="3" class="text-end">Species Concordance:</td>
+          <td></td>
+          <td class="text-center">{{ species_match }} / {{ genus_total }} ({{ species_rate }}%)</td>
+        </tr>
+      </tfoot>
+
+    </table>
+  </div>
+
+</div>
+ 
+  </div>
+</div>
+
+{% endblock %}

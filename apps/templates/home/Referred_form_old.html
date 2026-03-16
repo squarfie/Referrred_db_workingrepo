@@ -1,0 +1,1066 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% load custom_filters %}
+
+{% block title %} Demographic Data {% endblock title %}
+
+{% block content %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+
+
+<!-- style for back to top button -->
+<style>
+#myBtn {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 30px;
+  z-index: 99;
+  font-size: 12px;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 4px;
+  height: 50px;
+  
+}
+
+#myform{
+  font-size: small;
+}
+
+label.form-control-label{
+  font-size: small;
+}
+
+.fontsize{
+  font-size: large;
+  color: blue;
+  font-weight: bold;
+}
+
+.fontlarge{
+  font-size: large;
+}
+
+
+/* Make retest tables more compact */
+.compact-table td,
+.compact-table th {
+  padding: 6px 8px !important;
+  vertical-align: middle;
+}
+
+.compact-table .form-control-sm {
+  height: 28px !important;
+  padding: 2px 6px !important;
+  font-size: 0.85rem;
+}
+
+</style>
+{% endblock stylesheets %}
+
+
+
+<div class="header pb-6 d-flex align-items-center" 
+     style="min-height: 200px; background-size: auto; background-image: url(/static/assets/img/theme/microbial.jpg); background-size: cover; background-position: center bottom;">
+  <!-- Mask -->
+  <span class="mask bg-gradient-default opacity-6"></span>
+  <!-- Header container -->
+  <div class="container-fluid d-flex flex-column align-items-right">
+    <div class="row">
+      <div class="col-lg-10 col-md-4">
+        <!-- <h6 class="display-2 text-white align=text-right"> 
+          Hello {{ request.user.username }}
+        </h6>
+        <p class="text-white mt-0 mb-5"></p> --> 
+        <!-- <a href="#" class="btn btn-neutral">Filter</a> -->
+        <!-- <div class="row">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }}" style="background: rgba(0, 0, 0, 0); color: white; border: none;">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div> -->
+        
+        <br><br>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Page content -->
+<div class="container-fluid mt--6">
+  <div class="row">
+ 
+<!-- DEMOGRAPHIC DATA -->
+
+    <div class="col-xl-12 order-xl-1">
+      <form method="POST" 
+      action="{% if isolates %}{% url 'raw_data' isolates.id %}{% endif %}" 
+      autocomplete="on" id="myform">
+
+        {% csrf_token %}
+
+      <div class="card" >
+        <div class="card-header" id="mytop">
+          <div class="row align-items-center">
+            <!-- <div class="col-8">
+               <h3 class="mb-0">SURVEILLANCE SITE INFORMATION </h3> 
+            </div> -->
+            <div class="col-12">
+              <br>
+              <div class="row">
+                <div class="col-lg-2">
+                  <div class="form-group" >
+                      <label class="form-control-label" for="SiteCode">SITE CODE</label>
+                      <div class="d-flex align-items-center">
+                      {{ form.SiteCode| append_attr:"class: form-control "}} 
+                      <span><a href="{% url 'add_dropdown' %}" class="col-4 shortcut-item" style="padding: 0;">
+                      <span class="ni ni-settings" style="margin-left: 10px; line-height: 0; vertical-align: text-bottom;"></span>
+                      </a></span>
+                      </div>
+                  </div>
+                </div>
+                <div class="col-lg-2">
+                  <div class="form-group" >
+                  <label class="form-control-label" for=" Referral_Date">Referral Date</label>
+                  {{form.Referral_Date| append_attr:"class: form-control " }}
+                  </div>
+                </div>
+               <div class="col-lg-2">
+                  <div class="form-group" >
+                  <label class="form-control-label" for="BatchNo">Batch No</label>
+                  {{form.BatchNo| append_attr:"class: form-control " }}
+                  </div>
+                </div>
+                <div class="col-lg-2">
+                  <div class="form-group" >
+                  <label class="form-control-label" for="RefNo">Reference No</label>
+                  {{form.RefNo| append_attr:"class: form-control " }}
+                  </div>
+                </div>
+              <div class="col-4 text-right">
+                <button class="btn btn-sm btn-success" onclick="history.back()">Back </button>
+                <a href="{% url 'batch_create_view' %}" class="btn btn-sm btn-primary">New Batch</a>
+                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                <a href="{% url 'show_data' %}" class="btn btn-sm btn-primary">View / Print</a>  
+                <a href="{% url 'add_breakpoints' %}" class="btn btn-warning btn-sm">Breakpoints</a>
+                
+              </div>
+              </div>
+             
+           
+<br>
+                   
+            <div class="row">
+                  <div class="col-lg-4">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Site_Name'>Site Name</label>
+                    {{form.Site_Name| append_attr:"class: form-control fontsize"}}
+                  </div>
+                  </div>
+                <div class="col-lg-4">
+                <div class="form-group">
+                  <label class="form-control-label" for="AccessionNo">Accession Number</label>
+                  {{form.AccessionNo| append_attr:"class: form-control fontsize"}} 
+              </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="form-group">
+                  <label class="form-control-label" for="Batch_Name">Batch Name</label>
+                  {{form.Batch_Code| append_attr:"class: form-control fontsize"}} 
+              </div>
+              </div>
+            </div>
+       
+        </div>
+    
+      </div> <!--mother tab content-->
+     <ul class="nav nav-tabs card-header-tabs" role="tablist" style="margin-top: 20px;"> 
+        <li class="nav-item">
+          <button class="nav-link active" href="#tabcontent1"  id="tab1" data-toggle="tab" role="tab">SENTINEL SITE DATA</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" href="#tabcontent2" id="tab2"  data-toggle="tab" role="tab" >ARSRL STY RESULTS</button>
+        </li>
+    </ul>
+    </div>
+        <div class="card-body">
+ 
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="tabcontent1" role="tabpanel" aria-labelledby="tab1">
+           <br>
+           
+           <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">PATIENT INFORMATION</h6>
+           <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+
+              <div class="row">
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Patient_ID">Patient No</label>
+                    {{form.Patient_ID| append_attr:"class: form-control"}}
+                 
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class="form-control-label" for="First_Name">First Name</label>
+                    {{form.First_Name|append_attr:"class: form-control"}}
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class="form-control-label" for="Mid_Name">Middle Name</label>
+                    {{form.Mid_Name| append_attr:"class: form-control"}}
+                  </div>
+                </div>
+                <div class="col-lg-3">
+                  <div class="form-group">
+                    <label class='form-control-label' for='Last_Name'>Last Name</label> 
+                   {{form.Last_Name|append_attr:"class: form-control"}}
+                  </div>
+                </div>
+              </div>
+          <div class="row">
+              <div class="col-lg-3">
+                <div class="form-group">
+                  <label class='form-control-label' for='Date_Birth'>Date of Birth</label>
+                  {{form.Date_Birth| append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Age'>Age</label> {{form.Age| append_attr:"class: form-control"}}
+                </div>
+              </div>
+                <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Sex'>Sex</label> {{form.Sex| append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-3">
+                <div class="form-group">
+                  <label class='form-control-label' for='Date_Admis'>Date of Admission</label> {{form.Date_Admis| append_attr:"class: form-control"}}
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Nosocomial'>Nosocomial</label> {{form.Nosocomial | append_attr:"class: form-control" }}
+                </div>
+              </div>
+        </div>
+
+          <div class="row">
+            <div class="col-lg-3">
+              <div class="form-group">
+                <label class='form-control-label' for='Diagnosis'>Diagnosis</label> {{form.Diagnosis| append_attr:"class: form-control" }}
+              </div>
+            </div>
+            <div class="col-lg-3">
+              <div class="form-group">
+                <label class='form-control-label' for='Diagnosis_ICD10'>ICD-10</label> {{form.Diagnosis_ICD10| append_attr:"class: form-control" }}
+              </div>
+            </div>
+            <div class="col-lg-3">
+              <div class="form-group">
+                <label class='form-control-label' for='Ward'>Ward</label> {{form.Ward| append_attr:"class: form-control" }}
+              </div>
+            </div>
+            <div class="col-lg-3">
+              <div class="form-group">
+                <label class='form-control-label' for='Service_Type'>Service Type</label> {{form.Service_Type| append_attr:"class: form-control" }}
+              </div>
+            </div>
+           
+          </div>
+
+          <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ISOLATE INFORMATION</h6>
+           <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+            <div class="row">
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Spec_Num'>Specimen No</label> {{form.Spec_Num | append_attr:"class: form-control" }}
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Spec_Date'>Specimen Date</label> {{form.Spec_Date|append_attr:"class: form-control" }}
+                </div>
+              </div>
+                  <div class="col-lg-2">
+                              <div class="form-group">
+                                <label class="form-control-label" for="Spec_Type">Specimen Type <span><a href="{% url 'add_specimen' %}" class="col-4 shortcut-item" style="padding: 0;">
+                                  <span class="ni ni-settings" style="margin-left: 10px; line-height: 0; vertical-align: middle;"></span>
+                                  </a></span></label> {{form.Spec_Type| append_attr:"class: form-control"}}
+                                <div class="d-flex align-items-left">
+                                </div>
+                              </div>
+                            </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Reason'>Reason for referral</label> {{form.Reason| append_attr:"class: form-control" }}
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Growth'>Growth</label> {{form.Growth| append_attr:"class: form-control" }}
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <div class="form-group">
+                  <label class='form-control-label' for='Urine_ColCt'>Urine Col ct</label> {{form.Urine_ColCt| append_attr:"class: form-control" }}
+                </div>
+              </div>
+
+            </div>
+
+            
+          
+  
+
+<!-- PHENOTYPIC RESULTS -->
+          
+            <!-- Address -->
+            <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">PHENOTYPIC RESULTS</h6>
+            <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+
+            <div class="pl-lg-12">
+              <!-- <div class="row">
+                <div class="col-md-12">
+                  <div class="form-group">
+                    <label class="form-control-label" for="input-address">Address</label>
+                    <input id="input-address" class="form-control" placeholder="Home Address" value="Bld Mihail Kogalniceanu, nr. 8 Bl 1, Sc 1, Ap 09" type="text">
+                  </div>
+                </div>
+              </div> -->
+              <div class="row">
+                <div class="col-lg-1">
+                  <div class="form-group">
+                    <label class='form-control-label' for='ampC'>ampC</label> {{form.ampC | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-1">
+                  <div class="form-group">
+                    <label class='form-control-label' for='ESBL'>ESBL</label> {{form.ESBL | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-1">
+                  <div class="form-group">
+                    <label class='form-control-label' for='CARB'>CARB</label> {{form.CARB | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-1">
+                  <div class="form-group">
+                    <label class='form-control-label' for='MBL'>MBL</label> {{form.MBL | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-1">
+                  <div class="form-group">
+                    <label class='form-control-label' for='BL'>BL</label> {{form.BL | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-1">
+                  <div class="form-group">
+                    <label class='form-control-label' for='MR'>MR</label> {{form.MR | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-1">
+                  <div class="form-group">
+                    <label class='form-control-label' for='mecA'>mecA</label> {{form.mecA | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-1">
+                  <div class="form-group">
+                    <label class='form-control-label' for='ICR'>ICR</label> {{form.ICR | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+                <div class="col-lg-4">
+                  <div class="form-group">
+                    <label class='form-control-label' for='OtherResMech'>Other</label> {{form.OtherResMech | append_attr:"class: form-control" }}
+                  </div>
+                </div>
+
+              </div>
+        
+            <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ORGANISM RESULTS</h6>
+            <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+
+                        <div class="pl-lg-12">
+  
+                          <div class="row">
+                             <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='Site_Pre'>Site Pre</label> {{form.Site_Pre| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                               <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for="id_Site_Org">Organism Code</label> {{form.Site_Org| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='Site_OrgName'>Organism Name</label> {{form.Site_OrgName| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                         
+                            <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='Site_Pos'>Site Post</label> {{form.Site_Pos| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                          </div>
+                          </div>
+           
+
+      
+        <!--MEDICAL HISTORY-->
+        
+               <div class="pl-lg-12">
+              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ANTIMICROBIAL SUSCEPTIBILITY TEST RESULTS</h6>
+              <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+              </div>
+
+<div id="antibiotic-container">
+  <div class="col-lg-12">
+    <div class="row">
+
+      <!-- 🧫 DISK DIFFUSION -->
+      <div class="col-lg-6">
+        <h6 class="heading-small text-muted mb-4">DISK DIFFUSION</h6>
+        <div class="card border-info mb-3">
+          <div class="card-body text-info">
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto; overflow-x: auto;">
+              <table class="table align-items-center text-center table-sm table-responsive" style="width: 100%;">
+                <thead class="thead-light">
+                  <tr style="line-height: 15px;">
+                    <th>ANTIBIOTIC</th>
+                    <th>WHONET CODE</th>
+                    <th>TEST RESULT</th>
+                    <th>RIS</th>
+                  </tr>
+                </thead>
+                <tbody id="disk-antibiotics">
+                  {% if antibiotics_main %}
+                    {% for entry in antibiotics_main|dictsort:"Whonet_Abx" %}
+                      {% if entry.Disk_Abx %}
+                        <tr>
+                          <td>{{ entry.Antibiotic }}</td>
+                          <td>{{ entry.Whonet_Abx }}</td>
+                          <td>
+                            <input name="disk_{{ entry.Whonet_Abx }}" 
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk' %}" 
+                                   type="number" min="0" style="width: 70px;">
+                          </td>
+                          <td>
+                            <input name="disk_enris_{{ entry.Whonet_Abx }}" 
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk_enris' %}" 
+                                   type="text" style="width: 50px;">
+                          </td>
+                        
+                        </tr>
+                      {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <tr><td colspan="6">No antibiotics available</td></tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 💧 MIC RESULTS -->
+      <div class="col-lg-6">
+        <h6 class="heading-small text-muted mb-4">MIC RESULTS</h6>
+        <div class="card border-info mb-3">
+          <div class="card-body text-info">
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+              <table class="table align-items-center text-center table-sm table-responsive" style="width: 100%;">
+                <thead class="thead-light">
+                  <tr style="line-height: 15px;">
+                    <th>ANTIBIOTIC</th>
+                    <th>WHONET CODE</th>
+                    <th>OPERAND</th>
+                    <th>TEST RESULT</th>
+                    <th>RIS</th>
+                    <th>ALERT MIC</th>
+                  </tr>
+                </thead>
+                <tbody id="mic-antibiotics">
+                  {% if antibiotics_main %}
+                    {% for entry in antibiotics_main|dictsort:"Whonet_Abx" %}
+                      {% if not entry.Disk_Abx %}
+                        <tr>
+                          <td>{{ entry.Antibiotic }}</td>
+                          <td>{{ entry.Whonet_Abx }}</td>
+                          <td>
+                            <input type="text" name="mic_operand_{{ entry.Whonet_Abx }}"
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_operand' %}"
+                                   style="width: 50px;">
+                          </td>
+                          <td>
+                            <input name="mic_{{ entry.Whonet_Abx }}" 
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic' %}" 
+                                   type="number" min="0" step="0.001" style="width: 70px;">
+                          </td>
+                          <td>
+                            <input name="mic_enris_{{ entry.Whonet_Abx }}"
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_enris' %}" 
+                                   type="text" style="width: 50px;">
+                          </td>
+                          <td>
+                            {% get_existing_value existing_entries entry.Whonet_Abx 'alert_mic' as alert_mic_checked %}
+                            <input type="checkbox" 
+                                   name="alert_mic_{{ entry.Whonet_Abx }}" 
+                                   style="transform: scale(1.5); margin: 4px;"
+                                   {% if alert_mic_checked %}checked{% endif %}>
+                          </td>
+                        </tr>
+                      {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <tr><td colspan="6">No antibiotics available</td></tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+          </div> 
+        <!-- end of table for antibiotics -->
+                <div class="row">
+                  <div class="col-lg-12">
+                              <div class="form-group">
+                                <label class='form-control-label' for='Comments'>Commments</label> {{form.Comments| append_attr:"class: form-control" }}
+                              </div>
+                        </div>
+                </div>
+              </div>
+      <!-- end of first tab -->
+   
+                <!--LABORATORY RESULTS-->
+                <div class="tab-pane fade" id="tabcontent2" role="tabpanel" aria-labelledby="tab2" >
+                  <br>
+                  <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ORGANISM INFORMATION</h6>
+                  <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+                  <div class="pl-lg-12">
+                          <div class="row">
+                            
+                            <div class="col-lg-2">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_ampC'>ampC</label> {{form.ars_ampC| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                           <div class="col-lg-1">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_ESBL'>ESBL</label> {{form.ars_ESBL| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-1">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_CARB'>CARB</label> {{form.ars_CARB| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-1">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_ECIM'>ECIM</label> {{form.ars_ECIM| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-1">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_MCIM'>MCIM</label> {{form.ars_MCIM| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-1">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_EC_MCIM'>EC MCIM</label> {{form.ars_EC_MCIM| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                             <div class="col-lg-1">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_MBL'>MBL</label> {{form.ars_MBL| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                             <div class="col-lg-1">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_BL'>BL</label> {{form.ars_BL| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                             <div class="col-lg-1">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_MR'>MR</label> {{form.ars_MR| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                             <div class="col-lg-1">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_mecA'>mecA</label> {{form.ars_mecA| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                             <div class="col-lg-1">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_ICR'>ICR</label> {{form.ars_ICR| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="row">
+                             <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_Pre'>ARSRL Pre</label> {{form.ars_Pre| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='id_ars_OrgCode'>Organism Code</label> {{form.ars_OrgCode| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_OrgName'>Organism Name</label> {{form.ars_OrgName| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                            <div class="col-lg-3">
+                              <div class="form-group">
+                                <label class='form-control-label' for='ars_Post'>ARSRL Post</label> {{form.ars_Post| append_attr:"class: form-control" }}
+                              </div>
+                            </div>
+                          </div>
+                          <br>
+               <div class="pl-lg-12">
+              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ANTIMICROBIAL SUSCEPTIBILITY TEST RESULTS</h6>
+              <hr class="border border-primary border-3 opacity-75 " style="margin-top:0; padding-top: 0%;">
+              </div>
+
+<div id="retest-container">
+<div class="col-lg-12">
+  <div class="row">
+
+    <!-- 🧫 RETEST DISK DIFFUSION -->
+    <div class="col-lg-5">
+      <h6 class="heading-small text-muted mb-4">RETEST - DISK DIFFUSION</h6>
+      <div class="card border-info mb-3">
+        <div class="card-body text-info">
+          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table align-items-center text-center table-sm table-responsive" style="width: 100%;">
+              <thead class="thead-light">
+                <tr style="line-height: 15px;">
+                  <th scope="col">ANTIBIOTIC</th>
+                  <th scope="col">WHONET CODE</th>
+                  <th scope="col">TEST RESULT</th>
+                  <th scope="col">RIS</th>
+                </tr>
+              </thead>
+              <tbody id="retest-disk-antibiotics">
+                {% if antibiotics_retest%}
+                  {% for retest in antibiotics_retest|dictsort:"Whonet_Abx" %}
+                    {% if retest.Disk_Abx %}
+                      <tr>
+                        <td>{{ retest.Antibiotic }}</td>
+                        <td>{{ retest.Whonet_Abx }}</td>
+                        <td>
+                          <input name="retest_disk_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk' %}"
+                                 type="number" min="0" style="width: 70px;">
+                        </td>
+                        <td>
+                          <input name="retest_disk_enris_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk_enris' %}"
+                                 type="text" style="width: 50px;">
+                        </td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="5">No retest disk antibiotics available</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 💧 RETEST MIC RESULTS -->
+    <div class="col-lg-7">
+      <h6 class="heading-small text-muted mb-4">RETEST - MIC RESULTS</h6>
+      <div class="card border-info mb-3">
+        <div class="card-body text-info">
+          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table align-items-center text-center table-sm table-responsive" style="width: 100%;">
+              <thead class="thead-light">
+                <tr style="line-height: 15px;">
+                  <th scope="col">ANTIBIOTIC</th>
+                  <th scope="col">WHONET CODE</th>
+                  <th scope="col">OPERAND</th>
+                  <th scope="col">TEST RESULT</th>
+                  <th scope="col">RIS</th>
+                  <th scope="col" style="width: 98px;">ALERT MIC</th>
+                </tr>
+              </thead>
+              <tbody id="retest-mic-antibiotics">
+                {% if antibiotics_retest %}
+                  {% for retest in antibiotics_retest|dictsort:"Whonet_Abx" %}
+                    {% if not retest.Disk_Abx %}
+                      <tr>
+                        <td>{{ retest.Antibiotic }}</td>
+                        <td>{{ retest.Whonet_Abx }}</td>
+                        <td>
+                          <input name="retest_mic_operand_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_operand' %}"
+                                 type="text" style="width: 50px;">
+                        </td>
+                        <td>
+                          <input name="retest_mic_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic' %}"
+                                 type="number" min="0" step="0.001" style="width: 70px;">
+                        </td>
+                        <td>
+                          <input name="retest_mic_enris_{{ retest.Whonet_Abx }}" 
+                                 value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_enris' %}"
+                                 type="text" style="width: 50px;">
+                        </td>
+                        <td>
+                          {% get_existing_value retest_entries retest.Whonet_Abx 'retest_alert_mic' as retest_alert_mic_checked %}
+                          <input type="checkbox" 
+                                 name="retest_alert_mic_{{ retest.Whonet_Abx }}"
+                                 style="transform: scale(1.5); margin: 4px;"
+                                 {% if retest_alert_mic_checked %}checked{% endif %}>
+                        </td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="7">No retest MIC antibiotics available</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+            <div class="pl-lg-12">
+              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ARSRL PERSONNEL PROVIDING INFORMATION</h6>
+              <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+              </div>
+            <div class="row">
+            
+              <div class="col-lg-12">
+
+                <div class="card border-info mb-3">
+                  <div class="card-body  text-info">
+                    <div class="col-lg-12">
+                      <div class="row">
+                        <div class="col-lg-3">
+                          <div class="form-group">                    
+                            <label class='form-control-label' for='arsp_Encoder'>Encoded by</label>
+                            <div class="d-flex align-items-center">
+                              {{ form.arsp_Encoder| append_attr:"class: form-control "}} 
+                              <span><a href="{% url 'add_contact' %}" class="col-4 shortcut-item" style="padding: 0;">
+                              <span class="ni ni-settings" style="margin-left: 10px; line-height: 0; vertical-align: text-bottom;"></span>
+                              </a></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="col-lg-3">
+                            <div class="form-group">
+                              <label class='form-control-label' for='arsp_Enc_Lic'>License Number</label> {{ form.arsp_Enc_Lic| append_attr:"class: form-control "}} 
+                          </div>
+                     </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                              <label class='form-control-label' for='arsp_License'>Contact Number</label> {{ form.arsp_License| append_attr:"class: form-control "}} 
+                          </div>
+                         
+                        </div>
+                        </div>
+                        <div class="row">
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                              <label class='form-control-label' for='Date_Accomplished_ARSP'>Date_Accomplished</label> {{form.Date_Accomplished_ARSP| append_attr:"class: form-control"}}
+                            </div>
+                        </div>
+
+                    </div> 
+                  </div> 
+                     </div> 
+                    </div> 
+                </div>  
+              </div>
+              <div class="pl-lg-12">
+              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">RECCOMENDATION</h6>
+              <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+              </div>
+              <div class="row">
+              <div class="col-lg-12">
+                <div class="card border-info mb-3">
+                  <div class="card-body  text-info">
+                    <div class="col-lg-12">
+                      <div class="row">
+                        <div class="col-lg-12">
+                          <div class="form-group">                    
+                              <label class='form-control-label' for='ars_reco'>Recommendation</label> {{form.ars_reco| append_attr:"class: form-control"}}
+                          </div>
+                        </div>
+                        </div>
+                        </div>
+                        </div>
+                        </div>
+                        </div>
+              </div>
+              </div> 
+               <!--tabcontent 2-->
+            </div> <!--card body-->
+        
+        </form> <!---end of form with post method-->  
+      </div> <!--card-->
+        <div class="col-12 text-left">
+          <div class="col-6">
+          <!-- <button class="btn btn-sm btn-primary" onclick="topFunction()" id="myBtn" title="Go to top">Go to Top</button> -->
+           <!-- <a href="#mytop" class="btn btn-sm btn-primary">Back to top</a> -->
+           <button type="button" onclick="topFunction()" id="myBtn" title="gototop" class="btn btn-sm btn-primary"> Back to top</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    {% include "includes/footer.html" %}
+  </div>
+ 
+{% endblock content %}
+
+<!-- Specific JS goes HERE --> 
+{% block javascripts %}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  /* =====================================================
+     1. BACK TO TOP BUTTON
+  ===================================================== */
+  const backToTopBtn = document.getElementById("myBtn");
+
+  if (backToTopBtn) {
+    window.addEventListener("scroll", () => {
+      backToTopBtn.style.display =
+        document.documentElement.scrollTop > 50 ? "block" : "none";
+    });
+
+    backToTopBtn.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  /* =====================================================
+     2. AUTO-CALCULATE AGE
+  ===================================================== */
+  const birthInput   = document.getElementById("id_Date_Birth");
+  const specDateInput = document.getElementById("id_Spec_Date");
+  const ageField     = document.getElementById("id_Age");
+
+  function calculateAge() {
+    if (!birthInput || !specDateInput || !ageField) return;
+
+    if (!birthInput.value || !specDateInput.value) {
+      ageField.value = "";
+      return;
+    }
+
+    const birth = new Date(birthInput.value);
+    const consult = new Date(specDateInput.value);
+
+    if (consult < birth) {
+      ageField.value = "Invalid Dates";
+      return;
+    }
+
+    let age = consult.getFullYear() - birth.getFullYear();
+    const m = consult.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && consult.getDate() < birth.getDate())) age--;
+
+    ageField.value = age;
+  }
+
+  birthInput?.addEventListener("change", calculateAge);
+  specDateInput?.addEventListener("change", calculateAge);
+
+  /* =====================================================
+     3. AUTO-FILL ORGANISM NAME
+  ===================================================== */
+  function bindOrganismAutofill(codeSelectId, nameInputId) {
+    const codeSelect = document.getElementById(codeSelectId);
+    const nameInput  = document.getElementById(nameInputId);
+
+    if (!codeSelect || !nameInput) return;
+
+    codeSelect.addEventListener("change", function () {
+      if (!this.value) {
+        nameInput.value = "";
+        return;
+      }
+
+      fetch(`/get_organism_name/?org_code=${encodeURIComponent(this.value)}&field_key=Organism`)
+        .then(res => res.json())
+        .then(data => {
+          nameInput.value = data.Organism || "";
+        })
+        .catch(err => console.error("Organism lookup error:", err));
+    });
+  }
+
+  // Sentinel site
+  bindOrganismAutofill("id_Site_Org", "id_Site_OrgName");
+
+  // ARSRL
+  bindOrganismAutofill("id_ars_OrgCode", "id_ars_OrgName");
+
+
+  
+  // Dynamic Antibiotic Loading
+function loadAntibiotics(org, retest = false) {
+  if (!org) return;
+
+  fetch(`/ajax/filter-antibiotics/?isolate_id={{ isolates.id }}&org=${encodeURIComponent(org)}&retest=${retest ? 1 : 0}`)
+    .then(res => res.json())
+    .then(data => {
+
+      // MAIN
+      const diskTbody = document.getElementById("disk-antibiotics");
+      const micTbody  = document.getElementById("mic-antibiotics");
+
+      // RETEST
+      const retestDiskTbody = document.getElementById("retest-disk-antibiotics");
+      const retestMicTbody  = document.getElementById("retest-mic-antibiotics");
+
+      if (retest) {
+        retestDiskTbody.innerHTML = "";
+        retestMicTbody.innerHTML  = "";
+      } else {
+        diskTbody.innerHTML = "";
+        micTbody.innerHTML  = "";
+      }
+
+      data.antibiotics.forEach(abx => {
+
+        // ======================
+        // SENTINEL SITE
+        // ======================
+        if (!retest) {
+          if (abx.is_disk) {
+            diskTbody.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td>${abx.name}</td>
+                <td>${abx.whonet}</td>
+                <td><input name="disk_${abx.whonet}" type="number" min="0" style="width:70px"></td>
+                <td><input name="disk_enris_${abx.whonet}" type="text" style="width:50px"></td>
+              </tr>
+            `);
+          } else {
+            micTbody.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td>${abx.name}</td>
+                <td>${abx.whonet}</td>
+                <td><input name="mic_operand_${abx.whonet}" type="text" style="width:50px"></td>
+                <td><input name="mic_${abx.whonet}" type="number" step="0.001" style="width:70px"></td>
+                <td><input name="mic_enris_${abx.whonet}" type="text" style="width:50px"></td>
+                <td><input type="checkbox" name="alert_mic_${abx.whonet}"></td>
+              </tr>
+            `);
+          }
+        }
+
+        // ======================
+        // ARSRL / RETEST
+        // ======================
+        else {
+          if (abx.is_disk) {
+            retestDiskTbody.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td>${abx.name}</td>
+                <td>${abx.whonet}</td>
+                <td><input name="retest_disk_${abx.whonet}" type="number" min="0" style="width:70px"></td>
+                <td><input name="retest_disk_enris_${abx.whonet}" type="text" style="width:50px"></td>
+              </tr>
+            `);
+          } else {
+            retestMicTbody.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td>${abx.name}</td>
+                <td>${abx.whonet}</td>
+                <td><input name="retest_mic_operand_${abx.whonet}" type="text" style="width:50px"></td>
+                <td><input name="retest_mic_${abx.whonet}" type="number" step="0.001" style="width:70px"></td>
+                <td><input name="retest_mic_enris_${abx.whonet}" type="text" style="width:50px"></td>
+                <td><input type="checkbox" name="retest_alert_mic_${abx.whonet}"></td>
+              </tr>
+            `);
+          }
+        }
+
+      });
+    })
+    .catch(err => console.error("Antibiotic reload error:", err));
+}
+
+
+document.getElementById("id_Site_Org")?.addEventListener("change", function () {
+  loadAntibiotics(this.value, false);
+});
+
+document.getElementById("id_ars_OrgCode")?.addEventListener("change", function () {
+  loadAntibiotics(this.value, true);
+});
+});
+</script>
+
+
+<script>
+  // AUTO-FILL STAFF LICENSE NUMBERS
+$(function () {
+
+  function bindStaffField(selectId, inputId, licenseKey) {
+    $(selectId).on("change", function () {
+      const staffId = $(this).val();
+
+      if (!staffId) {
+        $(inputId).val("");
+        return;
+      }
+
+      $.get("{% url 'get_ars_staff_details' %}", {
+        ars_staff_id: staffId,
+        license_field: licenseKey
+      }).done(data => {
+        if (data[licenseKey]) $(inputId).val(data[licenseKey]);
+      });
+    });
+  }
+
+  bindStaffField("#id_arsp_Encoder",   "#id_arsp_Enc_Lic",  "arsp_Enc_Lic");
+  bindStaffField("#id_arsp_Checker",   "#id_arsp_Chec_Lic", "arsp_Chec_Lic");
+  bindStaffField("#id_arsp_Verifier",  "#id_arsp_Ver_Lic",  "arsp_Ver_Lic");
+  bindStaffField("#id_arsp_LabManager","#id_arsp_Lab_Lic",  "arsp_Lab_Lic");
+  bindStaffField("#id_arsp_Head",      "#id_arsp_Head_Lic", "arsp_Head_Lic");
+
+});
+</script>
+
+
+
+
+{% endblock javascripts %}

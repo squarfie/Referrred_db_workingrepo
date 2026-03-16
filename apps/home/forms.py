@@ -1,6 +1,7 @@
 from .models import *
 from django import forms
-from phonenumber_field.formfields import PhoneNumberField
+
+
 
 
 # Referred Data Upload Form
@@ -13,64 +14,12 @@ class ReferredUploadForm(forms.ModelForm):
     
 class Referred_Form(forms.ModelForm):
 
-        # #using modelchoicefield for dynamic rendering
-        # SiteCode = forms.ModelChoiceField(
-        #     queryset=SiteData.objects.all(),
-        #     to_field_name='SiteCode',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Site Code",
-        #     required=False
-            
-        # )
-
-        
-
         Spec_Type = forms.ModelChoiceField(
             queryset=SpecimenTypeModel.objects.all(),
             widget=forms.Select(attrs={'class': "form-select fw-bold"}),
             empty_label="Select Specimen",
             required=False,
         )
-
-        # arsp_Checker = forms.ModelChoiceField(
-        #     queryset=arsStaff_Details.objects.all(),
-        #     to_field_name='Staff_Name',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Staff",
-        #     required=False,
-        # )
-
-        # arsp_Verifier = forms.ModelChoiceField(
-        #     queryset=arsStaff_Details.objects.all(),
-        #     to_field_name='Staff_Name',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Staff",
-        #     required=False,
-        # )
-
-        # arsp_LabManager = forms.ModelChoiceField(
-        #     queryset=arsStaff_Details.objects.all(),
-        #     to_field_name='Staff_Name',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Staff",
-        #     required=False,
-        # )
-
-        # arsp_Encoder= forms.ModelChoiceField(
-        #     queryset=arsStaff_Details.objects.all(),
-        #     to_field_name='Staff_Name',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Staff",
-        #     required=False,
-        # )
-
-        # arsp_Head= forms.ModelChoiceField(
-        #     queryset=arsStaff_Details.objects.all(),
-        #     to_field_name='Staff_Name',  # Specify the field you want as the value
-        #     widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-        #     empty_label="Select Staff",
-        #     required=False,
-        # )
 
         ars_OrgCode = forms.ModelChoiceField(
             queryset=Organism_List.objects.all(),
@@ -168,7 +117,6 @@ class Referred_Form(forms.ModelForm):
             'ars_description': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '6'}),
             "Batch_id": forms.HiddenInput(),
             
-            # Add more fields as needed
             }
 
                 
@@ -176,8 +124,7 @@ class Referred_Form(forms.ModelForm):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.fields['bat_seq'].widget.attrs['readonly'] = True
-            self.fields["Batch_id"].disabled = True
-            
+            self.fields["Batch_id"].disabled = True      
             self.fields['SiteCode'].widget.attrs['readonly'] = True
             self.fields['Batch_Code'].widget.attrs['readonly'] = True
             self.fields['AccessionNo'].widget.attrs['readonly'] = True
@@ -187,24 +134,14 @@ class Referred_Form(forms.ModelForm):
             self.fields['Referral_Date'].widget.attrs['readonly'] = True
             self.fields['BatchNo'].widget.attrs['readonly'] = True
             self.fields['Site_Name'].widget.attrs['readonly'] = True
-            # self.fields['arsp_Encoder'].required=False
-            # self.fields['arsp_Checker'].required=False
-            # self.fields['arsp_Verifier'].required=False
-            # self.fields['arsp_LabManager'].required=False
-            # self.fields['arsp_Head'].required=False
-            # self.fields['arsp_Enc_Lic'].widget.attrs['readonly'] = True  
-            # self.fields['arsp_Chec_Lic'].widget.attrs['readonly'] = True  
-            # self.fields['arsp_Ver_Lic'].widget.attrs['readonly'] = True  
-            # self.fields['arsp_Lab_Lic'].widget.attrs['readonly'] = True  
-            # self.fields['arsp_Head_Lic'].widget.attrs['readonly'] = True
             self.fields['Age'].widget.attrs['readonly'] = True
             # Dynamic queryset loading
             self.fields['Site_Org'].queryset = Organism_List.objects.all() # Always load the latest Site Code
             self.fields['Site_Org'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
-            self.fields['Site_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
-            self.fields['ars_OrgCode'].queryset = Organism_List.objects.all() # Always load the latest Site Code
+            self.fields['Site_OrgName'].label_from_instance = lambda obj: obj.Organism 
+            self.fields['ars_OrgCode'].queryset = Organism_List.objects.all() # Always load the latest Organism_List
             self.fields['ars_OrgCode'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
-            self.fields['ars_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
+            self.fields['ars_OrgName'].label_from_instance = lambda obj: obj.Organism 
 
 
         
@@ -367,9 +304,10 @@ class BatchEditForm(forms.ModelForm):
             "bat_Lab_Lic",
             "bat_Head",
             "bat_Head_Lic",
-            "bat_Date_Accomplished"
+            "bat_Date_Accomplished",
         ]
         widgets = {
+            'bat_Date_of_Entry': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
             'bat_Date_Accomplished': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
         }
 
@@ -382,7 +320,7 @@ class BatchEditForm(forms.ModelForm):
                 self.fields['bat_Head_Lic'].widget.attrs['readonly'] = True
 
 
-                 # --- Custom cleaning methods to save Staff_Name as string ---
+# --- Custom cleaning methods to save Staff_Name as string ---
     def clean_bat_Encoder(self):
             encoder = self.cleaned_data.get("bat_Encoder")
             return encoder.Staff_Name if encoder else ""
@@ -463,7 +401,6 @@ class BreakpointsForm(forms.ModelForm):
 
     Spec_code = forms.ModelChoiceField(
             queryset=SpecimenTypeModel.objects.all(),
-            to_field_name='Specimen_code',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Specimen",
             required=False,
@@ -475,20 +412,27 @@ class BreakpointsForm(forms.ModelForm):
         model = BreakpointsTable
         fields = "__all__"
 
+
     def save(self, commit=True):
         instance = super().save(commit=False)
 
         if instance.Whonet_Abx:
-            abx = instance.Whonet_Abx   # THIS IS Antibiotic_List now
-            instance.Antibiotic = abx.Antibiotic
-            instance.Abx_code = abx.Abx_code
-            instance.Tier = abx.Tier
+            try:
+                abx = Antibiotic_List.objects.get(
+                    Antibiotic=instance.Whonet_Abx
+                )
+
+                instance.Antibiotic = abx.Antibiotic
+                instance.Abx_code = abx.Abx_code
+                instance.Tier = abx.Tier
+
+            except Antibiotic_List.DoesNotExist:
+                pass
 
         if commit:
             instance.save()
 
         return instance
-
 
                         
 
@@ -521,7 +465,18 @@ class AntibioticEntryForm(forms.ModelForm):
 
         def __init__(self, *args, **kwargs):
             super(AntibioticEntryForm, self).__init__(*args, **kwargs)
-            self.fields['ab_AccessionNo'].widget.attrs['readonly'] = True  # Make Egasp_id read-only
+            self.fields['ab_AccessionNo'].widget.attrs['readonly'] = True  # Make Accssion read-only
+
+
+class RawAntibioticUploadForm(forms.ModelForm):
+    class Meta:
+        model = RawAntibiotic_upload
+        fields = ['RawAntibioticFile']
+        widgets = {
+            'RawAntibioticFile': forms.ClearableFileInput(attrs={'class': 'form-control-file'}),
+        }
+
+
 
 
 class SpecimenTypeForm(forms.ModelForm):
@@ -537,6 +492,7 @@ class SpecimenTypeForm(forms.ModelForm):
 
             vals = SpecimenTypeModel.objects.values_list("Specimen_code", flat=True).distinct()
             self.fields["Specimen_Code_Grp"].choices = [(v, v) for v in vals]
+
 
 class SpecimenUploadForm(forms.ModelForm):
     class Meta:
@@ -561,31 +517,6 @@ class ContactForm(forms.ModelForm):
             'readonly': False  # Ensure it's not blocking JavaScript updates
         })
 
-# #for locations
-
-# class CityForm(forms.ModelForm):
-#     class Meta:
-#         model = City
-#         fields = ["cityname", "province"]
-#         widgets = {
-#             "cityname": forms.TextInput(attrs={"class": "form-control"}),
-#             "province": forms.Select(attrs={"class": "form-control"}),
-#         }
-
-
-#for tat monitoring
-class TATUploadForm(forms.ModelForm):
-    class Meta:
-        model = TATUpload
-        fields = ['file']
-        widgets = {
-            'file': forms.FileInput(attrs={'class': 'form-control'})
-        }
-
-class TAT_form(forms.ModelForm):
-     class Meta:
-        model = TATform  # Ensure the model is specified
-        fields = '__all__'  # Include the fields you want in the form
 
 
 #Antibiotic Data
@@ -630,10 +561,6 @@ class Organism_uploadForm(forms.ModelForm):
      class Meta:
           model = Organism_upload
           fields =['File_uploadOrg']
-
-
-
-
 
 
 class Emerge_Pheno_Form(forms.ModelForm):
@@ -686,3 +613,118 @@ class Reco_item_upForm (forms.ModelForm):
      class Meta:
           model = Reco_item_upload
           fields = ['File_reco_desc']
+
+
+
+#for tat monitoring
+class TATStepConfigUploadForm(forms.ModelForm):
+    class Meta:
+        model = TATStepConfigUpload
+        fields = ['tat_file']
+        widgets = {
+            'tat_file': forms.FileInput(attrs={'class': 'form-control'})
+        }
+
+
+class TATMonitoringForm(forms.ModelForm):
+    class Meta:
+        model = TATform
+        exclude = ['tat_Date_Last_Update', 'tat_Batch_Isolates']
+        widgets = {
+            'tat_Referral_Date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'tat_Date_Released': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'tat_Running_TAT': forms.TextInput(attrs={
+                'class': 'form-control bg-light', 
+                'readonly': 'readonly',
+                'style': 'cursor: not-allowed;'  # inject inline CSS here!
+            }),
+            'tat_Final_TAT': forms.TextInput(attrs={
+                'class': 'form-control bg-light', 
+                'readonly': 'readonly',
+                'style': 'cursor: not-allowed;'  # inject inline CSS here!
+            }),
+        }
+
+class TATStepConfigForm(forms.ModelForm):
+    class Meta:
+        model = TATStepConfig
+        fields = '__all__'
+        widgets = {
+            'step_type': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter step name'
+            }),
+            'step_owner': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'target_days': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 0
+            }),
+            'order': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 1
+            }),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        step_type = cleaned_data.get('step_type')
+        step_owner = cleaned_data.get('step_owner')
+
+        if TATStepConfig.objects.filter(
+            step_type=step_type,
+            step_owner=step_owner
+        ).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError(
+                "This step configuration already exists."
+            )
+
+        return cleaned_data
+
+
+
+class TATStepForm(forms.ModelForm):
+    performed_by = forms.ModelChoiceField(
+            queryset=arsStaff_Details.objects.all(),
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Staff",
+            required=False,
+        )
+
+    class Meta:
+        model = TATStep
+        fields = [
+            'step_config',
+            'date_received',
+            'date_finished',
+            'performed_by',
+            'remarks',
+        ]
+        widgets = {
+            'step_config': forms.Select(attrs={'class': 'form-control'}),
+            'date_received': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'date_finished': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'remarks': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+        }
+
+
+TATStepFormSet = forms.inlineformset_factory(
+    TATform, 
+    TATStep, 
+    form=TATStepForm,  
+    extra=1, 
+    can_delete=True
+)
+
+
+
+class NonWorkingDayForm(forms.ModelForm):
+    class Meta:
+        model = NonWorkingDay
+        fields = ['date', 'description', 'applies_to']
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'description': forms.TextInput(attrs={'class': 'form-control'}),
+            'applies_to': forms.Select(attrs={'class': 'form-control'}),
+        }

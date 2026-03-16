@@ -1,9 +1,10 @@
-from datetime import timezone
+from django.utils import timezone
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.validators import EmailValidator
 from phonenumber_field.modelfields import PhoneNumberField
 from django.contrib.auth.models import User
+from apps.home.utils import working_days
 
 # Create your models here.
 
@@ -27,7 +28,7 @@ class Batch_Table(models.Model):
     bat_Batch_Name = models.CharField(max_length=255, blank=True)
     bat_Batch_Code = models.CharField(max_length=255, blank=True)
 
-    bat_Date_of_Entry = models.DateTimeField(auto_now_add=True)
+
     bat_RefNo = models.CharField(null=True, blank=True)
     bat_BatchNo = models.CharField(max_length=255, blank=True)
     bat_Total_batch = models.CharField(max_length=100, blank=True)
@@ -53,44 +54,11 @@ class Batch_Table(models.Model):
     bat_Head = models.CharField(max_length=255, blank=True, default='')
     bat_Head_Lic = models.CharField(max_length=100, blank=True, default='')
 
-    bat_Date_Encoded = models.DateField(null=True, blank=True)
-    bat_Date_Checked = models.DateField(null=True, blank=True)
-    bat_Date_Verified = models.DateField(null=True, blank=True)
-    bat_Date_LabManager = models.DateField(null=True, blank=True)
-    bat_Date_Head = models.DateField(null=True, blank=True)
-
+    bat_Date_of_Entry = models.DateTimeField(auto_now_add=True)
     bat_Date_Accomplished = models.DateField(null=True, blank=True)
 
     class Meta:
         db_table = "Batch_Table"
-
-
-    def save(self, *args, **kwargs):
-
-        today = timezone.now().date()
-
-        # Encoder
-        if self.bat_Encoder and not self.bat_Date_Encoded:
-            self.bat_Date_Encoded = today
-
-        # Checker
-        if self.bat_Checker and not self.bat_Date_Checked:
-            self.bat_Date_Checked = today
-
-        # Verifier
-        if self.bat_Verifier and not self.bat_Date_Verified:
-            self.bat_Date_Verified = today
-
-        # Lab Manager
-        if self.bat_LabManager and not self.bat_Date_LabManager:
-            self.bat_Date_LabManager = today
-
-        # Head
-        if self.bat_Head and not self.bat_Date_Head:
-            self.bat_Date_Head = today
-
-        super().save(*args, **kwargs)
-
 
 
         def __init__(self, *args, **kwargs):
@@ -140,12 +108,12 @@ class Referred_Data(models.Model):
     ReasonChoices=(
         ('n/a','n/a'),
         ('a & d','a & d'),
-        ('confirmation of org and ast','a'),
-        ('for ast only','b'),
-        ('difficult to ID','c'),
-        ('for serotyping','d'),
-        ('for research','e'),
-        ('Others','o')
+        ('a','a'),
+        ('b','b'),
+        ('c','c'),
+        ('d','d'),
+        ('e','e'),
+        ('o','o')
     )
 
     Status_Choice = (
@@ -163,6 +131,7 @@ class Referred_Data(models.Model):
         ('n/a','n/a'),
         ('light growth','light growth'),
         ('light to moderate growth','light to moderate growth'),
+        ('moderate growth', 'moderate growth'),
         ('heavy growth', 'heavy growth'),
         ('moderately heavy growth', 'moderately heavy growth'),
         ('positive growth', 'positive growth'),
@@ -352,63 +321,8 @@ class ReferredData_upload(models.Model):
 
 
 
-class TATform(models.Model):
-     #Running TAT form
-    Batch_Isolates = models.ForeignKey(Referred_Data, on_delete=models.CASCADE, null=True, related_name='tat_entries')
-    AccessionNum = models.CharField(max_length=255, blank=True,)
-    Unit_DateRec = models.DateField(blank=True, null=True)
-    Target_Days = models.CharField(max_length=3, blank=True,)
-    Days_Count = models.CharField(max_length=3, blank=True,)
-    Running_TAT = models.CharField(max_length=3, blank=True,)
-    Num_Isolate = models.CharField(max_length=3, blank=True,)
-    Total_Batch = models.CharField(max_length=3, blank=True,)
-    ars_Encoder = models.CharField(max_length=255, blank=True,)
-    ars_Date_Encoded = models.DateField(blank=True, null=True)
-    ars_Checker = models.CharField(max_length=255, blank=True,) 
-    ars_Date_Checked = models.DateField(blank=True, null=True)
-    ars_Verifier = models.CharField(max_length=255, blank=True,)
-    ars_Date_Verified = models.DateField(blank=True, null=True)
-    ars_LabManager = models.CharField(max_length=255, blank=True,)
-    ars_Date_LabManager = models.DateField(blank=True, null=True)
-    ars_Head = models.CharField(max_length=255, blank=True,)
-    ars_Date_Head = models.DateField(blank=True, null=True)
-
-    class Meta:
-        db_table ="TATform"
 
 
-class TATprocess(models.Model):
-    #Running_TAT upload form
-    TAT_Process = models.CharField(max_length=255, blank=True,)
-    Unit_code = models.CharField(max_length=3, blank=True,)
-
-    class Meta:
-        db_table ="TATprocess"
-
-
-class TATexclusion(models.Model):
-     Date_Excluded = models.DateField(blank=True, null=True)
-     Exclusion_Details = models.CharField(max_length=255, blank=True)
-
-     class Meta:
-         db_table = "Date_Excluded"
-
-class TATUpload(models.Model):
-    file = models.FileField(upload_to='uploads/TAT/', null=True, blank=True)
-
-    class Meta:
-        db_table = "TATUpload"
-
-
-
-# for specific indexing use this
-    # indexes = [
-    #             models.Index(fields=['Egasp_Id']),  # Index for field1
-    #             models.Index(fields=['Uic_Ptid']),  # Index for field2
-    #             models.Index(fields=['First_Name']),  # Index for field3
-    #             models.Index(fields=['Last_Name']),  # Index for field4
-    #             # add more indexes as needed
-    #         ]
 
 
 class SiteData(models.Model):
@@ -484,6 +398,12 @@ class BreakpointsTable(models.Model):
     def __str__(self):
         return self.Abx_code 
 
+    #  def save(self, *args, **kwargs):
+    #         if self.f_Spec_Type and self.f_Spec_Type.Emerging_Spec_Flag:
+    #         self.f_Spec_Emerging = True
+    #     else:
+    #         self.f_Spec_Emerging = False
+
     class Meta:
         db_table ="BreakpointsTable"
         ordering = ["Whonet_Abx"]
@@ -551,7 +471,7 @@ class AntibioticEntry(models.Model):
     ab_Retest_Disk_enRIS = models.CharField(max_length=4, blank=True, default='')
     
     ab_Retest_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
-    ab_Retest_MICValue = models.DecimalField(max_digits=5, decimal_places=3, blank=True, null=True)
+    ab_Retest_MICValue = models.DecimalField(max_digits=8, decimal_places=3, blank=True, null=True)
     ab_Retest_MIC_RIS = models.CharField(max_length=4, blank=True)
     ab_Retest_MIC_enRIS = models.CharField(max_length=4, blank=True, default='')    
     
@@ -563,6 +483,7 @@ class AntibioticEntry(models.Model):
     ab_Ret_S_breakpoint = models.CharField(max_length=10, blank=True, null=True)    
 
     ab_MICJoined = models.CharField(max_length=7, blank=True, null=True)
+    ab_Date_uploaded_rd = models.DateField(auto_now_add=True)
     def __str__(self):
         return ", ".join([abx.Whonet_Abx for abx in self.ab_breakpoints_id.all()]) 
 
@@ -586,6 +507,11 @@ class AntibioticEntry(models.Model):
         db_table = "AntibioticEntry"
 
 
+class RawAntibiotic_upload(models.Model):
+    RawAntibioticFile = models.FileField(upload_to='uploads/raw/antibiotic-entries/', null=True, blank=True)
+
+    class Meta:
+        db_table ="RawAntibiotic_upload"
 
 
 class SpecimenTypeModel(models.Model):
@@ -622,6 +548,7 @@ class arsStaff_Details(models.Model):
     def __str__(self):
         return self.Staff_Name if self.Staff_Name else "Unnamed Staff"
 
+
 class Recommendation(models.Model):
     Reco_Code = models.CharField(max_length=100, blank=True, null=True)
     Reco_Details = models.TextField(blank=True, null=True)
@@ -636,6 +563,7 @@ class FieldMapping(models.Model):
     mapped_field = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_retest = models.BooleanField(default=False)
     
 
     class Meta:
@@ -782,3 +710,268 @@ class Recommendation_items(models.Model):
 
 class Reco_item_upload(models.Model):
     File_reco_desc = models.FileField(upload_to='uploads/reco_desc/', null=True, blank=True)
+
+
+
+
+class TATform(models.Model):
+
+    tat_Batch_Isolates = models.OneToOneField(
+        "Batch_Table",
+        on_delete=models.CASCADE,
+        related_name="tat_entry"
+    )
+
+    tat_SiteCode = models.CharField(max_length=10, blank=True)
+    tat_Batch_Code = models.CharField(max_length=255, blank=True)
+    tat_Referral_Date = models.DateField(null=True, blank=True)
+    tat_BatchNumber = models.CharField(max_length=255, blank=True)
+    tat_Total_Batch = models.CharField(max_length=100, blank=True)
+    tat_Num_Isolate = models.PositiveIntegerField(null=True, blank=True)
+    tat_Batch_Location = models.CharField(
+        max_length=20,
+        choices=(
+            ('LAB', 'LAB'),
+            ('DMU', 'DMU'),
+            ('n/a', 'n/a'),
+        ),
+        default='n/a'
+    )
+
+    tat_Target_Days = models.PositiveIntegerField(null=True, blank=True)
+    tat_Date_Released = models.DateField(null=True, blank=True)
+
+    tat_Running_TAT = models.PositiveIntegerField(null=True, blank=True)
+    tat_Final_TAT = models.PositiveIntegerField(null=True, blank=True)
+
+    tat_Status_Release = models.CharField(
+        max_length=20,
+        choices=(
+            ('Ongoing', 'Ongoing'),
+            ('Released', 'Released'),
+            ('Overdue', 'Overdue'),
+        ),
+        default='Ongoing'
+    )
+
+    tat_Remarks = models.TextField(blank=True, null=True)
+    tat_Date_Last_Update = models.DateField(null=True, blank=True)
+
+
+
+    def save(self, *args, **kwargs):
+
+        today = timezone.now().date()
+
+        if self.tat_Referral_Date:
+
+            # 🔹 If Released
+            if self.tat_Date_Released:
+
+                self.tat_Final_TAT = working_days(
+                    self.tat_Referral_Date,
+                    self.tat_Date_Released
+                )
+
+                self.tat_Running_TAT = self.tat_Final_TAT
+                self.tat_Status_Release = "Released"
+
+            else:
+                # 🔹 Ongoing
+                self.tat_Running_TAT = working_days(
+                    self.tat_Referral_Date,
+                    today
+                )
+
+                if self.tat_Target_Days and self.tat_Running_TAT:
+                    if self.tat_Running_TAT > self.tat_Target_Days:
+                        self.tat_Status_Release = "Overdue"
+                    else:
+                        self.tat_Status_Release = "Ongoing"
+
+                self.tat_Final_TAT = None
+
+        self.tat_Date_Last_Update = today
+
+        super().save(*args, **kwargs)
+
+    @property
+    def current_step(self):
+        return self.steps.order_by('-id').first()
+
+    @property
+    def lab_steps(self):
+        return self.steps.filter(step_owner='LAB')
+
+    @property
+    def dmu_steps(self):
+        return self.steps.filter(step_owner='DMU')
+
+    @property
+    def lab_within_tat(self):
+        return self.lab_steps.filter(within_tat=True).count()
+
+    @property
+    def lab_outside_tat(self):
+        return self.lab_steps.filter(within_tat=False).count()
+
+    @property
+    def dmu_within_tat(self):
+        return self.dmu_steps.filter(within_tat=True).count()
+
+    @property
+    def dmu_outside_tat(self):
+        return self.dmu_steps.filter(within_tat=False).count()
+
+    @property
+    def total_steps(self):
+        return self.steps.count()
+
+    @property
+    def total_within_tat(self):
+        return self.steps.filter(within_tat=True).count()
+
+    @property
+    def compliance_percentage(self):
+        total = self.steps.exclude(within_tat=None).count()
+        if total == 0:
+            return 0
+        return round((self.total_within_tat / total) * 100, 2)
+
+
+
+    class Meta:
+        db_table = "TATform"
+
+
+
+
+class TATStep(models.Model):
+
+    tat = models.ForeignKey(
+        TATform,
+        on_delete=models.CASCADE,
+        related_name="steps"
+    )
+
+    step_config = models.ForeignKey(
+        "TATStepConfig",
+        on_delete=models.CASCADE,
+        related_name="tat_steps"
+    )
+
+
+
+    step_type = models.CharField(max_length=100)
+    step_owner = models.CharField(max_length=10, blank=True)
+
+    step_days_count = models.PositiveIntegerField(null=True, blank=True)
+    within_tat = models.BooleanField(null=True, blank=True)
+
+    date_received = models.DateField(null=True, blank=True)
+    date_finished = models.DateField(null=True, blank=True)
+
+    performed_by = models.ForeignKey(
+        "arsStaff_Details",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    remarks = models.TextField(blank=True, null=True)
+
+    @property
+    def running_days(self):
+        if self.date_received and not self.date_finished:
+            return (timezone.now().date() - self.date_received).days
+        return None
+
+    def save(self, *args, **kwargs):
+
+        # Always extract from config
+        if self.step_config:
+            self.step_type = self.step_config.step_type
+            self.step_owner = self.step_config.step_owner
+            target_days = self.step_config.target_days
+        else:
+            target_days = None
+
+        if self.date_received and self.date_finished:
+
+            self.step_days_count = working_days(
+                self.date_received,
+                self.date_finished,
+                self.step_owner
+            )
+
+            if target_days is not None and self.step_days_count is not None:
+                self.within_tat = self.step_days_count <= target_days
+            else:
+                self.within_tat = None
+
+        else:
+            self.step_days_count = None
+            self.within_tat = None
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        if self.step_config:
+            return f"{self.step_config.step_type} - {self.tat.tat_Batch_Code}"
+        return f"Unconfigured Step - {self.tat.tat_Batch_Code}"
+
+
+
+
+class TATStepConfig(models.Model):
+
+    STEP_OWNER = (
+        ('n/a', 'n/a'),
+        ('LAB', 'LAB'),
+        ('DMU', 'DMU'),
+    )
+
+    step_type = models.CharField(max_length=500)
+    step_owner = models.CharField(max_length=255, choices=STEP_OWNER, default='n/a')
+    target_days = models.PositiveIntegerField()
+    order = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.step_type} ({self.step_owner})"
+
+
+
+class TATStepConfigUpload(models.Model):
+    tat_file = models.FileField(upload_to='uploads/TAT/', null=True, blank=True)
+
+    class Meta:
+        db_table = "TATStepConfigUpload"
+
+
+class NonWorkingDay(models.Model):
+
+    APPLIES_TO_CHOICES = (
+        ('ALL', 'ALL'),
+        ('LAB', 'LAB'),
+        ('DMU', 'DMU'),
+    )
+
+    date = models.DateField(unique=True)
+    description = models.CharField(max_length=255)
+    applies_to = models.CharField(
+        max_length=10,
+        choices=APPLIES_TO_CHOICES,
+        default='ALL'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.date} - {self.description}"
+

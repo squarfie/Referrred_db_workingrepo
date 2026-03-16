@@ -1,0 +1,534 @@
+{% extends "layouts/base.html" %}
+{% block title %}Map Fields{% endblock %}
+{% load custom_filters %}
+
+{% block content %}
+
+<!-- Header Section -->
+<div class="header bg-primary pb-6" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
+    <span class="mask bg-gradient-default opacity-3"></span>
+  <div class="container-fluid">
+    <div class="header-body">
+      <div class="row align-items-center py-4">
+        <div class="col-lg-6 col-7">
+          <h6 class="h2 text-white d-inline-block mb-0">Field Mapper Tool</h6>
+          <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+              <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+              <li class="breadcrumb-item"><a href="{% url 'field_mapper_tool' %}">Upload File</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Map Fields</li>
+            </ol>
+          </nav>
+        </div>
+        <div class="col-lg-6 col-5 text-right">
+          <a class="btn btn-sm btn-neutral" href="{% url 'field_mapper_tool' %}">
+            <i class="fas fa-upload mr-1"></i>Upload New File
+          </a>
+          <button class="btn btn-sm btn-neutral" onclick="history.back()">Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="container-fluid mt--7">
+  <div class="card shadow">
+    <!-- Card Header -->
+    <div class="card-header border-0 bg-primary">
+      <div class="row align-items-center">
+        <div class="col">
+          <h3 class="mb-0 text-white">
+            <i class="ni ni-settings-gear-65 mr-2"></i>Map Raw Headers to Model Fields
+          </h3>
+        </div>
+        <div class="col text-right">
+          <span class="badge badge-light badge-lg">
+            <i class="fas fa-file mr-1"></i><strong>{{ file_name }}</strong>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar Section -->
+    <div class="card-body border-bottom">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <div class="alert alert-info mb-0" role="alert">
+            <i class="fas fa-info-circle mr-2"></i>
+            <strong>{{ raw_headers|length }}</strong> columns detected. Map each to a model field or leave unmapped to ignore.
+          </div>
+        </div>
+        <div class="col-md-6 text-right">
+          <form method="post" action="{% url 'clear_mappings' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to clear all saved mappings?')">
+              <i class="ni ni-fat-remove mr-1"></i>Clear Saved Mappings
+            </button>
+          </form>
+          <button type="button" class="btn btn-primary btn-sm ml-2" onclick="autoMap()">
+            <i class="fas fa-magic mr-1"></i>Auto-Map
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search & Stats Bar -->
+    <div class="card-body border-bottom py-3">
+      <div class="row align-items-center">
+        <div class="col-md-5">
+          <div class="input-group input-group-alternative">
+            <div class="input-group-prepend">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+            </div>
+            <input id="search-input" class="form-control" placeholder="Search columns..." type="text" onkeyup="searchTable()">
+            <div class="input-group-append">
+              <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-7 text-right d-flex align-items-center justify-content-end" style="gap: 8px;">
+          <!-- Filter buttons -->
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-secondary active" id="filter-all" onclick="filterRows('all')">
+              All
+            </button>
+            <button type="button" class="btn btn-outline-success" id="filter-mapped" onclick="filterRows('mapped')">
+              <i class="fas fa-check-circle mr-1"></i>Mapped
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="filter-unmapped" onclick="filterRows('unmapped')">
+              <i class="far fa-circle mr-1"></i>Unmapped
+            </button>
+          </div>
+          <span class="badge badge-success badge-pill" id="mapped-count">0 mapped</span>
+          <span class="badge badge-secondary badge-pill" id="unmapped-count">{{ raw_headers|length }} unmapped</span>
+          <a href="{% url 'download_mapping_summary' %}" class="btn btn-info btn-sm ml-1">
+            <i class="fas fa-file-export mr-1"></i>Map Summary
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Field Mapping Form -->
+    <form id="mapping-form" method="post" enctype="multipart/form-data" action="{% url 'generate_mapped_excel' %}">
+      {% csrf_token %}
+      <input type="hidden" name="mapping" id="mapping-json">
+
+      <!-- Table -->
+      <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+        <table class="table table-hover align-items-center table-flush" id="mapping-table">
+          <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
+            <tr>
+              <th style="width: 4%;">#</th>
+              <th style="width: 28%;">Raw Column Header</th>
+              <th style="width: 48%;">Map To Model Field</th>
+              <th style="width: 14%;" class="text-center">Mapped To</th>
+              <th style="width: 4%;" class="text-center">Status</th>
+              <th style="width: 4%;" class="text-center">Clear</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for header in raw_headers %}
+            {% with current_mapping=saved_mappings|get_item:header %}
+            <tr data-header="{{ header }}" data-mapped="{% if current_mapping %}true{% else %}false{% endif %}">
+              <td class="text-muted small">{{ forloop.counter }}</td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <div>
+                    <span class="font-weight-bold text-primary">{{ header }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <select
+                  class="form-control form-control-md field-select {% if current_mapping %}select-mapped{% endif %}"
+                  data-header="{{ header }}"
+                  onchange="handleMappingChange(this)">
+
+                  <option value="">-- Select Field --</option>
+
+                  <optgroup label="Final_Data Fields">
+                    {% for f in final_fields %}
+                      <option value="{{ f }}"
+                        {% if current_mapping == f %}selected{% endif %}>
+                        {{ f }}
+                      </option>
+                    {% endfor %}
+                  </optgroup>
+
+                  <optgroup label="AntibioticEntry Fields (WHONET Antibiotics)">
+                    {% for f in abx_fields %}
+                      <option value="{{ f }}"
+                        {% if current_mapping == f %}selected{% endif %}>
+                        {{ f }}
+                      </option>
+                    {% endfor %}
+                  </optgroup>
+                </select>
+              </td>
+
+              <!-- Mapped-To badge: shows the selected field name prominently -->
+              <td class="text-center mapped-to-cell">
+                {% if current_mapping %}
+                  <span class="mapped-badge mapped-badge-visible">{{ current_mapping }}</span>
+                {% else %}
+                  <span class="mapped-badge mapped-badge-empty">—</span>
+                {% endif %}
+              </td>
+
+              <td class="text-center">
+                <span class="status-icon">
+                  {% if current_mapping %}
+                    <i class="fas fa-check-circle text-success"></i>
+                  {% else %}
+                    <i class="far fa-circle text-muted"></i>
+                  {% endif %}
+                </span>
+              </td>
+
+              <td class="text-center">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-danger"
+                  title="Clear this mapping"
+                  onclick="clearRowMapping(this)">
+                  <i class="fas fa-times"></i>
+                </button>
+              </td>
+            </tr>
+            {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Card Footer -->
+      <div class="card-footer py-4 bg-light">
+        <div class="row align-items-center">
+          <div class="col-md-6">
+            <p class="mb-0 text-muted">
+              <i class="fas fa-lightbulb text-warning mr-1"></i>
+              <strong>Tip:</strong> Fields with matching names will be auto-mapped. Review before generating.
+            </p>
+          </div>
+          <div class="col-md-6 text-right">
+            <button type="submit" class="btn btn-success">
+              <i class="ni ni-cloud-download-95 mr-1"></i>Generate Mapped Excel
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Styles -->
+<style>
+/* ── Mapped select highlight ── */
+.select-mapped {
+  background-color: #eafaf1 !important;
+  border-left: 3px solid #2dce89 !important;
+  color: #1a7a47 !important;
+  font-weight: 600;
+}
+
+/* ── Mapped-to badge column ── */
+.mapped-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mapped-badge-visible {
+  background-color: #d4f5e9;
+  color: #0f6f3e;
+  border: 1px solid #2dce89;
+}
+
+.mapped-badge-empty {
+  background-color: #f0f0f0;
+  color: #aaa;
+  border: 1px dashed #ccc;
+}
+
+/* ── Mapped row background ── */
+tr[data-mapped="true"] {
+  background-color: #f8fffc;
+}
+
+tr[data-mapped="true"]:hover {
+  background-color: #f0fdf6 !important;
+}
+
+/* ── Optgroup colors ── */
+optgroup[label="Final_Data Fields"] {
+  color: #2dce89;
+  font-weight: 600;
+}
+optgroup[label="AntibioticEntry Fields (WHONET Antibiotics)"] {
+  color: #5e72e4;
+  font-weight: 600;
+}
+
+/* ── General table ── */
+.table td {
+  vertical-align: middle;
+}
+
+.badge-lg {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.badge-pill {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+thead.thead-light {
+  background-color: #f6f9fc;
+}
+
+.input-group-alternative {
+  box-shadow: 0 1px 3px rgba(50,50,93,.15), 0 1px 0 rgba(0,0,0,.02);
+  border: 0;
+}
+
+.input-group-alternative .form-control { border: 0; }
+
+.alert-info {
+  background-color: #d1ecf1;
+  border-color: #bee5eb;
+  color: #0c5460;
+}
+</style>
+
+{% endblock %}
+
+{% block javascripts %}
+<script>
+// --------------------------------------------------
+// CSRF helper
+// --------------------------------------------------
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    for (let cookie of document.cookie.split(';')) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(name + '=')) {
+        cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// --------------------------------------------------
+// SEARCH TABLE
+// --------------------------------------------------
+function searchTable() {
+  const filter = document.getElementById("search-input").value.toLowerCase();
+  document.querySelectorAll("#mapping-table tbody tr").forEach(row => {
+    const header = row.dataset.header.toLowerCase();
+    const sel = row.querySelector(".field-select");
+    const selected = sel.options[sel.selectedIndex].text.toLowerCase();
+    row.style.display = (header.includes(filter) || selected.includes(filter)) ? "" : "none";
+  });
+}
+
+function clearSearch() {
+  document.getElementById("search-input").value = "";
+  searchTable();
+}
+
+// --------------------------------------------------
+// FILTER TABS (All / Mapped / Unmapped)
+// --------------------------------------------------
+let activeFilter = 'all';
+function filterRows(type) {
+  activeFilter = type;
+  ['all','mapped','unmapped'].forEach(t => {
+    document.getElementById('filter-' + t).classList.toggle('active', t === type);
+  });
+  document.querySelectorAll("#mapping-table tbody tr").forEach(row => {
+    const isMapped = row.dataset.mapped === 'true';
+    if (type === 'all') row.style.display = '';
+    else if (type === 'mapped') row.style.display = isMapped ? '' : 'none';
+    else row.style.display = !isMapped ? '' : 'none';
+  });
+}
+
+// --------------------------------------------------
+// UPDATE MAPPED-TO BADGE on a single row
+// --------------------------------------------------
+function updateRowBadge(row, value) {
+  const badge = row.querySelector('.mapped-badge');
+  const select = row.querySelector('.field-select');
+
+  if (value) {
+    badge.textContent = value;
+    badge.className = 'mapped-badge mapped-badge-visible';
+    badge.title = value;
+    select.classList.add('select-mapped');
+    row.dataset.mapped = 'true';
+  } else {
+    badge.textContent = '—';
+    badge.className = 'mapped-badge mapped-badge-empty';
+    badge.title = '';
+    select.classList.remove('select-mapped');
+    row.dataset.mapped = 'false';
+  }
+}
+
+// --------------------------------------------------
+// SAVE / DELETE MAPPING (AJAX)
+// --------------------------------------------------
+function saveMapping(rawField, mappedField) {
+  fetch("{% url 'update_field_mapping' %}", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken"),
+    },
+    body: JSON.stringify({ raw_field: rawField, mapped_field: mappedField || "" }),
+  }).catch(() => console.error("Failed to save mapping:", rawField));
+}
+
+// --------------------------------------------------
+// HANDLE SELECT CHANGE
+// --------------------------------------------------
+function handleMappingChange(selectEl) {
+  const row = selectEl.closest('tr');
+  updateRowBadge(row, selectEl.value);
+  updateMappingCount();
+  saveMapping(selectEl.dataset.header, selectEl.value);
+}
+
+// --------------------------------------------------
+// AUTO-MAP
+// --------------------------------------------------
+function autoMap() {
+  const selects = document.querySelectorAll(".field-select");
+  let mappedCount = 0;
+
+  selects.forEach(sel => {
+    if (sel.value) return; // skip already-mapped
+    const headerNorm = sel.dataset.header.toLowerCase().replace(/[_\s-]/g, "");
+
+    for (let option of sel.options) {
+      const optionNorm = option.value.toLowerCase().replace(/[_\s-]/g, "");
+      if (optionNorm && (headerNorm === optionNorm || headerNorm.includes(optionNorm) || optionNorm.includes(headerNorm))) {
+        sel.value = option.value;
+        mappedCount++;
+        const row = sel.closest('tr');
+        updateRowBadge(row, option.value);
+        saveMapping(sel.dataset.header, option.value);
+        break;
+      }
+    }
+  });
+
+  updateMappingCount();
+  alert(`Auto-mapped ${mappedCount} field(s). Please review the mappings.`);
+}
+document.addEventListener("DOMContentLoaded", function () {
+  autoMap();
+});
+
+// --------------------------------------------------
+// UPDATE MAPPING COUNT + STATUS ICONS
+// --------------------------------------------------
+function updateMappingCount() {
+  const selects = document.querySelectorAll(".field-select");
+  let mapped = 0;
+
+  selects.forEach(sel => {
+    const row = sel.closest("tr");
+    const icon = row.querySelector(".status-icon i");
+    if (sel.value) {
+      mapped++;
+      icon.className = "fas fa-check-circle text-success";
+    } else {
+      icon.className = "far fa-circle text-muted";
+    }
+  });
+
+  document.getElementById("mapped-count").textContent = `${mapped} mapped`;
+  document.getElementById("unmapped-count").textContent = `${selects.length - mapped} unmapped`;
+}
+
+// --------------------------------------------------
+// CLEAR SINGLE ROW
+// --------------------------------------------------
+function clearRowMapping(btn) {
+  const row = btn.closest("tr");
+  const select = row.querySelector(".field-select");
+  select.value = "";
+  updateRowBadge(row, "");
+  updateMappingCount();
+  saveMapping(select.dataset.header, "");
+  // respect active filter
+  if (activeFilter === 'mapped') row.style.display = 'none';
+}
+
+// --------------------------------------------------
+// INIT
+// --------------------------------------------------
+document.addEventListener("DOMContentLoaded", function () {
+  // Ensure badges match select state (in case Django rendering has trim issues)
+  document.querySelectorAll(".field-select").forEach(sel => {
+    const row = sel.closest('tr');
+    // Force-sync badge with actual select value after render
+    updateRowBadge(row, sel.value);
+  });
+  updateMappingCount();
+});
+
+// --------------------------------------------------
+// FORM SUBMIT
+// --------------------------------------------------
+document.getElementById("mapping-form").addEventListener("submit", function (e) {
+  const mapping = {};
+  document.querySelectorAll(".field-select").forEach(sel => {
+    if (sel.value) mapping[sel.dataset.header] = sel.value;
+  });
+
+  if (Object.keys(mapping).length === 0) {
+    if (!confirm("No fields are mapped. Continue anyway?")) {
+      e.preventDefault();
+      return;
+    }
+  }
+
+  document.getElementById("mapping-json").value = JSON.stringify(mapping);
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Generating...';
+});
+
+// Enter key for search
+document.getElementById("search-input").addEventListener("keypress", function (e) {
+  if (e.key === "Enter") { e.preventDefault(); searchTable(); }
+});
+
+// Reset button after download / back
+window.addEventListener("pageshow", function () {
+  const btn = document.querySelector('#mapping-form button[type="submit"]');
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ni ni-cloud-download-95 mr-1"></i>Generate Mapped Excel';
+  }
+});
+
+
+</script>
+{% endblock %}

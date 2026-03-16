@@ -5,306 +5,788 @@
 {% block title %}View Batch Isolates{% endblock title %}
 
 {% block stylesheets %}
-
   <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
   <link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
-    <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
-<style>
-    /* Make icons align perfectly left with consistent spacing */
-td a i {
-  width: 18px;
-  text-align: left;
-  display: inline-block;
-  margin-right: 6px;
-}
+  <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+  <style>
+    /* ── Page-level spacing ── */
+    .page-wrapper {
+      padding: 0 0 2.5rem 0;
+    }
 
-td a {
-  font-size: 0.9rem;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  line-height: 1.3;
-}
+    /* ── Hero header strip ── */
+    .batch-header {
+      background: linear-gradient(135deg, #0f1423 0%, #1a1f3a 55%, #1a2a4a 100%);
+      padding: 1.75rem 2rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      border-bottom: 1px solid rgba(0,188,212,0.18);
+    }
 
-td a:hover {
-  opacity: 0.85;
-  transform: translateX(1px);
-}
+    .batch-header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
 
-.table td {
-  vertical-align: middle !important;
-}
+    .batch-header-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: rgba(0,188,212,0.18);
+      border: 1px solid rgba(0,188,212,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      color: #00bcd4;
+    }
 
-</style>
+    .batch-header-title h6 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #00bcd4, #26c6da);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0 0 2px 0;
+      letter-spacing: 0.3px;
+    }
 
+    .batch-header-title .breadcrumb {
+      background: transparent;
+      padding: 0;
+      margin: 0;
+    }
+
+    .batch-header-title .breadcrumb-item a {
+      color: rgba(200,220,255,0.6);
+      font-size: 0.8rem;
+      transition: color 0.2s;
+    }
+
+    .batch-header-title .breadcrumb-item a:hover {
+      color: #00bcd4;
+    }
+
+    .batch-header-title .breadcrumb-item + .breadcrumb-item::before {
+      color: rgba(200,220,255,0.3);
+    }
+
+    .batch-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Stat pills in header ── */
+    .batch-stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(0,188,212,0.1);
+      border: 1px solid rgba(0,188,212,0.25);
+      border-radius: 20px;
+      padding: 5px 14px;
+      color: #00bcd4;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Main content area ── */
+    .content-area {
+      padding: 1.75rem 2rem 0;
+    }
+
+    /* ── Toolbar row ── */
+    .toolbar-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .records-count-badge {
+      background: linear-gradient(135deg, rgba(30,90,150,0.12), rgba(0,188,212,0.08));
+      border: 1px solid rgba(30,90,150,0.2);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e5a96;
+    }
+
+    /* ── Search box ── */
+    .search-wrapper {
+      position: relative;
+    }
+
+    .search-wrapper .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+      pointer-events: none;
+      font-size: 0.85rem;
+    }
+
+    .search-wrapper input {
+      padding-left: 2.2rem;
+      padding-right: 1rem;
+      height: 38px;
+      border: 1.5px solid #e3e6f0;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      width: 260px;
+      transition: all 0.25s ease;
+    }
+
+    .search-wrapper input:focus {
+      border-color: #1e5a96;
+      box-shadow: 0 0 0 3px rgba(30,90,150,0.1);
+      outline: none;
+      width: 300px;
+    }
+
+    /* ── Table card ── */
+    .table-card {
+      border: 1px solid #e3e6f0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(30,90,150,0.08);
+    }
+
+    /* ── Table enhancements ── */
+    .table-responsive {
+      max-height: 520px;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+
+    .table-responsive::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+
+    .table-responsive::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb {
+      background: #c0cfe0;
+      border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+      background: #1e5a96;
+    }
+
+    .data-table {
+      margin: 0;
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .data-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .data-table thead th {
+      background: linear-gradient(135deg, #1e5a96 0%, #0f3a5f 100%);
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      padding: 1rem 1.1rem;
+      border: none;
+      white-space: nowrap;
+    }
+
+    .data-table thead th:first-child {
+      border-radius: 0;
+    }
+
+    .data-table tbody tr {
+      border-bottom: 1px solid #f0f2f7;
+      transition: background 0.18s ease;
+    }
+
+    .data-table tbody tr:hover {
+      background-color: rgba(0,188,212,0.04);
+    }
+
+    .data-table tbody td {
+      padding: 0.9rem 1.1rem;
+      vertical-align: middle;
+      font-size: 0.875rem;
+      color: #3c4a5c;
+    }
+
+    /* ── Row number badge ── */
+    .row-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, #1e5a96, #0f3a5f);
+      color: white;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    /* ── Identification cell ── */
+    .id-cell {
+      min-width: 200px;
+    }
+
+    .id-cell .batch-code {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #6c757d;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+    }
+
+    .id-cell .accession {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1e5a96;
+      margin-bottom: 4px;
+    }
+
+    .id-cell .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.78rem;
+      color: #6c757d;
+      margin-top: 2px;
+    }
+
+    .id-cell .meta-row i {
+      width: 14px;
+      color: #00bcd4;
+      font-size: 0.7rem;
+    }
+
+    /* ── Date chip ── */
+    .date-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(30,90,150,0.07);
+      border: 1px solid rgba(30,90,150,0.12);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #1e5a96;
+      white-space: nowrap;
+    }
+
+    /* ── Staff cell ── */
+    .staff-cell {
+      min-width: 220px;
+    }
+
+    .staff-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 5px;
+      font-size: 0.8rem;
+    }
+
+    .staff-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .staff-role {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #fff;
+      border-radius: 4px;
+      padding: 2px 7px;
+      min-width: 68px;
+      text-align: center;
+    }
+
+    .role-encoder  { background: #26a69a; }
+    .role-checker  { background: #1e5a96; }
+    .role-verifier { background: #7b5ea7; }
+    .role-manager  { background: #f39c12; color: #000; }
+    .role-head     { background: #e74c3c; }
+
+    .staff-name {
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .staff-date {
+      font-size: 0.7rem;
+      color: #9aa4b8;
+      margin-left: auto;
+    }
+
+    /* ── Action buttons ── */
+    .action-col {
+      min-width: 120px;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      margin-bottom: 4px;
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .action-btn:last-child {
+      margin-bottom: 0;
+    }
+
+    .action-btn-add {
+      background: rgba(38,166,154,0.1);
+      border: 1px solid rgba(38,166,154,0.3);
+      color: #26a69a;
+    }
+
+    .action-btn-add:hover {
+      background: #26a69a;
+      color: white;
+      transform: translateX(2px);
+    }
+
+    .action-btn-delete {
+      background: rgba(231,76,60,0.08);
+      border: 1px solid rgba(231,76,60,0.25);
+      color: #e74c3c;
+    }
+
+    .action-btn-delete:hover {
+      background: #e74c3c;
+      color: white;
+      transform: translateX(2px);
+    }
+
+    /* ── Edit author button ── */
+    .btn-edit-author {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: rgba(0,188,212,0.1);
+      border: 1px solid rgba(0,188,212,0.3);
+      color: #00bcd4;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-edit-author:hover {
+      background: #00bcd4;
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0,188,212,0.3);
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #9aa4b8;
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: #c0cfe0;
+    }
+
+    /* ── Footer / Pagination ── */
+    .table-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      background: #f8f9fc;
+      border-top: 1px solid #e3e6f0;
+    }
+
+    .page-info-text {
+      font-size: 0.8rem;
+      color: #6c757d;
+      font-weight: 500;
+    }
+
+    .pagination {
+      margin: 0;
+    }
+
+    .pagination .page-link {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px !important;
+      border: 1px solid #e3e6f0;
+      color: #1e5a96;
+      font-size: 0.8rem;
+      margin: 0 2px;
+      transition: all 0.2s ease;
+      padding: 0;
+    }
+
+    .pagination .page-link:hover {
+      background: #1e5a96;
+      border-color: #1e5a96;
+      color: white;
+      transform: translateY(-1px);
+    }
+
+    .pagination .page-item.disabled .page-link {
+      color: #c5cdd8;
+      background: #f8f9fc;
+      border-color: #e3e6f0;
+      transform: none;
+    }
+
+    /* ── Delete modal ── */
+    .modal-header {
+      background: linear-gradient(135deg, #1e5a96, #0f3a5f);
+      border-bottom: none;
+    }
+
+    .modal-title {
+      color: white !important;
+      font-weight: 700 !important;
+    }
+
+    .modal-header .close span {
+      color: rgba(255,255,255,0.7);
+    }
+
+    .modal-body {
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .delete-confirm-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(231,76,60,0.1);
+      border: 2px solid rgba(231,76,60,0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+      font-size: 1.75rem;
+      color: #e74c3c;
+    }
+
+    .delete-confirm-text {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .delete-confirm-sub {
+      font-size: 0.85rem;
+      color: #6c757d;
+      margin-top: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .batch-header { padding: 1.25rem; }
+      .content-area { padding: 1rem; }
+      .search-wrapper input { width: 200px; }
+      .search-wrapper input:focus { width: 220px; }
+      .staff-cell { min-width: 180px; }
+    }
+  </style>
 {% endblock stylesheets %}
 
 {% block content %}
+<div class="page-wrapper">
 
-<body>
-<div class="header-container pb-6" style="min-height: 180px;">
-             <div class="background-animation-wrapper" aria-hidden="true">
-
-      <!-- Grid Background -->
-      <div class="grid-bg"></div>
-
-      <!-- Rising Particles -->
-      <div class="particles">
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
+  <!-- ── Hero Header ── -->
+  <div class="batch-header">
+    <div class="batch-header-left">
+      <div class="batch-header-icon">
+        <i class="fa fa-cubes"></i>
       </div>
-
-      <!-- Scanners -->
-      <div class="scanner"></div>
-      <div class="scanner"></div>
-      <div class="scanner"></div>
-
-      <!-- Glow Orbs -->
-      <div class="glow-orb" ></div>
-      <div class="glow-orb" ></div>
-
-      <!-- Gradient Overlay -->
-      <div class="overlay"></div>
-
-  </div>
-    <div class="container-fluid">
-      <div class="header-body">
-        <div class="row align-items-center py-4">
-          <div class="col-lg-6 col-7">
-            <i class="fa fa-cubes text-warning" aria-hidden="true"></i>
-            <h6 class="h2 text-white d-inline-block mb-0">&nbsp;View Recent Batch</h6>
-            <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
-              <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
-                <li class="breadcrumb-item"><a href="{% url 'batch_create_view' %}">Batch Form</a></li>
-                <li class="breadcrumb-item active" aria-current="page">View Batch</li>
-              </ol>
-            </nav>
-          </div>
-     
-          <div class="col-lg-6 col-5 text-right">
-            <a class="btn btn-sm btn-neutral" href="{% url 'batch_create_view' %}">New Batch</a>
-            <a class="btn btn-sm btn-success" href="{% url 'show_data' %}">View Records</a>
-                {% if batch %}
-                <a class="btn btn-sm btn-warning" href="{% url 'delete_batch' batch.id %}"
-                  onclick="return confirm('Are you sure you want to delete the whole batch {{ batch.bat_Batch_Name }}?');">
-                  Delete this Batch
-                </a>
-              {% endif %}
-             
-            <button type="button" class="btn btn-sm btn-neutral" onclick="history.back()">
-                <i class="ni ni-bold-left mr-2"></i> Back
-            </button>
-          </div>
-          
-        </div>
+      <div class="batch-header-title">
+        <h6>View Recent Batch</h6>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb breadcrumb-links breadcrumb-dark mb-0">
+            <li class="breadcrumb-item">
+              <a href="{% url 'home' %}"><i class="fas fa-home mr-1"></i>Home</a>
+            </li>
+            <li class="breadcrumb-item active text-white-50" style="font-size:0.8rem;">Batch Records</li>
+          </ol>
+        </nav>
       </div>
     </div>
- </div>
- 
-  <!-- Page content -->
-  <div class="container-fluid" style="padding-top: 20px;">
-    <div class="row">
-      <div class="col">
-        <div class="card">
-          <!-- Card header -->
-          <div class="card-header border-0">
-            <div class="row">
-              <div class="col md-6 d-flex justify-content-end">
-                <form id="search-input" class="navbar-search navbar-search-light form-inline mr-sm-3 " id="navbar-search-main">
-                  <div class="form-group mb-0">
-                    <div class="input-group input-group-alternative input-group-merge">
-                      <div class="input-group-prepend">
-                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                      </div>
-                      <input class="form-control" placeholder="Search" type="text" onkeyup="searchTable()">
-                    </div>
-                  </div>
-                  <button type="button" class="close" data-action="search-close" data-target="#navbar-search-main" aria-label="Close">
-                    <span aria-hidden="true">x</span>
-                  </button>
-                  
-                </form>
-              </div>
-            </div>
-          </div>
-          <!-- Light table -->
-          <div class="table-responsive" style="max-height: 500px;  overflow-y: auto; overflow-x: auto;">
-            <table class="table table-flush" style="border-collapse: collapse; margin: 0%; padding: 0%;">
-              <thead class="thead-dark" style="text-align: center;">
-                <tr>
-                  <th class="text-white">No.</th>
-                  <th class="text-white"  scope="col" style="text-align: center;"> <i class="fa fa-magic" aria-hidden="true"></i> &nbsp;ACTIONS</th>
-                  
-                  <th colspan="2"  scope="col" class="sort text-white" data-sort="AccessionNo"><i class="fa fa-id-card" aria-hidden="true"></i> &nbsp;Identification</th>
-                  <th scope="col" class="text-white"><i class="fa fa-calendar" aria-hidden="true"></i> &nbsp;Date Encoded</th>
-                  <th colspan="2" scope="col" class="sort text-white" data-sort="arsp_Encoder"> <i class="fa fa-address-book" aria-hidden="true"></i> &nbsp;ARSP Staff</th>
-                  <th class="text-white"> <i class="fa fa-print" aria-hidden="true"></i>&nbsp;EDIT AUTHOR</th>
-                </tr>
-              </thead>
-              <tbody class="list table">
-                {% for isolate in page_obj %}
-                
-               <tr>
-                <td style="text-align: center"><strong>{{isolate.bat_seq}}</strong></td>
-                  <td >
-                    {% if not isolate.antibiotic_entries.exists %}
-                  <a href="{%url 'raw_data' isolate.id %}" class="text-success"> <i class="fa fa-pencil-alt" aria-hidden="true"></i> &nbspAdd Data</a> <span style="display: block; line-height: 8px;"><br></span>
-                     {%endif%}
-                  <a href="#" class="text-danger delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'delete_record_in_batch' isolate.id %}">
-                        <i class="fa fa-trash" aria-hidden="true"></i> &nbspDelete</a> <span style="display: block; line-height: 8px;"><br></span>
 
-                  {% if isolate.Batch_id %}
+    <div class="batch-header-actions">
+      {% if batch %}
+        <span class="batch-stat-pill">
+          <i class="fa fa-tag"></i> {{ batch.bat_Batch_Name }}
+        </span>
+      {% endif %}
+      <a class="btn btn-sm btn-neutral" href="{% url 'batch_create_view' %}">
+        <i class="fa fa-plus mr-1"></i> New Batch
+      </a>
+      <a class="btn btn-sm btn-success" href="{% url 'show_data' %}">
+        <i class="fa fa-table mr-1"></i> View Records
+      </a>
+      {% if batch %}
+        <a class="btn btn-sm btn-danger" href="{% url 'delete_batch' batch.id %}"
+          onclick="return confirm('Are you sure you want to delete the whole batch {{ batch.bat_Batch_Name }}?');">
+          <i class="fa fa-trash mr-1"></i> Delete Batch
+        </a>
+      {% endif %}
+      <button type="button" class="btn btn-sm btn-neutral" onclick="history.back()">
+        <i class="ni ni-bold-left mr-1"></i> Back
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Main Content ── -->
+  <div class="content-area">
+
+    <!-- Toolbar -->
+    <div class="toolbar-row">
+      <div class="toolbar-left">
+        <span class="records-count-badge">
+          <i class="fa fa-database mr-1"></i>
+          <span id="visible-count">{{ page_obj|length }}</span> record(s) on this page
+        </span>
+      </div>
+      <div class="search-wrapper">
+        <i class="fas fa-search search-icon"></i>
+        <input type="text" class="form-control" placeholder="Search records…" onkeyup="searchTable(this)" id="search-input">
+      </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="table-card">
+      <div class="table-responsive">
+        <table class="data-table" id="batch-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Actions</th>
+              <th>Identification</th>
+              <th style="text-align:center;"><i class="fa fa-calendar mr-1"></i>Date Encoded</th>
+              <th>ARSP Staff</th>
+              <th style="text-align:center;"><i class="fa fa-pencil-alt"></i></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for isolate in page_obj %}
+            <tr>
+              <!-- Row number -->
+              <td style="text-align:center;">
+                <span class="row-num">{{ isolate.bat_seq }}</span>
+              </td>
+
+              <!-- Actions -->
+              <td class="action-col">
+                {% if not isolate.antibiotic_entries.exists %}
+                <a href="{% url 'raw_data' isolate.id %}" class="action-btn action-btn-add">
+                  <i class="fa fa-pencil-alt"></i> Add Data
+                </a>
+                {% endif %}
+                <a href="#" class="action-btn action-btn-delete delete-btn"
+                   data-toggle="modal" data-target="#deleteModal"
+                   data-url="{% url 'delete_record_in_batch' isolate.id %}">
+                  <i class="fa fa-trash"></i> Delete
+                </a>
+              </td>
+
+              <!-- Identification -->
+              <td class="id-cell">
+                <div class="batch-code"><i class="fa fa-layer-group mr-1" style="color:#00bcd4;"></i>{{ isolate.Batch_Code }}</div>
+                <div class="accession">{{ isolate.AccessionNo }}</div>
+                <div class="meta-row">
+                  <i class="fa fa-calendar-alt"></i>
+                  <span>{{ isolate.Referral_Date }}</span>
+                </div>
+                <div class="meta-row">
+                  <i class="fa fa-map-marker-alt"></i>
+                  <span>{{ isolate.SiteCode }}</span>
+                </div>
+              </td>
+
+              <!-- Date Encoded -->
+              <td style="text-align:center;">
+                <span class="date-chip">
+                  <i class="fa fa-clock"></i>
+                  {{ isolate.Date_of_Entry|date:"M d, Y" }}
+                </span>
+              </td>
+
+              <!-- ARSP Staff -->
+              <td class="staff-cell">
+                <div class="staff-row">
+                  <span class="staff-role role-encoder">Encoder</span>
+                  <span class="staff-name">{{ isolate.arsp_Encoder }}</span>
+                  <span class="staff-date">{{ isolate.Date_Encoder }}</span>
+                </div>
+                <div class="staff-row">
+                  <span class="staff-role role-checker">Checker</span>
+                  <span class="staff-name">{{ isolate.arsp_Checker }}</span>
+                  <span class="staff-date">{{ isolate.Date_Checker }}</span>
+                </div>
+                <div class="staff-row">
+                  <span class="staff-role role-verifier">Verifier</span>
+                  <span class="staff-name">{{ isolate.arsp_Verifier }}</span>
+                  <span class="staff-date">{{ isolate.Date_Verifier }}</span>
+                </div>
+                <div class="staff-row">
+                  <span class="staff-role role-manager">Lab Mgr</span>
+                  <span class="staff-name">{{ isolate.arsp_LabManager }}</span>
+                  <span class="staff-date">{{ isolate.Date_LabManager }}</span>
+                </div>
+                <div class="staff-row">
+                  <span class="staff-role role-head">Head</span>
+                  <span class="staff-name">{{ isolate.arsp_Head }}</span>
+                  <span class="staff-date">{{ isolate.Date_Head }}</span>
+                </div>
+              </td>
+
+              <!-- Edit Author -->
+              <td style="text-align:center;">
+                <a href="{% url 'batch_edit_view' isolate.Batch_id.id %}"
+                   class="btn-edit-author" title="Edit Batch">
+                  <i class="fa fa-pencil-alt"></i>
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <i class="fa fa-inbox d-block"></i>
+                  <p class="mb-0 font-weight-600">No records found in this batch.</p>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer Pagination -->
+      <div class="table-footer">
+        <span class="page-info-text">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+          &mdash; {{ page_obj.paginator.count }} total record(s)
+        </span>
+        <nav aria-label="Pagination">
+          <ul class="pagination mb-0">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page=1" title="First"><i class="fas fa-angle-double-left"></i></a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}" title="Previous"><i class="fas fa-angle-left"></i></a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><a class="page-link" href="#"><i class="fas fa-angle-double-left"></i></a></li>
+              <li class="page-item disabled"><a class="page-link" href="#"><i class="fas fa-angle-left"></i></a></li>
             {% endif %}
 
-                  </td>
-                  
-                  <td colspan="2">
-                      
-                      Batch: &nbsp; <strong>{{isolate.Batch_Code}}</strong> <br>
-                      Accession No: &nbsp; <strong>{{isolate.AccessionNo}}</strong><br> 
-                      Referral Date: &nbsp;<strong>  {{isolate.Referral_Date}}</strong> <br>
-                      Site: &nbsp; <strong> {{isolate.SiteCode}}</strong>
-                  </td>
-                  <td style="text-align: center;">{{isolate.Date_of_Entry|date:"F, d, Y" }}</td>
-                  <td colspan="2">
-                      Encoder: &nbsp; <strong> {{isolate.arsp_Encoder}}</strong> <br>  
-                      Checker: &nbsp; <strong> {{isolate.arsp_Checker}}</strong> <br>
-                      Verifier: &nbsp; <strong> {{isolate.arsp_Verifier}}</strong> <br>
-                      Lab Manager: &nbsp; <strong> {{isolate.arsp_LabManager}}</strong> <br>
-                      Head: &nbsp; <strong> {{isolate.arsp_Head}}</strong> 
-                  </td>
-                  
-                <td class="text-center">
-                    <div class="btn-group btn-group-sm" role="group">
-                      <!-- <a href="{% url 'generate_pdf' isolate.id %}" class="btn btn-outline-info" title="Generate Lab Result PDF" target="_blank">
-                        <i class="fa fa-file-pdf"></i>
-                      </a> -->
-                                        
-                    <a href="{% url 'batch_edit_view' isolate.Batch_id.id %}"
-                          class="btn btn-outline-info"
-                          title="Edit Batch">
-                          <i class="fa fa-pencil-alt"></i>
-                        </a>
+            <li class="page-item active" style="pointer-events:none;">
+              <span class="page-link" style="background:#1e5a96;border-color:#1e5a96;color:#fff;border-radius:8px;width:auto;padding:0 12px;">
+                {{ page_obj.number }}
+              </span>
+            </li>
 
-                            
-                    </div>
-                  </td>
-
-                  </tr>
-                {% endfor %}
-               
-              
-              </tbody>
-            </table>
-          </div>
-          <!-- Card footer -->
-          <div class="card-footer py-4">
-            <nav aria-label="...">
-              <ul class="pagination justify-content-center mb-0">
-              <!-- Previous Page -->
-                      {% if page_obj.has_previous %}
-                      <li class="page-item active">
-                        <a class="page-link" href="?page=1" tabindex="-1">
-                          <i class="fas fa-angle-double-left"></i>
-                          <span class="sr-only">First</span>
-                        </a>
-                      </li>
-                      <li class="page-item active">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
-                          <i class="fas fa-angle-left"></i>
-                          <span class="sr-only">Previous</span>
-                        </a>
-                      </li>
-                    {% else %}
-                      <li class="page-item disabled">
-                        <a class="page-link" href="#" tabindex="-1">
-                          <i class="fas fa-angle-double-left"></i>
-                          <span class="sr-only">First</span>
-                        </a>
-                      </li>
-                      <li class="page-item disabled">
-                        <a class="page-link" href="#" tabindex="-1">
-                          <i class="fas fa-angle-left"></i>
-                          <span class="sr-only">Previous</span>
-                        </a>
-                      </li>
-                    {% endif %}
-
-                    <!-- Current Page -->
-                    <!-- <li class="page-item active"> -->
-                     <!-- <p>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</p> -->
-                      <!-- <a class="page-link" href="#">{{ page_obj.number }}</a> -->
-                    <!-- </li> -->
-
-
-                    <!-- Next Page -->
-                    {% if page_obj.has_next %}
-                      <li class="page-item active" >
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">
-                          <i class="fas fa-angle-right"></i>
-                          <span class="sr-only">Next</span>
-                        </a>
-                      </li>
-                      <li class="page-item active">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">
-                          <i class="fas fa-angle-double-right"></i>
-                          <span class="sr-only">Last</span>
-                        </a>
-                      </li>
-                    {% else %}
-                      <li class="page-item disabled">
-                        <a class="page-link" href="#">
-                          <i class="fas fa-angle-right"></i>
-                          <span class="sr-only">Next</span>
-                        </a>
-                      </li>
-                      <li class="page-item disabled">
-                        <a class="page-link" href="#">
-                          <i class="fas fa-angle-double-right"></i>
-                          <span class="sr-only">Last</span>
-                        </a>
-                      </li>
-                    {% endif %}
-                </ul>
-                    <!-- Current Page -->
-                    <div class="d-flex justify-content-center mb-0" style="margin-top: 15px;">
-                      <div class="row ">
-                      <a href="#" style="font-size: small; text-align: center;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</a>
-                      </div>
-                  </div>
-            </nav>
-          </div>
-        </div>
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}" title="Next"><i class="fas fa-angle-right"></i></a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" title="Last"><i class="fas fa-angle-double-right"></i></a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><a class="page-link" href="#"><i class="fas fa-angle-right"></i></a></li>
+              <li class="page-item disabled"><a class="page-link" href="#"><i class="fas fa-angle-double-right"></i></a></li>
+            {% endif %}
+          </ul>
+        </nav>
       </div>
     </div>
-  
-  </div>
+
+  </div><!-- /content-area -->
+</div><!-- /page-wrapper -->
 
 
+<!-- ── Delete Confirmation Modal ── -->
 <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h6 class="modal-title" id="deleteModalLabel" >Delete Confirmation</h6>
+  <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+    <div class="modal-content" style="border-radius:12px; overflow:hidden; border:none;">
+      <div class="modal-header" style="padding: 1rem 1.5rem;">
+        <h6 class="modal-title" id="deleteModalLabel">
+          <i class="fa fa-exclamation-triangle mr-2"></i>Confirm Delete
+        </h6>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+          <span aria-hidden="true" style="color:rgba(255,255,255,0.8);">&times;</span>
         </button>
       </div>
-      <div class="modal-body">
-       <h3 style="color: blue;"> Are you sure you want to delete this record ?</h3>
+      <div class="modal-body" style="padding: 2rem 1.5rem 1.5rem;">
+        <div class="delete-confirm-icon">
+          <i class="fa fa-trash"></i>
+        </div>
+        <div class="delete-confirm-text">Delete this record?</div>
+        <div class="delete-confirm-sub">This action cannot be undone.</div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
-         
+      <div class="modal-footer" style="border-top: 1px solid #f0f2f7; padding: 0.75rem 1.5rem;">
+        <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">
+          <i class="fa fa-times mr-1"></i>Cancel
+        </button>
+        <button type="button" class="btn btn-sm btn-danger" id="confirmDelete">
+          <i class="fa fa-trash mr-1"></i>Delete
+        </button>
       </div>
     </div>
   </div>
@@ -312,37 +794,32 @@ td a:hover {
 
 {% endblock content %}
 
-<!-- Specific JS goes HERE --> 
 {% block javascripts %}
-
 <script>
   $(document).ready(function(){
-      var deleteUrl; 
-      $('.delete-btn').on('click', function(){
-          deleteUrl = $(this).data('url');
-          
-      });
-  
-      $('#confirmDelete').on('click', function(){
-          window.location.href = deleteUrl;
-      });
-  });
-  </script>
-
-<!-- for search bar -->
-<script>
-  function searchTable() {
-    var input = document.querySelector("#search-input input");
-    var filter = input.value.toLowerCase();
-    var table = document.querySelector("table");
-    var rows = table.querySelectorAll("tbody tr");
-
-    rows.forEach(row => {
-      var text = row.textContent.toLowerCase();
-      row.style.display = text.includes(filter) ? "" : "none";
+    var deleteUrl;
+    $('.delete-btn').on('click', function(){
+      deleteUrl = $(this).data('url');
     });
-  }
+    $('#confirmDelete').on('click', function(){
+      window.location.href = deleteUrl;
+    });
+  });
 </script>
 
-
+<script>
+  function searchTable(input) {
+    var filter = input.value.toLowerCase();
+    var rows = document.querySelectorAll('#batch-table tbody tr');
+    var visible = 0;
+    rows.forEach(function(row) {
+      var text = row.textContent.toLowerCase();
+      var show = text.includes(filter);
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    var countEl = document.getElementById('visible-count');
+    if (countEl) countEl.textContent = visible;
+  }
+</script>
 {% endblock javascripts %}

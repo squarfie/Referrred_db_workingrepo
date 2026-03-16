@@ -1,0 +1,192 @@
+{% load static %}
+{% load widget_tweaks %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+{% endblock stylesheets %}
+
+{% block settings_content %}
+
+<!-- SAFE TAB PARTIAL: CONTENT ONLY -->
+
+<div class="card shadow-sm">
+
+  <!-- HEADER -->
+<div class="card-header d-flex justify-content-between align-items-center"
+     style="background: linear-gradient(135deg, #f3f8ff 0%, #e4efff 100%);
+            border-bottom: 2px solid #d6e4ff;">
+
+  <h5 class="card-title mb-0">
+    <i class="fas fa-clock mr-2 text-primary"></i>
+    Add TAT Step Configuration
+  </h5>
+
+  <div class="d-flex align-items-center gap-2">
+
+    <!-- Upload Button -->
+    <button type="button"
+            class="btn btn-sm btn-success mr-2"
+            data-toggle="modal"
+            data-target="#UploadTatConfigModal">
+      <i class="fas fa-file-upload mr-1"></i> Upload
+    </button>
+
+    <!-- View All -->
+    <a href="{% url 'tat_step_config_list' %}" class="btn btn-sm btn-primary">
+      <i class="fas fa-table mr-1"></i> View All
+    </a>
+
+  </div>
+
+</div>
+
+
+  <!-- BODY -->
+  <div class="card-body">
+
+    <form method="POST"
+          action="{% if editing %}
+                    {% url 'edit_tat_step_config' config.id %}
+                  {% else %}
+                    {% url 'add_tat_step_config' %}
+                  {% endif %}"
+          id="tatStepConfigForm">
+
+      {% csrf_token %}
+
+      <!-- FORM FIELDS -->
+      <div class="row">
+
+        <div class="col-md-6 mb-3">
+          <label>
+            <i class="fas fa-tasks mr-1"></i> Step Type
+          </label>
+          {{ tat_config_form.step_type|add_class:"form-control"|attr:"placeholder:Enter step name (ex. Encoding)" }}
+          <small class="helper-text">
+            Define the process step name used in TAT monitoring.
+          </small>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>
+            <i class="fas fa-user-tag mr-1"></i> Step Owner
+          </label>
+          {{ tat_config_form.step_owner|add_class:"form-control" }}
+          <small class="helper-text">
+            Choose whether this step belongs to LAB or DMU.
+          </small>
+        </div>
+
+      </div>
+
+      <div class="row">
+
+        <div class="col-md-6 mb-3">
+          <label>
+            <i class="fas fa-hourglass-half mr-1"></i> Target Days
+          </label>
+          {{ tat_config_form.target_days|add_class:"form-control"|attr:"placeholder:Enter allowed days" }}
+          <small class="helper-text">
+            Maximum allowed processing days before considered OUT OF TAT.
+          </small>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>
+            <i class="fas fa-sort-numeric-down mr-1"></i> Display Order
+          </label>
+          {{ tat_config_form.order|add_class:"form-control"|attr:"placeholder:Enter step order number" }}
+          <small class="helper-text">
+            Controls ordering of steps in reports and UI.
+          </small>
+        </div>
+
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+
+        <button type="submit" class="btn btn-primary px-4">
+          <i class="fas fa-save mr-2"></i> Save Configuration
+        </button>
+
+        <button type="button"
+                class="btn btn-success px-4"
+                onclick="refreshForm()">
+          <i class="fas fa-eraser mr-2"></i> Clear
+        </button>
+
+        <button type="button"
+                class="btn btn-secondary px-4"
+                onclick="history.back()">
+          <i class="fas fa-arrow-left mr-2"></i> Back
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+
+<!-- UPLOAD MODAL -->
+<div class="modal fade" id="UploadTatConfigModal" tabindex="-1">
+  <form method="POST"
+        action="{% url 'upload_tat_step_config' %}"
+        enctype="multipart/form-data"
+        onsubmit="return confirm('⚠️ This will replace all existing TAT Step Configurations. Continue?');">
+
+    {% csrf_token %}
+
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="border-top:4px solid #4caf50;">
+
+        <div class="modal-header"
+             style="background: linear-gradient(135deg,#f3f8ff 0%,#e4efff 100%);
+                    border-bottom:2px solid #d6e4ff;">
+
+          <h5 class="modal-title">
+            <i class="fas fa-file-upload mr-2"></i> Upload TAT Step Configuration
+          </h5>
+
+          <button type="button" class="close" data-dismiss="modal">
+            <span>&times;</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          {{ tat_upload_form.tat_file }}
+          <small class="text-muted">
+            Required columns: step_type, step_owner, target_days, order
+          </small>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-success">
+            Upload
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </form>
+</div>
+
+
+
+<script>
+function refreshForm() {
+  if (confirm('Clear all fields?')) {
+    document.getElementById("tatStepConfigForm").reset();
+  }
+}
+</script>
+
+{% endblock settings_content %}

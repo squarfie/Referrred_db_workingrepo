@@ -60,7 +60,7 @@ th.sortable.sorted::after {
                         <i class="ni ni-archive-2"></i> Batch Review
                     </h1>
                     <p class="mb-0">
-                        Review or delete batches with blank records. 
+                        Review and delete batches or view TAT Compliance. 
                     </p>
                 </div>
                 <form method="get" class="mb-3">
@@ -87,6 +87,15 @@ th.sortable.sorted::after {
                     <button class="btn btn-sm btn-secondary" onclick="history.back()">
                         <i class="fas fa-arrow-left mr-1"></i> Back
                     </button>
+                    <a href="{% url 'delete_blank_batches' %}"
+                          class="btn btn-danger btn-sm"
+                          onclick="return confirm('Delete blank batches and related records? This cannot be undone.')">
+                          <i class="fa fa-trash"></i>&nbsp; Delete Blank
+                        </a>
+                      <a href="{% url 'export_tat_excel' %}" class="btn btn-sm btn-success shadow-sm">
+                        <i class="fa fa-bell" aria-hidden="true"></i>&nbsp; TAT Report
+                            </a>
+          
                 </div>
 <div class="card-header d-flex justify-content-between align-items-start flex-wrap gap-2">
 
@@ -147,6 +156,7 @@ th.sortable.sorted::after {
                                     <th class="text-white">Accession</th>
                                     <th class="text-white">Final Copy</th>
                                     <th class="text-white">Actions</th>
+
                                 </tr>
                             </thead>
                             <tbody class="text-center">
@@ -206,7 +216,13 @@ th.sortable.sorted::after {
                                             <i class="fa fa-trash"></i> Delete
                                         </a>
                                     </td>
-                                    {% endif %}
+                                      {% else %}
+                                    <td>
+                                        <span class="text-muted">&nbsp;</span>
+                                    </td>
+                                  {% endif %}
+                                  
+
                                 </tr>
                                 {% empty %}
                                 <tr>
@@ -215,7 +231,8 @@ th.sortable.sorted::after {
                                         No blank records found.
                                     </td>
                                 </tr>
-                                {% endfor %}
+
+                            {% endfor %}
                             </tbody>
                         </table>
                     </div>

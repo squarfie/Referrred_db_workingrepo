@@ -1,6 +1,7 @@
 from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 
+from apps.home_final.views import regenerate_concordance_snapshot
 from apps.home_final.models import Final_AntibioticEntry, Final_Data, Classification_Table, Emerging_Table
 from .models import *
 import re
@@ -125,7 +126,7 @@ def update_ris_interpretation(sender, instance, **kwargs):
     is_disk = breakpoint_entry.Disk_Abx if breakpoint_entry else False
 
     # Update ab_Disk_RIS
-    print(f"{instance.ab_Antibiotic}: MIC={instance.ab_MIC_value}, Disk={instance.ab_Disk_value}, Retest={instance.ab_Retest_DiskValue},Retest={instance.ab_Retest_MICValue},"
+    print(f"{instance.ab_Antibiotic} : MIC={instance.ab_MIC_value}, Disk={instance.ab_Disk_value}, Retest-{instance.ab_Retest_Antibiotic} : Retest-DISK={instance.ab_Retest_DiskValue}, Retest-MIC={instance.ab_Retest_MICValue},"
       f"R={instance.ab_R_breakpoint}, I={instance.ab_I_breakpoint}, S={instance.ab_S_breakpoint}, SDD={instance.ab_SDD_breakpoint}")
     
     disk_ris = determine_ris(instance.ab_Disk_value, instance.ab_R_breakpoint, instance.ab_I_breakpoint, instance.ab_S_breakpoint, instance.ab_SDD_breakpoint, is_disk=is_disk)
@@ -374,6 +375,9 @@ def update_emerging_abx_flags(sender, instance, **kwargs):
             triggered_codes.append(entry.ab_Retest_Abx_code)
             triggered_phenotypes.append(ris)
 
+    if not Final_Data.objects.filter(pk=final.pk).exists():
+        return
+
     emerging_obj, _ = Emerging_Table.objects.get_or_create(
         eme_primary_key=final
     )
@@ -421,6 +425,8 @@ def update_emerging_spec_flag(sender, instance, **kwargs):
         spec_flag = bool(specimen.Emerging_Spec_Flag)
         spec_code = specimen.Specimen_code
 
+    
+
     emerging_obj, _ = Emerging_Table.objects.get_or_create(
         eme_primary_key=instance
     )
@@ -440,6 +446,25 @@ def update_emerging_spec_flag(sender, instance, **kwargs):
     emerging_obj.save()
 
 
-@receiver(post_delete, sender=Final_AntibioticEntry)
-def recalc_emerging_on_delete(sender, instance, **kwargs):
-    update_emerging_abx_flags(sender, instance)
+
+@receiver(post_save, sender=Final_Data)
+def auto_update_snapshot_on_final_data_save(sender, instance, **kwargs):
+    regenerate_concordance_snapshot(instance)
+
+
+@receiver(post_save, sender=Final_AntibioticEntry)
+def auto_update_snapshot_on_antibiotic_save(sender, instance, **kwargs):
+    regenerate_concordance_snapshot(instance.ab_idNum_f_referred)
+
+
+@receiver(post_delete, sender=Final_Data)
+def delete_concordance_when_final_deleted(sender, instance, **kwargs):
+    """
+    If a Final_Data record is deleted,
+    delete the ConcordanceReport for that batch.
+    """
+
+    batch = instance.f_Batch_id
+
+    if batch:
+        ConcordanceReport.objects.filter(batch=batch).delete()

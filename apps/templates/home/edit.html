@@ -57,6 +57,18 @@ label.form-control-label{
   letter-spacing: 1px;
 }
 
+/* Make retest tables more compact */
+.compact-table td,
+.compact-table th {
+  padding: 6px 8px !important;
+  vertical-align: middle;
+}
+
+.compact-table .form-control-sm {
+  height: 28px !important;
+  padding: 2px 6px !important;
+  font-size: 0.85rem;
+}
 
 </style>
 {% endblock stylesheets %}
@@ -413,8 +425,14 @@ label.form-control-label{
                                <div class="col-lg-3">
                               <div class="form-group">
                                 <label class='form-control-label' for="id_Site_Org">Organism Code</label> {{form.Site_Org| append_attr:"class: form-control" }}
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary mt-1"
+                                        onclick="resetOrganismSection(false)">
+                                  Reset Organism
+                                </button>
                               </div>
                             </div>
+                            
                             <div class="col-lg-3">
                               <div class="form-group">
                                 <label class='form-control-label' for='Site_OrgName'>Organism Name</label> {{form.Site_OrgName| append_attr:"class: form-control" }}
@@ -465,8 +483,8 @@ label.form-control-label{
         <div class="card border-info mb-3">
           <div class="card-body text-info">
             <!-- edit this -->
-            <div class="table-responsive" style="max-height: 500px; overflow-y: auto; "> 
-              <table class="table align-items-center text-center table-sm" style="width: 100%;">
+            <div class="table-responsive" style="max-height: 600px; overflow-y: auto; "> 
+              <table class="table align-items-center text-center table-sm compact-table" style="width: 100%;">
 
                 <thead class="thead-light">
                   <tr style="line-height: 15px;">
@@ -486,12 +504,15 @@ label.form-control-label{
                           <td>
                             <input name="disk_{{ entry.Whonet_Abx }}" 
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk' %}" 
-                                   type="number" min="0" style="width: 70px;">
+                                   type="number" min="0" style="width: 80px;" class="form-control form-control-sm text-center mx-auto">
                           </td>
                           <td>
                             <input name="disk_enris_{{ entry.Whonet_Abx }}" 
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk_enris' %}" 
-                                   type="text" style="width: 50px; text-align: center;" list="enris-options">
+                                   type="text" style="width: 70px; text-align: center; text-transform: uppercase;"
+                                    oninput="this.value = this.value.toUpperCase();"
+                                    maxlength="1"
+                                    list="enris-options" class="form-control form-control-sm text-center mx-auto">
                           </td>
                         
                         </tr>
@@ -512,15 +533,14 @@ label.form-control-label{
         <h6 class="heading-small text-muted mb-4">MIC RESULTS</h6>
         <div class="card border-info mb-3">
           <div class="card-body text-info">
-            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-              <table class="table align-items-center text-center table-sm" style="width: 100%;">
+            <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+              <table class="table align-items-center text-center table-sm compact-table" style="width: 100%;">
 
                 <thead class="thead-light">
                   <tr style="line-height: 15px;">
                     <th>ANTIBIOTIC</th>
                     <th>WHONET CODE</th>
-                    <th>OPERAND</th>
-                    <th>TEST RESULT</th>
+                    <th>OPERAND/TEST RESULT</th>
                     <th>RIS</th>
                     <th>ALERT MIC</th>
                   </tr>
@@ -533,19 +553,22 @@ label.form-control-label{
                           <td>{{ entry.Antibiotic }}</td>
                           <td>{{ entry.Whonet_Abx }}</td>
                           <td>
+                            <div class="d-flex justify-content-center align-items-center gap-2">
                             <input type="text" name="mic_operand_{{ entry.Whonet_Abx }}"
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_operand' %}"
-                                   style="width: 50px;">
-                          </td>
-                          <td>
+                                   style="width: 60px;" class="form-control form-control-sm text-center mx-auto">
                             <input name="mic_{{ entry.Whonet_Abx }}" 
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic' %}" 
-                                   type="number" min="0" step="0.001" style="width: 70px;">
+                                   type="number" min="0" step="0.001" style="width: 80px;" class="form-control form-control-sm text-center mx-auto">
+                          </div>
                           </td>
                           <td>
                             <input name="mic_enris_{{ entry.Whonet_Abx }}"
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_enris' %}" 
-                                   type="text" style="width: 50px; text-align: center;" list="enris-options">
+                                   type="text" style="width: 70px; text-align: center;text-transform: uppercase;"
+                                    oninput="this.value = this.value.toUpperCase();"
+                                    maxlength="1"
+                                    list="enris-options" class="form-control form-control-sm text-center mx-auto">
                           </td>
                           <td>
                             {% get_existing_value existing_entries entry.Whonet_Abx 'alert_mic' as alert_mic_checked %}
@@ -656,7 +679,12 @@ label.form-control-label{
                             <div class="col-lg-3">
                               <div class="form-group">
                                 <label class='form-control-label' for='id_ars_OrgCode'>Organism Code</label> {{form.ars_OrgCode| append_attr:"class: form-control" }}
-                              </div>
+                                <button type="button"
+                                      class="btn btn-sm btn-outline-secondary mt-1"
+                                      onclick="resetOrganismSection(true)">
+                                Reset Organism
+                              </button>
+                            </div>
                             </div>
                             <div class="col-lg-3">
                               <div class="form-group">
@@ -701,8 +729,8 @@ label.form-control-label{
       <h6 class="heading-small text-muted mb-4">RETEST - DISK DIFFUSION</h6>
       <div class="card border-info mb-3">
         <div class="card-body text-info">
-          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-            <table class="table align-items-center text-center table-sm" style="width: 100%;">
+          <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+            <table class="table align-items-center text-center table-sm compact-table" style="width: 100%;">
               <thead class="thead-light">
                 <tr style="line-height: 15px;">
                   <th scope="col">ANTIBIOTIC</th>
@@ -721,12 +749,15 @@ label.form-control-label{
                         <td>
                           <input name="retest_disk_{{ retest.Whonet_Abx }}" 
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk' %}"
-                                 type="number" min="0" style="width: 70px;">
+                                 type="number" min="0" style="width: 70px;" class="form-control form-control-sm text-center mx-auto">
                         </td>
                         <td>
                           <input name="retest_disk_enris_{{ retest.Whonet_Abx }}" 
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk_enris' %}"
-                                 type="text" style="width: 50px; text-align: center;" list="enris-options">
+                                 type="text" style="width: 70px; text-align: center;text-transform: uppercase;"
+                                    oninput="this.value = this.value.toUpperCase();"
+                                    maxlength="1"
+                                    list="enris-options" class="form-control form-control-sm text-center mx-auto">
                         </td>
                       </tr>
                     {% endif %}
@@ -746,14 +777,13 @@ label.form-control-label{
       <h6 class="heading-small text-muted mb-4">RETEST - MIC RESULTS</h6>
       <div class="card border-info mb-3">
         <div class="card-body text-info">
-          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-            <table class="table align-items-center text-center table-sm" style="width: 100%;">
+          <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+            <table class="table align-items-center text-center table-sm compact-table" style="width: 100%;">
               <thead class="thead-light">
                 <tr style="line-height: 15px;">
                   <th scope="col">ANTIBIOTIC</th>
                   <th scope="col">WHONET CODE</th>
-                  <th scope="col">OPERAND</th>
-                  <th scope="col">TEST RESULT</th>
+                  <th scope="col">OPERAND/TEST RESULT</th>
                   <th scope="col">RIS</th>
                   <th scope="col" style="width: 98px;">ALERT MIC</th>
                 </tr>
@@ -766,19 +796,23 @@ label.form-control-label{
                         <td>{{ retest.Antibiotic }}</td>
                         <td>{{ retest.Whonet_Abx }}</td>
                         <td>
+                          <div style="display:flex; gap:6px; align-items:center;">
                           <input name="retest_mic_operand_{{ retest.Whonet_Abx }}" 
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_operand' %}"
-                                 type="text" style="width: 50px;">
-                        </td>
-                        <td>
+                                 type="text" style="width: 60px;" class="form-control form-control-sm text-center mx-auto">
                           <input name="retest_mic_{{ retest.Whonet_Abx }}" 
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic' %}"
-                                 type="number" min="0" step="0.001" style="width: 70px;">
-                        </td>
+                                 type="number" min="0" step="0.001" style="width: 80px;" class="form-control form-control-sm text-center mx-auto">
+                          </div>
+                                </td>
+
                         <td>
                           <input name="retest_mic_enris_{{ retest.Whonet_Abx }}" 
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_enris' %}"
-                                 type="text" style="width: 50px; text-align: center;" list="enris-options">
+                                 type="text" style="width: 70px; text-align: center;text-transform: uppercase;"
+                                    oninput="this.value = this.value.toUpperCase();"
+                                    maxlength="1"
+                                    list="enris-options" class="form-control form-control-sm text-center mx-auto">
                         </td>
                         <td>
                           {% get_existing_value retest_entries retest.Whonet_Abx 'retest_alert_mic' as retest_alert_mic_checked %}
@@ -803,59 +837,68 @@ label.form-control-label{
   </div>
 </div>
 </div>
-<div class="pl-lg-12">
-<h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">CONFIRMATORY TEST RESULTS</h6>
- <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
-  <div class="row">
-     <div class="col-lg-12">
-   
-              <div class="row">
-            <div class="col-lg-6">
-                  <div class="form-group">
-                  <label class='form-control-label' style="text-align: center; font-size: large; margin-bottom: 0;"> ESBL</label>
-                  </div>
-            </div>
-              <div class="col-lg-3">
-                  <div class="form-group">
-                  <label class='form-control-label'style="text-align: center; font-size: large; margin-bottom:0">ampC</label> 
-                  </div>
-            </div>
-                <div class="col-lg-3">
-                  <div class="form-group">
-                  <label class='form-control-label' style="text-align: center; font-size: large; margin-bottom: 0;">MBL</label>
-                  </div>
-            </div>
-        </div>
-        <div class="row">
-          
-            <div class="col-lg-3">
-                  <div class="form-group">
-                  <label class='form-control-label' for='ars_ct_ctl'> CT/CTL</label> {{form.ars_ct_ctl| append_attr:"class: form-control"}}
-                  </div>
-            </div>
-              <div class="col-lg-3">
-                  <div class="form-group">
-                  <label class='form-control-label' for='ars_tz_tzl'> TZ/TZL</label> {{form.ars_tz_tzl| append_attr:"class: form-control"}}
-                  </div>
-            </div>
-            
-              <div class="col-lg-3">
-                  <div class="form-group">
-                  <label class='form-control-label' for='ars_cn_cni'>CN/CNI</label> {{form.ars_cn_cni| append_attr:"class: form-control"}}
-                  </div>
-            </div>
-                <div class="col-lg-3">
-                  <div class="form-group">
-                  <label class='form-control-label' for='ars_ip_ipi'> IP/IPI</label> {{form.ars_ip_ipi| append_attr:"class: form-control"}}
-                  </div>
-            </div>
-        </div>
-    
-     </div>
-  </div>
+<!-- CONFIRMATORY TEST RESULTS -->
+<div class="section-header">
+  <h5 class="heading-small text-muted  mb-4"> <span><i class="fas fa-check-circle"></i></span> &nbsp;CONFIRMATORY TEST RESULTS </h5> 
 </div>
 
+<div class="row">
+  <!-- ESBL Column -->
+  <div class="col-lg-6 mb-4">
+    <div class="card border-info">
+      <div class="card-header text-center" style="background: linear-gradient(135deg, #00bcd4 0%, #4fb4f7 100%); color: white;">
+        <h6 class="mb-0" style="font-size: 1rem; font-weight: 600; letter-spacing: 0.5px;">ESBL</h6>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-lg-6">
+            <div class="form-group">
+              <label class='form-control-label' for='ars_ct_ctl'>CT/CTL</label>
+              {{ form.ars_ct_ctl|append_attr:"class: form-control" }}
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <div class="form-group">
+              <label class='form-control-label' for='ars_tz_tzl'>TZ/TZL</label>
+              {{ form.ars_tz_tzl|append_attr:"class: form-control" }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <!-- ampC Column -->
+  <div class="col-lg-3 mb-4">
+    <div class="card border-info">
+      <div class="card-header text-center" style="background: linear-gradient(135deg, #00bcd4 0%, #4fb4f7 100%); color: white;">
+        <h6 class="mb-0" style="font-size: 1rem; font-weight: 600; letter-spacing: 0.5px;">ampC</h6>
+      </div>
+      <div class="card-body">
+        <div class="form-group mb-0">
+          <label class='form-control-label' for='ars_cn_cni'>CN/CNI</label>
+          {{ form.ars_cn_cni|append_attr:"class: form-control" }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MBL Column -->
+  <div class="col-lg-3 mb-4">
+    <div class="card border-info">
+      <div class="card-header text-center" style="background: linear-gradient(135deg, #00bcd4 0%, #4fb4f7 100%); color: white;">
+        <h6 class="mb-0" style="font-size: 1rem; font-weight: 600; letter-spacing: 0.5px;">MBL</h6>
+      </div>
+      <div class="card-body">
+        <div class="form-group mb-0">
+          <label class='form-control-label' for='ars_ip_ipi'>IP/IPI</label>
+          {{ form.ars_ip_ipi|append_attr:"class: form-control" }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
 
 
               <div class="pl-lg-12">
@@ -924,8 +967,8 @@ label.form-control-label{
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
-<!-- ================= BACK TO TOP ================= -->
 <script>
+  // back to top button functionality
 let mybutton = document.getElementById("myBtn");
 
 window.onscroll = function () {
@@ -942,7 +985,7 @@ function topFunction() {
 }
 </script>
 
-<!-- ================= AGE CALCULATOR ================= -->
+
 <script>
 function calculateAge() {
     const birthInput = document.getElementById('id_Date_Birth')?.value;
@@ -975,8 +1018,9 @@ document.getElementById('id_Date_Birth')?.addEventListener('change', calculateAg
 document.getElementById('id_Spec_Date')?.addEventListener('change', calculateAge);
 </script>
 
-<!-- ================= ORGANISM AUTOFILL ================= -->
+
 <script>
+  // fetch organism name based on code selection and auto-fill the name field
 document.addEventListener("DOMContentLoaded", function () {
 
     function bindOrganismAutofill(codeSelectId, nameInputId) {
@@ -1011,145 +1055,10 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<!-- ================= ANTIBIOTIC LOADER ================= -->
+
+
 <script>
-let antibioticsLoaded = {
-    site: true,   // already rendered by Django
-    ars: true     // already rendered by Django
-};
-
-function loadAntibiotics(org, retest = false) {
-    if (!org) return;
-
-    // Prevent reload unless explicitly forced
-    if (!retest && antibioticsLoaded.site) return;
-    if (retest && antibioticsLoaded.ars) return;
-
-    const isolateId = "{{ isolates.id }}";
-    const url = `/ajax/filter-antibiotics/?isolate_id=${isolateId}&org=${encodeURIComponent(org)}&retest=${retest ? 1 : 0}`;
-
-    fetch(url)
-        .then(res => res.json())
-        .then(data => {
-
-            const diskTbody = retest
-                ? document.getElementById("retest-disk-antibiotics")
-                : document.getElementById("disk-antibiotics");
-
-            const micTbody = retest
-                ? document.getElementById("retest-mic-antibiotics")
-                : document.getElementById("mic-antibiotics");
-
-            if (!diskTbody || !micTbody) return;
-
-            //  CLEAR ONLY WHEN RELOADING
-            diskTbody.innerHTML = "";
-            micTbody.innerHTML = "";
-
-            data.antibiotics.forEach(abx => {
-                const prefix = retest ? "retest_" : "";
-                const code = abx.whonet;
-
-                if (abx.is_disk) {
-                    diskTbody.insertAdjacentHTML("beforeend", `
-                        <tr>
-                            <td>${abx.name}</td>
-                            <td>${code}</td>
-                            <td>
-                                <input type="number"
-                                       name="${prefix}disk_${code}"
-                                       class="form-control form-control-sm"
-                                       style="width:70px; height: 10px">
-                            </td>
-                            <td>
-                                <input type="text"
-                                       name="${prefix}disk_enris_${code}"
-                                       list="enris-options"
-                                       class="form-control form-control-sm"
-                                       style="width:70px; text-align:center; height: 10px">
-                            </td>
-                        </tr>
-                    `);
-                } else {
-                    micTbody.insertAdjacentHTML("beforeend", `
-                        <tr>
-                            <td>${abx.name}</td>
-                            <td>${code}</td>
-                            <td>
-                                <input type="text"
-                                       name="${prefix}mic_operand_${code}"
-                                       class="form-control form-control-sm"
-                                       style="width:70px; height: 10px">
-                            </td>
-                            <td>
-                                <input type="number"
-                                       step="0.001"
-                                       name="${prefix}mic_${code}"
-                                       class="form-control form-control-sm"
-                                       style="width:70px; height: 10px">
-                            </td>
-                            <td>
-                                <input type="text"
-                                       name="${prefix}mic_enris_${code}"
-                                       list="enris-options"
-                                       class="form-control form-control-sm"
-                                       style="width:70px; text-align:center; height: 10px">
-                            </td>
-                            <td>
-                                <input type="checkbox"
-                                       name="${prefix}alert_mic_${code}"
-                                       style="transform: scale(1.5); margin:4px;">
-                            </td>
-                        </tr>
-                    `);
-                }
-            });
-
-            if (retest) antibioticsLoaded.ars = true;
-            else antibioticsLoaded.site = true;
-        })
-        .catch(err => console.error("Antibiotic load error:", err));
-}
-</script>
-
-
-
-<!-- ================= AUTO LOAD + CHANGE HANDLERS ================= -->
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-
-    const siteOrgField = document.getElementById("id_Site_Org");
-    const arsOrgField  = document.getElementById("id_ars_OrgCode");
-
-
-    // LOAD ONLY WHEN ORGANISM CHANGES
-    siteOrgField?.addEventListener("change", function () {
-        if (!this.value) return;
-
-        if (!confirm("Changing Organism will clear current entries. Continue?")) {
-            return;
-        }
-
-        antibioticsLoaded.site = false;   // 👈 reset
-        loadAntibiotics(this.value, false);
-    });
-
-    arsOrgField?.addEventListener("change", function () {
-        if (!this.value) return;
-
-        if (!confirm("Changing ARS Organism will clear current retest entries. Continue?")) {
-            return;
-        }
-
-        antibioticsLoaded.ars = false;
-        loadAntibiotics(this.value, true);
-    });
-});
-</script>
-
-
-<!-- ================= TAB SWITCH LOADER ================= -->
-<script>
+  // Load antibiotics for a given organism code and tab type
 $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
     const targetId = $(e.target).attr("href");
 
@@ -1167,6 +1076,7 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
 </script>
 
 <script>
+  // visual greeting and time updater
 function updateGreetingAndTime() {
   const now = new Date();
   const hours = now.getHours();
@@ -1228,6 +1138,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 <script>
+  // filter function for antibiotics in the main tab
 function filterAntibiotics() {
     const input = document.getElementById("antibioticSearchMain");
     const filter = input.value.toUpperCase();
@@ -1257,6 +1168,7 @@ function filterAntibiotics() {
 
 
 <script>
+  // filter function for antibiotics in the retest tab
 function filterRetestAntibiotics() {
     const input = document.getElementById("antibioticSearchRetest");
     const filter = input.value.toUpperCase();
@@ -1282,6 +1194,292 @@ function filterRetestAntibiotics() {
         }
     });
 }
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll("input[name^='mic_enris_']").forEach(function(input) {
+        if (input.value) {
+            input.value = input.value.toUpperCase();
+        }
+    });
+});
+</script>
+
+
+<script>
+
+// reset target cache - stores original server-rendered values for organism sections to allow reset without page reload
+// Baseline (server-rendered) reset target
+let originalSections = {
+    siteOrg: "",
+    siteOrgName: "",
+    diskTable: "",
+    micTable: "",
+    arsOrg: "",
+    arsOrgName: "",
+    retestDiskTable: "",
+    retestMicTable: ""
+};
+
+// Live typed values cache
+let antibioticDataCache = {
+    site: {},
+    ars: {}
+};
+
+let antibioticsLoaded = {
+    site: true,
+    ars: true
+};
+
+
+// ================= CAPTURE CURRENT VALUES =================
+function captureCurrentValues(retest = false) {
+
+    const scope = retest ? "ars" : "site";
+    const container = document.getElementById(
+        retest ? "retest-container" : "antibiotic-container"
+    );
+
+    if (!container) return;
+
+    antibioticDataCache[scope] = {};
+
+    container.querySelectorAll("input").forEach(input => {
+        if (!input.name) return;
+
+        if (input.type === "checkbox") {
+            antibioticDataCache[scope][input.name] = input.checked;
+        } else {
+            antibioticDataCache[scope][input.name] = input.value;
+        }
+    });
+}
+
+
+// ================= RESTORE CACHED VALUES =================
+function restoreCachedValues(retest = false) {
+
+    const scope = retest ? "ars" : "site";
+    const cache = antibioticDataCache[scope];
+
+    Object.entries(cache).forEach(([name, value]) => {
+        const input = document.querySelector(`input[name="${name}"]`);
+        if (!input) return;
+
+        if (input.type === "checkbox") {
+            input.checked = value;
+        } else {
+            input.value = value;
+        }
+    });
+}
+
+
+// ================= LOAD ANTIBIOTICS =================
+function loadAntibiotics(org, retest = false) {
+
+    if (!org) return;
+
+    if (!retest && antibioticsLoaded.site) return;
+    if (retest && antibioticsLoaded.ars) return;
+
+    captureCurrentValues(retest);
+
+    const isolateId = "{{ isolates.id }}";
+    const url = `/ajax/filter-antibiotics/?isolate_id=${isolateId}&org=${encodeURIComponent(org)}&retest=${retest ? 1 : 0}`;
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+
+            const diskTbody = document.getElementById(
+                retest ? "retest-disk-antibiotics" : "disk-antibiotics"
+            );
+
+            const micTbody = document.getElementById(
+                retest ? "retest-mic-antibiotics" : "mic-antibiotics"
+            );
+
+            if (!diskTbody || !micTbody) return;
+
+            diskTbody.innerHTML = "";
+            micTbody.innerHTML = "";
+
+            data.antibiotics.forEach(abx => {
+
+                const prefix = retest ? "retest_" : "";
+                const code = abx.whonet;
+
+                if (abx.is_disk) {
+
+                    diskTbody.insertAdjacentHTML("beforeend", `
+                        <tr>
+                            <td>${abx.name}</td>
+                            <td>${code}</td>
+                            <td>
+                                <input type="number"
+                                       name="${prefix}disk_${code}"
+                                       class="form-control form-control-sm text-center"
+                                       style="width:70px;">
+                            </td>
+                            <td>
+                                <input type="text"
+                                       name="${prefix}disk_enris_${code}"
+                                       class="form-control form-control-sm text-center"
+                                       style="width:70px;"
+                                       maxlength="1"
+                                       oninput="this.value=this.value.toUpperCase();">
+                            </td>
+                        </tr>
+                    `);
+
+                } else {
+
+                    micTbody.insertAdjacentHTML("beforeend", `
+                        <tr>
+                            <td>${abx.name}</td>
+                            <td>${code}</td>
+                            <td>
+                                <div style="display:flex; gap:6px;">
+                                    <input type="text"
+                                           name="${prefix}mic_operand_${code}"
+                                           class="form-control form-control-sm text-center"
+                                           style="width:60px;">
+                                    <input type="number"
+                                           name="${prefix}mic_${code}"
+                                           step="0.001"
+                                           class="form-control form-control-sm text-center"
+                                           style="width:80px;">
+                                </div>
+                            </td>
+                            <td>
+                                <input type="text"
+                                       name="${prefix}mic_enris_${code}"
+                                       class="form-control form-control-sm text-center"
+                                       style="width:70px;"
+                                       maxlength="1"
+                                       oninput="this.value=this.value.toUpperCase();">
+                            </td>
+                            <td>
+                                <input type="checkbox"
+                                       name="${prefix}alert_mic_${code}">
+                            </td>
+                        </tr>
+                    `);
+                }
+            });
+
+            restoreCachedValues(retest);
+
+            if (retest) antibioticsLoaded.ars = true;
+            else antibioticsLoaded.site = true;
+        });
+}
+
+
+// ================= RESET FUNCTION =================
+function resetOrganismSection(retest = false) {
+
+    if (!confirm("Reset organism and restore original antibiotics?")) return;
+
+    const scope = retest ? "ars" : "site";
+    antibioticDataCache[scope] = {}; // clear cache
+
+    if (!retest) {
+
+        document.getElementById("id_Site_Org").value =
+            originalSections.siteOrg;
+
+        document.getElementById("id_Site_OrgName").value =
+            originalSections.siteOrgName;
+
+        document.getElementById("disk-antibiotics").innerHTML =
+            originalSections.diskTable;
+
+        document.getElementById("mic-antibiotics").innerHTML =
+            originalSections.micTable;
+
+        antibioticsLoaded.site = true;
+
+    } else {
+
+        document.getElementById("id_ars_OrgCode").value =
+            originalSections.arsOrg;
+
+        document.getElementById("id_ars_OrgName").value =
+            originalSections.arsOrgName;
+
+        document.getElementById("retest-disk-antibiotics").innerHTML =
+            originalSections.retestDiskTable;
+
+        document.getElementById("retest-mic-antibiotics").innerHTML =
+            originalSections.retestMicTable;
+
+        antibioticsLoaded.ars = true;
+    }
+}
+
+
+// ================= INITIAL SNAPSHOT =================
+document.addEventListener("DOMContentLoaded", function () {
+
+    originalSections.siteOrg =
+        document.getElementById("id_Site_Org")?.value || "";
+
+    originalSections.siteOrgName =
+        document.getElementById("id_Site_OrgName")?.value || "";
+
+    originalSections.diskTable =
+        document.getElementById("disk-antibiotics")?.innerHTML || "";
+
+    originalSections.micTable =
+        document.getElementById("mic-antibiotics")?.innerHTML || "";
+
+    originalSections.arsOrg =
+        document.getElementById("id_ars_OrgCode")?.value || "";
+
+    originalSections.arsOrgName =
+        document.getElementById("id_ars_OrgName")?.value || "";
+
+    originalSections.retestDiskTable =
+        document.getElementById("retest-disk-antibiotics")?.innerHTML || "";
+
+    originalSections.retestMicTable =
+        document.getElementById("retest-mic-antibiotics")?.innerHTML || "";
+});
+
+
+// ================= ORGANISM CHANGE HANDLERS =================
+document.addEventListener("DOMContentLoaded", function () {
+
+    const siteOrgField = document.getElementById("id_Site_Org");
+    const arsOrgField  = document.getElementById("id_ars_OrgCode");
+
+    siteOrgField?.addEventListener("change", function () {
+        if (!this.value) return;
+
+        if (!confirm("Changing Organism will clear current entries. Continue?")) {
+            return;
+        }
+
+        antibioticsLoaded.site = false;
+        loadAntibiotics(this.value, false);
+    });
+
+    arsOrgField?.addEventListener("change", function () {
+        if (!this.value) return;
+
+        if (!confirm("Changing ARS Organism will clear current retest entries. Continue?")) {
+            return;
+        }
+
+        antibioticsLoaded.ars = false;
+        loadAntibiotics(this.value, true);
+    });
+
+});
+
 </script>
 
 

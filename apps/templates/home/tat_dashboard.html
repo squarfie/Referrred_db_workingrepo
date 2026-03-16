@@ -1,0 +1,972 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+
+<style>
+/* ========================================
+   ARSP DASHBOARD - MATCHING MAIN PAGE COLORS
+   Teal, Cyan, Blue, Orange Theme
+   ======================================== */
+
+.dashboard-wrapper {
+  background: linear-gradient(135deg, #0f1423 0%, #1a1f3a 50%, #1a2a4a 100%);
+  min-height: 100vh;
+  padding: 2rem 0;
+}
+
+/* Dashboard Header */
+.dashboard-header {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem 2.5rem;
+  border: 1px solid rgba(0, 188, 212, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  margin-top: 1rem;
+}
+
+.dashboard-title {
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0;
+  background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-title i {
+  background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dashboard-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.1rem;
+  margin: 0.5rem 0 0 0;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+
+.header-date {
+  background: rgba(0, 188, 212, 0.15);
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  color: #00bcd4;
+  font-weight: 600;
+  font-size: 1rem;
+  border: 1px solid rgba(0, 188, 212, 0.3);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+}
+
+.header-date i {
+  font-size: 1.2rem;
+}
+
+/* Responsive Header */
+@media (max-width: 768px) {
+  .dashboard-header {
+    padding: 1.5rem;
+  }
+  
+  .dashboard-header .d-flex {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .dashboard-title {
+    font-size: 1.75rem;
+  }
+  
+  .dashboard-subtitle {
+    font-size: 0.95rem;
+  }
+  
+  .header-date {
+    align-self: flex-start;
+  }
+}
+
+/* KPI Cards - Matching Main Page Color Scheme */
+.kpi-card {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem 1.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+  border: none;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: var(--card-gradient);
+  border-radius: 20px 20px 0 0;
+}
+
+.kpi-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(0, 188, 212, 0.3);
+}
+
+.kpi-icon-wrapper {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--card-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.kpi-card:hover .kpi-icon-wrapper {
+  transform: rotate(360deg) scale(1.1);
+}
+
+.kpi-icon-wrapper i {
+  font-size: 2rem;
+  color: white;
+}
+
+.kpi-number {
+  font-size: 3rem;
+  font-weight: 800;
+  background: var(--card-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+  line-height: 1;
+}
+
+.kpi-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #6c757d;
+  margin: 0;
+}
+
+/* Card Color Variants - Matching Main Page */
+.kpi-card.card-teal {
+  --card-gradient: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+}
+
+.kpi-card.card-cyan {
+  --card-gradient: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
+}
+
+.kpi-card.card-blue {
+  --card-gradient: linear-gradient(135deg, #5a85dd 0%, #4a6fa5 100%);
+}
+
+.kpi-card.card-orange {
+  --card-gradient: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+}
+
+/* Main Content Cards */
+.content-card {
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.content-card:hover {
+  box-shadow: 0 15px 50px rgba(0, 188, 212, 0.2);
+}
+
+.content-card-header {
+  background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
+  padding: 1.5rem 2rem;
+  border: none;
+  position: relative;
+}
+
+.content-card-header h5 {
+  color: white;
+  font-weight: 700;
+  font-size: 1.25rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.content-card-header .badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Compliance Circle - Cyan/Teal Theme */
+.compliance-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+}
+
+.compliance-circle-outer {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
+  padding: 8px;
+  box-shadow: 0 20px 60px rgba(0, 188, 212, 0.4);
+  margin-bottom: 2rem;
+  position: relative;
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+.compliance-circle-inner {
+  width: 100%;
+  height: 100%;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.compliance-percentage {
+  font-size: 4rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin: 0;
+}
+
+.compliance-label {
+  font-size: 0.9rem;
+  color: #6c757d;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.compliance-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+  padding: 0 2rem;
+}
+
+.stat-box {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 1.5rem;
+  border-radius: 16px;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: 1px solid #e3e6f0;
+}
+
+.stat-box:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 188, 212, 0.15);
+  border-color: #00bcd4;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #343a40;
+  margin: 0;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 0.5rem;
+}
+
+/* Process Performance Table */
+.process-table {
+  margin: 0;
+}
+
+.process-table thead {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.process-table thead th {
+  padding: 1.25rem 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #495057;
+  border: none;
+}
+
+.process-table tbody td {
+  padding: 1.25rem 1.5rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f3f5;
+  color: #495057;
+  font-weight: 500;
+}
+
+.process-table tbody tr {
+  transition: all 0.3s ease;
+}
+
+.process-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(0, 188, 212, 0.05) 0%, rgba(26, 188, 156, 0.05) 100%);
+  transform: scale(1.01);
+}
+
+.process-name {
+  font-weight: 700;
+  color: #343a40;
+  font-size: 1rem;
+}
+
+/* Badges - Matching Main Page Style */
+.custom-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+}
+
+.badge-count {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  color: #495057;
+  border: 1px solid #ced4da;
+}
+
+.badge-success-soft {
+  background: linear-gradient(135deg, #d4f4dd 0%, #b7f0c7 100%);
+  color: #0f5132;
+  border: 1px solid #b7f0c7;
+}
+
+.badge-danger-soft {
+  background: linear-gradient(135deg, #ffd4d4 0%, #ffb8b8 100%);
+  color: #721c24;
+  border: 1px solid #ffb8b8;
+}
+
+/* Progress Bar - Cyan/Teal Theme */
+.compliance-progress {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.progress-wrapper {
+  flex: 1;
+  max-width: 120px;
+  height: 10px;
+  background: #e9ecef;
+  border-radius: 50px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 50px;
+  transition: width 1s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.progress-success { background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%); }
+.progress-warning { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); }
+.progress-danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+.progress-empty { background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%); }
+
+.progress-text {
+  font-weight: 800;
+  font-size: 1rem;
+  min-width: 60px;
+  text-align: right;
+}
+
+.text-success-gradient {
+  background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-warning-gradient {
+  background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-danger-gradient {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Export Button - Cyan Theme */
+.btn-export {
+  background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
+  color: white;
+  border: none;
+  padding: 0.875rem 2.5rem;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 10px 30px rgba(0, 188, 212, 0.3);
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-export:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(0, 188, 212, 0.5);
+  color: white;
+  background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+}
+
+.btn-export i {
+  font-size: 1.2rem;
+}
+
+/* Detailed Records Table */
+.records-table {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.records-table thead {
+  background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.records-table thead th {
+  color: white;
+  padding: 1.25rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+}
+
+.records-table tbody td {
+  padding: 1.25rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.records-table tbody tr {
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.records-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(0, 188, 212, 0.05) 0%, rgba(26, 188, 156, 0.05) 100%);
+}
+
+.batch-code {
+  font-weight: 700;
+  color: #00bcd4;
+  font-size: 1rem;
+}
+
+.status-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+  min-width: 100px;
+  text-align: center;
+}
+
+.status-released {
+  background: linear-gradient(135deg, #d4f4dd 0%, #b7f0c7 100%);
+  color: #0f5132;
+  border: 1px solid #1abc9c;
+}
+
+.status-ongoing {
+  background: linear-gradient(135deg, #fff4e6 0%, #ffe0b3 100%);
+  color: #856404;
+  border: 1px solid #e67e22;
+}
+
+.status-overdue {
+  background: linear-gradient(135deg, #ffd4d4 0%, #ffb8b8 100%);
+  color: #721c24;
+  border: 1px solid #e74c3c;
+}
+
+.tat-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: inline-block;
+}
+
+.check-icon, .cross-icon {
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.check-icon {
+  color: #1abc9c;
+}
+
+.cross-icon {
+  color: #e74c3c;
+}
+
+tr:hover .check-icon {
+  transform: scale(1.2) rotate(360deg);
+}
+
+tr:hover .cross-icon {
+  transform: scale(1.2) rotate(-360deg);
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .compliance-circle-outer {
+    width: 180px;
+    height: 180px;
+  }
+  
+  .compliance-percentage {
+    font-size: 3rem;
+  }
+  
+  .compliance-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-wrapper {
+    padding: 1rem 0;
+  }
+  
+  .kpi-number {
+    font-size: 2.5rem;
+  }
+  
+  .compliance-circle-outer {
+    width: 150px;
+    height: 150px;
+  }
+  
+  .compliance-percentage {
+    font-size: 2.5rem;
+  }
+}
+</style>
+
+<div class="dashboard-wrapper">
+  <div class="container-fluid px-4">
+
+    <!-- ================= DASHBOARD HEADER ================= -->
+        <div class="d-flex justify-content-between align-items-center">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb bg-transparent mb-0">
+          <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i> Home</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'tat_analysis' %}"><i class="fas fa-chart-line"></i> TAT Analysis</a></li>
+        </ol>
+        </ol>
+      </nav>
+    </div>
+    <div class="dashboard-header mb-4">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="dashboard-title">
+            <i class="fas fa-chart-line me-3"></i>&nbsp;TAT Monitoring Dashboard
+          </h1>
+          <p class="dashboard-subtitle">Real-time Turnaround Time Performance Tracking</p>
+        </div>
+        <div class="header-date">
+          <i class="far fa-calendar-alt me-2"></i> &nbsp;
+          <span id="current-date"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= KPI CARDS ================= -->
+    <div class="row g-4 mb-4">
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card card-teal">
+          <div class="kpi-icon-wrapper">
+            <i class="fas fa-box"></i>
+          </div>
+          <div class="text-center">
+            <div class="kpi-number">{{ total_batches }}</div>
+            <p class="kpi-label">Total Batches</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card card-cyan">
+          <div class="kpi-icon-wrapper">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="text-center">
+            <div class="kpi-number">{{ released_batches }}</div>
+            <p class="kpi-label">Released</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card card-blue">
+          <div class="kpi-icon-wrapper">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="text-center">
+            <div class="kpi-number">{{ ongoing_batches }}</div>
+            <p class="kpi-label">Ongoing</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card card-orange">
+          <div class="kpi-icon-wrapper">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <div class="text-center">
+            <div class="kpi-number">{{ overdue_batches }}</div>
+            <p class="kpi-label">Overdue</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+        <div class="row g-4 mb-4">
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card card-blue">
+          <div class="kpi-icon-wrapper">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="text-center">
+            <div class="kpi-number">{{ total_isolates }}</div>
+            <p class="kpi-label">TOTAL ISOLATES</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card card-teal">
+          <div class="kpi-icon-wrapper">
+            <i class="fas fa-box"></i>
+          </div>
+          <div class="text-center">
+            <div class="kpi-number">{{ within_tat_pct }}%</div>
+            <p class="kpi-label">WITHIN TAT</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card card-cyan">
+          <div class="kpi-icon-wrapper">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="text-center">
+            <div class="kpi-number">{{avg_running_tat }}%</div>
+            <p class="kpi-label">AVERAGE TAT</p>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+
+    <!-- ================= COMPLIANCE AND PERFORMANCE ================= -->
+    <div class="row g-4 mb-4">
+
+      <!-- Compliance -->
+      <div class="col-lg-4">
+        <div class="content-card">
+          <div class="content-card-header">
+            <h5><i class="fas fa-chart-pie"></i> Overall Compliance</h5>
+          </div>
+          <div class="compliance-container">
+            <div class="compliance-circle-outer">
+              <div class="compliance-circle-inner">
+                <h1 class="compliance-percentage">{{ compliance_rate }}%</h1>
+                <p class="compliance-label">Compliant</p>
+              </div>
+            </div>
+
+            <div class="compliance-stats">
+              <div class="stat-box">
+                <h3 class="stat-number">{{ total_steps }}</h3>
+                <p class="stat-label">Total</p>
+              </div>
+              <div class="stat-box">
+                <h3 class="stat-number text-success">{{ steps_within }}</h3>
+                <p class="stat-label">Within</p>
+              </div>
+              <div class="stat-box">
+                <h3 class="stat-number text-danger">{{ steps_outside }}</h3>
+                <p class="stat-label">Outside</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Process Performance -->
+      <div class="col-lg-8">
+        <div class="content-card">
+          <div class="content-card-header">
+            <h5>
+              <i class="fas fa-tasks"></i> Process Performance
+              <span class="badge ms-auto">{{ process_summary|length }} Processes</span>
+            </h5>
+          </div>
+          <div class="table-responsive" style="max-height: 900px;">
+            <table class="table process-table">
+              <thead>
+                <tr>
+                  <th>PROCESS</th>
+                  <th class="text-center">TOTAL</th>
+                  <th class="text-center">WITHIN</th>
+                  <th class="text-center">OUTSIDE</th>
+                  <th class="text-center">COMPLIANCE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in process_summary %}
+                <tr>
+                  <td class="process-name">{{ p.config.step_type }}</td>
+                  <td class="text-center">
+                    <span class="custom-badge badge-count">{{ p.total }}</span>
+                  </td>
+                  <td class="text-center">
+                    <span class="custom-badge badge-success-soft">{{ p.within }}</span>
+                  </td>
+                  <td class="text-center">
+                    <span class="custom-badge badge-danger-soft">{{ p.outside }}</span>
+                  </td>
+                  <td class="text-center">
+                  <div class="compliance-progress">
+                      <div class="progress-wrapper">
+                          {% if p.rate > 0 %}
+                              <div class="progress-fill 
+                              {% if p.rate >= 90 %}
+                              progress-success
+                              {% elif p.rate >= 70 %}progress-warning
+                              {% else %}progress-danger
+                              {% endif %}" style="width: {{ p.rate }}%;"></div>
+                          {% else %}
+                              <div class="progress-fill progress-empty" style="width: 100%;"></div>
+                          {% endif %}
+                      </div>
+                      
+                      <span class="progress-text {% if p.rate >= 90 %}text-success-gradient{% elif p.rate >= 70 %}text-warning-gradient{% elif p.rate > 0 %}text-danger-gradient{% else %}text-muted{% endif %}">
+                          {{ p.rate }}%
+                      </span>
+                  </div>
+                                    </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= EXPORT BUTTON ================= -->
+    <div class="text-end mb-4">
+      <a href="{% url 'export_tat_excel' %}" class="btn-export">
+        <i class="fas fa-file-excel"></i>
+        <span>Export Full Report</span>
+      </a>
+    </div>
+
+  </div>
+
+  <!-- ================= DETAILED RECORDS ================= -->
+  <div class="container-fluid px-4 pb-5">
+    <div class="content-card">
+      <div class="content-card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-table"></i> Detailed TAT Records</h5>
+        <a href="{% url 'export_tat_excel' %}" class="btn btn-light btn-sm" style="border-radius: 50px; font-weight: 600;">
+          <i class="fas fa-download me-1"></i> Export
+        </a>
+      </div>
+      <div class="table-responsive" style="overflow-x: auto; max-height: 500px;">
+        <table class="table records-table">
+          <thead>
+            <tr>
+              <th>BATCH</th>
+              <th>SITE</th>
+              <th>ACCESSIONS</th>
+              <th>REFERRAL DATE</th>
+              <th>COMPLETION DATE</th>
+              <th>RUNNING TAT</th>
+              <th>STATUS</th>
+              {% for config in configs %}
+                <th class="text-center">{{ config.step_type|upper }} DAYS</th>
+                <th class="text-center">WITHIN</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for tat in tat_records %}
+            <tr>
+              <td class="batch-code">{{ tat.tat_Batch_Isolates.bat_Batch_Code }}</td>
+              <td>{{ tat.tat_SiteCode }}</td>
+            <td>
+                {{ tat.tat_Batch_Isolates.bat_RefNo|default:"-" }}
+            </td>
+              <td>{{ tat.tat_Referral_Date }}</td>
+              <td>{{tat.tat_Date_Released|default:"N/A"}}</td>
+
+              <td>
+                <span class="tat-badge 
+                  {% if tat.tat_Running_TAT > tat.tat_Target_Days %}
+                    status-overdue
+                  {% else %}
+                    status-released
+                  {% endif %}
+                ">
+                  {{ tat.tat_Running_TAT }} days
+                </span>
+              </td>
+              <td>
+                <span class="status-badge
+                  {% if tat.tat_Status_Release == 'Released' %}
+                    status-released
+                  {% elif tat.tat_Status_Release == 'Overdue' %}
+                    status-overdue
+                  {% else %}
+                    status-ongoing
+                  {% endif %}
+                ">
+                  {{ tat.tat_Status_Release }}
+                </span>
+              </td>
+
+              {% for config in configs %}
+                {% with tat.steps.all as steps %}
+                  {% for step in steps %}
+                    {% if step.step_config.id == config.id %}
+                      <td class="text-center">{{ step.step_days_count }}</td>
+                      <td class="text-center">
+                        {% if step.within_tat %}
+                          <i class="fas fa-check-circle check-icon"></i>
+                        {% elif step.within_tat == False %}
+                          <i class="fas fa-times-circle cross-icon"></i>
+                        {% else %}
+                          <span class="text-muted">-</span>
+                        {% endif %}
+                      </td>
+                    {% endif %}
+                  {% empty %}
+                    <td class="text-center text-muted">-</td>
+                    <td class="text-center text-muted">-</td>
+                  {% endfor %}
+                {% endwith %}
+              {% endfor %}
+
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Display current date
+document.addEventListener('DOMContentLoaded', function() {
+  const dateElement = document.getElementById('current-date');
+  if (dateElement) {
+    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+    const currentDate = new Date().toLocaleDateString('en-US', options);
+    dateElement.textContent = currentDate;
+  }
+});
+</script>
+
+{% endblock %}

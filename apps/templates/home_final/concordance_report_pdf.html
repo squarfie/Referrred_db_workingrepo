@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+<style>
+    body {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 12px;
+        line-height: 1.6;   /* Controls line spacing */
+}
+
+p {
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+    @page {
+        size: A4;
+        margin: 2.5cm 2cm 2.5cm 2cm;
+    }
+
+    .page-break {
+        page-break-after: always;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+    }
+
+    th, td {
+        border: 1px solid #000;
+    padding: 1.8px;
+    line-height: 0.8;
+    }
+
+    th {
+        background-color: #e6e6e6;
+    }
+
+    .section-title {
+        background-color: #d9d9d9;
+        font-weight: bold;
+    }
+
+    .no-border td {
+        border: none;
+    }
+
+    .signature-space {
+        margin-top: 60px;
+    }
+
+    .justify {
+    text-align: justify;
+}
+
+</style>
+
+</head>
+<body>
+<br>
+<br>
+<p class="small-space">
+  {{ now }}
+</p>
+<br>
+<br>
+<p>-- NAME OF RECIPIENT --</p>
+<p>-- DESIGNATION --</p>
+<p>{{ report.final_data.f_Site_Name }}</p>
+<p>-- ADDRESS --</p>
+<br>
+<br>
+<p> Dear (Name of Recipient),</p>
+<br>
+<p  class="justify">Please find attached confirmatory test results and summary of concordance report with legend 
+    sheet of your referred isolates that were sent to ARSRL dated {{ report.final_data.f_Referral_Date }} ({{ total_isolates }} isolates). 
+    As previously communicated to your good office, ARSP has set–up various parameters on your referred isolates by which you can objectively assess 
+    your results against that of ARSRL. We hope you will find these helpful for your laboratory.
+</p>
+<br>
+<p>Thank you for your continued support to the Antimicrobial Resistance Surveillance Program.</p>
+<br>
+<br>
+<p>Very truly yours,</p>
+<br>
+<p>SONIA B. SIA, MD</p>
+<p>Head, ARSRL </p>
+
+
+
+<div class="page-break"></div>
+
+<h2>Concordance Quality Report</h2>
+<br>
+<p><strong>Table 1:</strong> &nbsp;Summary Concordance Report</p>
+<table>
+    <tr>
+        <td style="width: 150%;"><strong>Sentinel Site</strong></td>
+        <td style="width: 100%;">{{ report.final_data.f_Site_Name }}</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td colspan="4"><strong>Date of Referral</strong></td>
+        <td colspan="8">{{ report.final_data.f_Referral_Date }}</td>
+        <td colspan="1"></td>
+    </tr>
+    <tr>
+        <td colspan="4"><strong>Accession Number</strong></td>
+        <td colspan="8">{{ refno }}</td>
+        <td colspan="1"></td>
+    </tr>
+</table>
+
+<!-- ====================== -->
+<!-- QUALITY OF REFERRAL -->
+<!-- ====================== -->
+
+<table>
+    <tr>
+        <th colspan="2" class="section-title">1. QUALITY OF REFERRAL</th>
+    </tr>
+    <tr>
+        <td>1.1 Number of Isolates</td>
+        <td>{{ report.total_isolates }}</td>
+    </tr>
+    <tr>
+        <td>1.2 Number of Nonviable Isolates</td>
+        <td>0</td>
+    </tr>
+    <tr>
+        <td>1.3 Number of Mixed Cultures</td>
+        <td>0</td>
+    </tr>
+    <tr>
+        <td>1.4 Number of Viable and Pure Isolates</td>
+        <td>{{ report.total_isolates }}</td>
+    </tr>
+</table>
+
+<!-- ====================== -->
+<!-- ORGANISM IDENTIFICATION -->
+<!-- ====================== -->
+
+<table>
+    <tr>
+        <th colspan="1" class="section-title">2. ORGANISM IDENTIFICATION</th>
+        <th>TARGET</th>
+        <th>Number</th>
+    </tr>
+    <tr>
+        <td>2.1 Concordant ID Genus Level</td>
+        <td>>=95%</td>
+        <td>{{ genus_rate }}%</td>
+    </tr>
+    <tr>
+        <td>2.2 Concordant ID Species Level</td>
+        <td>>=87%</td>
+        <td>{{ species_rate }}%</td>
+    </tr>
+    <tr>
+        <td>2.3 Different Identification</td>
+        <td></td>
+        <td>{{ different_org }}</td>
+    </tr>
+</table>
+
+<!-- ====================== -->
+<!-- AST RESULTS -->
+<!-- ====================== -->
+
+<table>
+    <tr>
+        <th colspan="1" class="section-title">3. AST RESULTS</th>
+        <th>TARGET</th>
+        <th>Number</th>
+    </tr>
+    <tr>
+        <td>3.1 Total Number of AST pairs analyzed</td>
+        <td></td>
+        <td>{{ report.total_pairs }}</td>
+    </tr>
+    <tr>
+        <td>3.2 Concordant AST Results</td>
+        <td></td>
+        <td>{{ report.concordant_pairs }}</td>
+    </tr>
+    <tr>
+        <td>A – Very Major Deviations</td>
+        <td></td>
+        <td>{{ report.vmd }}</td>
+    </tr>
+    <tr>
+        <td>B – Major Deviations</td>
+        <td></td>
+        <td>{{ report.md }}</td>
+    </tr>
+    <tr>
+        <td>C – Minor Deviations</td>
+        <td></td>
+        <td>{{ report.minor }}</td>
+    </tr>
+    <tr>
+        <td>3.4 Critical Deviations</td>
+        <td><=5%</td>
+        <td>{{ vmd_rate }}%</td>
+    </tr>
+    <tr>
+        <td>3.5 Total Deviations</td>
+        <td><=10%</td>
+        <td>{{ total_deviation_rate }}%</td>
+    </tr>
+</table>
+
+<p class="small-space">
+    Date Now: {{ now }}
+</p>
+
+<div class="page-break"></div>
+
+</body>
+
+</html>

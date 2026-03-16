@@ -6,40 +6,41 @@
 <meta charset="UTF-8">
 <title>ARSRL Report</title>
 <style>
+
 @page {
-    size: A4 portrait;
+    size: Legal portrait;
     margin: 0.7cm;
-    margin-bottom: auto;
 }
 
 body {
     font-family: Calibri, Trebuchet MS, sans-serif;
-    margin-bottom: 20pt;
+    margin-bottom: 0;
     margin-top: 0;
 }
 
 
 .print-footer {
     position: fixed;
-    bottom: 0; 
+    bottom: 0;
     left: 0;
     right: 0;
     width: 100%;
+    background: #fff;      /* prevents content bleed-through */
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
-    table-layout: fixed;
+    /* table-layout: fixed; */
     margin-top: 0;
 }
 
 th, td {
     border: 0.6px solid #000;
-    font-size: 9px;
+    font-size: 10px !important;
     text-align: center;
     vertical-align: middle;
-    padding: 1.8px;
+    padding: 1.5px;
     line-height: 0.8;
 }
 
@@ -53,9 +54,28 @@ th, td {
 }
 
 .abx-col {
-    width: 24px;
-    min-width: 24px;
-    max-width: 24px;
+    white-space: normal;   
+    width: 25.2px;
+    min-width: 25.2px;
+    max-width: 25.2px;
+    font-size: 9px;
+    vertical-align: middle;
+    height: auto !important;
+}
+
+.abx-inner {
+    white-space: normal;      /* allows wrapping */
+    word-break: break-all;    /* allows breaking long values */
+    overflow-wrap: break-word;
+    vertical-align: middle;
+    font-size: 9px;
+    font-weight: bold;
+    line-height: auto !important;
+}
+
+
+tr {
+    height: auto !important;
 }
 
 .page-break {
@@ -76,6 +96,8 @@ th, td {
     font-size: 8px;
 
 }
+
+
 </style>
 </head>
 <body>
@@ -92,13 +114,13 @@ th, td {
                 <p>Logo not available</p>
                 {% endif %}
             </th>
-            <th style="padding-left: 5px; text-align: left; font-size: 10px;" colspan="18">
+            <th style="padding-left: 5px; text-align: left; font-size: 10px;" colspan="28">
                 <p style="text-align: center;">
                 <strong>Research Institute for Tropical Medicine - Department of Health</strong>
                 <br><strong>Antimicrobial Resistance Surveillance Reference Laboratory</strong>
-                <br><span style="font-size: 8px;">9002 Research Drive, Filinvest Corporate City, Alabang, Muntinlupa City 1781 Philippines</span> 
-                <br><span style="font-size: 8px;">T: (632) 809-9763 / 807-2628 to 32 loc. 243 | F: (632) 809-9763</span>
-                <br><span style="font-size: 8px;"><a href="http://www.ritm.gov.ph/"><strong>www.ritm.gov.ph</strong></a> <strong>| ISO 9001:2008 Certified</strong></span>
+                <br><span style="font-size: 9px;">9002 Research Drive, Filinvest Corporate City, Alabang, Muntinlupa City 1781 Philippines</span> 
+                <br><span style="font-size: 9px;">T: (632) 809-9763 / 807-2628 to 32 loc. 243 | F: (632) 809-9763</span>
+                <br><span style="font-size: 9px;"><a href="http://www.ritm.gov.ph/"><strong>www.ritm.gov.ph</strong></a> <strong>| ISO 9001:2008 Certified</strong></span>
                 </p>
             </th>
             <th colspan="7">
@@ -144,11 +166,11 @@ th, td {
 
 <tr>
     <td colspan="6" style="border-right: 0; text-align: left; font-size: 9px;">Ad Date: <strong><br>{{isolate.f_Date_Admis|date:"d-M-Y"|default:""}}</strong></td>
-    <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 9px;">Ward: <strong>{{isolate.f_Ward|default:""}}</strong></td>
+    <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 10px;">Ward: <strong>{{isolate.f_Ward|default:""}}</strong></td>
     <td colspan="6" style="border-left: 0; border-right: 0; text-align: left; font-size: 9px;">Sp No: <strong>{{isolate.f_Spec_Num|default:""}}</strong></td>
     <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 9px;">Sp Date: <strong>{{isolate.f_Spec_Date|date:"d-M-Y"|default:""}}</strong></td>
-    <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 9px;">Sp Type: <strong>{{isolate.f_Spec_Type|default:""}}</strong></td>
-    <td colspan="3" style="border-left: 0; text-align: left; font-size: 9px;">Reason: <strong>{{isolate.f_Reason|default:""}}</strong></td>
+    <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 10px;">Sp Type: <strong>{{isolate.f_Spec_Type|default:""}}</strong></td>
+    <td colspan="3" style="border-left: 0; text-align: left; font-size: 10px;">Reason: <strong>{{isolate.f_Reason|default:""}}</strong></td>
 </tr>
 
 <tr>
@@ -164,8 +186,8 @@ th, td {
             <strong><i>No Organism Identified</i></strong>
         {% endif %}
     </td>
-    <td colspan="6">{{ isolate.f_Site_Pre|default:"" }}</td>
-    <td colspan="6">{{ isolate.f_Site_Pos|default:"" }}</td>
+    <td colspan="6">{%if isolate.f_Site_Pre %}{{ isolate.f_Site_Pre|default:"" }} {% else %} &nbsp; {% endif %}</td>
+    <td colspan="6">{% if isolate.f_Site_Pos%}{{ isolate.f_Site_Pos|default:"" }} {% else%} &nbsp; {% endif %}</td>
     <td colspan="10" style="border-top: 0;">{{isolate.f_Comments|default:""}}</td>
 </tr>
 
@@ -180,10 +202,10 @@ th, td {
 <tr>
 {% for abx, data in row %}
     {% if forloop.first %}
-        <th>&nbsp;</th>
-        <th class="abx-col">{{ abx }}</th>
+        <th style="background-color: #ebe7e7;">&nbsp;</th>
+        <th class="abx-col" style="background-color: #ebe7e7;">{{ abx }}</th>
     {% else %}
-        <th class="abx-col">{{ abx }}</th>
+        <th class="abx-col" style="background-color: #ebe7e7;">{{ abx }}</th>
     {% endif %}
 {% endfor %}
 {% with abx_count=row|length %}
@@ -196,9 +218,21 @@ th, td {
 </tr>
 
 <tr>
-<td style="font-size: 8px;">DISK</td>
+<td style="font-size: 9px;" rowspan="2">DISK</td>
 {% for abx, data in row %}
-    <td class="abx-col" style="font-size: 7px; font-weight: bold;">{{data.disk.ab_Disk_value|default:""}} {{ data.disk.ab_Disk_enRIS}}</td>
+    <td class="abx-col" style="font-size: 9px; font-weight: bold;">{% if data.disk.ab_Disk_value %} {{data.disk.ab_Disk_value}} {%else %} <span>&nbsp;</span>{% endif%}</td>
+{% endfor %}
+{% with abx_count=row|length %}
+{% for i in "x"|rjust:29 %}
+    {% if forloop.counter > abx_count %}
+        <td class="abx-col"> &nbsp;</td>
+    {% endif %}
+{% endfor %}
+{% endwith %}
+</tr>
+<tr>
+{% for abx, data in row %}
+    <td class="abx-col" style="font-size: 9px; font-weight: bold;">{% if data.disk.ab_Disk_enRIS %}{{ data.disk.ab_Disk_enRIS}} {% else%} <span>&nbsp;</span>{% endif %}</td>
 {% endfor %}
 {% with abx_count=row|length %}
 {% for i in "x"|rjust:29 %}
@@ -210,12 +244,33 @@ th, td {
 </tr>
 
 <tr>
-<td style="font-size: 8px;">MIC</td>
+<td style="font-size: 9px;" rowspan="2">MIC</td>
 {% for abx, data in row %}
-    <td class="abx-col mic" style="font-size: 7px; font-weight: bold;">
-        {{ data.mic.ab_MIC_operand }}
-        {{ data.mic.ab_MIC_value|floatformat:"-2"|default:"" }}
-        {{ data.mic.ab_MIC_enRIS}}
+<td class="abx-col mic">
+    <div class="abx-inner">
+    {{ data.mic.ab_MIC_operand|default:"" }} 
+     
+    {% if data.mic.ab_MIC_value %}
+    {{ data.mic.ab_MIC_value|floatformat:"-2"|default:"" }}
+    {% else %}
+    <span>&nbsp;</span>
+    {% endif %}
+    </div>
+</td>
+{% endfor %}
+{% with abx_count=row|length %}
+{% for i in "x"|rjust:29 %}
+    {% if forloop.counter > abx_count %}
+        <td class="abx-col mic">&nbsp;</td>
+    {% endif %}
+{% endfor %}
+{% endwith %}
+</tr>
+
+<tr>
+{% for abx, data in row %}
+    <td class="abx-col mic" style="font-size: 9px; font-weight: bold;">
+      {% if data.mic.ab_MIC_enRIS %}  {{ data.mic.ab_MIC_enRIS}} {% else %} <span>&nbsp;</span> {% endif %}
     </td>
 {% endfor %}
 {% with abx_count=row|length %}
@@ -315,16 +370,16 @@ th, td {
             <strong><i>No Organism Identified</i></strong>
         {% endif %}
     </td>
-    <td colspan="6">{{ isolate.f_ars_Pre }}</td>
-    <td colspan="6">{{ isolate.f_ars_Post }}</td>
-    <td colspan="4" style="text-align: left; font-size: 7px;"><span style="font-weight: bold; padding-inline: 1px;">ESBL</span> <br>
+    <td colspan="6">{% if isolate.f_ars_Pre %}{{ isolate.f_ars_Pre }} {% else %}&nbsp; {% endif %}</td>
+    <td colspan="6">{% if isolate.f_ars_Post %}{{ isolate.f_ars_Post }}{% else %}&nbsp; {% endif %}</td>
+    <td colspan="4" style="text-align: left; font-size: 8px;"><span style="font-weight: bold; padding-inline: 1px;">ESBL</span> <br>
         CT/CTL: {{isolate.f_ars_ct_ctl|default:""}} <br>
         TZ/TZL: {{isolate.f_ars_tz_tzl|default:""}}
     </td>
-    <td colspan="3" style="text-align: left; vertical-align: top; font-size: 7px;"><span style="font-weight: bold;">ampC</span><br> 
+    <td colspan="3" style="text-align: left; vertical-align: top; font-size: 8px;"><span style="font-weight: bold;">ampC</span><br> 
         CN/CNI: <br>{{isolate.f_ars_cn_cni}}
     </td>
-    <td colspan="3" style="text-align: left; vertical-align: top; font-size: 7px;"><span style="font-weight: bold;">MBL</span><br>
+    <td colspan="3" style="text-align: left; vertical-align: top; font-size: 8px;"><span style="font-weight: bold;">MBL</span><br>
         IP/IPI: <br>{{isolate.f_ars_ip_ipi}}
     </td>
 </tr>
@@ -342,10 +397,10 @@ th, td {
     <tr>
     {% for abx, data in row %}
         {% if forloop.first %}
-            <th>&nbsp;</th>
-            <th class="abx-col" style="width: 4px;">{{ abx }}</th>
+            <th style="background-color: #ebe7e7;">&nbsp;</th>
+            <th class="abx-col" style="width: 4px; background-color: #ebe7e7;">{{ abx }}</th>
         {% else %}
-            <th class="abx-col">{{ abx }}</th>
+            <th class="abx-col" style="background-color: #ebe7e7;">{{ abx }}</th>
         {% endif %}
     {% endfor %}
     {% with abx_count=row|length %}
@@ -359,11 +414,25 @@ th, td {
     </tr>
 
     <tr>
-    <td style="font-size: 8px;">DISK</td>
+    <td style="font-size: 8px;" rowspan="2">DISK</td>
     {% for abx, data in row %}
-        <td class="abx-col" style="font-size: 7px; font-weight: bold;">
-            {{ data.disk.ab_Retest_DiskValue|default:"" }}
-            {{ data.disk.ab_Retest_Disk_enRIS}}
+        <td class="abx-col" style="font-size: 9px; font-weight: bold;">
+          {% if data.disk.ab_Retest_DiskValue%}  {{ data.disk.ab_Retest_DiskValue|default:"" }} {% else %} <span>&nbsp;</span> {% endif %}
+        </td>
+    {% endfor %}
+    {% with abx_count=row|length %}
+    {% for i in "x"|rjust:29 %}
+        {% if forloop.counter > abx_count %}
+            <td class="abx-col">&nbsp;</td>
+        {% endif %}
+    {% endfor %}
+    {% endwith %}
+    </tr>
+    <tr>
+
+    {% for abx, data in row %}
+        <td class="abx-col" style="font-size: 9px; font-weight: bold;">
+           {% if data.disk.ab_Retest_Disk_enRIS%} {{ data.disk.ab_Retest_Disk_enRIS}} {% else %} <span>&nbsp;</span> {% endif %}
         </td>
     {% endfor %}
     {% with abx_count=row|length %}
@@ -376,12 +445,31 @@ th, td {
     </tr>
 
     <tr>
-    <td style="font-size: 8px;">MIC</td>
+    <td style="font-size: 9px;" rowspan="2">MIC</td>
     {% for abx, data in row %}
-        <td class="abx-col mic" style="font-size: 7px; font-weight: bold;">
-            {{ data.mic.ab_Retest_MIC_operand }}
+        <td class="abx-col mic">
+            <div class="abx-inner">
+            {{ data.mic.ab_Retest_MIC_operand|default:"" }} 
+            {% if data.mic.ab_Retest_MICValue %}
             {{ data.mic.ab_Retest_MICValue|floatformat:"-2"|default:"" }}
-            {{ data.mic.ab_Retest_MIC_enRIS }}
+            {% else %}
+            <span>&nbsp;</span>
+            {% endif %}
+            </div>
+        </td>
+    {% endfor %}
+    {% with abx_count=row|length %}
+    {% for i in "x"|rjust:29 %}
+        {% if forloop.counter > abx_count %}
+            <td class="abx-col mic">&nbsp;</td>
+        {% endif %}
+    {% endfor %}
+    {% endwith %}
+    </tr>
+        <tr>
+    {% for abx, data in row %}
+        <td class="abx-col mic" style="font-size: 9px; font-weight: bold;">
+         {% if data.mic.ab_Retest_MIC_enRIS %} {{ data.mic.ab_Retest_MIC_enRIS }} {% else %} <span>&nbsp;</span> {% endif %}
         </td>
     {% endfor %}
     {% with abx_count=row|length %}
@@ -443,7 +531,8 @@ th, td {
 </tr>
 {% endif %}
 
-<div class="print-footer">
+
+<div class="print-footer" style="margin-top: 80px;">
   <table style="width:100%; border-collapse:collapse;">
     <tr>
       <td colspan="1" style="font-size: 7px;">Date:</td>
@@ -459,18 +548,18 @@ th, td {
     </tr>
     <tr>
       <td colspan="1"></td>
-      <td colspan="2" style="font-size: 8px;"></td>
+      <td colspan="2" style="font-size: 9px;"></td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 8px;">{{page.0.isolate.f_arsp_Encoder}}<br>{% if page.0.isolate.f_arsp_Enc_Lic %}Lic No: {{page.0.isolate.f_arsp_Enc_Lic|default_if_none:""}}{% else %}&nbsp;{% endif %}</td>
+      <td colspan="4" style="font-size: 9px;">{{page.0.isolate.f_arsp_Encoder}}<br>{% if page.0.isolate.f_arsp_Enc_Lic|lower != "none" %}Lic No: {{page.0.isolate.f_arsp_Enc_Lic}}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 8px;">{{page.0.isolate.f_arsp_Checker}}<br>{% if page.0.isolate.f_arsp_Chec_Lic%}Lic No: {{page.0.isolate.f_arsp_Chec_Lic|default_if_none:""}}{% else %}&nbsp;{% endif %}</td>
+      <td colspan="4" style="font-size: 9px;">{{page.0.isolate.f_arsp_Checker}}<br>{% if page.0.isolate.f_arsp_Chec_Lic%}Lic No: {{page.0.isolate.f_arsp_Chec_Lic|default:""}}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="7" style="font-size: 8px;">{{page.0.isolate.f_arsp_Verifier}} / {{page.0.isolate.f_arsp_LabManager}}<br>{% if page.0.isolate.f_arsp_Ver_Lic %}Lic No: {{ page.0.isolate.f_arsp_Ver_Lic|default_if_none:"" }}{% endif %}{% if page.0.isolate.arsp_Lab_Lic %}&nbsp;/ {{ page.0.isolate.f_arsp_Lab_Lic|default_if_none:"" }}{% endif %}{% if not page.0.isolate.f_arsp_Ver_Lic and not page.0.isolate.f_arsp_Lab_Lic %}&nbsp;{% endif %}</td>
+      <td colspan="7" style="font-size: 9px;">{{page.0.isolate.f_arsp_Verifier}} / {{page.0.isolate.f_arsp_LabManager}}<br>{% if page.0.isolate.f_arsp_Ver_Lic %}Lic No: {{ page.0.isolate.f_arsp_Ver_Lic|default:"" }}{% endif %}{% if page.0.isolate.arsp_Lab_Lic %}&nbsp;/ {{ page.0.isolate.f_arsp_Lab_Lic|default:"" }}{% endif %}{% if not page.0.isolate.f_arsp_Ver_Lic and not page.0.isolate.f_arsp_Lab_Lic %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 8px;">{{page.0.isolate.f_arsp_Head}}<br>{% if page.0.isolate.f_arsp_Head_Lic%}Lic No: {{page.0.isolate.f_arsp_Head_Lic|default_if_none:""}}{% else %}&nbsp;{% endif%}</td>
+      <td colspan="4" style="font-size: 9px;">{{page.0.isolate.f_arsp_Head}}<br>{% if page.0.isolate.f_arsp_Head_Lic%}Lic No: {{page.0.isolate.f_arsp_Head_Lic|default:""}}{% else %}&nbsp;{% endif%}</td>
     </tr>
     <tr>
-      <td colspan="30" style="font-size:9px; border: 1px solid black; padding: 2px;">
+      <td colspan="30" style="font-size:10px; border: 1px solid black; padding: 2px;">
         THIS CONFIRMATORY TEST RESULTS ARE FOR THE LABORATORY WHOSE NAME IS INDICATED AT THE TOP OF THIS PAGE.
         IF THESE RESULTS DO NOT BEAR THE NAME OF YOUR LABORATORY, KINDLY DISREGARD AND RETURN TO ARSRL.
       </td>

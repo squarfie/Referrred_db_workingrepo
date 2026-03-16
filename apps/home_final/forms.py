@@ -9,16 +9,6 @@ from phonenumber_field.formfields import PhoneNumberField
 
 
 
-
-
-# Final Referred Data Upload Form
-class FinalDataUploadForm(forms.ModelForm):
-     class Meta:
-          model = FinalData_upload
-          fields = ['FinalDataFile']
-
-
-
 class FinalAntibioticUploadForm(forms.ModelForm):
     class Meta:
         model = FinalAntibiotic_upload
@@ -175,11 +165,11 @@ class Final_AntibioticEntryForm(forms.ModelForm):
         )
         
         class Meta:
-            model = AntibioticEntry
+            model = Final_AntibioticEntry
             fields = '__all__'
 
         def __init__(self, *args, **kwargs):
-            super(AntibioticEntryForm, self).__init__(*args, **kwargs)
+            super(Final_AntibioticEntryForm, self).__init__(*args, **kwargs)
             self.fields['ab_AccessionNo'].widget.attrs['readonly'] = True  
 
 
@@ -196,8 +186,53 @@ class Classification_Form(forms.ModelForm):
                 self.fields['Class_Chk_Emerging'].widget.attrs['readonly'] = True  
 
 
+
+
 class Emerging_List_Form(forms.ModelForm):
      class Meta:
           model = Emerging_Table
           fields = '__all__'
     
+
+
+########## Concordance Analysis Form
+
+class ConcordanceReportFilterForm(forms.Form):
+
+    start_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(
+            attrs={
+                "type": "date",
+                "class": "form-control"
+            }
+        )
+    )
+
+    end_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(
+            attrs={
+                "type": "date",
+                "class": "form-control"
+            }
+        )
+    )
+
+    confirm_generate = forms.BooleanField(
+        required=True,
+        label="Confirm snapshot generation",
+        widget=forms.CheckboxInput(
+            attrs={"class": "form-check-input"}
+        )
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start = cleaned_data.get("start_date")
+        end = cleaned_data.get("end_date")
+
+        if start and end and start > end:
+            raise forms.ValidationError("Start date cannot be after end date.")
+
+        return cleaned_data

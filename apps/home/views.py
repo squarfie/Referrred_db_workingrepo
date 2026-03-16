@@ -6,6 +6,7 @@ import json
 import os
 import re
 from django.conf import settings
+from django.forms import inlineformset_factory
 from django.templatetags.static import static
 from django import template
 from django.contrib.auth.decorators import login_required
@@ -13,8 +14,8 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 from django.shortcuts import render, redirect, get_object_or_404 
 from django.template import loader
-from django.db.models import Prefetch
-
+from django.db.models import Min, Prefetch, Count, Q, Avg, IntegerField, Sum
+from openpyxl import Workbook
 from apps.home_final.utils import apply_final_breakpoints, get_filtered_antibiotics, resolve_organism_name
 from .models import *
 from apps.home_final.models import *
@@ -50,7 +51,7 @@ from django.template.loader import render_to_string
 from django.db.models import Max
 from itertools import islice
 from django.views.decorators.http import require_GET, require_POST
-
+from django.db.models.functions import ExtractYear
 
 
 @login_required(login_url="/login/")
@@ -85,6 +86,11 @@ def settings_page(request):
         "phenotype_post_upload": Pheno_post_upForm(),
         "reco_desc_form": Recco_item_Form(),
         "reco_desc_upload": Reco_item_upForm(),
+        "tat_config_form": TATStepConfigForm(),
+        "tat_upload_form": TATStepConfigUploadForm(),
+        "non_working_form": NonWorkingDayForm(),
+        "non_working_days": NonWorkingDay.objects.all(),
+
 
         
         "editing": False,  # default state
@@ -97,6 +103,7 @@ def settings_page(request):
 @login_required(login_url="/login/")
 def index(request):
     isolates = Final_Data.objects.all().order_by('-f_Date_of_Entry')
+    tat_entries = TATform.objects.all()
     # Count per clinic
     site_count = Referred_Data.objects.values('SiteCode').distinct().count()
 
@@ -124,6 +131,7 @@ def index(request):
         'age_19_35': age_19_35,
         'age_36_60': age_36_60,
         'age_60_plus': age_60_plus,
+        'tat_entries': tat_entries,
     }
 
     return render(request, 'home/index.html', context)
@@ -185,7 +193,7 @@ def batch_create_view(request):
 
             if not (site_code and referral_date and ref_no_raw):
                 messages.error(request, "Missing required fields.")
-                return redirect("batch_create")
+                return redirect("batch_create_view")
 
             # generate accession numbers
             try:
@@ -201,7 +209,7 @@ def batch_create_view(request):
 
             except ValueError:
                 messages.error(request, "Invalid Ref No format.")
-                return redirect("batch_create")
+                return redirect("batch_create_view")
 
             accession_numbers = [
                 f"{year_short}ARS_{site_code}{str(ref).zfill(4)}"
@@ -329,8 +337,20 @@ def batch_create_view(request):
                     ])
 
                     seq += 1
+                # ---------------- CREATE TAT ENTRY ----------------
 
-           
+            total_isolates = seq - 1   # correct count
+
+            TATform.objects.create(
+                tat_Batch_Isolates=batch_obj,
+                tat_SiteCode=batch_obj.bat_SiteCode,
+                tat_Batch_Code=batch_obj.bat_Batch_Code,
+                tat_Referral_Date=batch_obj.bat_Referral_Date,
+                tat_Num_Isolate=str(total_isolates),
+                tat_BatchNumber=batch_obj.bat_BatchNo,
+                tat_Total_Batch=batch_obj.bat_Total_batch,
+            )
+                    
             messages.success(
                 request,
                 f"Batch '{auto_batch_name}' saved with {len(accession_numbers)} isolates."
@@ -664,6 +684,89 @@ def delete_batch(request, batch_id):
     )
 
     return redirect("show_batches")
+
+
+
+@login_required(login_url="/login/")
+@transaction.atomic
+def delete_all_batches(request):
+    """
+    Deletes all batches and all related Referred_Data and Final_Data records.
+    """
+
+    batches = Batch_Table.objects.all()
+
+    deleted_batches = batches.count()
+
+    if deleted_batches == 0:
+        messages.warning(request, "No batches found to delete.")
+        return redirect("review_batches")
+
+    # collect batch codes first
+    batch_codes = list(
+        batches.values_list("bat_Batch_Code", flat=True)
+    )
+
+    # delete related data
+    Referred_Data.objects.filter(
+        Batch_Code__in=batch_codes
+    ).delete()
+
+    Final_Data.objects.filter(
+        f_Batch_Code__in=batch_codes
+    ).delete()
+
+    # delete the batches
+    batches.delete()
+
+    messages.success(
+        request,
+        f"All {deleted_batches} batches and related records have been deleted."
+    )
+
+    return redirect("review_batches")
+
+
+
+
+@login_required(login_url="/login/")
+@transaction.atomic
+def delete_blank_batches(request):
+
+    blank_isolates = (
+        Referred_Data.objects
+        .exclude(
+            Q(Site_Org__isnull=False) & ~Q(Site_Org="")
+            |
+            Q(Spec_Type__isnull=False)
+        )
+    )
+
+    batch_ids = list(
+        blank_isolates.values_list("Batch_id", flat=True).distinct()
+    )
+
+    batches = Batch_Table.objects.filter(id__in=batch_ids)
+
+    deleted_batches = batches.count()
+
+    if deleted_batches == 0:
+        messages.warning(request, "No blank batches found.")
+        return redirect("review_batches")
+
+    Referred_Data.objects.filter(Batch_id__in=batch_ids).delete()
+    Final_Data.objects.filter(f_Batch_id__in=batch_ids).delete()
+    batches.delete()
+
+    messages.success(
+        request,
+        f"{deleted_batches} blank batch(es) deleted."
+    )
+
+    return redirect("review_batches")
+
+
+
 
 
 
@@ -1157,8 +1260,8 @@ def raw_data(request, id):
             
         if not ret_bp_applied:
             entry.ab_Ret_Org = None
-            entry.ab_Org_Flag = None
-            entry.ab_Abx_Flag = None
+            entry.ab_Org_Flag = False
+            entry.ab_Abx_Flag = False
             entry.ab_Abx_Phenotype = None
             entry.ab_Abx_Phenotype_Other = None
             entry.ab_Ret_R_breakpoint   = None
@@ -1198,49 +1301,111 @@ def raw_data(request, id):
 
 
 ################ Retrieve all raw data
+# @login_required(login_url="/login/")
+# def show_data(request):
+    
+#     query = request.GET.get("q", "")
+#     sort_by = request.GET.get('sort', 'Date_of_Entry')  # Default sort field
+#     order = request.GET.get('order', 'desc')  # Default sort order
+
+#     sort_field = f"-{sort_by}" if order == 'desc' else sort_by
+
+#     isolates = Referred_Data.objects.prefetch_related(
+#         'antibiotic_entries'
+#     ).order_by(sort_field)
+
+#     if query:
+#         isolates = isolates.filter(
+#             Q(AccessionNo__icontains=query) |
+#             Q(First_Name__icontains=query) |
+#             Q(Last_Name__icontains=query) |
+#             Q(Patient_ID__icontains=query) |
+#             Q(Spec_Type__Specimen_code__icontains=query) |  # search in specimen code as well
+#             Q(Spec_Type__Specimen_name__icontains=query) |  
+#             Q(Site_Org__icontains=query) |
+#             Q(Batch_Code__icontains=query) 
+#         )
+
+#     copied_ids = Final_Data.objects.values_list("f_AccessionNo", flat=True)
+
+#     paginator = Paginator(isolates, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+
+#     context = {
+#         'page_obj': page_obj,
+#         'current_sort': sort_by,
+#         'current_order': order,
+#         'copied_ids': copied_ids,
+#         'query': query,
+#     }
+
+#     return render(request, 'home/tables.html', context)
+
+
+
+
+# with year filters
 @login_required(login_url="/login/")
 def show_data(request):
-    
-    query = request.GET.get("q", "")
-    sort_by = request.GET.get('sort', 'Date_of_Entry')  # Default sort field
-    order = request.GET.get('order', 'desc')  # Default sort order
 
-    sort_field = f"-{sort_by}" if order == 'desc' else sort_by
+    query = request.GET.get("q", "")
+    year = request.GET.get("year", None)
+
+    sort_by = request.GET.get("sort", "Referral_Date")
+    order = request.GET.get("order", "desc")
+
+    sort_field = f"-{sort_by}" if order == "desc" else sort_by
 
     isolates = Referred_Data.objects.prefetch_related(
-        'antibiotic_entries'
-    ).order_by(sort_field)
+        "antibiotic_entries"
+    )
 
+    # 🔎 SEARCH
     if query:
         isolates = isolates.filter(
             Q(AccessionNo__icontains=query) |
             Q(First_Name__icontains=query) |
             Q(Last_Name__icontains=query) |
             Q(Patient_ID__icontains=query) |
-            Q(Spec_Type__Specimen_code__icontains=query) |  # search in specimen code as well
-            Q(Spec_Type__Specimen_name__icontains=query) |  
+            Q(Spec_Type__Specimen_code__icontains=query) |
+            Q(Spec_Type__Specimen_name__icontains=query) |
             Q(Site_Org__icontains=query) |
-            Q(Batch_Code__icontains=query) 
+            Q(Batch_Code__icontains=query)
         )
+
+    # 📅 YEAR FILTER
+    if year and year.isdigit():
+        isolates = isolates.filter(Referral_Date__year=int(year))
+
+    isolates = isolates.order_by(sort_field)
 
     copied_ids = Final_Data.objects.values_list("f_AccessionNo", flat=True)
 
     paginator = Paginator(isolates, 20)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    # get available years
+    available_years = (
+        Referred_Data.objects
+        .annotate(year=ExtractYear("Referral_Date"))
+        .values_list("year", flat=True)
+        .distinct()
+        .order_by("-year")
+    )
+
     context = {
-        'page_obj': page_obj,
-        'current_sort': sort_by,
-        'current_order': order,
-        'copied_ids': copied_ids,
-        'query': query,
+        "page_obj": page_obj,
+        "current_sort": sort_by,
+        "current_order": order,
+        "copied_ids": copied_ids,
+        "query": query,
+        "year": year,
+        "available_years": available_years,
     }
 
-    return render(request, 'home/tables.html', context)
-
-
-
+    return render(request, "home/tables.html", context)
 
 
 
@@ -1769,6 +1934,10 @@ def edit_data(request, id):
             mic_value = None
 
         if disk_value is None and mic_value is None:
+            AntibioticEntry.objects.filter(
+                ab_idNum_referred=isolates,
+                ab_Abx_code=abx_code
+            ).delete()
             continue
 
         entry, _ = AntibioticEntry.objects.update_or_create(
@@ -1914,6 +2083,10 @@ def edit_data(request, id):
 
 
         if disk_value is None and mic_value is None:
+            AntibioticEntry.objects.filter(
+                ab_idNum_referred=isolates,
+                ab_Retest_Abx_code=abx_code
+            ).delete()
             continue
 
         entry, _ = AntibioticEntry.objects.update_or_create(
@@ -2011,8 +2184,8 @@ def edit_data(request, id):
         
         if not ret_bp_applied:
             entry.ab_Ret_Org = None
-            entry.ab_Org_Flag = None
-            entry.ab_Abx_Flag = None
+            entry.ab_Org_Flag = False
+            entry.ab_Abx_Flag = False
             entry.ab_Abx_Phenotype = None
             entry.ab_Abx_Phenotype_Other = None
             entry.ab_Ret_R_breakpoint = None
@@ -2048,26 +2221,31 @@ def edit_data(request, id):
 
 
 
-# DELETE DATA VIEW ONE isolate and the associated final data
+# DELETE DATA 
 @login_required(login_url="/login/")
 @transaction.atomic
 def delete_data(request, id):
+
     isolate = get_object_or_404(Referred_Data, pk=id)
+    accession = isolate.AccessionNo
 
-    # delete corresponding final data FIRST (if it exists)
-    Final_Data.objects.filter(
-        f_AccessionNo=isolate.AccessionNo
-    ).delete()
+    if request.method == "POST":
 
-    # now delete raw data
-    isolate.delete()
+        # 🔹 Delete related Final_Data (if exists)
+        Final_Data.objects.filter(
+            f_AccessionNo=accession
+        ).delete()
 
-    messages.success(
-        request,
-        f"Isolate {isolate.AccessionNo} and its final data were deleted."
-    )
+        # 🔹 Delete isolate (will cascade to AntibioticEntry)
+        isolate.delete()
+
+        messages.success(
+            request,
+            f"Accession {accession} deleted successfully."
+        )
 
     return redirect("show_data")
+
 
 
 ########## PDF GENERATION VIEWS
@@ -3513,7 +3691,7 @@ def export_Antibioticentry(request):
 
     for obj in objects:
         data.append({
-            "ab_idNumber_egasp": obj.ab_idNum_referred.AccessionNo if obj.ab_idNum_referred else None,
+            "ab_idNumber_referred": obj.ab_idNum_referred.AccessionNo if obj.ab_idNum_referred else None,
             "Accession_No": obj.ab_AccessionNo,
             "Site_Org": obj.ab_Site_Org,
             "Antibiotic": obj.ab_Antibiotic,
@@ -4086,14 +4264,15 @@ def copy_batch_to_final(request, batch_id):
     for isolate in isolates:
 
         spec_obj = None
-        if isolate.Spec_Type:
-                spec_obj = SpecimenTypeModel.objects.filter(
-                    Specimen_code=isolate.Spec_Type
-                ).first()
-                raw_entries = AntibioticEntry.objects.filter(
-                    ab_idNum_referred=isolate
-                )
 
+        raw_entries = AntibioticEntry.objects.filter(
+            ab_idNum_referred=isolate
+        )
+
+        if isolate.Spec_Type:
+            spec_obj = SpecimenTypeModel.objects.filter(
+                Specimen_code=isolate.Spec_Type
+            ).first()
 
 
         # ================= FINAL DATA =================
@@ -4212,14 +4391,15 @@ def copy_batch_to_final(request, batch_id):
         )
 
 
-        last_final_obj = final_obj  # 🔑 TRACK ACTIVE ISOLATE
+        last_final_obj = final_obj  #  TRACK ACTIVE ISOLATE
 
         # ================= RESET FINAL ANTIBIOTICS =================
         Final_AntibioticEntry.objects.filter(
             ab_idNum_f_referred=final_obj
         ).delete()
 
-        # ================= COPY ANTIBIOTICS + BREAKPOINTS =================
+
+        # =============== COPY ANTIBIOTICS + BREAKPOINTS =================
         for e in raw_entries:
 
             fe = Final_AntibioticEntry(
@@ -4302,7 +4482,7 @@ def copy_batch_to_final(request, batch_id):
 
         copied += 1
 
-    # 🔑 SESSION ISOLATE SET ONCE, AFTER COPY
+    # SESSION ISOLATE SET ONCE, AFTER COPY
     if last_final_obj:
         request.session["current_final_isolate_id"] = last_final_obj.id
 
@@ -4316,7 +4496,7 @@ def copy_batch_to_final(request, batch_id):
 
 
 
-### undo batch copy
+####### undo batch copy
 @login_required(login_url="/login/")
 @transaction.atomic
 def undo_copy_batch_to_final(request, batch_id):
@@ -4850,96 +5030,225 @@ def upload_combined_table(request):
 ############ FIELD MAPPER TOOL ############
 
  # this is the updated field mapper tool with temp file saving and session management
+# @login_required
+# def field_mapper_tool(request):
+#     # upload a raw file and preview headers for mapping.
+#     if request.method == "POST" and request.FILES.get("raw_file"):
+#         uploaded_file = request.FILES["raw_file"]
+
+#         # --- Read file to extract headers ---
+#         try:
+#             if uploaded_file.name.endswith(".csv"):
+#                 df = pd.read_csv(uploaded_file, nrows=1)
+#             else:
+#                 df = pd.read_excel(uploaded_file, nrows=1)
+#         except Exception as e:
+#             messages.error(request, f"Error reading file: {e}")
+#             return redirect("field_mapper_tool")
+
+#         raw_headers = df.columns.tolist()
+
+#         # --- Save file temporarily to session ---
+#         # Create temp directory if it doesn't exist
+#         temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_uploads')
+#         os.makedirs(temp_dir, exist_ok=True)
+        
+#         # Generate unique filename
+#         temp_filename = f"{request.user.id}_{uploaded_file.name}"
+#         temp_filepath = os.path.join(temp_dir, temp_filename)
+        
+#         # Save file
+#         with open(temp_filepath, 'wb+') as destination:
+#             for chunk in uploaded_file.chunks():
+#                 destination.write(chunk)
+        
+#         # Store path in session
+#         request.session['temp_file_path'] = temp_filepath
+#         request.session['temp_file_name'] = uploaded_file.name
+
+#         # --- Get model field lists ---
+#         final_fields = [f.name for f in Final_Data._meta.fields if f.name != "id"]
+#         abx_fields = list(
+#             Antibiotic_List.objects.filter(Retest=True)
+#             .values_list("Whonet_Abx", flat=True)
+#             .distinct().order_by("Whonet_Abx")
+#         )
+
+
+#         # --- Load saved mappings ---
+#         saved_mappings = FieldMapping.objects.filter(user=request.user)
+#         saved_dict = {m.raw_field: m.mapped_field for m in saved_mappings}
+
+#         context = {
+#             "raw_headers": raw_headers,
+#             "final_fields": final_fields,
+#             "abx_fields": abx_fields,
+#             "saved_mappings": saved_dict,
+#             "file_name": uploaded_file.name,
+#         }
+
+#         return render(request, "home/map_fields.html", context)
+
+
+#     return render(request, "home/upload_raw.html")
+
+
+
 @login_required
 def field_mapper_tool(request):
-    # upload a raw file and preview headers for mapping.
-    if request.method == "POST" and request.FILES.get("raw_file"):
-        uploaded_file = request.FILES["raw_file"]
 
-        # --- Read file to extract headers ---
+    if request.method == "POST" and request.FILES.get("raw_file"):
+
+        uploaded_file = request.FILES["raw_file"]
+        target_model = request.POST.get("target_model", "final")
+        request.session["target_model"] = target_model
+
+        # -------- READ FILE HEADERS --------
         try:
             if uploaded_file.name.endswith(".csv"):
                 df = pd.read_csv(uploaded_file, nrows=1)
             else:
                 df = pd.read_excel(uploaded_file, nrows=1)
+
         except Exception as e:
             messages.error(request, f"Error reading file: {e}")
             return redirect("field_mapper_tool")
 
         raw_headers = df.columns.tolist()
 
-        # --- Save file temporarily to session ---
-        # Create temp directory if it doesn't exist
-        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_uploads')
+        # -------- SAVE TEMP FILE --------
+        temp_dir = os.path.join(settings.MEDIA_ROOT, "temp_uploads")
         os.makedirs(temp_dir, exist_ok=True)
-        
-        # Generate unique filename
+
         temp_filename = f"{request.user.id}_{uploaded_file.name}"
         temp_filepath = os.path.join(temp_dir, temp_filename)
-        
-        # Save file
-        with open(temp_filepath, 'wb+') as destination:
+
+        with open(temp_filepath, "wb+") as destination:
             for chunk in uploaded_file.chunks():
                 destination.write(chunk)
-        
-        # Store path in session
-        request.session['temp_file_path'] = temp_filepath
-        request.session['temp_file_name'] = uploaded_file.name
 
-        # --- Get model field lists ---
-        final_fields = [f.name for f in Final_Data._meta.fields if f.name != "id"]
+        request.session["temp_file_path"] = temp_filepath
+        request.session["temp_file_name"] = uploaded_file.name
+
+        # -------- SELECT MODEL FIELDS --------
+
+        if target_model == "referred":
+
+            model_fields = [
+                f.name for f in Referred_Data._meta.fields
+                if f.name != "id"
+            ]
+
+            antibiotic_fields = list(
+                Antibiotic_List.objects
+                .values_list("Whonet_Abx", flat=True)
+                .distinct()
+                .order_by("Whonet_Abx")
+            )
+
+        else:
+
+            model_fields = [
+                f.name for f in Final_Data._meta.fields
+                if f.name != "id"
+            ]
+
+            antibiotic_fields = list(
+                Antibiotic_List.objects.filter(Retest=True)
+                .values_list("Whonet_Abx", flat=True)
+                .distinct()
+                .order_by("Whonet_Abx")
+            )
+
+        # -------- ANTIBIOTIC FIELDS --------
         abx_fields = list(
             Antibiotic_List.objects.filter(Retest=True)
             .values_list("Whonet_Abx", flat=True)
-            .distinct().order_by("Whonet_Abx")
+            .distinct()
+            .order_by("Whonet_Abx")
         )
 
-
-        # --- Load saved mappings ---
+        # -------- LOAD SAVED MAPPINGS --------
         saved_mappings = FieldMapping.objects.filter(user=request.user)
         saved_dict = {m.raw_field: m.mapped_field for m in saved_mappings}
 
         context = {
             "raw_headers": raw_headers,
-            "final_fields": final_fields,
-            "abx_fields": abx_fields,
+            "model_fields": model_fields,
+            "abx_fields": antibiotic_fields,
             "saved_mappings": saved_dict,
             "file_name": uploaded_file.name,
+            "target_model": target_model,
         }
 
         return render(request, "home/map_fields.html", context)
-
 
     return render(request, "home/upload_raw.html")
 
 
 # AJAX endpoint to save/update a field mapping used in the field mapper tool
+# @login_required
+# @require_POST
+# def update_field_mapping(request):
+#     import json
+
+#     data = json.loads(request.body)
+#     raw_field = data.get("raw_field")
+#     mapped_field = data.get("mapped_field", "").strip()
+
+#     if not raw_field:
+#         return JsonResponse({"status": "error", "msg": "Missing raw_field"}, status=400)
+
+#     if mapped_field == "":
+#         #  Clear mapping
+#         FieldMapping.objects.filter(
+#             user=request.user,
+#             raw_field=raw_field
+#         ).delete()
+#     else:
+#         FieldMapping.objects.update_or_create(
+#             user=request.user,
+#             raw_field=raw_field,
+#             defaults={
+#                 "mapped_field": mapped_field
+#             }
+#         )
+
+#     return JsonResponse({"status": "ok"})
+
+
 @login_required
 @require_POST
 def update_field_mapping(request):
     import json
 
     data = json.loads(request.body)
+
     raw_field = data.get("raw_field")
     mapped_field = data.get("mapped_field", "").strip()
+    is_retest = data.get("is_retest", False)
 
     if not raw_field:
         return JsonResponse({"status": "error", "msg": "Missing raw_field"}, status=400)
 
     if mapped_field == "":
-        #  Clear mapping
         FieldMapping.objects.filter(
             user=request.user,
             raw_field=raw_field
         ).delete()
+
     else:
         FieldMapping.objects.update_or_create(
             user=request.user,
             raw_field=raw_field,
-            defaults={"mapped_field": mapped_field, "field_type": data.get("field_type", "demog")},
+            defaults={
+                "mapped_field": mapped_field,
+                "is_retest": is_retest
+            }
         )
 
     return JsonResponse({"status": "ok"})
+
 
 
 
@@ -4992,18 +5301,54 @@ def download_mapping_summary(request):
 
     # load database columns
     
-    final_fields = [
-        f.name for f in Final_Data._meta.fields
-        if f.name != "id"
-    ]
+    # final_fields = [
+    #     f.name for f in Final_Data._meta.fields
+    #     if f.name != "id"
+    # ]
 
-    abx_fields = list(
-        Antibiotic_List.objects.values_list("Whonet_Abx", flat=True)
-        .distinct()
-        .order_by("Whonet_Abx")
-    )
+    target_model = request.session.get("target_model", "final")
 
-    database_columns = sorted(set(final_fields + abx_fields))
+    if target_model == "referred":
+        model_fields = [
+            f.name for f in Referred_Data._meta.fields
+            if f.name != "id"
+        ]
+
+        abx_fields = list(
+            Antibiotic_List.objects
+            .values_list("Whonet_Abx", flat=True)
+            .distinct()
+            .order_by("Whonet_Abx")
+        )
+
+    else:
+        model_fields = [
+            f.name for f in Final_Data._meta.fields
+            if f.name != "id"
+        ]
+
+        abx_fields = list(
+            Antibiotic_List.objects
+            .filter(Retest=True)
+            .values_list("Whonet_Abx", flat=True)
+            .distinct()
+            .order_by("Whonet_Abx")
+        )
+
+    # build antibiotic column variants
+    abx_columns = []
+
+    for abx in abx_fields:
+        abx_columns.extend([
+            f"{abx}_NM",
+            f"{abx}_NM_OP",
+            f"{abx}_NM_RIS",
+            f"{abx}_ND30",
+            f"{abx}_ND30_RIS"
+        ])
+
+    database_columns = sorted(set(model_fields + abx_columns))
+    # database_columns = sorted(set(final_fields + abx_fields))
 
     db_norm = {
         normalize(c) for c in database_columns
@@ -5120,35 +5465,218 @@ def extract_antibiotics(df):
 
 
 # WORKING VERSION AND CORRECTED ERROR IN DEMOGRAPHICS MAPPING
+# @login_required
+# def generate_mapped_excel(request):
+#     if request.method != "POST":
+#         return redirect("field_mapper_tool")
+
+#     try:
+#         import os, io, re
+#         import pandas as pd
+#         from django.http import HttpResponse
+#         from django.contrib import messages
+#         from apps.home.models import FieldMapping  # this ensures the model is imported
+
+#         # -HELPER FUNCTIONS-
+
+#         # Clean series function to standardize data formatting and missing values
+#         def clean_series(s):
+#             if isinstance(s, pd.DataFrame):
+#                 s = s.iloc[:, 0]
+#             if not isinstance(s, pd.Series):
+#                 s = pd.Series(s)
+#             return s.replace([None, "None", "nan", "NaN", "NAN", "null"], "").fillna("").astype(str)
+
+#         # Split operand function for MIC values
+#         def split_operand(val):
+#             if not val: return "", ""
+#             m = re.match(r"^(<=|>=|<|>|=)?\s*([\d.]+)$", str(val).strip())
+#             return (m.group(1) or "", m.group(2)) if m else ("", val)
+
+#         target_model = request.session.get("target_model", "final")
+
+#         # --- Load File ---
+#         temp_file_path = request.session.get("temp_file_path")
+#         temp_file_name = request.session.get("temp_file_name", "uploaded.xlsx")
+
+        
+
+#         if not temp_file_path or not os.path.exists(temp_file_path):
+#             messages.error(request, "File not found.")
+#             return redirect("field_mapper_tool")
+
+#         df = pd.read_csv(temp_file_path) if temp_file_name.lower().endswith(".csv") else pd.read_excel(temp_file_path)
+#         df.columns = [str(c).strip() for c in df.columns]
+        
+        
+#         # Build original col_map BEFORE any renaming
+#         col_map = {c.lower(): c for c in df.columns}
+
+#         # accession and year extraction
+#         acc_col = next((c for c in df.columns if "accession" in c.lower()), None)
+#         spec_date_col = next((c for c in df.columns if "spec" in c.lower() and "date" in c.lower()), None)
+#         year_vals = [""] * len(df)
+#         if spec_date_col:
+#             year_vals = pd.to_datetime(df[spec_date_col], errors="coerce").dt.year.apply(lambda x: "" if pd.isna(x) else str(int(x))).tolist()
+
+#         # build antibiotic entries
+#         abx_df = pd.DataFrame()
+
+
+#         if target_model == "referred":
+#             accession_field = "AccessionNo"
+#         else:
+#             accession_field = "f_AccessionNo"
+
+#         abx_df[accession_field] = clean_series(df[acc_col]) if acc_col else ""
+#         abx_df["Year"] = year_vals
+
+#         # Disk & MIC Loops - Using col_map to find real column names - ensures disk antibiotics are captured correctly
+
+#         # Disk columns
+#         disk_cols = [c for c in col_map if re.fullmatch(r"[a-z]+_nd\d+", c)]
+#         for lc in disk_cols:
+#             real = col_map[lc]
+#             ris_lc = f"{lc}_ris"
+#             raw_vals = df[real]
+#             if isinstance(raw_vals, pd.DataFrame): raw_vals = raw_vals.iloc[:, 0]
+#             disk_vals = pd.to_numeric(raw_vals, errors="coerce").astype("Int64").astype(str)
+#             disk_vals = ["" if v == "<NA>" else v for v in disk_vals]
+#             abx_df[real.upper()] = disk_vals
+#             if ris_lc in col_map:
+#                 ris_series = df[col_map[ris_lc]]
+#                 if isinstance(ris_series, pd.DataFrame): ris_series = ris_series.iloc[:, 0]
+#                 abx_df[f"{real.upper()}_RIS"] = clean_series(ris_series).str.upper()
+#             else:
+#                 abx_df[f"{real.upper()}_RIS"] = ""
+#         # MIC columns
+#         mic_cols = [c for c in col_map if re.fullmatch(r"[a-z]+_nm", c)]
+#         for lc in mic_cols:
+#             real = col_map[lc]
+#             base = real[:-3]
+#             ris_lc = f"{lc}_ris"
+#             target_col = df[real]
+#             if isinstance(target_col, pd.DataFrame): target_col = target_col.iloc[:, 0]
+#             ops, vals = [], []
+#             for v in clean_series(target_col):
+#                 op, val = split_operand(v)
+#                 ops.append(op)
+#                 vals.append(val.upper())
+#             abx_df[f"{base.upper()}_NM_OP"] = ops
+#             abx_df[f"{base.upper()}_NM"] = vals
+#             if ris_lc in col_map:
+#                 ris_series = df[col_map[ris_lc]]
+#                 if isinstance(ris_series, pd.DataFrame): ris_series = ris_series.iloc[:, 0]
+#                 abx_df[f"{base.upper()}_NM_RIS"] = clean_series(ris_series).str.upper()
+#             else:
+#                 abx_df[f"{base.upper()}_NM_RIS"] = ""
+
+#         # Build demogs dataframe
+#         user_mappings = FieldMapping.objects.filter(user=request.user, mapped_field__isnull=False)
+#         rename_dict = {m.raw_field: m.mapped_field for m in user_mappings}
+
+#         # Filter for strictly non-antibiotic columns
+#         demogs_cols = [
+#             c for c in df.columns 
+#             if not re.search(r"_(nd\d+|nm)(_ris)?$", c, re.I)
+#         ]
+
+#         # Create the demogs slice and rename them based on model fields
+#         demogs_df = df[demogs_cols].copy()
+#         demogs_df.rename(columns=rename_dict, inplace=True)
+
+#         # Clean all data in demogs
+#         for c in demogs_df.columns:
+#             demogs_df[c] = clean_series(demogs_df[c])
+
+#        # output to excel
+#         output = io.BytesIO()
+
+#         with pd.ExcelWriter(output, engine="openpyxl") as writer:
+
+#             if target_model == "referred":
+#                 demogs_sheet = "Referred_Demogs"
+#                 abx_sheet = "AntibioticEntry"
+#             else:
+#                 demogs_sheet = "Final_Demogs"
+#                 abx_sheet = "Final_AntibioticEntry"
+
+#             demogs_df.to_excel(writer, index=False, sheet_name=demogs_sheet)
+#             abx_df.to_excel(writer, index=False, sheet_name=abx_sheet)
+
+#         output.seek(0)
+#         response = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+#         base_name = os.path.splitext(temp_file_name)[0]
+#         response["Content-Disposition"] = f'attachment; filename="{base_name}_Mapped.xlsx"'
+#         return response
+
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         messages.error(request, f"⚠️ Error: {e}")
+#         return redirect("field_mapper_tool")
+
+
+
+
+
 @login_required
 def generate_mapped_excel(request):
+
     if request.method != "POST":
         return redirect("field_mapper_tool")
 
     try:
-        import os, io, re
+
+        import os
+        import io
+        import re
         import pandas as pd
         from django.http import HttpResponse
         from django.contrib import messages
-        from apps.home.models import FieldMapping  # this ensures the model is imported
+        from apps.home.models import FieldMapping
 
-        # -HELPER FUNCTIONS-
 
-        # Clean series function to standardize data formatting and missing values
+        # ---------------- HELPER FUNCTIONS ---------------- #
+
         def clean_series(s):
+
             if isinstance(s, pd.DataFrame):
                 s = s.iloc[:, 0]
+
             if not isinstance(s, pd.Series):
                 s = pd.Series(s)
-            return s.replace([None, "None", "nan", "NaN", "NAN", "null"], "").fillna("").astype(str)
 
-        # Split operand function for MIC values
+            return (
+                s.replace(
+                    [None, "None", "nan", "NaN", "NAN", "null"],
+                    ""
+                )
+                .fillna("")
+                .astype(str)
+            )
+
+
         def split_operand(val):
-            if not val: return "", ""
-            m = re.match(r"^(<=|>=|<|>|=)?\s*([\d.]+)$", str(val).strip())
-            return (m.group(1) or "", m.group(2)) if m else ("", val)
 
-        # --- Load File ---
+            if not val:
+                return "", ""
+
+            m = re.match(r"^(<=|>=|<|>|=)?\s*([\d.]+)$", str(val).strip())
+
+            if m:
+                return m.group(1) or "", m.group(2)
+
+            return "", val
+
+
+        # ---------------- TARGET MODEL ---------------- #
+
+        target_model = request.session.get("target_model", "final")
+
+
+        # ---------------- LOAD FILE ---------------- #
+
         temp_file_path = request.session.get("temp_file_path")
         temp_file_name = request.session.get("temp_file_name", "uploaded.xlsx")
 
@@ -5156,101 +5684,244 @@ def generate_mapped_excel(request):
             messages.error(request, "File not found.")
             return redirect("field_mapper_tool")
 
-        df = pd.read_csv(temp_file_path) if temp_file_name.lower().endswith(".csv") else pd.read_excel(temp_file_path)
+        if temp_file_name.lower().endswith(".csv"):
+            df = pd.read_csv(temp_file_path)
+        else:
+            df = pd.read_excel(temp_file_path)
+
         df.columns = [str(c).strip() for c in df.columns]
-        
-        # Build original col_map BEFORE any renaming
+
+
+        # ---------------- ORIGINAL COLUMN MAP ---------------- #
+
         col_map = {c.lower(): c for c in df.columns}
 
-        # accession and year extraction
-        acc_col = next((c for c in df.columns if "accession" in c.lower()), None)
-        spec_date_col = next((c for c in df.columns if "spec" in c.lower() and "date" in c.lower()), None)
-        year_vals = [""] * len(df)
-        if spec_date_col:
-            year_vals = pd.to_datetime(df[spec_date_col], errors="coerce").dt.year.apply(lambda x: "" if pd.isna(x) else str(int(x))).tolist()
 
-        # build antibiotic entries
+        # ---------------- ACCESSION + YEAR ---------------- #
+
+        acc_col = next(
+            (c for c in df.columns if "accession" in c.lower()),
+            None
+        )
+
+        spec_date_col = next(
+            (c for c in df.columns if "spec" in c.lower() and "date" in c.lower()),
+            None
+        )
+
+        year_vals = [""] * len(df)
+
+        if spec_date_col:
+
+            year_vals = (
+                pd.to_datetime(df[spec_date_col], errors="coerce")
+                .dt.year
+                .apply(lambda x: "" if pd.isna(x) else str(int(x)))
+                .tolist()
+            )
+
+
+        # ---------------- ANTIBIOTIC DATAFRAME ---------------- #
+
         abx_df = pd.DataFrame()
-        abx_df["f_AccessionNo"] = clean_series(df[acc_col]) if acc_col else ""
+
+        if target_model == "referred":
+            accession_field = "AccessionNo"
+        else:
+            accession_field = "f_AccessionNo"
+
+        abx_df[accession_field] = clean_series(df[acc_col]) if acc_col else ""
         abx_df["Year"] = year_vals
 
-        # Disk & MIC Loops - Using col_map to find real column names - ensures disk antibiotics are captured correctly
 
-        # Disk columns
-        disk_cols = [c for c in col_map if re.fullmatch(r"[a-z]+_nd\d+", c)]
+        # ---------------- USER FIELD MAPPINGS ---------------- #
+
+        user_mappings = FieldMapping.objects.filter(
+            user=request.user,
+            mapped_field__isnull=False
+        )
+
+        rename_dict = {
+            m.raw_field: m.mapped_field
+            for m in user_mappings
+        }
+
+        # detect retest fields
+        retest_fields = {
+            m.raw_field.lower(): m.mapped_field
+            for m in user_mappings if m.is_retest
+        }
+
+
+        # =====================================================
+        # DISK ANTIBIOTICS
+        # =====================================================
+
+        disk_cols = [
+            c for c in col_map
+            if re.fullmatch(r"[a-z]+_nd\d+", c)
+        ]
+
         for lc in disk_cols:
+
             real = col_map[lc]
             ris_lc = f"{lc}_ris"
+
             raw_vals = df[real]
-            if isinstance(raw_vals, pd.DataFrame): raw_vals = raw_vals.iloc[:, 0]
-            disk_vals = pd.to_numeric(raw_vals, errors="coerce").astype("Int64").astype(str)
+
+            if isinstance(raw_vals, pd.DataFrame):
+                raw_vals = raw_vals.iloc[:, 0]
+
+            disk_vals = (
+                pd.to_numeric(raw_vals, errors="coerce")
+                .astype("Int64")
+                .astype(str)
+            )
+
             disk_vals = ["" if v == "<NA>" else v for v in disk_vals]
-            abx_df[real.upper()] = disk_vals
+
+            base_name = real.upper()
+
+            # RETEST DETECTION
+            if lc in retest_fields:
+                base_name = base_name.replace("_ND", "_ND_RT")
+
+            abx_df[f"{base_name}_Val"] = disk_vals
+
             if ris_lc in col_map:
+
                 ris_series = df[col_map[ris_lc]]
-                if isinstance(ris_series, pd.DataFrame): ris_series = ris_series.iloc[:, 0]
-                abx_df[f"{real.upper()}_RIS"] = clean_series(ris_series).str.upper()
+
+                if isinstance(ris_series, pd.DataFrame):
+                    ris_series = ris_series.iloc[:, 0]
+
+                abx_df[f"{base_name}_RIS"] = clean_series(ris_series).str.upper()
+
             else:
-                abx_df[f"{real.upper()}_RIS"] = ""
-        # MIC columns
-        mic_cols = [c for c in col_map if re.fullmatch(r"[a-z]+_nm", c)]
+                abx_df[f"{base_name}_RIS"] = ""
+
+
+        # =====================================================
+        # MIC ANTIBIOTICS
+        # =====================================================
+
+        mic_cols = [
+            c for c in col_map
+            if re.fullmatch(r"[a-z]+_nm", c)
+        ]
+
         for lc in mic_cols:
+
             real = col_map[lc]
             base = real[:-3]
+
             ris_lc = f"{lc}_ris"
+
             target_col = df[real]
-            if isinstance(target_col, pd.DataFrame): target_col = target_col.iloc[:, 0]
-            ops, vals = [], []
+
+            if isinstance(target_col, pd.DataFrame):
+                target_col = target_col.iloc[:, 0]
+
+            ops = []
+            vals = []
+
             for v in clean_series(target_col):
+
                 op, val = split_operand(v)
+
                 ops.append(op)
                 vals.append(val.upper())
-            abx_df[f"{base.upper()}_NM_OP"] = ops
-            abx_df[f"{base.upper()}_NM"] = vals
+
+            base_name = base.upper()
+
+            if lc in retest_fields:
+                base_name = f"{base_name}_RT"
+
+            abx_df[f"{base_name}_NM_OP"] = ops
+            abx_df[f"{base_name}_NM_Val"] = vals
+
             if ris_lc in col_map:
+
                 ris_series = df[col_map[ris_lc]]
-                if isinstance(ris_series, pd.DataFrame): ris_series = ris_series.iloc[:, 0]
-                abx_df[f"{base.upper()}_NM_RIS"] = clean_series(ris_series).str.upper()
+
+                if isinstance(ris_series, pd.DataFrame):
+                    ris_series = ris_series.iloc[:, 0]
+
+                abx_df[f"{base_name}_NM_RIS"] = clean_series(ris_series).str.upper()
+
             else:
-                abx_df[f"{base.upper()}_NM_RIS"] = ""
+                abx_df[f"{base_name}_NM_RIS"] = ""
 
-        # Build demogs dataframe
-        user_mappings = FieldMapping.objects.filter(user=request.user, mapped_field__isnull=False)
-        rename_dict = {m.raw_field: m.mapped_field for m in user_mappings}
 
-        # Filter for strictly non-antibiotic columns
+        # =====================================================
+        # DEMOGRAPHICS
+        # =====================================================
+
         demogs_cols = [
-            c for c in df.columns 
+            c for c in df.columns
             if not re.search(r"_(nd\d+|nm)(_ris)?$", c, re.I)
         ]
 
-        # Create the demogs slice and rename them based on model fields
         demogs_df = df[demogs_cols].copy()
+
         demogs_df.rename(columns=rename_dict, inplace=True)
 
-        # Clean all data in demogs
         for c in demogs_df.columns:
             demogs_df[c] = clean_series(demogs_df[c])
 
-       # output to excel
+
+        # =====================================================
+        # OUTPUT EXCEL
+        # =====================================================
+
         output = io.BytesIO()
+
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            demogs_df.to_excel(writer, index=False, sheet_name="Demogs")
-            abx_df.to_excel(writer, index=False, sheet_name="Antibiotic_Entries")
+
+            if target_model == "referred":
+
+                demogs_sheet = "Referred_Demogs"
+                abx_sheet = "AntibioticEntry"
+
+            else:
+
+                demogs_sheet = "Final_Demogs"
+                abx_sheet = "Final_AntibioticEntry"
+
+            demogs_df.to_excel(
+                writer,
+                index=False,
+                sheet_name=demogs_sheet
+            )
+
+            abx_df.to_excel(
+                writer,
+                index=False,
+                sheet_name=abx_sheet
+            )
 
         output.seek(0)
-        response = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
         base_name = os.path.splitext(temp_file_name)[0]
+
         response["Content-Disposition"] = f'attachment; filename="{base_name}_Mapped.xlsx"'
+
         return response
 
+
     except Exception as e:
+
         import traceback
         traceback.print_exc()
+
         messages.error(request, f"⚠️ Error: {e}")
+
         return redirect("field_mapper_tool")
-
-
 
 
 
@@ -5720,24 +6391,6 @@ def get_organism_name(request):
 
 
 
-
-############ TAT Process Configuration
-@login_required(login_url="/login/")
-def TAT_process(request, id=None):
-    process = TATprocess.objects.all()  # Renamed 'province' to 'provinces' for clarity
-    upload_form = TATUploadForm()  
-    if request.method == "POST":
-        form = TAT_form(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Location added successfully!")
-            return redirect("TAT_process")  # Use the correct URL name
-        else:
-            messages.error(request, "Please correct the errors below.")
-    else:
-        form = TAT_form()
-
-    return render(request, "home/Add_TAT.html", {"form": form, "process": process, "upload_form": upload_form})
 
 
 
@@ -6361,28 +7014,22 @@ def get_recommendation_description(request):
 
 ################  PROJECTS
 
-@login_required
-def projects_page(request):
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
 
-    active_tab = request.GET.get("tab", "wgs_classification")
+# Import your WGS form models — adjust imports to match your actual app paths
+from apps.wgs_app.models import *
+from apps.wgs_app.forms import (   # adjust to wherever your ModelForms live
+    FastqUploadForm,
+    GambitUploadForm,
+    MlstUploadForm,
+    Checkm2UploadForm,
+    AssemblyUploadForm,
+    AmrUploadForm,
+)
+from apps.home.models import Referred_Data
 
-    referred_list = (
-        Referred_Data.objects
-        .all()
-        .order_by("-Date_Modified", "-id")
-    )
 
-    context = {
-        "active_tab": active_tab,
-        "referred_list": referred_list,
-        "editing": False,
-    }
-
-    return render(
-        request,
-        "projects/Projects.html",
-        context
-    )
 
 
 
@@ -6480,3 +7127,836 @@ def wgs_classification_view(request, accession_no):
             "editing": True,
         }
     )
+
+
+############## TAT MONITORING
+
+
+@login_required(login_url="/login/")
+def tat_monitoring_view(request, batch_id):
+
+
+    batch = get_object_or_404(Batch_Table, id=batch_id)
+
+
+    tat_obj, created = TATform.objects.get_or_create(
+        tat_Batch_Isolates=batch,
+        defaults={
+            "tat_SiteCode": batch.bat_SiteCode,
+            "tat_Batch_Code": batch.bat_Batch_Name,
+            "tat_Referral_Date": batch.bat_Referral_Date,
+            "tat_Num_Isolate": (
+                batch.referred_data_set.count()
+                if hasattr(batch, 'referred_data_set') else None
+            ),
+            "tat_BatchNumber": batch.bat_BatchNo,
+            "tat_Total_Batch": batch.bat_Total_batch,
+        }
+    )
+
+
+    if request.method == "POST":
+
+        form = TATMonitoringForm(
+            request.POST,
+            instance=tat_obj
+        )
+
+        formset = TATStepFormSet(
+            request.POST,
+            instance=tat_obj,
+            prefix='steps'
+        )
+
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                # 1. Create the instance but don't save to DB yet
+                tat_instance = form.save(commit=False)
+                
+                # 2. Trigger the logic inside your Model's save() method
+                # This will calculate Final_TAT based on the new Date_Released
+                tat_instance.save() 
+
+                # 3. Save the formset
+                formset.instance = tat_instance
+                formset.save()
+
+            messages.success(
+                request,
+                "TAT Monitoring updated successfully."
+            )
+            print("FORM CLASS:", formset.form)
+            print("FIELDS:", formset.forms[0].fields.keys())
+
+            return redirect(
+                "tat_monitoring_view",
+                batch_id=batch.id
+            )
+
+        else:
+            print("FORM ERRORS:", form.errors)
+            print("FORMSET ERRORS:", formset.errors)
+            print("FORMSET NON FORM ERRORS:", formset.non_form_errors())
+
+
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = TATMonitoringForm(instance=tat_obj)
+
+        formset = TATStepFormSet(
+            instance=tat_obj,
+            prefix='steps'
+        )
+
+    return render(
+        request,
+        "home/tat_monitoring_form.html",
+        {
+            "form": form,
+            "formset": formset,
+            "batch": batch,
+            "tat": tat_obj,
+        }
+    )
+
+
+@login_required(login_url="/login/")
+def export_tat_excel(request):
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "TAT Records"
+
+    # 🔹 Get all configured process steps (ordered)
+    configs = TATStepConfig.objects.all().order_by("order")
+
+    # 🔹 Build dynamic headers
+    headers = [
+        "Batch Name",
+        "Batch Code",
+        "Site Code",
+        "Referral Date",
+        "No. of Isolates",
+        "Batch Number",
+        "Total Batch",
+        "Batch Location",
+        "Target Days (Batch)",
+        "Running TAT",
+        "Final TAT",
+        "Date Released",
+        "Release Status",
+        "Overall Remarks",
+        "Last Update",
+    ]
+
+    # Add per-process columns dynamically
+    for config in configs:
+        headers.extend([
+            f"{config.step_type} Start",
+            f"{config.step_type} End",
+            f"{config.step_type} Days",
+            f"{config.step_type} Within TAT",
+            f"{config.step_type} Performed By",
+        ])
+
+    ws.append(headers)
+
+    tat_records = TATform.objects.prefetch_related("steps", "tat_Batch_Isolates").all()
+
+    for tat in tat_records:
+
+        row = [
+            tat.tat_Batch_Isolates.bat_Batch_Name if tat.tat_Batch_Isolates else "",
+            tat.tat_Batch_Code,
+            tat.tat_SiteCode,
+            tat.tat_Referral_Date,
+            tat.tat_Num_Isolate,
+            tat.tat_BatchNumber,
+            tat.tat_Total_Batch,
+            tat.tat_Batch_Location,
+            tat.tat_Target_Days,
+            tat.tat_Running_TAT,
+            tat.tat_Final_TAT,
+            tat.tat_Date_Released,
+            tat.tat_Status_Release,
+            tat.tat_Remarks,
+            tat.tat_Date_Last_Update,
+        ]
+
+        # Map steps by config for quick lookup
+        step_map = {
+            step.step_config_id: step
+            for step in tat.steps.all()
+        }
+
+        # Fill dynamic step columns
+        for config in configs:
+
+            step = step_map.get(config.id)
+
+            if step:
+                duration = None
+                if step.date_received and step.date_finished:
+                    duration = (step.date_finished - step.date_received).days
+
+                row.extend([
+                    step.date_received,
+                    step.date_finished,
+                    duration,
+                    "YES" if step.within_tat else "NO" if step.within_tat is False else "",
+                    str(step.performed_by) if step.performed_by else "",
+                ])
+            else:
+                row.extend(["", "", "", "", ""])
+
+        ws.append(row)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    filename = f"TAT_Export_{now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    wb.save(response)
+    return response
+
+
+
+
+@login_required(login_url="/login/")
+def tat_review_view(request):
+
+    configs = TATStepConfig.objects.all().order_by("order")
+
+    tat_records = (
+        TATform.objects
+        .select_related("tat_Batch_Isolates")
+        .prefetch_related("steps")
+        .all()
+    )
+
+    # ================= GLOBAL METRICS =================
+
+    total_batches = tat_records.count()
+
+    total_isolates = tat_records.aggregate(
+        total=Sum("tat_Num_Isolate")
+    )["total"] or 0
+
+    released_batches = tat_records.filter(tat_Status_Release="Released").count()
+    overdue_batches = tat_records.filter(tat_Status_Release="Overdue").count()
+    ongoing_batches = tat_records.filter(tat_Status_Release="Ongoing").count()
+
+    avg_running_tat = tat_records.aggregate(
+        avg=Avg("tat_Running_TAT")
+    )["avg"] or 0
+
+    avg_running_tat = round(avg_running_tat, 1) if avg_running_tat else 0
+
+    # ================= WITHIN TAT % =================
+
+    released_within = tat_records.filter(
+        tat_Status_Release="Released",
+        tat_Running_TAT__lte=F("tat_Target_Days")
+    ).count()
+
+    released_total = released_batches
+
+    within_tat_pct = 0
+    if released_total > 0:
+        within_tat_pct = round((released_within / released_total) * 100, 1)
+
+    # ================= STEP METRICS =================
+
+    total_steps = TATStep.objects.count()
+    steps_within = TATStep.objects.filter(within_tat=True).count()
+    steps_outside = TATStep.objects.filter(within_tat=False).count()
+
+    compliance_rate = 0
+    if total_steps > 0:
+        compliance_rate = round((steps_within / total_steps) * 100, 2)
+
+    # ================= PER PROCESS =================
+
+    process_summary = []
+
+    for config in configs:
+        steps = TATStep.objects.filter(step_config=config)
+
+        total = steps.count()
+        within = steps.filter(within_tat=True).count()
+        outside = steps.filter(within_tat=False).count()
+
+        rate = round((within / total) * 100, 2) if total > 0 else 0
+
+        process_summary.append({
+            "config": config,
+            "total": total,
+            "within": within,
+            "outside": outside,
+            "rate": rate
+        })
+
+    context = {
+        "configs": configs,
+        "tat_records": tat_records,
+        "total_batches": total_batches,
+        "total_isolates": total_isolates,
+        "released_batches": released_batches,
+        "overdue_batches": overdue_batches,
+        "ongoing_batches": ongoing_batches,
+        "avg_running_tat": avg_running_tat,
+        "within_tat_pct": within_tat_pct,
+        "total_steps": total_steps,
+        "steps_within": steps_within,
+        "steps_outside": steps_outside,
+        "compliance_rate": compliance_rate,
+        "process_summary": process_summary,
+    }
+
+    return render(request, "home/tat_dashboard.html", context)
+
+
+
+
+
+
+
+
+
+
+########## tat configuration 
+
+
+@login_required(login_url="/login/")
+def add_tat_step_config(request):
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=tat_config")
+
+    form = TATStepConfigForm(request.POST)
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "TAT Step Configuration added successfully.")
+    else:
+        messages.error(request, "Failed to add TAT Step Configuration.")
+        print(form.errors)
+
+    return redirect("/settings/?tab=tat_config")
+
+
+
+@login_required(login_url="/login/")
+def edit_tat_step_config(request, pk):
+
+    config = get_object_or_404(TATStepConfig, pk=pk)
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=tat_config")
+
+    form = TATStepConfigForm(request.POST, instance=config)
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "TAT Step Configuration updated successfully.")
+    else:
+        messages.error(request, "Failed to update configuration.")
+        print(form.errors)
+
+    return redirect("/settings/?tab=tat_config")
+
+
+
+def tat_step_config_list(request):
+    q = request.GET.get("q", "")
+
+    configs = TATStepConfig.objects.all()
+
+    if q:
+        configs = configs.filter(
+            Q(step_type__icontains=q) |
+            Q(step_owner__icontains=q)
+        )
+
+    paginator = Paginator(configs, 10)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "q": q,
+    }
+
+    return render(
+        request,
+        "settings/tat_config_list.html",
+        context
+    )
+
+
+
+@login_required(login_url="/login/")
+def upload_tat_step_config(request):
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=tat_config")
+
+    form = TATStepConfigUploadForm(request.POST, request.FILES)
+
+    if form.is_valid():
+
+        upload_instance = form.save()
+
+        try:
+            df = pd.read_excel(upload_instance.tat_file)
+
+            required_columns = ['step_type', 'step_owner', 'target_days', 'order']
+
+            for col in required_columns:
+                if col not in df.columns:
+                    messages.error(request, f"Missing column: {col}")
+                    return redirect("/settings/?tab=tat_config")
+
+            with transaction.atomic():
+
+                #  Clear existing configs
+                TATStepConfig.objects.all().delete()
+
+                # Insert new records
+                for _, row in df.iterrows():
+                    TATStepConfig.objects.create(
+                        step_type=row['step_type'],
+                        step_owner=row['step_owner'],
+                        target_days=int(row['target_days']),
+                        order=int(row['order']),
+                    )
+
+            messages.success(request, "TAT Step Config uploaded successfully.")
+
+        except Exception as e:
+            messages.error(request, f"Upload failed: {str(e)}")
+
+    else:
+        messages.error(request, "Invalid upload form.")
+
+    return redirect("/settings/?tab=tat_config")
+
+
+def delete_all_tat_process(request):
+    # This will now work when you click the <a> link
+    total = TATStepConfig.objects.count()
+    TATStepConfig.objects.all().delete()
+
+    messages.success(
+        request, 
+        f"Successfully deleted {total} TAT records and all related process steps."
+    )
+    return redirect('/settings/?tab=tat_config')
+
+
+######### TAT NON-WORKING DAYS
+
+
+@login_required(login_url="/login/")
+def add_non_working_day(request):
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=non_working")
+
+    form = NonWorkingDayForm(request.POST)
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Non-working day added successfully.")
+    else:
+        messages.error(request, "Failed to add non-working day.")
+
+    return redirect("/settings/?tab=non_working")
+
+
+@login_required(login_url="/login/")
+def delete_non_working_day(request, pk):
+    day = get_object_or_404(NonWorkingDay, pk=pk)
+    day.delete()
+    messages.success(request, "Non-working day deleted.")
+    return redirect("/settings/?tab=non_working")
+
+
+
+
+# @login_required(login_url="/login/")
+# def tat_analysis(request):
+
+#     # Annotate effective TAT (Final if released, Running if ongoing)
+#     tat_qs = TATform.objects.annotate(
+#         effective_tat=Case(
+#             When(tat_Final_TAT__isnull=False, then=F("tat_Final_TAT")),
+#             default=F("tat_Running_TAT"),
+#             output_field=IntegerField()
+#         )
+#     )
+
+#     # Only include records that have some TAT value
+#     tat_qs = tat_qs.filter(effective_tat__isnull=False)
+
+#     if not tat_qs.exists():
+#         return render(request, "home/tat_analysis.html", {
+#             "stats": None,
+#             "process_analysis": None,
+#         })
+
+#     # ===============================
+#     # OVERALL BATCH METRICS
+#     # ===============================
+
+#     total_batches = tat_qs.count()
+
+#     avg_tat = tat_qs.aggregate(avg=Avg("effective_tat"))["avg"] or 0
+#     min_tat = tat_qs.aggregate(min=Min("effective_tat"))["min"] or 0
+#     max_tat = tat_qs.aggregate(max=Max("effective_tat"))["max"] or 0
+
+#     within_count = tat_qs.filter(
+#         effective_tat__lte=F("tat_Target_Days")
+#     ).count()
+
+#     out_count = total_batches - within_count
+
+#     within_pct = round((within_count / total_batches) * 100, 2) if total_batches else 0
+
+#     stats = {
+#         "total_batches": total_batches,
+#         "average_tat": avg_tat,
+#         "min_tat": min_tat,
+#         "max_tat": max_tat,
+#         "within_tat_count": within_count,
+#         "out_of_tat_count": out_count,
+#         "within_tat_pct": within_pct,
+#         "released_count": tat_qs.filter(tat_Status_Release="Released").count(),
+#         "ongoing_count": tat_qs.filter(tat_Status_Release="Ongoing").count(),
+#         "overdue_count": tat_qs.filter(tat_Status_Release="Overdue").count(),
+#     }
+
+#     # ===============================
+#     # PROCESS PERFORMANCE ANALYSIS
+#     # ===============================
+
+#     step_qs = (
+#         TATStep.objects
+#         .filter(step_days_count__isnull=False)
+#         .values(
+#             "step_config__step_type",
+#             "step_config__step_owner",
+#             "step_config__target_days",
+#         )
+#         .annotate(
+#             average_tat=Avg("step_days_count"),
+#             min_tat=Min("step_days_count"),
+#             max_tat=Max("step_days_count"),
+#             total_batches=Count("id"),
+#             within_target=Count("id", filter=Q(within_tat=True)),
+#             out_of_target=Count("id", filter=Q(within_tat=False)),
+#         )
+#         .order_by("step_config__order")
+#     )
+
+#     process_analysis = []
+
+#     for s in step_qs:
+#         total = s["total_batches"] or 1
+#         pct = round((s["within_target"] / total) * 100, 2)
+
+#         process_analysis.append({
+#             "process_name": s["step_config__step_type"],
+#             "owner": s["step_config__step_owner"],
+#             "target_days": s["step_config__target_days"],
+#             "average_tat": s["average_tat"] or 0,
+#             "min_tat": s["min_tat"] or 0,
+#             "max_tat": s["max_tat"] or 0,
+#             "within_target": s["within_target"],
+#             "out_of_target": s["out_of_target"],
+#             "total_batches": total,
+#             "within_target_pct": pct,
+#         })
+
+
+#     # user performance analysis (based on steps performed)
+
+#     user_qs = (
+#         TATStep.objects
+#         .filter(
+#             step_days_count__isnull=False,
+#             performed_by__isnull=False
+#         )
+#         .values(
+#             "performed_by__id",
+#             "performed_by__Staff_Name",
+#             "performed_by__Staff_Designation",
+#         )
+#         .annotate(
+#             total_steps=Count("id"),
+#             average_tat=Avg("step_days_count"),
+#             min_tat=Min("step_days_count"),
+#             max_tat=Max("step_days_count"),
+#             within_target=Count("id", filter=Q(within_tat=True)),
+#             out_of_target=Count("id", filter=Q(within_tat=False)),
+#         )
+#         .order_by("-total_steps")
+#     )
+
+#     user_analysis = []
+
+#     for u in user_qs:
+#         total = u["total_steps"] or 1
+#         pct = round((u["within_target"] / total) * 100, 2)
+
+#         user_analysis.append({
+#             "user_id": u["performed_by__id"],
+#             "staff_name": u["performed_by__Staff_Name"],
+#             "designation": u["performed_by__Staff_Designation"],
+#             "total_steps": total,
+#             "average_tat": u["average_tat"] or 0,
+#             "min_tat": u["min_tat"] or 0,
+#             "max_tat": u["max_tat"] or 0,
+#             "within_target": u["within_target"],
+#             "out_of_target": u["out_of_target"],
+#             "compliance_pct": pct,
+#         })
+
+
+#     current_batches = (
+#         TATform.objects
+#         .select_related("tat_Batch_Isolates")
+#         .filter(tat_Status_Release__in=["Ongoing", "Overdue"])
+#         .order_by("tat_Referral_Date")
+#         )
+
+#     return render(request, "home/tat_analysis.html", {
+#         "stats": stats,
+#         "process_analysis": process_analysis,
+#         "user_analysis": user_analysis,
+#         "current_batches": current_batches,
+#     })
+
+
+
+
+@login_required(login_url="/login/")
+def tat_analysis(request):
+
+    # ==========================================
+    # TOGGLE: Released Only vs Include Ongoing
+    # ==========================================
+
+    include_ongoing = request.GET.get("include_ongoing")
+
+    # Include all batches with Final_TAT (Released + Ongoing with some TAT)
+    if include_ongoing == "1":
+        completed = TATform.objects.all()
+        mode = "ALL"
+    else:
+        # Default: Released only
+        completed = TATform.objects.filter(
+            tat_Status_Release="Released",
+            tat_Final_TAT__isnull=False
+        )
+        mode = "RELEASED"
+
+    total_batches = completed.count()
+
+    # ==========================================
+    # BATCH-LEVEL STATISTICS
+    # ==========================================
+
+    if total_batches > 0:
+
+        agg = completed.aggregate(
+            avg=Avg("tat_Final_TAT"),
+            min=Min("tat_Final_TAT"),
+            max=Max("tat_Final_TAT"),
+        )
+
+        average_tat = agg["avg"] or 0
+        min_tat = agg["min"]
+        max_tat = agg["max"]
+
+        within_tat_count = completed.filter(
+            tat_Final_TAT__lte=F("tat_Target_Days")
+        ).count()
+
+        out_of_tat_count = completed.filter(
+            tat_Final_TAT__gt=F("tat_Target_Days")
+        ).count()
+
+        within_pct = round(
+            (within_tat_count / total_batches) * 100,
+            2
+        )
+
+    else:
+        average_tat = 0
+        min_tat = 0
+        max_tat = 0
+        within_tat_count = 0
+        out_of_tat_count = 0
+        within_pct = 0
+
+    stats = {
+        "total_batches": total_batches,
+        "average_tat": round(average_tat, 2),
+        "min_tat": min_tat,
+        "max_tat": max_tat,
+        "within_tat_count": within_tat_count,
+        "out_of_tat_count": out_of_tat_count,
+        "within_tat_pct": within_pct,
+    }
+
+    # ==========================================
+    # PROCESS PERFORMANCE
+    # ==========================================
+
+    process_analysis = []
+
+    configs = TATStepConfig.objects.all()
+
+    for config in configs:
+
+        steps = TATStep.objects.filter(
+            step_config=config,
+            date_finished__isnull=False,
+            step_days_count__isnull=False,
+        )
+
+        total = steps.count()
+
+        if total == 0:
+            continue
+
+        agg = steps.aggregate(
+            avg=Avg("step_days_count"),
+            min=Min("step_days_count"),
+            max=Max("step_days_count"),
+        )
+
+        avg_days = agg["avg"] or 0
+        min_days = agg["min"]
+        max_days = agg["max"]
+
+        within = steps.filter(within_tat=True).count()
+        outside = steps.filter(within_tat=False).count()
+
+        pct = round((within / total) * 100, 1)
+
+        process_analysis.append({
+            "process_name": config.step_type,
+            "target_days": config.target_days,
+            "average_tat": round(avg_days, 2),
+            "min_tat": min_days,
+            "max_tat": max_days,
+            "within_target": within,
+            "out_of_target": outside,
+            "total_batches": total,
+            "within_target_pct": pct,
+        })
+
+    # ==========================================
+    # OWNER PERFORMANCE (LAB / DMU)
+    # ==========================================
+
+    owner_summary = []
+
+    for owner in ["LAB", "DMU"]:
+
+        steps = TATStep.objects.filter(
+            step_owner=owner,
+            date_finished__isnull=False,
+            step_days_count__isnull=False,
+        )
+
+        total = steps.count()
+
+        if total == 0:
+            continue
+
+        within = steps.filter(within_tat=True).count()
+        outside = steps.filter(within_tat=False).count()
+
+        avg_days = steps.aggregate(
+            avg=Avg("step_days_count")
+        )["avg"] or 0
+
+        compliance = round((within / total) * 100, 2)
+
+        owner_summary.append({
+            "owner": owner,
+            "total": total,
+            "within": within,
+            "outside": outside,
+            "average_days": round(avg_days, 2),
+            "compliance_pct": compliance,
+        })
+
+    # ==========================================
+    # STAFF PERFORMANCE (IPCR)
+    # ==========================================
+
+    staff_summary = (
+        TATStep.objects
+        .filter(
+            performed_by__isnull=False,
+            date_finished__isnull=False,
+            step_days_count__isnull=False,
+        )
+        .values(
+            "performed_by__id",
+            "performed_by__Staff_Name",
+            "performed_by__Staff_Designation",
+        )
+        .annotate(
+            total_steps=Count("id"),
+            avg_days=Avg("step_days_count"),
+            within_count=Count("id", filter=Q(within_tat=True)),
+            outside_count=Count("id", filter=Q(within_tat=False)),
+        )
+        .order_by("-total_steps")
+    )
+
+    staff_performance = []
+
+    for s in staff_summary:
+
+        total = s["total_steps"]
+        within = s["within_count"]
+
+        compliance = round((within / total) * 100, 2) if total > 0 else 0
+
+        staff_performance.append({
+            "staff_name": s["performed_by__Staff_Name"],
+            "designation": s["performed_by__Staff_Designation"],
+            "total_steps": total,
+            "average_days": round(s["avg_days"], 2) if s["avg_days"] else 0,
+            "within_target": within,
+            "outside_target": s["outside_count"],
+            "compliance_pct": compliance,
+        })
+
+    # ==========================================
+    # FINAL CONTEXT
+    # ==========================================
+
+    context = {
+        "stats": stats,
+        "process_analysis": process_analysis,
+        "owner_summary": owner_summary,
+        "staff_performance": staff_performance,
+        "mode": mode,
+        "include_ongoing": include_ongoing,
+    }
+
+    return render(request, "home/tat_analysis.html", context)
+
+
+
+
+

@@ -3,364 +3,432 @@
 {% load widget_tweaks %}
 {% load custom_filters %}
 
-{% block title %}
-  {% if editing %}Edit Batch{% else %}Create Batch{% endif %}
-{% endblock title %}
-
-
 {% block stylesheets %}
   <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
+  <style>
+    .page-wrapper { padding: 0 0 3rem 0; }
 
+    /* ── Hero header ── */
+    .batch-header {
+      background: linear-gradient(135deg, #0f1423 0%, #1a1f3a 55%, #1a2a4a 100%);
+      padding: 1.75rem 2rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+      border-bottom: 1px solid rgba(0,188,212,0.18);
+    }
+    .batch-header-left { display: flex; align-items: center; gap: 1rem; }
+    .batch-header-icon {
+      width: 46px; height: 46px; border-radius: 12px;
+      background: rgba(0,188,212,0.18); border: 1px solid rgba(0,188,212,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; color: #00bcd4; flex-shrink: 0;
+    }
+    .batch-header-title h6 {
+      font-size: 1.25rem; font-weight: 700;
+      background: linear-gradient(135deg, #00bcd4, #26c6da);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin: 0 0 2px 0; letter-spacing: 0.3px;
+    }
+    .batch-header-title .breadcrumb { background: transparent; padding: 0; margin: 0; }
+    .batch-header-title .breadcrumb-item a { color: rgba(200,220,255,0.6); font-size: 0.8rem; }
+    .batch-header-title .breadcrumb-item a:hover { color: #00bcd4; }
+    .batch-header-title .breadcrumb-item + .breadcrumb-item::before { color: rgba(200,220,255,0.3); }
+
+    .mode-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(0,188,212,0.12); border: 1px solid rgba(0,188,212,0.3);
+      color: #00bcd4; padding: 5px 14px; border-radius: 20px;
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+    }
+
+    /* ── Content area ── */
+    .content-area { padding: 2rem 2rem 0; max-width: 1200px; margin: 0 auto; }
+
+    /* ── Overwrite alert ── */
+    .alert-overwrite {
+      background: linear-gradient(135deg, #fff8e1, #fff3cd);
+      border: 1px solid #ffe082; border-left: 4px solid #f39c12;
+      border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.75rem;
+      display: flex; align-items: flex-start; gap: 0.75rem; color: #7d5a00;
+    }
+    .alert-overwrite i { font-size: 1.2rem; margin-top: 2px; color: #f39c12; flex-shrink: 0; }
+    .alert-overwrite strong { display: block; margin-bottom: 2px; }
+
+    /* ── Form card ── */
+    .form-outer-card {
+      background: white;
+      border: 1px solid #e3e6f0;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(30,90,150,0.09);
+    }
+
+    /* ── Section headers ── */
+    .form-section-header {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.8rem 1.5rem;
+      background: linear-gradient(135deg, #1e5a96 0%, #0f3a5f 100%);
+      color: white; font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.7px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .form-section-header:first-of-type { border-top: none; }
+    .form-section-header i { color: #00bcd4; font-size: 0.9rem; }
+
+    /* ── Form body ── */
+    .form-section-body { padding: 1.5rem 1.75rem; background: white; }
+
+    /* ── Field grids ── */
+    .field-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.1rem; }
+    .field-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
+    .field-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.1rem; }
+    .field-grid-5-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 1.1rem; }
+
+    @media (max-width: 1024px) {
+      .field-grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .field-grid-3 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 576px) {
+      .field-grid-4, .field-grid-3, .field-grid-2, .field-grid-5-2 { grid-template-columns: 1fr; }
+      .content-area { padding: 1rem; }
+    }
+
+    /* ── Field block ── */
+    .field-block { display: flex; flex-direction: column; gap: 0.3rem; }
+
+    .field-block .field-label {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.6px; color: #1e5a96; margin: 0;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+
+    .field-block .field-label a {
+      color: #00bcd4; font-size: 0.7rem; line-height: 1;
+      transition: color 0.2s;
+    }
+    .field-block .field-label a:hover { color: #0097a7; }
+
+    .field-block .form-control {
+      height: 40px; padding: 0 0.85rem; font-size: 0.88rem;
+      border: 1.5px solid #e3e6f0; border-radius: 8px;
+      transition: all 0.25s ease; color: #2c3e50;
+    }
+    .field-block .form-control:focus {
+      border-color: #1e5a96; box-shadow: 0 0 0 3px rgba(30,90,150,0.1); outline: none;
+    }
+    .field-block .form-control[readonly] {
+      background: #f5f7fb !important; color: #9aa4b8 !important; cursor: default;
+    }
+    .field-block select.form-control { background-color: #fff !important; }
+
+    /* ── Generated field highlight ── */
+    .field-block.generated .form-control {
+      background: linear-gradient(135deg, #f0f8ff, #e8f4fd) !important;
+      border-color: rgba(0,188,212,0.35) !important;
+      color: #1e5a96 !important;
+      font-weight: 600;
+    }
+
+    /* ── Staff pair: name + licence ── */
+    .staff-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.1rem;
+    }
+
+    .staff-block {
+      background: linear-gradient(135deg, #f8f9fc, #f0f4fa);
+      border: 1px solid #e3e6f0;
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+      transition: border-color 0.2s;
+    }
+    .staff-block:hover { border-color: rgba(30,90,150,0.25); }
+
+    .staff-block-label {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.6px; color: #9aa4b8; margin-bottom: 0.75rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .staff-block-label i { color: #00bcd4; }
+
+    .staff-fields {
+      display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem;
+    }
+    @media (max-width: 576px) { .staff-fields { grid-template-columns: 1fr; } }
+
+    .staff-fields .field-block .field-label { color: #607d8b; }
+
+    /* ── Divider between sections ── */
+    .section-gap { height: 1px; background: #f0f2f7; margin: 0; }
+
+    /* ── Action bar ── */
+    .action-bar {
+      display: flex; justify-content: flex-end; align-items: center;
+      gap: 0.75rem; flex-wrap: wrap;
+      padding: 1.25rem 1.75rem;
+      background: linear-gradient(135deg, #f8f9fc, #f0f4fa);
+      border-top: 2px solid #e8f5f7;
+    }
+
+    .action-bar .btn {
+      min-width: 130px;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 0.45rem; font-weight: 600; font-size: 0.875rem;
+      padding: 0.6rem 1.35rem; border-radius: 8px;
+      transition: all 0.25s ease;
+    }
+  </style>
 {% endblock stylesheets %}
 
 {% block content %}
-<!-- Animated Header -->
-<div class="header-container" style="z-index: 0;">
-  <div class="background-animation-wrapper" aria-hidden="true">
-    <!-- Grid Background -->
-    <div class="grid-bg"></div>
+<div class="page-wrapper">
 
-    <!-- Rising Particles -->
-    <div class="particles">
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-    </div>
-
-    <!-- Scanners -->
-    <div class="scanner"></div>
-    <div class="scanner"></div>
-    <div class="scanner"></div>
-
-    <!-- Glow Orbs -->
-    <div class="glow-orb"></div>
-    <div class="glow-orb"></div>
-
-    <!-- Gradient Overlay -->
-    <div class="overlay"></div>
-  </div>
-
-  <!-- Header Content -->
-
-  <div class="header-content" >
-    <h1 style="color: aliceblue;"><i class="fas fa-database mr-3" style="color: aliceblue;"></i>Batch Form</h1>
-          <i class="ni ni-single-02 mr-2"></i>
-          {% if editing %}Edit Batch{% else %}Create New Batch{% endif %}
-
-    <div class="badge-group">
-      <span class="badge">
-        <i class="badge-icon fas fa-info-circle"></i>
-        Data Management
-      </span>
-      <span class="badge">
-        <i class="badge-icon fas fa-clipboard-check"></i>
-        Automated
-      </span>
-    </div>
-  </div>
-</div>
-
-<!-- Main Content -->
-<div class="container-fluid">
-  <br>
-  <div class="row justify-content-center">
-    <div class="col-lg-11 col-md-12">
-      <!-- Batch Form Card -->
-      <div class="form-card">
-        <div class="card-header" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
-                    border-bottom: 2px solid #d1e8ed;">
-          <h4 class="mb-0">
-            <i class="ni ni-single-02 mr-2"></i>Create New Batch
-          </h4>
-        </div>
-
-        <div class="card-body">
-          <form method="POST"
-              action="{% if editing %}
-                        {% url 'batch_edit_view' batch.id %}
-                      {% else %}
-                        {% url 'batch_create_view' %}
-                      {% endif %}"
-              id="accession-form"
-      novalidate>
-
-            {% csrf_token %}
-
-            <!-- Overwrite Confirmation Alert -->
-            {% if not editing and confirm_overwrite %}
-              <div class="alert alert-warning">
-                <i class="fa fa-exclamation-triangle mr-2"></i>
-                <strong>Batch already exists.</strong> Confirm overwrite to replace it.
-              </div>
-              <input type="hidden" name="confirm_overwrite" value="true">
-            {% endif %}
-
-            <!-- Section: Site Information -->
-            <div class="section-divider">Site Information</div>
-
-            <!-- Row 1: Site Code, Referral Date, Batch No, Total Batch -->
-            <div class="form-row">
-              <div class="form-group col-md-3">
-                <div class="d-flex align-items-center mb-2">
-                  <label class="form-control-label mb-0">Site Code</label>
-                  <a href="{% url 'add_dropdown' %}" class="shortcut-item ml-2" title="Manage site codes">
-                    <i class="ni ni-settings" style="font-size: 0.85rem;"></i>
-                  </a>
-                </div>
-                {{ form.bat_SiteCode|append_attr:"class: form-control" }}
-                
-                {% if editing %}
-                  <input type="hidden"
-                        name="bat_SiteCode"
-                        value="{{ form.bat_SiteCode.value }}">
-                {% endif %}
-              </div>
-
-              <div class="form-group col-md-3">
-                <label class="form-control-label">Referral Date</label>
-                {{ form.bat_Referral_Date|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-3">
-                <label class="form-control-label">Batch No</label>
-                {{ form.bat_BatchNo|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-3">
-                <label class="form-control-label">Total Batch</label>
-                {{ form.bat_Total_batch|append_attr:"class: form-control" }}
-              </div>
-            </div>
-
-            <!-- Row 2: Reference No, Site Name, Batch Name -->
-            <div class="form-row">
-              <div class="form-group col-md-4">
-                <label class="form-control-label">Reference No</label>
-                {{ form.bat_RefNo|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-4">
-                <label class="form-control-label">Site Name</label>
-                {{ form.bat_Site_NameGen|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-4">
-                <label class="form-control-label">Batch Name</label>
-                {{ form.bat_Batch_Name|append_attr:"class: form-control" }}
-              </div>
-            </div>
-
-            <!-- Section: Personnel Information -->
-            <div class="section-divider">Personnel Information</div>
-
-            <!-- Encoder Row -->
-            <div class="form-row">
-              <div class="form-group col-md-3">
-                <label class="form-control-label">Encoded by</label>
-                {{ form.bat_Encoder|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-3">
-                <label class="form-control-label">License No.</label>
-                {{ form.bat_Enc_Lic|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-3">
-                <label class="form-control-label">Edited by</label>
-                {{ form.bat_Checker|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-3">
-                <label class="form-control-label">License No.</label>
-                {{ form.bat_Chec_Lic|append_attr:"class: form-control" }}
-              </div>
-            </div>
-
-            <!-- Verifier Row -->
-            <div class="form-row">
-              <div class="form-group col-md-3">
-                <label class="form-control-label">Verified by</label>
-                {{ form.bat_Verifier|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-3">
-                <label class="form-control-label">License No.</label>
-                {{ form.bat_Ver_Lic|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-3">
-                <label class="form-control-label">Validated by</label>
-                {{ form.bat_LabManager|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-3">
-                <label class="form-control-label">License No.</label>
-                {{ form.bat_Lab_Lic|append_attr:"class: form-control" }}
-              </div>
-            </div>
-
-            <!-- ARSP Head Row -->
-            <div class="form-row">
-              <div class="form-group col-md-6">
-                <label class="form-control-label">ARSP Head</label>
-                {{ form.bat_Head|append_attr:"class: form-control" }}
-              </div>
-              <div class="form-group col-md-6">
-                <label class="form-control-label">License No.</label>
-                {{ form.bat_Head_Lic|append_attr:"class: form-control" }}
-              </div>
-            </div>
-
-
-            <!-- Action Buttons -->
-            <div class="d-flex justify-content-end gap-3 mt-5 flex-wrap">
-              {% if confirm_overwrite %}
-                <button type="submit" class="btn btn-danger btn-lg">
-                  <i class="fa fa-trash mr-2"></i>Confirm Overwrite
-                </button>
-                <a href="{% url 'show_batches' %}" class="btn btn-secondary btn-lg">
-                  <i class="fas fa-times mr-2"></i>Cancel
-                </a>
-              {% else %}
-                  <button type="submit"
-                      class="btn {% if editing %}btn-warning{% else %}btn-primary{% endif %} btn-lg">
-                <i class="ni {% if editing %}ni-ruler-pencil{% else %}ni-fat-add{% endif %} mr-2"></i>
-                {% if editing %}Update Batch{% else %}Save Batch{% endif %}
-              </button>
-
-              {% endif %}
-              <button type="button" class="btn btn-secondary btn-lg" onclick="refresh()">
-                <i class="ni ni-bell-55 mr-2"></i>Refresh
-              </button>
-              <a href="{% url 'show_batches' %}" class="btn btn-primary btn-lg">
-                <i class="ni ni-bullet-list-67 mr-2"></i>View Batches
-              </a>
-            </div>
-          </form>
-        </div>
+  <!-- ── Hero Header ── -->
+  <div class="batch-header">
+    <div class="batch-header-left">
+      <div class="batch-header-icon">
+        <i class="fas fa-database"></i>
+      </div>
+      <div class="batch-header-title">
+        <h6>{% if editing %}Edit Batch{% else %}Create New Batch{% endif %}</h6>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb breadcrumb-links breadcrumb-dark mb-0">
+            <li class="breadcrumb-item">
+              <a href="{% url 'home' %}"><i class="fas fa-home mr-1"></i>Home</a>
+            </li>
+            <li class="breadcrumb-item">
+              <a href="{% url 'show_batches' %}">Batches</a>
+            </li>
+            <li class="breadcrumb-item active text-white-50" style="font-size:0.8rem;">
+              {% if editing %}Edit{% else %}New{% endif %}
+            </li>
+          </ol>
+        </nav>
       </div>
     </div>
+
+    <div class="mode-badge">
+      <i class="fas fa-{% if editing %}pencil-alt{% else %}plus{% endif %}"></i>
+      {% if editing %}Edit Mode{% else %}New Entry{% endif %}
+    </div>
   </div>
 
-  <!-- Back to Top Button -->
-<div class="d-flex justify-content-end mt-5">
-  <button type="button" onclick="topFunction()" id="myBtn"
-          class="btn btn-primary btn-sm">
-    <i class="fas fa-arrow-up mr-2"></i>Back to Top
-  </button>
-</div>
+  <!-- ── Main Content ── -->
+  <div class="content-area">
 
+    <form method="POST"
+          action="{% if editing %}{% url 'batch_edit_view' batch.id %}{% else %}{% url 'batch_create_view' %}{% endif %}"
+          id="accession-form"
+          novalidate>
+      {% csrf_token %}
+
+      <!-- Overwrite alert -->
+      {% if not editing and confirm_overwrite %}
+      <div class="alert-overwrite">
+        <i class="fa fa-exclamation-triangle"></i>
+        <div>
+          <strong>Batch already exists.</strong>
+          Confirming will replace the existing record permanently. This cannot be undone.
+        </div>
+      </div>
+      <input type="hidden" name="confirm_overwrite" value="true">
+      {% endif %}
+
+      <div class="form-outer-card">
+
+        <!-- ══ SECTION 1: Site Information ══ -->
+        <div class="form-section-header">
+          <i class="fas fa-map-marker-alt"></i> Site Information
+        </div>
+        <div class="form-section-body">
+
+          <!-- Row A: 4 columns -->
+          <div class="field-grid-4 mb-3">
+            <div class="field-block">
+              <label class="field-label">
+                Site Code
+                <a href="{% url 'add_dropdown' %}" title="Manage site codes">
+                  <i class="ni ni-settings"></i>
+                </a>
+              </label>
+              {{ form.bat_SiteCode|append_attr:"class: form-control" }}
+              {% if editing %}
+                <input type="hidden" name="bat_SiteCode" value="{{ form.bat_SiteCode.value }}">
+              {% endif %}
+            </div>
+
+            <div class="field-block">
+              <label class="field-label">Referral Date</label>
+              {{ form.bat_Referral_Date|append_attr:"class: form-control" }}
+            </div>
+
+            <div class="field-block">
+              <label class="field-label">Batch No</label>
+              {{ form.bat_BatchNo|append_attr:"class: form-control" }}
+            </div>
+
+            <div class="field-block">
+              <label class="field-label">Total Batch</label>
+              {{ form.bat_Total_batch|append_attr:"class: form-control" }}
+            </div>
+          </div>
+
+          <!-- Row B: 3 columns -->
+          <div class="field-grid-3">
+            <div class="field-block">
+              <label class="field-label">Reference No</label>
+              {{ form.bat_RefNo|append_attr:"class: form-control" }}
+            </div>
+
+            <div class="field-block">
+              <label class="field-label">Site Name</label>
+              {{ form.bat_Site_NameGen|append_attr:"class: form-control" }}
+            </div>
+
+            <div class="field-block generated">
+              <label class="field-label"><i class="fas fa-magic" style="color:#00bcd4;"></i> Batch Name</label>
+              {{ form.bat_Batch_Name|append_attr:"class: form-control" }}
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ══ SECTION 2: Staff Information ══ -->
+        <div class="section-gap"></div>
+        <div class="form-section-header">
+          <i class="fas fa-users"></i> ARSP Staff &amp; Signatures
+        </div>
+        <div class="form-section-body">
+
+          <div class="field-grid-3">
+
+            <!-- Encoder -->
+            <div class="staff-block">
+              <div class="staff-block-label">
+                <i class="fas fa-keyboard"></i> Encoder
+              </div>
+              <div class="staff-fields">
+                <div class="field-block">
+                  <label class="field-label">Name</label>
+                  {{ form.bat_Encoder|append_attr:"class: form-control" }}
+                </div>
+                <div class="field-block">
+                  <label class="field-label">Licence</label>
+                  {{ form.bat_Enc_Lic|append_attr:"class: form-control" }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Checker -->
+            <div class="staff-block">
+              <div class="staff-block-label">
+                <i class="fas fa-check-double"></i> Checker
+              </div>
+              <div class="staff-fields">
+                <div class="field-block">
+                  <label class="field-label">Name</label>
+                  {{ form.bat_Checker|append_attr:"class: form-control" }}
+                </div>
+                <div class="field-block">
+                  <label class="field-label">Licence</label>
+                  {{ form.bat_Chec_Lic|append_attr:"class: form-control" }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Verifier -->
+            <div class="staff-block">
+              <div class="staff-block-label">
+                <i class="fas fa-shield-alt"></i> Verifier
+              </div>
+              <div class="staff-fields">
+                <div class="field-block">
+                  <label class="field-label">Name</label>
+                  {{ form.bat_Verifier|append_attr:"class: form-control" }}
+                </div>
+                <div class="field-block">
+                  <label class="field-label">Licence</label>
+                  {{ form.bat_Ver_Lic|append_attr:"class: form-control" }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Lab Manager -->
+            <div class="staff-block">
+              <div class="staff-block-label">
+                <i class="fas fa-microscope"></i> Lab Manager
+              </div>
+              <div class="staff-fields">
+                <div class="field-block">
+                  <label class="field-label">Name</label>
+                  {{ form.bat_LabManager|append_attr:"class: form-control" }}
+                </div>
+                <div class="field-block">
+                  <label class="field-label">Licence</label>
+                  {{ form.bat_Lab_Lic|append_attr:"class: form-control" }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Head -->
+            <div class="staff-block">
+              <div class="staff-block-label">
+                <i class="fas fa-user-tie"></i> Head
+              </div>
+              <div class="staff-fields">
+                <div class="field-block">
+                  <label class="field-label">Name</label>
+                  {{ form.bat_Head|append_attr:"class: form-control" }}
+                </div>
+                <div class="field-block">
+                  <label class="field-label">Licence</label>
+                  {{ form.bat_Head_Lic|append_attr:"class: form-control" }}
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ══ ACTION BAR ══ -->
+        <div class="action-bar">
+          {% if confirm_overwrite %}
+            <button type="submit" class="btn btn-danger">
+              <i class="fa fa-trash"></i> Confirm Overwrite
+            </button>
+            <a href="{% url 'show_batches' %}" class="btn btn-secondary">
+              <i class="fas fa-times"></i> Cancel
+            </a>
+          {% else %}
+            <button type="button" class="btn btn-secondary" onclick="refresh()">
+              <i class="ni ni-refresh-02"></i> Reset
+            </button>
+            <a href="{% url 'show_batches' %}" class="btn btn-primary">
+              <i class="ni ni-bullet-list-67"></i> View Batches
+            </a>
+            <button type="submit"
+                    class="btn {% if editing %}btn-warning{% else %}btn-success{% endif %}">
+              <i class="ni {% if editing %}ni-ruler-pencil{% else %}ni-fat-add{% endif %}"></i>
+              {% if editing %}Update Batch{% else %}Save Batch{% endif %}
+            </button>
+          {% endif %}
+        </div>
+
+      </div><!-- /form-outer-card -->
+    </form>
+    
+  </div><!-- /content-area -->
+</div><!-- /page-wrapper -->
 
 {% endblock content %}
 
 {% block javascripts %}
-<!-- <script>
-  // Scroll to top functionality
-  const mybutton = document.getElementById("myBtn");
-  window.onscroll = function() {
-    mybutton.style.display = (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) ? "block" : "none";
-  };
-
-  function topFunction() {
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-  }
-
-  // Auto-fill site name + batch name
-  $(document).ready(function() {
-    var $siteCode = $('#id_bat_SiteCode'),
-        $refDate = $('#id_bat_Referral_Date'),
-        $batchNum = $('#id_bat_BatchNo'),
-        $refNo = $('#id_bat_RefNo'),
-        $totalBatch = $('#id_bat_Total_batch'),
-        $siteNameGen = $('#id_bat_Site_NameGen'),
-        $batchName = $('#id_bat_Batch_Name');
-
-    function debounce(func, wait) {
-      var timeout;
-      return function() {
-        clearTimeout(timeout);
-        timeout = setTimeout(func, wait);
-      };
-    }
-
-    function generateBatchName() {
-      var site = $siteCode.val(),
-          dateVal = $refDate.val(),
-          batch = $batchNum.val(),
-          ref = $refNo.val(),
-          total = $totalBatch.val();
-
-      if (site && dateVal && batch && total && ref) {
-        var parts = dateVal.split('-');
-        var dateClean = parts[1] + parts[2] + parts[0];
-        $batchName.val(site + '_' + dateClean + '_' + batch + '.' + total + '_' + ref);
-      } else {
-        $batchName.val('');
-      }
-    }
-
-    var debouncedGenerateBatchName = debounce(generateBatchName, 300);
-
-    $siteCode.change(function() {
-      var site = $(this).val();
-      if (site) {
-        $.ajax({
-          url: "{% url 'get_clinic_code' %}",
-          data: { site_code: site },
-          dataType: 'json',
-          success: function(data) {
-            $siteNameGen.val(data.site_name);
-            generateBatchName();
-          }
-        });
-      } else {
-        $siteNameGen.val('');
-        $batchName.val('');
-      }
-    });
-
-    $('#id_bat_RefNo, #id_bat_Referral_Date, #id_bat_BatchNo, #id_bat_Total_batch').on('input change', debouncedGenerateBatchName);
-  });
-
-  // Refresh form
-  function refresh() {
-    document.getElementById('accession-form').reset();
-  }
-
-  // Auto-fill license numbers
-  $(document).ready(function() {
-    function bindStaffField(staffSelector, licenseSelector, licenseKey) {
-      $(staffSelector).change(function() {
-        var staffId = $(this).val();
-        if (staffId) {
-          $.ajax({
-            url: "{% url 'get_ars_staff_details' %}",
-            data: { ars_staff_id: staffId, license_field: licenseKey },
-            dataType: 'json',
-            success: function(data) {
-              if (data[licenseKey]) {
-                $(licenseSelector).val(data[licenseKey]);
-              }
-            }
-          });
-        } else {
-          $(licenseSelector).val('');
-        }
-      });
-    }
-
-    bindStaffField('#id_bat_Encoder',     '#id_bat_Enc_Lic',  'bat_Enc_Lic');
-    bindStaffField('#id_bat_Checker',     '#id_bat_Chec_Lic', 'bat_Chec_Lic');
-    bindStaffField('#id_bat_Verifier',    '#id_bat_Ver_Lic',  'bat_Ver_Lic');
-    bindStaffField('#id_bat_LabManager',  '#id_bat_Lab_Lic',  'bat_Lab_Lic');
-    bindStaffField('#id_bat_Head',        '#id_bat_Head_Lic', 'bat_Head_Lic');
-  });
-</script>
- -->
 <script>
-  
 $(document).ready(function () {
   const IS_EDITING = {{ editing|yesno:"true,false" }};
-  /* =====================================================
-     FIELD REFERENCES
-  ===================================================== */
+
   const $siteCode    = $('#id_bat_SiteCode');
   const $refDate     = $('#id_bat_Referral_Date');
   const $batchNum    = $('#id_bat_BatchNo');
@@ -369,125 +437,55 @@ $(document).ready(function () {
   const $siteNameGen = $('#id_bat_Site_NameGen');
   const $batchName   = $('#id_bat_Batch_Name');
 
-
-  
   if (IS_EDITING) {
-  $siteCode
-    .prop('readonly', true)
-    .addClass('bg-light')
-    .css('pointer-events', 'none');
-
-  $refDate.prop('readonly', true).addClass('bg-light');
-  $batchNum.prop('readonly', true).addClass('bg-light');
-  $refNo.prop('readonly', true).addClass('bg-light');
-  $totalBatch.prop('readonly', true).addClass('bg-light');
-  $batchName.prop('readonly', true).addClass('bg-light');
-
-  $siteNameGen.prop('readonly', true).addClass('bg-light');
-}
-
-
-  /* =====================================================
-     UTILITIES
-  ===================================================== */
-  function debounce(fn, delay) {
-    let timer;
-    return function () {
-      clearTimeout(timer);
-      timer = setTimeout(fn, delay);
-    };
+    [$siteCode, $refDate, $batchNum, $refNo, $totalBatch, $batchName, $siteNameGen].forEach(function($el) {
+      $el.prop('readonly', true).css('pointer-events', 'none');
+    });
   }
 
-  /* =====================================================
-     BATCH NAME GENERATION
-     (ALWAYS ACTIVE — CREATE + EDIT)
-  ===================================================== */
+  function debounce(fn, delay) {
+    let timer;
+    return function () { clearTimeout(timer); timer = setTimeout(fn, delay); };
+  }
+
   function generateBatchName() {
-
-
     const site  = $siteCode.val();
     const date  = $refDate.val();
     const batch = $batchNum.val();
     const ref   = $refNo.val();
     const total = $totalBatch.val();
-
-    if (!site || !date || !batch || !total || !ref) {
-      $batchName.val('');
-      return;
-    }
-
-    // YYYY-MM-DD → MMDDYYYY
+    if (!site || !date || !batch || !total || !ref) { $batchName.val(''); return; }
     const parts = date.split('-');
-    const dateClean = parts[1] + parts[2] + parts[0];
-
-    $batchName.val(
-      `${site}_${dateClean}_${batch}.${total}_${ref}`
-    );
+    $batchName.val(`${site}_${parts[1]}${parts[2]}${parts[0]}_${batch}.${total}_${ref}`);
   }
 
   const debouncedGenerateBatchName = debounce(generateBatchName, 300);
 
-  /* =====================================================
-     SITE CODE → SITE NAME LOOKUP
-     + BATCH NAME UPDATE
-  ===================================================== */
   $siteCode.on('change', function () {
     const site = this.value;
-
-    if (!site) {
-      $siteNameGen.val('');
-      $batchName.val('');
-      return;
-    }
-
+    if (!site) { $siteNameGen.val(''); $batchName.val(''); return; }
     $.ajax({
       url: "{% url 'get_clinic_code' %}",
       data: { site_code: site },
       dataType: 'json',
-      success: function (data) {
-        $siteNameGen.val(data.site_name || '');
-        generateBatchName();   // ✅ always update batch name
-      },
-      error: function () {
-        console.error("Site lookup failed");
-      }
+      success: function (data) { $siteNameGen.val(data.site_name || ''); generateBatchName(); }
     });
   });
 
-  /* =====================================================
-     INPUT LISTENERS
-     (CREATE + EDIT)
-  ===================================================== */
   $refNo.on('input change', debouncedGenerateBatchName);
   $refDate.on('input change', debouncedGenerateBatchName);
   $batchNum.on('input change', debouncedGenerateBatchName);
   $totalBatch.on('input change', debouncedGenerateBatchName);
 
-  /* =====================================================
-     STAFF → LICENSE AUTO-FILL
-  ===================================================== */
   function bindStaffField(staffSelector, licenseSelector, licenseKey) {
     $(staffSelector).on('change', function () {
       const staffId = $(this).val();
-
-      if (!staffId) {
-        $(licenseSelector).val('');
-        return;
-      }
-
+      if (!staffId) { $(licenseSelector).val(''); return; }
       $.ajax({
         url: "{% url 'get_ars_staff_details' %}",
-        data: {
-          ars_staff_id: staffId,
-          license_field: licenseKey
-        },
+        data: { ars_staff_id: staffId, license_field: licenseKey },
         dataType: 'json',
-        success: function (data) {
-          $(licenseSelector).val(data[licenseKey] || '');
-        },
-        error: function () {
-          console.error("Staff license lookup failed:", staffSelector);
-        }
+        success: function (data) { $(licenseSelector).val(data[licenseKey] || ''); }
       });
     });
   }
@@ -498,27 +496,11 @@ $(document).ready(function () {
   bindStaffField('#id_bat_LabManager', '#id_bat_Lab_Lic',  'bat_Lab_Lic');
   bindStaffField('#id_bat_Head',       '#id_bat_Head_Lic', 'bat_Head_Lic');
 
-  /* =====================================================
-     INITIAL PAGE LOAD (EDIT MODE SUPPORT)
-  ===================================================== */
   $siteCode.trigger('change');
-  $('#id_bat_Encoder').trigger('change');
-  $('#id_bat_Checker').trigger('change');
-  $('#id_bat_Verifier').trigger('change');
-  $('#id_bat_LabManager').trigger('change');
-  $('#id_bat_Head').trigger('change');
+  ['#id_bat_Encoder','#id_bat_Checker','#id_bat_Verifier','#id_bat_LabManager','#id_bat_Head']
+    .forEach(s => $(s).trigger('change'));
 
-
-    // Refresh form
-window.refresh = function () {
-  document.getElementById('accession-form').reset();
-};
-
-
+  window.refresh = function () { document.getElementById('accession-form').reset(); };
 });
 </script>
-
-
-
-
 {% endblock javascripts %}

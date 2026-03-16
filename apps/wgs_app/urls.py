@@ -8,6 +8,27 @@ urlpatterns = [
     path('show/wgs', views.show_wgs_projects, name='show_wgs_projects'),
     path('delete/wgs/<int:pk>', views.delete_wgs, name='delete_wgs'),
     
+    
+    path("sample-info", views.upload_sample_information, name="upload_sample_information"),
+    path("show/sample-info/", views.show_sample_information, name="show_sample_information"),
+    path("delete/sample-info/<int:pk>/", views.delete_sample_information, name="delete_sample_information"),
+    path("del_all/sample-info/", views.delete_all_sample_information, name="delete_all_sample_information"),
+    path("delete_by_date/sample-info", views.delete_sample_information_by_date, name="delete_sample_information_by_date"),
+
+    path("bactscout", views.upload_bactscout, name="upload_bactscout"),
+    path("show/bactscout/", views.show_bactscout, name="show_bactscout"),
+    path("delete/bactscout/<int:pk>/", views.delete_bactscout, name="delete_bactscout"),
+    path("del_all/bactscout/", views.delete_all_bactscout, name="delete_all_bactscout"),
+    path("delete_by_date/bactscout/", views.delete_bactscout_by_date, name="delete_bactscout_by_date"),
+
+
+    path("gtdbtk", views.upload_gtdbtk, name="upload_gtdbtk"),
+    path("show/gtdbtk/", views.show_gtdbtk, name="show_gtdbtk"),
+    path("delete/gtdbtk/<int:pk>/", views.delete_gtdbtk, name="delete_gtdbtk"),
+    path("del-all/gtdbtk/", views.delete_all_gtdbtk, name="delete_all_gtdbtk"),
+    path("delete_by_date/gtdbtk/", views.delete_gtdbtk_by_date, name="delete_gtdbtk_by_date"),
+
+
     path('fastq', views.upload_fastq, name='upload_fastq'),
     path('show/fastq', views.show_fastq, name='show_fastq'),
     path('delete/fastq/<int:pk>/', views.delete_fastq, name='delete_fastq'),
@@ -42,6 +63,7 @@ urlpatterns = [
     path('del_all/amrfinder/', views.delete_all_amrfinder, name='delete_all_amrfinder'),
     
 
+
     path('wgs/data-overview', views.view_wgs_overview, name='view_wgs_overview'),
     path('wgs/download_matched/', views.download_matched_wgs_data, name='download_matched_wgs_data'),
 
@@ -55,8 +77,36 @@ urlpatterns = [
   
 
     path('get-details/<str:accession>/', views.get_wgs_details, name='get_wgs_details'),
+    path('final/upload/', views.upload_final_data, name='upload_final_data'),
+    path("projects/", views.projects_page, name="projects_page"),
 
+    # path('upload/demogs', views.upload_final_combined_table, name='upload_final_combined_table'),
+    path('upload/demogs', views.upload_referred_table, name='upload_referred_table'),
+    path("upload/final_antibiotics", views.upload_final_antibiotics, name="upload_final_antibiotics"),
+    path('final/show', views.show_final_data, name='show_final_data'),
+    path('final/show_abx', views.show_final_antibiotic, name='show_final_antibiotic'),
+    path('final/export-final/', views.export_Final_Antibioticentry, name='export_Final_Antibioticentry'),
+    path('final/delete/<int:pk>/', views.delete_final_data, name='delete_final_data'),
+    path('final/del-abx/<int:pk>/', views.delete_final_antibiotic, name='delete_final_antibiotic'),
+    path('final/del_all', views.delete_all_final_data, name='delete_all_final_data'),
+    path('final/del_abx_all', views.delete_all_final_antibiotic, name='delete_all_final_antibiotic'),
+    path("final/delete_range", views.delete_finaldata_by_date, name="delete_finaldata_by_date"),
+    path("final/delete_abx_date", views.delete_finalantibiotic_by_date, name="delete_finalantibiotic_by_date"),
+    
+    path("batch-generator", views.create_batch_from_referred, name="create_batch_from_referred"),
+    path('auto-batch', views.generate_batches_from_referred, name="generate_batches_from_referred"),
 
+    path('raw/export-raw', views.export_raw_Antibioticentry, name="export_raw_Antibioticentry"),
+    path('raw/del_abx_date', views.delete_rawantibiotic_by_date, name="delete_rawantibiotic_by_date"),
+    path('raw/del_abx_all', views.delete_all_raw_antibiotic, name="delete_all_raw_antibiotic"),
+    path('raw/del-abx/<int:pk>/', views.delete_raw_antibiotic, name='delete_raw_antibiotic'),
+    path('raw/show_abx', views.show_raw_antibiotic, name='show_raw_antibiotic'),
+    path("upload/raw_antibiotics", views.upload_raw_antibiotics, name="upload_raw_antibiotics"),
+    
+    path("raw/delete_range", views.delete_referreddata_by_date, name="delete_referreddata_by_date"),
+    path("raw/delete_all", views.delete_all_referred_data, name="delete_all_referred_data"),
+    path('raw/delete/<int:pk>/', views.delete_referred_data, name='delete_referred_data'),
+    path('raw/show', views.show_referred_data, name='show_referred_data'),
     # path('overview/', views.view_data_overview, name='view_data_overview'),
 
 ]

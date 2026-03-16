@@ -4,40 +4,76 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-
 <style>
 @page {
-    size: 330mm 216mm;
-    margin: 0.8cm;
+    size: Legal portrait;
+    margin: 0.7cm;
 }
 
 body {
     font-family: Calibri, Trebuchet MS, sans-serif;
+    margin-bottom: 0;
+    margin-top: 0;
+}
+
+
+.print-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: #fff;      /* prevents content bleed-through */
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
-    table-layout: fixed;
+    /* table-layout: fixed; */
+    margin-top: 0;
 }
 
 th, td {
     border: 0.6px solid #000;
-    font-size: 8.5px;
+    font-size: 10px !important;
     text-align: center;
     vertical-align: middle;
-    padding: 0.8px;
-    line-height: .96;
+    padding: 1.5px;
+    line-height: 0.8;
 }
 
-.gray-background {
+.gray {
     background: #e4dede;
     font-weight: bold;
 }
 
 .mic {
-    background: #e4dede;
-    font-size: 8px;
+    background: #fff6f6;
+}
+
+.abx-col {
+    white-space: normal;   
+    width: 25.2px;
+    min-width: 25.2px;
+    max-width: 25.2px;
+    font-size: 9px;
+    vertical-align: middle;
+    height: auto !important;
+}
+
+.abx-inner {
+    white-space: normal;      /* allows wrapping */
+    word-break: break-all;    /* allows breaking long values */
+    overflow-wrap: break-word;
+    vertical-align: middle;
+    font-size: 9px;
+    font-weight: bold;
+    line-height: auto !important;
+}
+
+
+tr {
+    height: auto !important;
 }
 
 .page-break {
@@ -48,9 +84,20 @@ th, td {
 .header-container th,
 .header-container td {
     border: none !important;
-    padding: 2px;
 }
+
+
+.print-footer table,
+.print-footer th,
+.print-footer td {
+    border: none !important;
+    font-size: 8px;
+
+}
+
+
 </style>
+
 </head>
 
 <body>
@@ -69,16 +116,16 @@ th, td {
                 <p>Logo not available</p>
                 {% endif %}
             </th>
-            <th style="padding-left: 5px; text-align: left; font-size: 10px;" colspan="8">
+            <th style="padding-left: 5px; text-align: left; font-size: 10px;" colspan="28">
                 <p style="text-align: center;">
                 <strong>Research Institute for Tropical Medicine - Department of Health </strong>
                 <br><strong>Antimicrobial Resistance Surveillance Reference Laboratory</strong>
-                <br > <span style="font-size: 8px;">9002 Research Drive, Filinvest Corporate City, Alabang, Muntinlupa City 1781 Philippines</span> 
-                <br> <span style="font-size: 8px;">T: (632) 809-9763 / 807-2628 to 32 loc. 243 | F: (632) 809-9763</span>
-                <br><span style="font-size: 8px;"><a href="http://www.ritm.gov.ph/"><strong>www.ritm.gov.ph</strong></a> <strong>| ISO 9001:2008 Certified</strong> </span>
+                <br > <span style="font-size: 9px;">9002 Research Drive, Filinvest Corporate City, Alabang, Muntinlupa City 1781 Philippines</span> 
+                <br> <span style="font-size: 9px;">T: (632) 809-9763 / 807-2628 to 32 loc. 243 | F: (632) 809-9763</span>
+                <br><span style="font-size: 9px;"><a href="http://www.ritm.gov.ph/"><strong>www.ritm.gov.ph</strong></a> <strong>| ISO 9001:2008 Certified</strong> </span>
                 </p>
         </th>
-                    <th style="padding-left: 5px; text-align: left; font-size: 10px;" colspan="8">
+                    <th style="padding-left: 5px; text-align: left; font-size: 10px;" colspan="28">
                 <p>
                 </p>
         </th>
@@ -142,7 +189,7 @@ th, td {
         {% endif %}
 
         {% for abx, data in row %}
-            <td style="font-size:7px;">{{ data.disk.ab_Disk_value|default:"" }}<br>{{ data.disk.ab_Disk_enRIS|default:"" }}</td>
+            <td style="font-size:9px;">{% if data.disk.ab_Disk_value %}{{ data.disk.ab_Disk_value|default:"" }}{% else %} <span>&nbsp;</span> {% endif %}<br>{{ data.disk.ab_Disk_enRIS|default:"" }}</td>
         {% endfor %}
         {% with abx_count=row|length %}
             {% for i in "x"|rjust:29 %}
@@ -160,7 +207,7 @@ th, td {
         <td colspan="5" style="border-right:1px solid black; text-align: left;"><strong><i>{{ isolate.Site_OrgName }}</i></strong></td>
         
         {% for abx, data in row %}
-            <td class="mic" style="font-size:7px;">{{ data.mic.ab_MIC_operand }}{{ data.mic.ab_MIC_value|floatformat:2|default:"" }}<br>{{ data.mic.ab_MIC_enRIS|default:"" }}</td>
+            <td class="mic" style="font-size:9px;">{{ data.mic.ab_MIC_operand }}{{ data.mic.ab_MIC_value|floatformat:2|default:"" }}<br>{{ data.mic.ab_MIC_enRIS|default:"" }}</td>
         {% endfor %}
         {% with abx_count=row|length %}
             {% for i in "x"|rjust:29 %}

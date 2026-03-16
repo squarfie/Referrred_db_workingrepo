@@ -1,0 +1,412 @@
+{% extends 'layouts/base.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block title %} Dashboard {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+{% endblock stylesheets %}
+
+{% block content %}
+<head>
+    <style>
+
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <!-- Animated background elements -->
+        <div class="grid-bg"></div>
+
+        <!-- Particles rising -->
+        <div class="particles">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
+
+        <!-- Scanning circles -->
+        <div class="scanner"></div>
+        <div class="scanner"></div>
+        <div class="scanner"></div>
+
+        <!-- Glow orbs -->
+        <div class="glow-orb"></div>
+        <div class="glow-orb"></div>
+
+
+        <!-- Header content -->
+        <div class="header-content index-font">
+            <h1>Antimicrobial Resistance Surveillance Program</h1>
+            <p>AST Results Management System</p>
+            <div class="badge-group">
+                <div class="badge">
+                    <span class="badge-icon">🔬</span>
+                    <span>Bacterial Pathogens</span>
+                </div>
+                <div class="badge">
+                    <span class="badge-icon">📊</span>
+                    <span>Real-time Data</span>
+                </div>
+                <div class="badge">
+                    <span class="badge-icon">⚡</span>
+                    <span>Live Monitoring</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats display -->
+        <div class="header-stats index-font">
+            <div class="stat-item">
+                <span class="stat-number">{{ record_count }}</span>
+                <span class="stat-label">Total Records</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ site_count }}</span>
+                <span class="stat-label">Active Sites</span>
+            </div>
+        </div>
+
+        <!-- New CRF Button -->
+        <a href="{% url 'batch_create_view' %}" class="btn-new-crf index-font">+ Add New</a>
+    </div>
+
+    <!-- Header -->
+    <div id="slideshow-header" class="header bg-primary pb-6 g-gradient-default align-items-center index-font" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/resistance2.jpg); background-position: center center;">
+      <span class="mask bg-gradient-default opacity-4"></span>
+      <div class="container-fluid">
+        <div class="header-body">
+          <div class="row align-items-center py-4">
+                  <div class="col-lg-6 col-7">
+                    <h6 class="h2 text-white d-inline-block mb-0">Home</h6>
+                    <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+                      <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+                        <li class="breadcrumb-item"><a href="#"><i class="fas fa-home"></i></a></li>
+                        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                        
+                      </ol>
+                    </nav>
+                  </div>
+                    <div class="col-lg-6 col-12 text-right">
+                        <span style="color: rgba(255, 255, 255, 0.7); font-size: 1.0rem; font-weight: 500;">
+                            <i class="ni ni-calendar-grid-58 mr-2"></i>
+                            <span id="current-date"></span>
+                        </span>
+                    </div>
+               </div>
+                  <!-- Animated Preview Cards Section -->
+
+                  <div class="row g-3 mb-6">
+                    <!-- WGS Overview Card -->
+                    <div class="col-lg-3 col-md-6 col-sm-12">
+                      <a href="{% url 'view_wgs_overview' %}" class="preview-card-link">
+                        <div class="preview-card">
+                          <div class="card-background" style="--card-color: linear-gradient(135deg, #2dce89 0%, #11cdef 100%);"></div>
+                          <div class="card-content">
+                            <div class="card-icon">
+                              <i class="ni ni-atom"></i>
+                            </div>
+                            <h5 class="card-title">WGS Overview</h5>
+                            <p class="card-description">Whole Genome Sequencing Results</p>
+                            <div class="card-arrow">
+                              <i class="ni ni-curved-next"></i>
+                            </div>
+                          </div>
+                          <div class="card-shine"></div>
+                        </div>
+                      </a>
+                    </div>
+
+                    <!-- Antibiotics Management Card -->
+                    <div class="col-lg-3 col-md-6 col-sm-12">
+                      <a href="{% url 'antibiotics_view' %}" class="preview-card-link">
+                        <div class="preview-card">
+                          <div class="card-background" style="--card-color: linear-gradient(135deg, #11cdef 0%, #64c8ff 100%);"></div>
+                          <div class="card-content">
+                            <div class="card-icon">
+                              <i class="fas fa-medkit"></i>
+                            </div>
+                            <h5 class="card-title">Antibiotics</h5>
+                            <p class="card-description">View All Antibiotic Data</p>
+                            <div class="card-arrow">
+                              <i class="ni ni-curved-next"></i>
+                            </div>
+                          </div>
+                          <div class="card-shine"></div>
+                        </div>
+                      </a>
+                    </div>
+
+                    <!-- Batch Management Card -->
+                    <div class="col-lg-3 col-md-6 col-sm-12">
+                      <a href="{% url 'show_batches' %}" class="preview-card-link">
+                        <div class="preview-card">
+                          <div class="card-background" style="--card-color: linear-gradient(135deg, #64c8ff 0%, #5e72e4 100%);"></div>
+                          <div class="card-content">
+                            <div class="card-icon">
+                              <i class="fa fa-cubes"></i>
+                            </div>
+                            <h5 class="card-title">Batches</h5>
+                            <p class="card-description">Batch Management System</p>
+                            <div class="card-arrow">
+                              <i class="ni ni-curved-next"></i>
+                            </div>
+                          </div>
+                          <div class="card-shine"></div>
+                        </div>
+                      </a>
+                    </div>
+
+                    <!-- Reports Card -->
+                    <div class="col-lg-3 col-md-6 col-sm-12">
+                      <a href="#" class="preview-card-link">
+                        <div class="preview-card">
+                          <div class="card-background" style="--card-color: linear-gradient(135deg, #fb6340 0%, #fbc658 100%);"></div>
+                          <div class="card-content">
+                            <div class="card-icon">
+                              <i class="ni ni-chart-pie-35"></i>
+                            </div>
+                            <h5 class="card-title">Reports</h5>
+                            <p class="card-description">Generate Reports</p>
+                            <div class="card-arrow">
+                              <i class="ni ni-curved-next"></i>
+                            </div>
+                          </div>
+                          <div class="card-shine"></div>
+                        </div>
+                      </a>
+                    </div>
+                  </div>
+          
+
+          </div>
+        </div>
+      </div>
+  
+
+    <!-- Page content -->
+    <div class="container-fluid mt--6 index-font">
+      <!-- <div class="row">
+        <div class="col-xl-8">
+          <div class="card bg-default">
+            <div class="card-header bg-transparent">
+              <div class="row align-items-center">
+                <div class="col">
+                  <h6 class="text-light text-uppercase ls-1 mb-1">Overview</h6>
+                  <h5 class="h3 text-white mb-0">Sales value</h5>
+                </div>
+                <div class="col">
+                  <ul class="nav nav-pills justify-content-end">
+                    <li class="nav-item mr-2 mr-md-0" data-toggle="chart" data-target="#chart-sales-dark" data-update='{"data":{"datasets":[{"data":[0, 20, 10, 30, 15, 40, 20, 60, 60]}]}}' data-prefix="$" data-suffix="k">
+                      <a href="#" class="nav-link py-2 px-3 active" data-toggle="tab">
+                        <span class="d-none d-md-block">Month</span>
+                        <span class="d-md-none">M</span>
+                      </a>
+                    </li>
+                    <li class="nav-item" data-toggle="chart" data-target="#chart-sales-dark" data-update='{"data":{"datasets":[{"data":[0, 20, 5, 25, 10, 30, 15, 40, 40]}]}}' data-prefix="$" data-suffix="k">
+                      <a href="#" class="nav-link py-2 px-3" data-toggle="tab">
+                        <span class="d-none d-md-block">Week</span>
+                        <span class="d-md-none">W</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              Chart
+              <div class="chart">
+                Chart wrapper
+                <canvas id="chart-sales-dark" class="chart-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-4">
+          <div class="card">
+            <div class="card-header bg-transparent">
+              <div class="row align-items-center">
+                <div class="col">
+                  <h6 class="text-uppercase text-muted ls-1 mb-1">Performance</h6>
+                  <h5 class="h3 mb-0">Total orders</h5>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              Chart
+              <div class="chart">
+                <canvas id="chart-bars" class="chart-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> -->
+   
+
+      <div class="row">
+        <div class="col-xl-12 ">
+          <div class="card">
+            <div class="card-header border-0">
+              <div class="row align-items-center">
+                <div class="col">
+                  <h3 class="mb-0">All Records</h3>
+                  
+                </div>
+                <div class="row"></div>
+                <div class="col md-6 d-flex justify-content-end">
+                  <form id="search-input" class="navbar-search navbar-search-light form-inline mr-sm-3 " id="navbar-search-main">
+                    <div class="form-group mb-0">
+                      <div class="input-group input-group-alternative input-group-merge">
+                        <div class="input-group-prepend">
+                          <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        </div>
+                        <input class="form-control" placeholder="Search Table" type="text" onkeyup="searchTable()">
+                      </div>
+                    </div>
+                    <button type="button" class="close" data-action="search-close" data-target="#navbar-search-main" aria-label="Close">
+                      <span aria-hidden="true">x</span>
+                    </button>
+                  </form>
+                </div> </div>
+              </div>
+            </div>
+            <div class="table-responsive" style="background: linear-gradient(135deg, #e3f0ff 0%, #f9f9f9 100%); box-shadow: 0 8px 24px rgba(0,0,0,0.08);">
+              <!-- Projects table -->
+              <table class="table align-items-center table-flush table-hover">
+                <thead class="thead-dark" >
+                  <tr>
+                    <th scope="col" class="sort" data-sort="Egasp_Id" style="color: white; text-align: center;">Accession No.</th>
+                    <th scope="col" class="sort" data-sort="Laboratory" style="color: white; text-align: center;">Site Code</th>
+                    <th scope="col" class="sort" data-sort="Clinic" style="color: white; text-align: center;">Referral Date</th>
+                    <th scope="col" class="sort" data-sort="Consult_Date" style="color: white; text-align: center;">Patient ID</th>
+                    <th scope="col" style="color: white; text-align: center;">First Name</th>
+                    <th scope="col" class="sort" data-sort="Uic_Ptid" style="color: white; text-align: center;">Middle Name</th>
+                    <th scope="col" class="sort" data-sort="Clinic_Code" style="color: white; text-align: center;">Last Name</th>
+                    <th scope="col" style="color: white; text-align: center;">Specimen no.</th>
+                    <th scope="col" style="color: white; text-align: center;">Specimen Date</th>
+                    <th scope="col" style="color: white; text-align: center;">Specimen type</th>
+                    <th scope="col" style="color: white; text-align: center;">Organism</th>
+                    <th></th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody class="list">
+                  {% for isolate in isolates %}
+                 <tr>
+                  <td style="text-align: center;">{{isolate.AccessionNo}}</td>
+                  <td style="text-align: center;">{{isolate.SiteCode}}</td>
+                  <td style="text-align: center;">{{isolate.Referral_Date}}</td>
+                  <td style="text-align: center;">{{isolate.Patient_ID}}</td>
+                  <td style="text-align: center;">{{isolate.First_Name}}</td>
+                  <td style="text-align: center;">{{isolate.Mid_Name}}</td>
+                  <td style="text-align: center;">{{isolate.Last_Name}}</td>
+                  <td style="text-align: center;">{{isolate.Spec_Num}}</td>
+                  <td style="text-align: center;">{{isolate.Spec_Date}}</td>
+                  <td style="text-align: center;">{{isolate.Spec_Type}}</td>
+                  <td style="text-align: center;">{{isolate.ars_OrgName}}</td>
+               
+               
+  
+                     
+                      <td><a href="{%url 'generate_pdf' isolate.id %}" class="text-danger"> <i class="fa fa-print" aria-hidden="true"></i> View/Print </a></td>
+                      <td style="text-align: center;">
+                        <a href="{% url 'edit_data' isolate.id %}" class="btn btn-sm btn-primary">Add Data</a>
+                    </td>
+
+  
+  
+                </tr>
+                 {% endfor %}
+                </tbody>
+              </table>
+           
+           
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview window -->
+        <!-- <div class="col-xl-4">
+          <div class="card">
+            <div class="card-header border-0">
+              <div class="row align-items-center">
+                <div class="col">
+                  <h3 class="mb-0">Preview</h3>
+                </div>
+                <div class="col text-right">
+                  <a href="#!" class="btn btn-sm btn-primary">See all</a>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+        </div> -->
+      </div>
+
+   
+
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE --> 
+{% block javascripts %}
+
+  <script src="/static/assets/vendor/chart.js/dist/Chart.min.js"></script>
+  <script src="/static/assets/vendor/chart.js/dist/Chart.extension.js"></script>
+  <script>
+    function searchTable() {
+      var input = document.querySelector("#search-input input");
+      var filter = input.value.toLowerCase();
+      var table = document.querySelector("table");
+      var rows = table.querySelectorAll("tbody tr");
+  
+      rows.forEach(row => {
+        var text = row.textContent.toLowerCase();
+        row.style.display = text.includes(filter) ? "" : "none";
+      });
+    }
+  </script>
+  <script>
+  // List of background images
+  const images = [
+    '/static/assets/img/theme/resistance1.jpg',
+    '/static/assets/img/theme/resistance3.jpg',
+    '/static/assets/img/theme/resistance4.jpg',
+    '/static/assets/img/theme/resistance5.jpg',
+    '/static/assets/img/theme/viruses.jpg',
+    '/static/assets/img/theme/microbial.jpg'
+  ];
+
+  let index = 0;
+  const header = document.getElementById('slideshow-header');
+
+  function changeBackground() {
+    header.style.backgroundImage = `url(${images[index]})`;
+    index = (index + 1) % images.length;
+  }
+
+  // Initialize immediately
+  changeBackground();
+
+  // Change every 15 seconds
+  setInterval(changeBackground, 15000);
+</script>
+
+
+<script>
+      // Display current date in header
+    document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+</script>
+
+{% endblock javascripts %}

@@ -1,18 +1,9 @@
 from django.urls import path
 from . import views
 urlpatterns = [
-        path('upload', views.upload_final_combined_table, name='upload_final_combined_table'),
-        path('upload_antibiotic', views.upload_antibiotic_entries, name='upload_antibiotic_entries'),
-        path('show', views.show_final_data, name='show_final_data'),
-        path('show_abx', views.show_final_antibiotic, name='show_final_antibiotic'),
-        path('delete/<int:pk>/', views.delete_final_data, name='delete_final_data'),
-        path('delete_abx/<int:pk>/', views.delete_final_antibiotic, name='delete_final_antibiotic'),
-        path('del_all', views.delete_all_final_data, name='delete_all_final_data'),
-        path('del_abx', views.delete_all_final_antibiotic, name='delete_all_final_antibiotic'),
-        path("delete_range", views.delete_finaldata_by_date, name="delete_finaldata_by_date"),
-        path("delete_range_abx", views.delete_finalantibiotic_by_date, name="delete_finalantibiotic_by_date"),
+
         path("edit_final/<int:id>/", views.edit_final_data, name="edit_final_data"),
-        path("show_final_table", views.show_final_table, name="show_final_table"),\
+        path("show_final_table", views.show_final_table, name="show_final_table"),
         path("final_lab_result/<int:id>/", views.generate_final_batch_pdf, name="generate_final_batch_pdf"),
        
         path('ajax/get-antibiotic-details/', views.get_antibiotic_details, name='get_antibiotic_details'),
@@ -30,11 +21,25 @@ urlpatterns = [
         path("emerging/download/", views.download_emerging_list, name="download_emerging_list"),
         
 
-        path("projects/wgs/classification/<int:pk>/",views.wgs_classification_view,name="wgs_classification_view"),  ######### add this !!!!!
+        path("projects/wgs/classification/<int:pk>/",views.wgs_classification_view,name="wgs_classification_view"),  
         path("projects/wgs/classification/update/<str:accession_no>/", views.update_wgs_classification_inline, name="update_wgs_classification_inline"),
 
-
-
+        ### add starting here for concordance analysis
+        path("concordance_analysis/", views.concordance_analysis_view, name="concordance_analysis"),
+        
+        path("concordance/batch/generate/", views.concordance_generate_batch, name="concordance_generate_batch"),
+        path("concordance/batch/<int:report_id>/", views.concordance_batch_detail, name="concordance_batch_detail"),
+        
+        path("concordance/accession/generate/", views.concordance_generate_accession, name="concordance_generate_accession"),
+        path("concordance/accession/<int:report_id>/", views.concordance_accession_detail, name="concordance_accession_detail"),        
+        # path("concordance/accession/<str:accession_no>/",views.concordance_accession_detail_view, name="concordance_accession_detail"),
+        
+        path("concordance_history/", views.concordance_history_view, name="concordance_history"),
+        
+        path("concordance_report/<int:report_id>/export/batch/",views.export_concordance_batch_excel,name="export_concordance_batch_excel",),
+        path("concordance_report/<int:report_id>/export/accession/",views.export_concordance_accession_excel,name="export_concordance_accession_excel",),
+        
+        path("concordance_report/<int:report_id>/export_pdf/",views.export_concordance_report_pdf,name="export_concordance_report_pdf",),
 
 
 ]

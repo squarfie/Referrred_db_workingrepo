@@ -14,7 +14,7 @@ urlpatterns = [
     path('upload/', include('apps.wgs_app.urls')),
     path('final/', include('apps.home_final.urls')),
     path("settings/", views.settings_page, name="settings_page"),
-    path("projects/", views.projects_page, name="projects_page"),
+
 
     #the forms
     path('batch/', views.batch_create_view,name='batch_create_view'),
@@ -144,6 +144,24 @@ urlpatterns = [
     path("recommendation/get-description/", views.get_recommendation_description, name="get_recommendation_description"),
     path("projects/wgs/classification/<str:accession_no>/", views.wgs_classification_view, name="wgs_classification_view"),
     path("projects/wgs/classification/update/<str:accession_no>/", views.update_wgs_classification_inline, name="update_wgs_classification_inline"),
+
+    path("tat/<int:batch_id>/", views.tat_monitoring_view, name="tat_monitoring_view"),
+    path("tat/config/", views.add_tat_step_config, name="add_tat_step_config"),
+    path("tat/config/edit/<int:pk>/", views.edit_tat_step_config, name="edit_tat_step_config"),
+    path("tat/config/list/", views.tat_step_config_list, name="tat_step_config_list"),
+    path("tat/upload/", views.upload_tat_step_config, name="upload_tat_step_config"),
+    path("tat/delete-all/", views.delete_all_tat_process, name="delete_all_tat_process"),
+    path("export/tat-report/", views.export_tat_excel, name="export_tat_excel"),
+    path("tat/review/", views.tat_review_view, name="tat_review_view"),
+    path("tat/analysis/", views.tat_analysis, name="tat_analysis"),
+    path("settings/non-working/add/", views.add_non_working_day, name="add_non_working_day"),
+    path("settings/non-working/delete/<int:pk>/", views.delete_non_working_day, name="delete_non_working_day"),
+    path("batches/delete-all/",views.delete_all_batches,name="delete_all_batches"),
+    path("batches/delete-all/",views.delete_blank_batches,name="delete_blank_batches"),
+   
+
+
+
 
 
     # Matches any html file

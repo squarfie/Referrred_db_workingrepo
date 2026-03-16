@@ -1,3 +1,4 @@
+import math
 import re
 from django import template
 from operator import attrgetter
@@ -169,3 +170,23 @@ def break_long_words(value, width=20):
     if not value:
         return value
     return re.sub(r'(\S{%d})' % width, r'\1 ', value)
+
+
+@register.filter
+def clean_nan(value):
+    """
+    Converts NaN, None, or empty values to '-'
+    """
+    if value is None:
+        return "-"
+
+    try:
+        if isinstance(value, float) and math.isnan(value):
+            return "-"
+    except:
+        pass
+
+    if str(value).lower() in ["nan", "none", ""]:
+        return "-"
+
+    return value

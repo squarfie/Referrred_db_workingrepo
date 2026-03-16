@@ -1,0 +1,184 @@
+{% extends 'layouts/base.html' %}
+{% block title %}TAT Step Configuration{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid mt-4">
+  <div class="card shadow" style="border-top:3px solid #2d9cad;">
+
+    <!-- Header -->
+          <div class="card-header d-flex align-items-center justify-content-between"
+              style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+                      border-bottom: 2px solid #d1e8ed;">
+
+            <h3 class="mb-0 text-primary">
+              <i class="fas fa-clock mr-2"></i>
+              TAT Step Configuration
+            </h3>
+
+            <div class="ml-auto">
+                <a href="{% url 'add_tat_step_config' %}"
+                  class="btn btn-sm btn-success mr-2">
+                  <i class="fas fa-plus mr-1"></i> Add Step
+                </a>
+
+                <a href="{% url 'delete_all_tat_process' %}"
+                  class="btn btn-sm btn-primary">
+                  <i class="fas fa-trash mr-1"></i> Delete All
+                </a>
+            </div>
+          </div>
+
+    <!-- Search -->
+    <div class="card-body border-bottom">
+      <form method="get">
+        <div class="input-group">
+          <input type="text"
+                 name="q"
+                 value="{{ q }}"
+                 class="form-control"
+                 placeholder="Search step or owner...">
+          <div class="input-group-append">
+            <button class="btn btn-primary" type="submit">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead class="thead-light">
+          <tr>
+            <th>Order</th>
+            <th>Step Type</th>
+            <th>Owner</th>
+            <th>Target Days</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for config in page_obj %}
+          <tr>
+            <td>{{ config.order }}</td>
+            <td>{{ config.step_type }}</td>
+            <td>
+              <span class="badge 
+                {% if config.step_owner == 'LAB' %}
+                  badge-primary
+                {% elif config.step_owner == 'DMU' %}
+                  badge-warning
+                {% else %}
+                  badge-secondary
+                {% endif %}
+              ">
+                {{ config.step_owner }}
+              </span>
+            </td>
+            <td>
+              <strong>{{ config.target_days }}</strong> days
+            </td>
+          </tr>
+                {% empty %}
+                <tr>
+                <td colspan="4" class="text-center py-5 text-muted">
+                    <i class="fas fa-folder-open fa-2x mb-2"></i>
+                    <br>
+                    No configurations found
+                </td>
+                </tr>
+                {% endfor %}
+
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+<div class="card-footer py-4 bg-light">
+  <div class="row align-items-center">
+
+    <!-- Go to page -->
+    <div class="col-md-4">
+      <form method="get" class="form-inline">
+        {% if q %}
+          <input type="hidden" name="q" value="{{ q }}">
+        {% endif %}
+        <label class="mr-2 mb-0 text-primary">Go to page:</label>
+        <input type="number"
+               name="page"
+               min="1"
+               max="{{ page_obj.paginator.num_pages }}"
+               value="{{ page_obj.number }}"
+               class="form-control form-control-sm mr-2"
+               style="width: 70px;">
+        <button type="submit" class="btn btn-sm btn-primary">
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Page info -->
+    <div class="col-md-4 text-center">
+      <span class="text-primary">
+        Page <strong>{{ page_obj.number }}</strong>
+        of <strong>{{ page_obj.paginator.num_pages }}</strong>
+      </span>
+    </div>
+
+    <!-- Controls -->
+    <div class="col-md-4">
+      <nav>
+        <ul class="pagination justify-content-end mb-0">
+
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page=1{% if q %}&q={{ q }}{% endif %}">
+                <i class="fas fa-angle-double-left"></i>
+              </a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}">
+                <i class="fas fa-angle-left"></i>
+              </a>
+            </li>
+          {% endif %}
+
+          {% for num in page_obj.paginator.page_range %}
+            {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+              {% if num == page_obj.number %}
+                <li class="page-item active">
+                  <span class="page-link">{{ num }}</span>
+                </li>
+              {% else %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ num }}{% if q %}&q={{ q }}{% endif %}">
+                    {{ num }}
+                  </a>
+                </li>
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}">
+                <i class="fas fa-angle-right"></i>
+              </a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if q %}&q={{ q }}{% endif %}">
+                <i class="fas fa-angle-double-right"></i>
+              </a>
+            </li>
+          {% endif %}
+
+        </ul>
+      </nav>
+    </div>
+
+  </div>
+</div>
+
+  </div> </div> {% endblock %}
+

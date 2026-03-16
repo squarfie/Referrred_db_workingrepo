@@ -12,11 +12,62 @@ class WGSProjectForm(forms.ModelForm):
         model = WGS_Project
         fields = '__all__'
         widgets = {
+               'WGS_SampleInfoSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+               'WGS_BactScoutSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+               'WGS_GtdbTkSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
                'WGS_FastqSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
                'WGS_GambitSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
                'WGS_MlstSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
                'WGS_Checkm2Summary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             }
+
+
+# Final Referred Data Upload Form
+class DemogsDataUploadForm(forms.ModelForm):
+     class Meta:
+          model = DemogsData_upload
+          fields = ['DemogsDataFile']
+
+
+
+
+class SampleInfoForm(forms.ModelForm):
+        class Meta:
+            model = SampleInformation
+            fields = '__all__'
+
+class SampleInfoUploadForm(forms.ModelForm):
+     class Meta:
+          model = SampleInfoUpload
+          fields = ['sampleinfo']
+
+
+
+class BactScoutForm(forms.ModelForm):
+        class Meta:
+            model = BactScout
+            fields = '__all__'
+
+class BactScoutUploadForm(forms.ModelForm):
+     class Meta:
+          model = BactScoutUpload
+          fields = ['bactscoutfile']
+
+
+
+
+class GtdbTkForm(forms.ModelForm):
+        class Meta:
+            model = GtdbTk
+            fields = '__all__'
+
+
+class GtdbTkUploadForm(forms.ModelForm):
+     class Meta:
+          model = GtdbTkUpload
+          fields = ['GtdbTkFile']
+
+
 
 class FastqUploadForm(forms.ModelForm):
      class Meta:

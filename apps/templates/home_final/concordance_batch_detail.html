@@ -1,0 +1,290 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<!-- ══════════════ PAGE HEADER ══════════════ -->
+<div class="header-container">
+  <div class="grid-bg"></div>
+  <div class="particles">
+    <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+    <div class="scanner"></div><div class="scanner"></div><div class="scanner"></div>
+    <div class="glow-orb"></div><div class="glow-orb"></div>
+  </div>
+  <div class="overlay"></div>
+
+  <div class="header-content">
+    <h1>
+      <i class="fas fa-layer-group me-2"></i>
+      Concordance Snapshot – Batch {{ report.batch.bat_Batch_Name }}
+    </h1>
+    <p>Detailed concordance analysis for this batch</p>
+    <div class="badge-group">
+      <span class="badge">
+        <i class="fas fa-hashtag badge-icon"></i>
+        Report #{{ report.id }}
+      </span>
+      <span class="badge">
+        <i class="fas fa-user badge-icon"></i>
+        {{ report.created_by }}
+      </span>
+      <span class="badge">
+        <i class="far fa-calendar-alt badge-icon"></i>
+        {{ report.created_at|date:"M d, Y" }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div style="position:absolute; top:20px; right:40px; z-index:3; display:flex; flex-direction:row; align-items:center; gap:0.6rem;">
+    <a href="{% url 'export_concordance_batch_excel' report.id %}"
+       class="btn-new-crf"
+       style="position:static; background:linear-gradient(135deg,#1abc9c,#16a085); box-shadow:0 8px 25px rgba(26,188,156,.4);">
+      <i class="fas fa-file-excel me-1"></i> Excel
+    </a>
+    <a href="{% url 'export_concordance_report_pdf' report.id %}"
+       class="btn-new-crf"
+       style="position:static; background:linear-gradient(135deg,#e74c3c,#c0392b); box-shadow:0 8px 25px rgba(231,76,60,.4);"
+       target="_blank">
+      <i class="fas fa-file-pdf me-1"></i> PDF
+    </a>
+    <button class="btn-new-crf"
+            onclick="history.back()"
+            style="position:static; background:rgba(255,255,255,.12); color:white; box-shadow:none; border:1px solid rgba(255,255,255,.25);">
+      <i class="fas fa-arrow-left me-1"></i> Back
+    </button>
+  </div>
+</div>
+
+
+<!-- ══════════════ MAIN CONTENT ══════════════ -->
+<div class="container-fluid px-4 py-4">
+
+  <!-- ══════════════ AST SUMMARY CARD ══════════════ -->
+  <div class="card mb-4" style="border-radius:16px; overflow:hidden; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.10);">
+
+    <div class="card-header d-flex align-items-center gap-2"
+         style="background:linear-gradient(135deg,#1e3a5f,#0f2744); padding:1.1rem 1.75rem; border:none;">
+      <i class="fas fa-chart-bar" style="color:#00bcd4; font-size:1.1rem;"></i>
+      <h5 class="mb-0 text-white fw-bold" style="font-size:1.05rem;">AST Result Summary</h5>
+    </div>
+
+    <div class="card-body p-0">
+
+      <div style="height:3px; background:linear-gradient(90deg,transparent,#00bcd4,#1abc9c,transparent);"></div>
+
+      <!-- Primary stats -->
+      <div class="row g-0" style="border-bottom:1px solid #f0f4f8;">
+
+        <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-vials me-1"></i>Total Isolates
+          </p>
+          <div style="font-size:2.4rem;font-weight:900;color:#00bcd4;line-height:1;">{{ report.total_isolates }}</div>
+          <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">Samples</p>
+        </div>
+
+        <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-layer-group me-1"></i>Total Comparisons
+          </p>
+          <div style="font-size:2.4rem;font-weight:900;color:#5a85dd;line-height:1;">{{ report.total_pairs }}</div>
+          <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">AST pairs</p>
+        </div>
+
+        <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-check-double me-1"></i>Concordant
+          </p>
+          <div style="font-size:2.4rem;font-weight:900;color:#1abc9c;line-height:1;">{{ report.concordant_pairs }}</div>
+          <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">Matches</p>
+        </div>
+
+        <div class="col-6 col-md-3 text-center p-4">
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-percentage me-1"></i>Concordance Rate
+          </p>
+          <div style="font-size:2.4rem;font-weight:900;background:linear-gradient(135deg,#00bcd4,#1abc9c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;">
+            {{ report.ast_concordance_rate }}%
+          </div>
+          <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">Overall accuracy</p>
+        </div>
+
+      </div>
+
+      <!-- Error stats -->
+      <div class="row g-0" style="background:linear-gradient(135deg,#fafbfc,#f5f7fa);">
+
+        <div class="col-4 text-center p-4 position-relative" style="border-right:1px solid #eef1f5;">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:#e74c3c;"></div>
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-times-circle me-1"></i>Very Major
+          </p>
+          <div style="font-size:2rem;font-weight:900;color:#e74c3c;line-height:1;">{{ report.vmd }}</div>
+        </div>
+
+        <div class="col-4 text-center p-4 position-relative" style="border-right:1px solid #eef1f5;">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:#e67e22;"></div>
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-exclamation-circle me-1"></i>Major
+          </p>
+          <div style="font-size:2rem;font-weight:900;color:#e67e22;line-height:1;">{{ report.md }}</div>
+        </div>
+
+        <div class="col-4 text-center p-4 position-relative">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:#90a4ae;"></div>
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-minus-circle me-1"></i>Minor
+          </p>
+          <div style="font-size:2rem;font-weight:900;color:#78909c;line-height:1;">{{ report.minor }}</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════ ORGANISM IDENTIFICATION CONCORDANCE ══════════════ -->
+  <div class="card mb-4" style="border-radius:16px; overflow:hidden; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.10);">
+
+    <div class="card-header d-flex align-items-center gap-2"
+         style="background:linear-gradient(135deg,#00897b,#00695c); padding:1.1rem 1.75rem; border:none;">
+      <i class="fas fa-dna" style="color:#80cbc4; font-size:1.1rem;"></i>
+      <h5 class="mb-0 text-white fw-bold" style="font-size:1.05rem;">Organism Identification Concordance</h5>
+    </div>
+
+    <div class="card-body p-0">
+
+      <div style="height:3px; background:linear-gradient(90deg,transparent,#26a69a,#1abc9c,transparent);"></div>
+
+      <div class="row g-0">
+
+        <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-check me-1"></i>Genus Match (G)
+          </p>
+          <div style="font-size:2.4rem;font-weight:900;color:#26a69a;line-height:1;">{{ report.genus_match }}</div>
+          <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">{{ report.genus_rate }}%</p>
+        </div>
+
+        <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-check-double me-1"></i>Species Match (S)
+          </p>
+          <div style="font-size:2.4rem;font-weight:900;color:#00bcd4;line-height:1;">{{ report.species_match }}</div>
+          <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">{{ report.species_rate }}%</p>
+        </div>
+
+        <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-flask me-1"></i>Mixed Culture (M)
+          </p>
+          <div style="font-size:2.4rem;font-weight:900;color:#e67e22;line-height:1;">
+            {{ details|dictsort:"genus_con"|length }}
+          </div>
+          <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">Isolates</p>
+        </div>
+
+        <div class="col-6 col-md-3 text-center p-4">
+          <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
+            <i class="fas fa-ban me-1"></i>Not Viable (N)
+          </p>
+          <div style="font-size:2.4rem;font-weight:900;color:#90a4ae;line-height:1;">—</div>
+          <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">Isolates</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════ DEVIATION DETAILS TABLE ══════════════ -->
+  <div class="card" style="border-radius:16px; overflow:hidden; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.10);">
+
+    <div class="card-header d-flex justify-content-between align-items-center"
+         style="background:linear-gradient(135deg,#1e5a96,#0f3a5f); padding:1.1rem 1.75rem; border:none;">
+      <h5 class="mb-0 text-white fw-bold d-flex align-items-center gap-2" style="font-size:1.05rem;">
+        <i class="fas fa-table"></i> Deviation Details
+      </h5>
+      <span style="background:rgba(255,255,255,.2);color:white;padding:.35rem 1rem;border-radius:50px;font-weight:700;font-size:.8rem;border:1px solid rgba(255,255,255,.3);">
+        {{ details|length }} ROW{{ details|length|pluralize }}
+      </span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th><i class="fas fa-barcode me-1"></i>Batch Number</th>
+            <th><i class="fas fa-bacteria me-1"></i>Organism</th>
+            <th><i class="fas fa-capsules me-1"></i>Antibiotic</th>
+            <th class="text-center">Site RIS</th>
+            <th class="text-center">ARS RIS</th>
+            <th class="text-center">Deviation</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in details %}
+          <tr>
+            <td style="font-weight:700;color:#00bcd4;font-size:.9rem;">{{ row.report.batch.bat_Batch_Name }}</td>
+            <td style="font-style:italic;color:#455a64;font-weight:500;">{{ row.organism }}</td>
+            <td class="fw-semibold" style="color:#1e3a5f;">{{ row.antibiotic }}</td>
+
+            <td class="text-center fw-bold">
+              {% if row.site_ris == 'R' %}<span style="color:#e74c3c;">R</span>
+              {% elif row.site_ris == 'I' %}<span style="color:#e67e22;">I</span>
+              {% else %}<span style="color:#1abc9c;">{{ row.site_ris }}</span>{% endif %}
+            </td>
+
+            <td class="text-center fw-bold">
+              {% if row.ars_ris == 'R' %}<span style="color:#e74c3c;">R</span>
+              {% elif row.ars_ris == 'I' %}<span style="color:#e67e22;">I</span>
+              {% else %}<span style="color:#1abc9c;">{{ row.ars_ris }}</span>{% endif %}
+            </td>
+
+            <td class="text-center">
+              {% if row.deviation_code == "S" %}
+                <span style="background:linear-gradient(135deg,#d4f4dd,#b7f0c7);color:#0f5132;border:1px solid #a5d6a7;padding:.35rem 1rem;border-radius:50px;font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap;">
+                  <i class="fas fa-check-circle" style="font-size:.75rem;"></i> Concordant
+                </span>
+              {% elif row.deviation_code == "A" %}
+                <span style="background:linear-gradient(135deg,#ffd4d4,#ffb8b8);color:#721c24;border:1px solid #f48fb1;padding:.35rem 1rem;border-radius:50px;font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap;">
+                  <i class="fas fa-times-circle" style="font-size:.75rem;"></i> Very Major
+                </span>
+              {% elif row.deviation_code == "B" %}
+                <span style="background:linear-gradient(135deg,#fff3cd,#ffe082);color:#7d4e00;border:1px solid #ffcc80;padding:.35rem 1rem;border-radius:50px;font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap;">
+                  <i class="fas fa-exclamation-circle" style="font-size:.75rem;"></i> Major
+                </span>
+              {% elif row.deviation_code == "C" %}
+                <span style="background:linear-gradient(135deg,#eceff1,#cfd8dc);color:#455a64;border:1px solid #b0bec5;padding:.35rem 1rem;border-radius:50px;font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap;">
+                  <i class="fas fa-minus-circle" style="font-size:.75rem;"></i> Minor
+                </span>
+              {% else %}
+                <span style="color:#90a4ae;font-size:.85rem;">{{ row.deviation_code }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6">
+              <div class="text-center py-5">
+                <div style="width:80px;height:80px;background:rgba(0,188,212,.08);border:2px dashed rgba(0,188,212,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+                  <i class="fas fa-check-circle" style="font-size:2rem;color:rgba(0,188,212,.45);"></i>
+                </div>
+                <h5 style="color:#607d8b;font-weight:700;margin-bottom:.4rem;">No Deviation Records</h5>
+                <p style="color:#90a4ae;font-size:.9rem;margin:0;">No comparison records were generated for this batch.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}

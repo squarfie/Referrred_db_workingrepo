@@ -2,6 +2,16 @@ from django.db import models
 
 # Create your models here.
 
+
+class DemogsData_upload(models.Model):
+    DemogsDataFile = models.FileField(upload_to='uploads/final/', null=True, blank=True)
+
+    class Meta:
+        db_table ="DemogsData_upload"
+
+
+
+
 # Connector Table for WGS Projects
 class WGS_Project(models.Model):
     Ref_Accession = models.ForeignKey(
@@ -12,6 +22,16 @@ class WGS_Project(models.Model):
         related_name='project_entries',
         to_field='f_AccessionNo'
     )
+
+    WGS_SampleInfo_Acc = models.CharField(max_length=255, blank=True, null=True)
+    WGS_SampleInfoSummary = models.BooleanField(default=False, blank=True)
+
+    WGS_BactScout_Acc = models.CharField(max_length=255, blank=True, null=True)
+    WGS_BactScoutSummary = models.BooleanField(default=False, blank=True)
+
+    WGS_GtdbTk_Acc = models.CharField(max_length=255, blank=True, null=True)
+    WGS_GtdbTkSummary = models.BooleanField(default=False, blank=True)
+
 
     WGS_FastQ_Acc = models.CharField(max_length=255, blank=True, null=True)
     WGS_FastqSummary = models.BooleanField(default=False, blank=True)  # indicates if FastqSummary entries exist
@@ -31,14 +51,225 @@ class WGS_Project(models.Model):
         verbose_name = "WGS Project"
         verbose_name_plural = "WGS Projects"
 
-    # def save(self, *args, **kwargs):
-    #     # 🔄 Auto-copy AccessionNo from Ref_Accession into Con_Accession
-    #     if self.Ref_Accession:
-    #         self.Con_Accession = self.Ref_Accession.AccessionNo
-    #     super().save(*args, **kwargs)
 
     def __str__(self):
         return str(self.Ref_Accession) if self.Ref_Accession else ""
+
+
+# ──────────────────────────────────────────────
+# Sample Information
+# ──────────────────────────────────────────────
+class SampleInformation(models.Model):
+    sample_project = models.ForeignKey(
+        "wgs_app.WGS_Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="sample_information_entries"
+    )
+    sample_accession = models.CharField(max_length=255, blank=True, null=True)
+    batch_code = models.CharField(max_length=255, blank=True, null=True)
+    sample_name = models.CharField(max_length=255, blank=True, null=True)
+    status = models.CharField(max_length=255, blank=True, null=True)
+
+    # surveillance / programme flags
+    emerging = models.BooleanField(default=False)
+    structured = models.BooleanField(default=False)
+    satscan = models.BooleanField(default=False)
+    serotyping = models.BooleanField(default=False)
+    ghru = models.BooleanField(default=False)
+    egasp = models.BooleanField(default=False)
+    tricycle = models.BooleanField(default=False)
+    pulsenet = models.BooleanField(default=False)
+    tulip = models.BooleanField(default=False)
+
+    Date_uploaded_si = models.DateField(auto_now_add=True)
+
+    class Meta:
+        db_table = "sample_information"
+        verbose_name = "Sample Information"
+        verbose_name_plural = "Sample Information"
+
+    def __str__(self):
+        return self.sample_name or ""
+
+
+class SampleInfoUpload(models.Model):
+    sampleinfo = models.FileField(upload_to='uploads/wgs/bactscout/', null=True, blank=True)
+
+    class Meta:
+        db_table = "SampleInfoUpload"
+
+
+# ──────────────────────────────────────────────
+# BactScout
+# ──────────────────────────────────────────────
+class BactScout(models.Model):
+    bactscout_project = models.ForeignKey(
+        "wgs_app.WGS_Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="bactscout_entries"
+    )
+    BactScout_Accession = models.CharField(max_length=255, blank=True, null=True)
+
+    # sample information
+    name = models.CharField(max_length=255, blank=True, null=True)
+    status = models.CharField(max_length=255, blank=True, null=True)
+
+    # integrated checkm2 columns
+    completeness = models.FloatField(blank=True, null=True)                         # e.g. 99.99
+    contamination = models.FloatField(blank=True, null=True)                        # e.g. 0.16
+    completeness_model_used = models.CharField(max_length=255, blank=True, null=True)
+    translation_table_used = models.IntegerField(blank=True, null=True)             # e.g. 11
+    coding_density = models.FloatField(blank=True, null=True)                       # e.g. 0.841
+    contig_n50 = models.IntegerField(blank=True, null=True)                         # e.g. 44250
+    average_gene_length = models.FloatField(blank=True, null=True)                  # e.g. 276.16
+    genome_size = models.IntegerField(blank=True, null=True)                        # e.g. 2191704
+    checkm2_gc_content = models.FloatField(blank=True, null=True)                   # GC_Content from checkm2 (e.g. 0.52)
+    total_coding_sequences = models.IntegerField(blank=True, null=True)             # e.g. 2230
+    total_contigs = models.IntegerField(blank=True, null=True)                      # e.g. 114
+    max_contig_length = models.IntegerField(blank=True, null=True)                  # e.g. 207591
+    additional_notes = models.TextField(blank=True, null=True)                      # e.g. None
+
+    # overall status flags
+    a_final_status = models.CharField(max_length=255, blank=True, null=True)
+    adapter_detection_status = models.CharField(max_length=255, blank=True, null=True)
+    contamination_status = models.CharField(max_length=255, blank=True, null=True)
+    species_status = models.CharField(max_length=255, blank=True, null=True)
+    coverage_status = models.CharField(max_length=255, blank=True, null=True)
+    coverage_estimate_qualibact_status = models.CharField(max_length=255, blank=True, null=True)
+    duplication_status = models.CharField(max_length=255, blank=True, null=True)
+    gc_content_status = models.CharField(max_length=255, blank=True, null=True)
+    mlst_status = models.CharField(max_length=255, blank=True, null=True)
+    n_content_status = models.CharField(max_length=255, blank=True, null=True)
+    read_length_status = models.CharField(max_length=255, blank=True, null=True)
+    read_q30_status = models.CharField(max_length=255, blank=True, null=True)
+
+    # species
+    species = models.CharField(max_length=255, blank=True, null=True)
+    species_abundance = models.FloatField(blank=True, null=True)                    # e.g. 93.875
+    species_coverage = models.FloatField(blank=True, null=True)                     # e.g. 254.4
+    species_message = models.TextField(blank=True, null=True)
+
+    # contamination
+    contamination_message = models.TextField(blank=True, null=True)
+
+    # coverage
+    coverage_estimate_sylph = models.FloatField(blank=True, null=True)              # e.g. 54.4
+    coverage_estimate_sylph_message = models.TextField(blank=True, null=True)
+    coverage_estimate_qualibact = models.FloatField(blank=True, null=True)          # e.g. 79.12
+    coverage_estimate_qualibact_message = models.TextField(blank=True, null=True)
+
+    # duplication
+    duplication_rate = models.FloatField(blank=True, null=True)                     # e.g. 0.001143
+    duplication_message = models.TextField(blank=True, null=True)
+
+    # GC content (bactscout)
+    gc_content = models.FloatField(blank=True, null=True)                           # e.g. 50.707
+    gc_content_lower = models.IntegerField(blank=True, null=True)                   # e.g. 50
+    gc_content_upper = models.IntegerField(blank=True, null=True)                   # e.g. 52
+    gc_content_message = models.TextField(blank=True, null=True)
+
+    # N content
+    n_content_rate = models.FloatField(blank=True, null=True)                       # e.g. 0.0
+    n_content_message = models.TextField(blank=True, null=True)
+
+    # MLST (summary from bactscout)
+    mlst_st = models.CharField(max_length=255, blank=True, null=True)               # e.g. "405" or text
+    mlst_message = models.TextField(blank=True, null=True)
+
+    # read length
+    read1_mean_length = models.IntegerField(blank=True, null=True)                  # e.g. 129
+    read2_mean_length = models.IntegerField(blank=True, null=True)                  # e.g. 130
+    read_length_message = models.TextField(blank=True, null=True)
+
+    # read quality
+    read_q20_bases = models.FloatField(blank=True, null=True)                       # e.g. 3.88E+08 (stored as float)
+    read_q20_rate = models.FloatField(blank=True, null=True)                        # e.g. 0.9421
+    read_q30_bases = models.FloatField(blank=True, null=True)                       # e.g. 3.81E+08
+    read_q30_rate = models.FloatField(blank=True, null=True)                        # e.g. 0.9258
+    read_q30_message = models.TextField(blank=True, null=True)
+    read_total_bases = models.FloatField(blank=True, null=True)                     # e.g. 4.11E+08
+    read_total_reads = models.IntegerField(blank=True, null=True)                   # e.g. 3162342
+
+    # adapter
+    adapter_detection_message = models.TextField(blank=True, null=True)
+
+    # reference
+    ref_genome = models.CharField(max_length=255, blank=True, null=True)            # e.g. GCF_003697165.2
+    genome_size_expected = models.IntegerField(blank=True, null=True)               # e.g. 5200000
+
+    Date_uploaded_bs = models.DateField(auto_now_add=True)
+
+    class Meta:
+        db_table = "BactScout"
+
+    def __str__(self):
+        return self.sample_name or ""
+
+
+class BactScoutUpload(models.Model):
+    bactscoutfile = models.FileField(upload_to='uploads/wgs/bactscout/', null=True, blank=True)
+
+    class Meta:
+        db_table = "BactScoutUpload"
+
+
+
+
+# ──────────────────────────────────────────────
+# GTDB-Tk
+# ──────────────────────────────────────────────
+class GtdbTk(models.Model):
+    gtdbtk_project = models.ForeignKey(
+        "wgs_app.WGS_Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="gtdbtk_entries"
+    )
+    GtdbTk_Accession = models.CharField(max_length=255, blank=True, null=True)
+    user_genome = models.CharField(max_length=255, blank=True, null=True)           # sample ID
+    classification = models.TextField(blank=True, null=True)                        # full taxonomy string d__;p__;...
+
+    # closest genome (always populated)
+    closest_genome_reference = models.CharField(max_length=255, blank=True, null=True)     # e.g. GCF_003315235.1
+    closest_genome_reference_radius = models.IntegerField(blank=True, null=True)           # e.g. 95
+    closest_genome_taxonomy = models.TextField(blank=True, null=True)                      # full taxonomy string
+    closest_genome_ani = models.FloatField(blank=True, null=True)                          # e.g. 99.56
+    closest_genome_af = models.FloatField(blank=True, null=True)                           # e.g. 0.974
+
+    # closest placement (N/A when ani_screen method used)
+    closest_placement_reference = models.CharField(max_length=255, blank=True, null=True)  # N/A or GCF_...
+    closest_placement_radius = models.FloatField(blank=True, null=True)                    # N/A → null
+    closest_placement_taxonomy = models.TextField(blank=True, null=True)
+    closest_placement_ani = models.FloatField(blank=True, null=True)                       # N/A → null
+    closest_placement_af = models.FloatField(blank=True, null=True)                        # N/A → null
+
+    pplacer_taxonomy = models.TextField(blank=True, null=True)                             # N/A or taxonomy
+    classification_method = models.CharField(max_length=255, blank=True, null=True)        # e.g. ani_screen
+    note = models.TextField(blank=True, null=True)                                         # e.g. classification based on ANI only
+    other_related_references = models.TextField(blank=True, null=True)                     # genome_id, species_name, radius, ANI, AF (long)
+    msa_percent = models.FloatField(blank=True, null=True)                                 # N/A → null
+    translation_table = models.IntegerField(blank=True, null=True)                         # N/A → null
+    red_value = models.FloatField(blank=True, null=True)                                   # N/A → null
+    warnings = models.TextField(blank=True, null=True)
+
+    Date_uploaded_gt = models.DateField(auto_now_add=True)
+
+    class Meta:
+        db_table = "gtdbtk"
+
+    def __str__(self):
+        return self.user_genome or ""
+
+
+class GtdbTkUpload(models.Model):
+    GtdbTkFile = models.FileField(upload_to='uploads/wgs/gtdbtk/', null=True, blank=True)
+
+    class Meta:
+        db_table = "GtdbTkUpload"
+
+
 
 
 

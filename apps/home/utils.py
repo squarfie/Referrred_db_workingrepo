@@ -1,35 +1,38 @@
 # apps/your_app/utils.py
 
 
+from datetime import timedelta
 from sqlalchemy import create_engine
 import pandas as pd
 from django.db import models
 from django.db.models import Q
 from apps.home.models import *
+from django.apps import apps
+
 
 #creating a connection to postgresql
-try:
-    # Create SQLAlchemy engine
-    engine = create_engine('postgresql+psycopg2://postgres:admin123@localhost:5432/test_db')
+# try:
+#     # Create SQLAlchemy engine
+#     engine = create_engine('postgresql+psycopg2://postgres:admin123@localhost:5432/test_db')
 
-    # SQL query to fetch data
-    breakpoints_query = "SELECT * FROM home_breakpointstable"
-    antibiotic_query = "SELECT * FROM home_antibioticentry"
-    # Use pandas to fetch data via SQLAlchemy engine
-    breakpoint_data = pd.read_sql_query(breakpoints_query, engine)
-    antibiotic_data = pd.read_sql_query(antibiotic_query, engine)
+#     # SQL query to fetch data
+#     breakpoints_query = "SELECT * FROM home_breakpointstable"
+#     antibiotic_query = "SELECT * FROM home_antibioticentry"
+#     # Use pandas to fetch data via SQLAlchemy engine
+#     breakpoint_data = pd.read_sql_query(breakpoints_query, engine)
+#     antibiotic_data = pd.read_sql_query(antibiotic_query, engine)
 
 
-    # Display the data
-    print(breakpoint_data)
-    print(antibiotic_data)
+#     # Display the data
+#     print(breakpoint_data)
+#     print(antibiotic_data)
 
 
     
 
 
-except Exception as error:
-    print("Error while fetching data from PostgreSQL:", error)
+# except Exception as error:
+#     print("Error while fetching data from PostgreSQL:", error)
 
 
 # finally:
@@ -161,3 +164,62 @@ def resolve_organism_name(org_code):
     )
 
     return org
+
+
+
+
+def working_days(start_date, end_date, step_owner=None):
+    """
+    Calculates working days between two dates.
+    Excludes:
+        - Saturdays
+        - Sundays
+        - Holidays in NonWorkingDay table
+    If step_owner is provided (LAB / DMU),
+    department-specific exclusions are applied.
+    """
+
+    if not start_date or not end_date:
+        return None
+
+    if end_date < start_date:
+        return 0
+
+    # 🔹 SAFE dynamic model loading (prevents circular import)
+    NonWorkingDay = apps.get_model("home", "NonWorkingDay")
+
+    holidays = NonWorkingDay.objects.filter(
+        date__gte=start_date,
+        date__lt=end_date
+    )
+
+    holiday_map = {
+        h.date: h.applies_to
+        for h in holidays
+    }
+
+    day_count = 0
+    current = start_date
+
+    while current < end_date:
+
+        # Skip weekends
+        if current.weekday() >= 5:
+            current += timedelta(days=1)
+            continue
+
+        # Skip holidays
+        holiday_type = holiday_map.get(current)
+
+        if holiday_type:
+            if holiday_type == "ALL":
+                current += timedelta(days=1)
+                continue
+            if step_owner and holiday_type == step_owner:
+                current += timedelta(days=1)
+                continue
+
+        day_count += 1
+        current += timedelta(days=1)
+
+    return day_count

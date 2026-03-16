@@ -57,7 +57,15 @@
         <div class="badge-group">
             <div class="badge"><span class="badge-icon">🔬</span>Emerging Pathogens</div>
             <div class="badge"><span class="badge-icon">📊</span>Real-time Data</div>
-            <div class="badge"><span class="badge-icon">⚡</span>TAT Monitoring</div>
+            <a href="{% url 'tat_review_view' %}" class="badge badge-pill badge-primary text-decoration-none">
+              <span class="badge-icon mr-1">⚡</span>
+              TAT Monitoring  </a>
+              <a href="{% url 'concordance_analysis' %}" 
+            class="badge badge-pill badge-success text-decoration-none">
+              <span class="badge-icon mr-1">🔄</span>
+              Concordance Dashboard
+          </a>
+
         </div>
     </div>
 
@@ -253,7 +261,7 @@
             <div class="card-header border-0">
               <div class="row align-items-center">
                 <div class="col">
-                  <h3 class="mb-0">Final Data Records</h3>
+                  <h3 class="mb-0">TAT Monitoring</h3>
                   
                 </div>
                 <div class="col md-6 d-flex justify-content-end">
@@ -290,19 +298,17 @@
                   </tr>
                 </thead>
                 <tbody class="list">
-                  {% for isolate in isolates %}
+                  {% for entries in tat_entries %}
                  <tr>
-                  <td style="text-align: center;">{{isolate.f_AccessionNo}}</td>
-                  <td style="text-align: center;">{{isolate.f_SiteCode}}</td>
-                  <td style="text-align: center;">{{isolate.f_Referral_Date}}</td>
-                  <td style="text-align: center;">{{isolate.f_Spec_Num}}</td>
-                  <td style="text-align: center;">{{isolate.f_Spec_Date}}</td>
-                  <td style="text-align: center;">{{isolate.f_Spec_Type}}</td>
-                  <td style="text-align: center;">{{isolate.f_ars_OrgName}}</td>
+                  <td style="text-align: center;">{{entries.tat_Batch_Code}}</td>
+                  <td>{{entries.tat_Referral_Date}}</td>
+                  <td>{{entries.tat_BatchNumber}}</td>
+
+
                
               
                       <td style="text-align: center;">
-                        <a href="{% url 'edit_final_data' isolate.id %}" class="btn btn-sm btn-primary" style="color: #f9f9f9;">Edit Final</a>
+                        <a href="{% url 'edit_final_data' entries.id %}" class="btn btn-sm btn-primary" style="color: #f9f9f9;">Edit Final</a>
                     </td>
 
 

@@ -1,0 +1,427 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% load custom_filters %}
+{% block title %}TAT Analysis - ARSRL System{% endblock %}
+
+{% block content %}
+
+<!-- ================= PAGE HEADER ================= -->
+<div class="header-container mb-4" style="min-height:160px; padding: 0 30px; display:flex; flex-direction:column; justify-content:center; gap:12px;">
+    <div class="grid-bg"></div>
+    <div class="particles">
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <!-- TOP ROW: Back | Toggle | Export -->
+    <div style="position:relative; z-index:3; display:flex; align-items:center; justify-content:space-between; width:100%; padding-top:16px;">
+
+        <!-- Back -->
+            <a href="{% url 'tat_review_view' %}"
+            style="cursor:pointer; background:rgba(255,255,255,0.12); color:white;
+                    border:1px solid rgba(255,255,255,0.3); backdrop-filter:blur(8px);
+                    padding:6px 16px; border-radius:6px; font-size:0.82rem;
+                    text-decoration:none; transition:background 0.2s ease; flex-shrink:0;"
+            onmouseover="this.style.background='rgba(255,255,255,0.22)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.12)'">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+
+        <!-- Sliding toggle: center -->
+        <div style="text-align:center; flex-shrink:0;">
+            <div style="position:relative; display:inline-flex; background:rgba(0,0,0,0.3); border-radius:30px;
+                        padding:4px; border:1px solid rgba(255,255,255,0.15); backdrop-filter:blur(10px);">
+
+                <!-- Sliding pill -->
+                <div style="position:absolute; top:4px; bottom:4px; border-radius:25px;
+                            transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
+                            {% if include_ongoing == '1' %}
+                                left:50%; right:4px;
+                                background:linear-gradient(135deg,#f39c12,#e67e22);
+                                box-shadow:0 2px 10px rgba(243,156,18,0.5);
+                            {% else %}
+                                left:4px; right:50%;
+                                background:white;
+                                box-shadow:0 2px 10px rgba(0,0,0,0.25);
+                            {% endif %}">
+                </div>
+
+                <a href="{% url 'tat_analysis' %}"
+                   style="position:relative; z-index:1; padding:7px 22px; border-radius:25px;
+                          font-size:0.82rem; font-weight:600; text-decoration:none; white-space:nowrap;
+                          color:{% if not include_ongoing %}#0f3a5f{% else %}rgba(255,255,255,0.6){% endif %};">
+                    <i class="bi bi-patch-check me-1"></i> Final TAT
+                </a>
+
+                <a href="{% url 'tat_analysis' %}?include_ongoing=1"
+                   style="position:relative; z-index:1; padding:7px 22px; border-radius:25px;
+                          font-size:0.82rem; font-weight:600; text-decoration:none; white-space:nowrap;
+                          color:{% if include_ongoing == '1' %}white{% else %}rgba(255,255,255,0.6){% endif %};">
+                    <i class="bi bi-eye me-1"></i> Ongoing TAT
+                </a>
+            </div>
+
+            <!-- Mode hint -->
+            <div style="margin-top:5px;">
+                {% if include_ongoing == '1' %}
+                    <small style="color:rgba(243,156,18,0.9); font-size:0.7rem; font-weight:600; letter-spacing:0.4px;">
+                        <i class="bi bi-exclamation-circle me-1"></i>PREVIEW — includes in-progress batches
+                    </small>
+                {% else %}
+                    <small style="color:rgba(255,255,255,0.4); font-size:0.7rem; letter-spacing:0.4px;">
+                        <i class="bi bi-check-circle me-1"></i>OFFICIAL — released batches only
+                    </small>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Export -->
+        <a href="{% url 'export_tat_excel' %}"
+           style="flex-shrink:0; background:linear-gradient(135deg,#00bcd4,#26c6da); color:#0a0e1a;
+                  border:none; padding:8px 20px; border-radius:25px; font-weight:700; cursor:pointer;
+                  transition:all 0.3s ease; box-shadow:0 4px 15px rgba(0,188,212,0.4);
+                  text-transform:uppercase; letter-spacing:0.8px; font-size:0.8rem; text-decoration:none;">
+            <i class="bi bi-file-excel me-2"></i>Export Excel
+        </a>
+    </div>
+
+    <!-- BOTTOM ROW: Title left | Stats right -->
+    <div style="position:relative; z-index:3; display:flex; align-items:flex-end; justify-content:space-between; width:100%; padding-bottom:16px;">
+
+        <!-- Title -->
+        <div>
+            <h1 style="font-size:1.75rem; font-weight:700; margin:0 0 4px 0;
+                       background:linear-gradient(135deg,#00bcd4,#26c6da);
+                       -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">
+                <i class="bi bi-graph-up me-2" style="-webkit-text-fill-color:#00bcd4;"></i>TAT Analysis &amp; Reporting
+            </h1>
+            <p style="margin:0; font-size:0.9rem; color:rgba(200,220,255,0.85);">
+                Turnaround Time Performance Review
+                {% if include_ongoing == '1' %}
+                    &nbsp;<span style="background:rgba(243,156,18,0.25);color:#f39c12;
+                                       border:1px solid rgba(243,156,18,0.4);
+                                       padding:2px 10px;border-radius:12px;font-size:0.72rem;font-weight:700;">
+                        PREVIEW
+                    </span>
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Stats -->
+        {% if stats and stats.total_batches > 0 %}
+        <div style="display:flex; gap:28px; align-items:flex-end;">
+            <div style="text-align:center;">
+                <span style="font-size:2rem; font-weight:800; color:#00bcd4; display:block; line-height:1;">{{ stats.total_batches }}</span>
+                <span style="font-size:0.72rem; color:rgba(200,220,255,0.6); text-transform:uppercase; letter-spacing:1px;">Batches</span>
+            </div>
+            <div style="text-align:center;">
+                <span style="font-size:2rem; font-weight:800; color:#00bcd4; display:block; line-height:1;">{{ stats.average_tat|floatformat:1 }}</span>
+                <span style="font-size:0.72rem; color:rgba(200,220,255,0.6); text-transform:uppercase; letter-spacing:1px;">Avg TAT</span>
+            </div>
+            <div style="text-align:center;">
+                <span style="font-size:2rem; font-weight:800; color:#00bcd4; display:block; line-height:1;">{{ stats.within_tat_pct }}%</span>
+                <span style="font-size:0.72rem; color:rgba(200,220,255,0.6); text-transform:uppercase; letter-spacing:1px;">Compliance</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if stats and stats.total_batches > 0 %}
+
+<!-- ================= KPI CARDS ================= -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="card shadow-sm text-center h-100" style="border-top:4px solid var(--card-blue);">
+            <div class="card-body py-4">
+                <i class="bi bi-layers-fill" style="font-size:1.8rem; color:var(--card-blue); opacity:0.7;"></i>
+                <h2 class="mt-2 mb-0" style="color:var(--primary-color); font-weight:800;">{{ stats.total_batches }}</h2>
+                <p class="text-muted mb-0 mt-1" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px;">Total Completed Batches</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card shadow-sm text-center h-100" style="border-top:4px solid var(--accent-teal);">
+            <div class="card-body py-4">
+                <i class="bi bi-speedometer2" style="font-size:1.8rem; color:var(--accent-teal); opacity:0.7;"></i>
+                <h2 class="mt-2 mb-0" style="color:var(--accent-teal); font-weight:800;">{{ stats.average_tat|floatformat:1 }}</h2>
+                <p class="text-muted mb-0 mt-1" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px;">Average TAT (Days)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card shadow-sm text-center h-100" style="border-top:4px solid var(--success);">
+            <div class="card-body py-4">
+                <i class="bi bi-arrow-down-circle-fill" style="font-size:1.8rem; color:var(--success); opacity:0.7;"></i>
+                <h2 class="mt-2 mb-0" style="color:var(--success); font-weight:800;">{{ stats.min_tat }}</h2>
+                <p class="text-muted mb-0 mt-1" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px;">Min TAT (Days)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card shadow-sm text-center h-100" style="border-top:4px solid var(--card-orange);">
+            <div class="card-body py-4">
+                <i class="bi bi-arrow-up-circle-fill" style="font-size:1.8rem; color:var(--card-orange); opacity:0.7;"></i>
+                <h2 class="mt-2 mb-0" style="color:var(--card-orange); font-weight:800;">{{ stats.max_tat }}</h2>
+                <p class="text-muted mb-0 mt-1" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px;">Max TAT (Days)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= COMPLIANCE SUMMARY ================= -->
+<div class="row g-3 mb-4">
+    <div class="col-md-8">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-bar-chart-fill" style="color:var(--primary-color);"></i>
+                <strong>Performance Summary</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <div style="background:linear-gradient(135deg,rgba(38,166,154,0.1),rgba(38,166,154,0.05));border-radius:10px;border:1px solid rgba(38,166,154,0.25);padding:1.25rem;text-align:center;">
+                            <h3 class="text-success mb-0" style="font-weight:800;">{{ stats.within_tat_count }}</h3>
+                            <small class="text-muted d-block mt-1">Within TAT</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div style="background:linear-gradient(135deg,rgba(231,76,60,0.1),rgba(231,76,60,0.05));border-radius:10px;border:1px solid rgba(231,76,60,0.25);padding:1.25rem;text-align:center;">
+                            <h3 class="text-danger mb-0" style="font-weight:800;">{{ stats.out_of_tat_count }}</h3>
+                            <small class="text-muted d-block mt-1">Out of TAT</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted">TAT Compliance Rate</small>
+                        <small class="fw-bold">{{ stats.within_tat_pct }}%</small>
+                    </div>
+                    <div class="progress" style="height:14px; border-radius:8px; background:rgba(231,76,60,0.15);">
+                        <div class="progress-bar bg-success"
+                             style="width:{{ stats.within_tat_pct }}%; border-radius:8px; font-size:0.75rem; font-weight:600;">
+                            {% if stats.within_tat_pct > 15 %}{{ stats.within_tat_pct }}%{% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-success">✓ Within TAT</small>
+                        <small class="text-danger">✗ Outside TAT</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100 text-center">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-trophy-fill" style="color:var(--warning);"></i>
+                <strong>Target Performance</strong>
+            </div>
+            <div class="card-body d-flex flex-column align-items-center justify-content-center py-4">
+                <div style="width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;
+                    background: conic-gradient(
+                        {% if stats.within_tat_pct >= 80 %}#26a69a{% elif stats.within_tat_pct >= 60 %}#f39c12{% else %}#e74c3c{% endif %}
+                        {{ stats.within_tat_pct }}%,
+                        rgba(0,0,0,0.08) {{ stats.within_tat_pct }}%
+                    );
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+                    <div style="width:80px;height:80px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                        <span class="fw-bold {% if stats.within_tat_pct >= 80 %}text-success{% elif stats.within_tat_pct >= 60 %}text-warning{% else %}text-danger{% endif %}"
+                              style="font-size:1.3rem;line-height:1;">{{ stats.within_tat_pct }}%</span>
+                    </div>
+                </div>
+                <p class="text-muted mb-2" style="font-size:0.82rem;">Within TAT Target</p>
+                {% if stats.within_tat_pct >= 80 %}
+                    <span class="badge bg-success" style="font-size:0.8rem;padding:6px 14px;">🏆 Excellent Performance</span>
+                {% elif stats.within_tat_pct >= 60 %}
+                    <span class="badge bg-warning text-dark" style="font-size:0.8rem;padding:6px 14px;">📈 Good Performance</span>
+                {% else %}
+                    <span class="badge bg-danger" style="font-size:0.8rem;padding:6px 14px;">⚠ Needs Improvement</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= PROCESS ANALYSIS ================= -->
+{% if process_analysis %}
+<div class="card shadow-sm mb-4">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-diagram-3-fill" style="color:var(--primary-color);"></i>
+        <strong>Process Performance Analysis</strong>
+    </div>
+    <div class="card-body table-responsive p-0">
+        <table class="table table-hover table-compact mb-0" id="processTable">
+            <thead>
+                <tr>
+                    <th>Process</th>
+                    <th class="text-center">Target</th>
+                    <th class="text-center">Average</th>
+                    <th class="text-center">Min</th>
+                    <th class="text-center">Max</th>
+                    <th class="text-center">Within</th>
+                    <th class="text-center">Outside</th>
+                    <th class="text-center">Total</th>
+                    <th style="min-width:160px;">% Compliance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in process_analysis %}
+                <tr>
+                    <td><strong>{{ p.process_name }}</strong></td>
+                    <td class="text-center"><span style="background:rgba(0,188,212,0.15);color:#007c8a;border:1px solid rgba(0,188,212,0.35);padding:4px 10px;font-size:0.78rem;border-radius:12px;display:inline-block;">{{ p.target_days }}d</span></td>
+                    <td class="text-center fw-bold">{{ p.average_tat|floatformat:1 }}</td>
+                    <td class="text-center text-success">{{ p.min_tat }}</td>
+                    <td class="text-center text-danger">{{ p.max_tat }}</td>
+                    <td class="text-center"><span style="background:rgba(38,166,154,0.15);color:#1a7a72;border:1px solid rgba(38,166,154,0.3);padding:4px 10px;border-radius:12px;display:inline-block;">{{ p.within_target }}</span></td>
+                    <td class="text-center"><span style="background:rgba(231,76,60,0.12);color:#b83228;border:1px solid rgba(231,76,60,0.3);padding:4px 10px;border-radius:12px;display:inline-block;">{{ p.out_of_target }}</span></td>
+                    <td class="text-center text-muted">{{ p.total_batches }}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height:10px; border-radius:6px; background:rgba(0,0,0,0.06);">
+                                <div class="progress-bar
+                                    {% if p.within_target_pct >= 80 %}bg-success
+                                    {% elif p.within_target_pct >= 60 %}bg-warning
+                                    {% else %}bg-danger{% endif %}"
+                                    style="width:{{ p.within_target_pct }}%; border-radius:6px;">
+                                </div>
+                            </div>
+                            <small class="fw-bold text-nowrap" style="min-width:36px;">{{ p.within_target_pct }}%</small>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card text-center py-5 mb-4 shadow-sm">
+    <div class="card-body">
+        <i class="bi bi-inbox display-4 text-muted"></i>
+        <h4 class="text-muted mt-3">No TAT Data Available</h4>
+        <p class="text-muted">Start by creating a new batch to track turnaround times.</p>
+        <a href="{% url 'batch_create_view' %}" class="btn btn-primary mt-2">
+            <i class="bi bi-plus-circle me-2"></i>Create New Batch
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- ================= OWNER & STAFF SUMMARY ================= -->
+{% if owner_summary or staff_performance %}
+<div class="row g-3 mb-4">
+
+    {% if owner_summary %}
+    <div class="col-lg-{% if staff_performance %}6{% else %}12{% endif %}">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-person-badge-fill" style="color:var(--primary-color);"></i>
+                <strong>Owner Performance Summary</strong>
+            </div>
+            <div class="card-body table-responsive p-0">
+                <table class="table table-hover table-compact mb-0">
+                    <thead>
+                        <tr>
+                            <th>Owner</th>
+                            <th class="text-center">Total</th>
+                            <th class="text-center">Within</th>
+                            <th class="text-center">Outside</th>
+                            <th class="text-center">Avg Days</th>
+                            <th style="min-width:120px;">% Compliance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for o in owner_summary %}
+                        <tr>
+                            <td><strong>{{ o.owner }}</strong></td>
+                            <td class="text-center">{{ o.total }}</td>
+                            <td class="text-center text-success fw-bold">{{ o.within }}</td>
+                            <td class="text-center text-danger fw-bold">{{ o.outside }}</td>
+                            <td class="text-center">{{ o.average_days }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height:8px;border-radius:6px;background:rgba(0,0,0,0.06);">
+                                        <div class="progress-bar {% if o.compliance_pct >= 80 %}bg-success{% elif o.compliance_pct >= 60 %}bg-warning{% else %}bg-danger{% endif %}"
+                                             style="width:{{ o.compliance_pct }}%;border-radius:6px;"></div>
+                                    </div>
+                                    <small class="fw-bold text-nowrap" style="min-width:36px;">{{ o.compliance_pct }}%</small>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if staff_performance %}
+    <div class="col-lg-{% if owner_summary %}6{% else %}12{% endif %}">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-people-fill" style="color:var(--primary-color);"></i>
+                <strong>Staff Performance <small class="text-muted fw-normal">(IPCR Basis)</small></strong>
+            </div>
+            <div class="card-body table-responsive p-0">
+                <table class="table table-hover table-compact mb-0">
+                    <thead>
+                        <tr>
+                            <th>Staff</th>
+                            <th>Designation</th>
+                            <th class="text-center">Steps</th>
+                            <th class="text-center">Avg</th>
+                            <th class="text-center">✓</th>
+                            <th class="text-center">✗</th>
+                            <th style="min-width:120px;">% Compliance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in staff_performance %}
+                        <tr>
+                            <td><strong>{{ s.staff_name }}</strong></td>
+                            <td><small class="text-muted">{{ s.designation }}</small></td>
+                            <td class="text-center">{{ s.total_steps }}</td>
+                            <td class="text-center">{{ s.average_days }}</td>
+                            <td class="text-center text-success fw-bold">{{ s.within_target }}</td>
+                            <td class="text-center text-danger fw-bold">{{ s.outside_target }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height:8px;border-radius:6px;background:rgba(0,0,0,0.06);">
+                                        <div class="progress-bar {% if s.compliance_pct >= 80 %}bg-success{% elif s.compliance_pct >= 60 %}bg-warning{% else %}bg-danger{% endif %}"
+                                             style="width:{{ s.compliance_pct }}%;border-radius:6px;"></div>
+                                    </div>
+                                    <small class="fw-bold text-nowrap" style="min-width:36px;">{{ s.compliance_pct }}%</small>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endif %}
+
+{% else %}
+<!-- ================= EMPTY STATE ================= -->
+<div class="card text-center py-5 shadow-sm">
+    <div class="card-body">
+        <i class="bi bi-graph-up display-4 text-muted"></i>
+        <h4 class="text-muted mt-3">No TAT Data Available</h4>
+        <p class="text-muted">Complete some batches to see turnaround time analytics here.</p>
+        <a href="{% url 'batch_create_view' %}" class="btn btn-primary mt-2">
+            <i class="bi bi-plus-circle me-2"></i>Create New Batch
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

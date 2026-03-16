@@ -35,7 +35,7 @@
 <div class="container-fluid mt--7">
   <div class="card shadow">
     <!-- Card Header -->
-    <div class="card-header border-0 bg-primary" >
+    <div class="card-header border-0 bg-primary">
       <div class="row align-items-center">
         <div class="col">
           <h3 class="mb-0 text-white">
@@ -60,27 +60,23 @@
           </div>
         </div>
         <div class="col-md-6 text-right">
-          <!-- Clear All Saved Mappings -->
           <form method="post" action="{% url 'clear_mappings' %}" class="d-inline">
             {% csrf_token %}
             <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to clear all saved mappings?')">
               <i class="ni ni-fat-remove mr-1"></i>Clear Saved Mappings
             </button>
           </form>
-          
-          <!-- Auto-map button -->
           <button type="button" class="btn btn-primary btn-sm ml-2" onclick="autoMap()">
             <i class="fas fa-magic mr-1"></i>Auto-Map
           </button>
-
         </div>
       </div>
     </div>
 
-    <!-- Search Bar -->
-    <div class="card-body border-bottom">
-      <div class="row">
-        <div class="col-md-6">
+    <!-- Search & Stats Bar -->
+    <div class="card-body border-bottom py-3">
+      <div class="row align-items-center">
+        <div class="col-md-5">
           <div class="input-group input-group-alternative">
             <div class="input-group-prepend">
               <span class="input-group-text"><i class="fas fa-search"></i></span>
@@ -93,15 +89,24 @@
             </div>
           </div>
         </div>
-        <div class="col-md-6 text-right">
+        <div class="col-md-7 text-right d-flex align-items-center justify-content-end" style="gap: 8px;">
+          <!-- Filter buttons -->
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-secondary active" id="filter-all" onclick="filterRows('all')">
+              All
+            </button>
+            <button type="button" class="btn btn-outline-success" id="filter-mapped" onclick="filterRows('mapped')">
+              <i class="fas fa-check-circle mr-1"></i>Mapped
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="filter-unmapped" onclick="filterRows('unmapped')">
+              <i class="far fa-circle mr-1"></i>Unmapped
+            </button>
+          </div>
           <span class="badge badge-success badge-pill" id="mapped-count">0 mapped</span>
           <span class="badge badge-secondary badge-pill" id="unmapped-count">{{ raw_headers|length }} unmapped</span>
-          <a href="{% url 'download_mapping_summary' %}"
-            class="btn btn-info btn-sm ml-2">
-            <i class="fas fa-file-export mr-1"></i>
-              Map Summary
+          <a href="{% url 'download_mapping_summary' %}" class="btn btn-info btn-sm ml-1">
+            <i class="fas fa-file-export mr-1"></i>Map Summary
           </a>
-
         </div>
       </div>
     </div>
@@ -112,41 +117,43 @@
       <input type="hidden" name="mapping" id="mapping-json">
 
       <!-- Table -->
-      <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+      <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
         <table class="table table-hover align-items-center table-flush" id="mapping-table">
           <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
             <tr>
-              <th style="width: 5%;">#</th>
-              <th style="width: 35%;">Raw Column Header</th>
-              <th style="width: 55%;">Map To Model Field</th>
-              <!-- <th style="width: 5%;">
-                <i class="fas fa-check-circle text-success" title="Mapped Status"></i>
-              </th> -->
-              <th style="width: 5%;" class="text-center">Status</th>
-              <th style="width: 5%;" class="text-center">Clear</th>
-
+              <th style="width: 4%;">#</th>
+              <th style="width: 28%;">Raw Column Header</th>
+              <th style="width: 48%;">Map To Model Field</th>
+              <th style="width: 4%;" class="text-center">Retest</th>
+              <th style="width: 14%;" class="text-center">Mapped To</th>
+              <th style="width: 4%;" class="text-center">Status</th>
+              <th style="width: 4%;" class="text-center">Clear</th>
             </tr>
           </thead>
           <tbody>
             {% for header in raw_headers %}
-            <tr data-header="{{ header }}">
-              <td class="text-muted">{{ forloop.counter }}</td>
+            {% with current_mapping=saved_mappings|get_item:header %}
+            <tr data-header="{{ header }}" data-mapped="{% if current_mapping %}true{% else %}false{% endif %}">
+              <td class="text-muted small">{{ forloop.counter }}</td>
               <td>
-                <strong class="text-primary">{{ header }}</strong>
+                <div class="d-flex align-items-center">
+                  <div>
+                    <span class="font-weight-bold text-primary">{{ header }}</span>
+                  </div>
+                </div>
               </td>
               <td>
-                <!-- <select class="form-control form-control-sm field-select" data-header="{{ header }}" onchange="updateMappingCount()"> -->
-                  <select
-                        class="form-control form-control-sm field-select"
-                        data-header="{{ header }}"
-                        onchange="handleMappingChange(this)">
+                <select
+                  class="form-control form-control-md field-select {% if current_mapping %}select-mapped{% endif %}"
+                  data-header="{{ header }}"
+                  onchange="handleMappingChange(this)">
 
                   <option value="">-- Select Field --</option>
 
                   <optgroup label="Final_Data Fields">
-                    {% for f in final_fields %}
+                    {% for f in model_fields %}
                       <option value="{{ f }}"
-                        {% if saved_mappings|get_item:header == f %}selected{% endif %}>
+                        {% if current_mapping == f %}selected{% endif %}>
                         {{ f }}
                       </option>
                     {% endfor %}
@@ -155,26 +162,33 @@
                   <optgroup label="AntibioticEntry Fields (WHONET Antibiotics)">
                     {% for f in abx_fields %}
                       <option value="{{ f }}"
-                        {% if saved_mappings|get_item:header == f %}selected{% endif %}>
+                        {% if current_mapping == f %}selected{% endif %}>
                         {{ f }}
                       </option>
                     {% endfor %}
                   </optgroup>
                 </select>
               </td>
-              <!-- <td class="text-center">
-                <span class="status-icon">
-                  {% if saved_mappings|get_item:header %}
-                    <i class="fas fa-check-circle text-success"></i>
-                  {% else %}
-                    <i class="far fa-circle text-muted"></i>
-                  {% endif %}
-                </span>
-              </td> -->
+                   <td style="text-align:center;">
+                      <input type="checkbox"
+                        class="retest-checkbox"
+                        {% if current_mapping.is_retest %}checked{% endif %}
+                        onchange="handleRetestChange(this)">
+                  </td>
+
+
+              <!-- Mapped-To badge: shows the selected field name prominently -->
+              <td class="text-center mapped-to-cell">
+                {% if current_mapping %}
+                  <span class="mapped-badge mapped-badge-visible">{{ current_mapping }}</span>
+                {% else %}
+                  <span class="mapped-badge mapped-badge-empty">—</span>
+                {% endif %}
+              </td>
 
               <td class="text-center">
                 <span class="status-icon">
-                  {% if saved_mappings|get_item:header %}
+                  {% if current_mapping %}
                     <i class="fas fa-check-circle text-success"></i>
                   {% else %}
                     <i class="far fa-circle text-muted"></i>
@@ -191,10 +205,8 @@
                   <i class="fas fa-times"></i>
                 </button>
               </td>
-
-
-
             </tr>
+            {% endwith %}
             {% endfor %}
           </tbody>
         </table>
@@ -222,28 +234,61 @@
 
 <!-- Styles -->
 <style>
+/* ── Mapped select highlight ── */
+.select-mapped {
+  background-color: #eafaf1 !important;
+  border-left: 3px solid #2dce89 !important;
+  color: #1a7a47 !important;
+  font-weight: 600;
+}
+
+/* ── Mapped-to badge column ── */
+.mapped-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mapped-badge-visible {
+  background-color: #d4f5e9;
+  color: #0f6f3e;
+  border: 1px solid #2dce89;
+}
+
+.mapped-badge-empty {
+  background-color: #f0f0f0;
+  color: #aaa;
+  border: 1px dashed #ccc;
+}
+
+/* ── Mapped row background ── */
+tr[data-mapped="true"] {
+  background-color: #f8fffc;
+}
+
+tr[data-mapped="true"]:hover {
+  background-color: #f0fdf6 !important;
+}
+
+/* ── Optgroup colors ── */
 optgroup[label="Final_Data Fields"] {
   color: #2dce89;
   font-weight: 600;
 }
-
 optgroup[label="AntibioticEntry Fields (WHONET Antibiotics)"] {
   color: #5e72e4;
   font-weight: 600;
 }
 
+/* ── General table ── */
 .table td {
   vertical-align: middle;
-}
-
-.input-group-alternative {
-  box-shadow: 0 1px 3px rgba(50, 50, 93, 0.15), 0 1px 0 rgba(0, 0, 0, 0.02);
-  border: 0;
-  transition: box-shadow 0.15s ease;
-}
-
-.input-group-alternative .form-control {
-  border: 0;
 }
 
 .badge-lg {
@@ -260,199 +305,34 @@ thead.thead-light {
   background-color: #f6f9fc;
 }
 
-.table-hover tbody tr:hover {
-  background-color: #f8f9fa;
+.input-group-alternative {
+  box-shadow: 0 1px 3px rgba(50,50,93,.15), 0 1px 0 rgba(0,0,0,.02);
+  border: 0;
 }
+
+.input-group-alternative .form-control { border: 0; }
 
 .alert-info {
   background-color: #d1ecf1;
   border-color: #bee5eb;
   color: #0c5460;
 }
-
-#search-input:focus {
-  box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
-}
 </style>
 
 {% endblock %}
 
-<!-- JavaScript -->
 {% block javascripts %}
-<!-- <script>
-// Search table function
-function searchTable() {
-  var input = document.getElementById("search-input");
-  var filter = input.value.toLowerCase();
-  var table = document.getElementById("mapping-table");
-  var rows = table.querySelectorAll("tbody tr");
-
-  rows.forEach(row => {
-    var header = row.dataset.header.toLowerCase();
-    var select = row.querySelector('select');
-    var selectedValue = select.options[select.selectedIndex].text.toLowerCase();
-
-    if (header.includes(filter) || selectedValue.includes(filter)) {
-      row.style.display = "";
-    } else {
-      row.style.display = "none";
-    }
-  });
-}
-
-// Clear search function
-function clearSearch() {
-  document.getElementById("search-input").value = "";
-  searchTable();
-}
-
-// Auto-map function - matches column names with field names
-function autoMap() {
-  const selects = document.querySelectorAll(".field-select");
-  let mappedCount = 0;
-  
-  selects.forEach(sel => {
-    const header = sel.dataset.header.toLowerCase().replace(/[_\s-]/g, '');
-    
-    // Try to find exact or close match
-    for (let option of sel.options) {
-      const optionValue = option.value.toLowerCase().replace(/[_\s-]/g, '');
-      if (optionValue && (header === optionValue || header.includes(optionValue) || optionValue.includes(header))) {
-        sel.value = option.value;
-        mappedCount++;
-        break;
-      }
-    }
-  });
-  
-  updateMappingCount();
-  alert(`Auto-mapped ${mappedCount} field(s). Please review the mappings.`);
-}
-
-// Update mapping count badges
-function updateMappingCount() {
-  const selects = document.querySelectorAll(".field-select");
-  let mappedCount = 0;
-  
-  selects.forEach(sel => {
-    const row = sel.closest('tr');
-    const statusIcon = row.querySelector('.status-icon i');
-    
-    if (sel.value) {
-      mappedCount++;
-      statusIcon.className = 'fas fa-check-circle text-success';
-    } else {
-      statusIcon.className = 'far fa-circle text-muted';
-    }
-  });
-  
-  const unmappedCount = selects.length - mappedCount;
-  
-  document.getElementById('mapped-count').textContent = `${mappedCount} mapped`;
-  document.getElementById('unmapped-count').textContent = `${unmappedCount} unmapped`;
-}
-
-// Initialize count on page load
-document.addEventListener('DOMContentLoaded', function() {
-  updateMappingCount();
-});
-
-// Convert selected fields to JSON before submit
-document.getElementById("mapping-form").addEventListener("submit", function(e) {
-  const selects = document.querySelectorAll(".field-select");
-  const mapping = {};
-  
-  selects.forEach(sel => {
-    const header = sel.dataset.header;
-    const mapped = sel.value;
-    if (mapped) {
-      mapping[header] = mapped;
-    }
-  });
-  
-  if (Object.keys(mapping).length === 0) {
-    if (!confirm('No fields are mapped. Continue with raw data export?')) {
-      e.preventDefault();
-      return false;
-    }
-  }
-  
-  document.getElementById("mapping-json").value = JSON.stringify(mapping);
-  
-  // Show loading state
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Generating...';
-});
-
-// Enter key support for search
-document.getElementById("search-input").addEventListener("keypress", function(event) {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    searchTable();
-  }
-});
-</script>
-
-<script>
-/* Reset Generate button after file download */
-window.addEventListener("pageshow", function () {
-  const btn = document.querySelector('#mapping-form button[type="submit"]');
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ni ni-cloud-download-95 mr-1"></i>Generate Mapped Excel';
-  }
-});
-</script>
-
-<script>
-function clearRowMapping(btn) {
-  const row = btn.closest('tr');
-  const select = row.querySelector('.field-select');
-  const statusIcon = row.querySelector('.status-icon i');
-
-  // Clear only this select
-  select.value = "";
-
-  // Update icon
-  statusIcon.className = 'far fa-circle text-muted';
-
-  // Update counts
-  updateMappingCount();
-}
-</script>
-
-<script>
-function saveMapping(rawField, mappedField) {
-  fetch("{% url 'update_field_mapping' %}", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": getCookie("csrftoken"),
-    },
-    body: JSON.stringify({
-      raw_field: rawField,
-      mapped_field: mappedField || "", // empty = clear
-    }),
-  }).catch(() => {
-    console.error("Failed to save mapping:", rawField);
-  });
-}
-</script> -->
-
-
 <script>
 // --------------------------------------------------
-// CSRF helper (required for Django POST via fetch)
+// CSRF helper
 // --------------------------------------------------
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let cookie of cookies) {
+    for (let cookie of document.cookie.split(';')) {
       cookie = cookie.trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+      if (cookie.startsWith(name + '=')) {
+        cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
         break;
       }
     }
@@ -464,19 +344,12 @@ function getCookie(name) {
 // SEARCH TABLE
 // --------------------------------------------------
 function searchTable() {
-  const input = document.getElementById("search-input");
-  const filter = input.value.toLowerCase();
-  const rows = document.querySelectorAll("#mapping-table tbody tr");
-
-  rows.forEach(row => {
+  const filter = document.getElementById("search-input").value.toLowerCase();
+  document.querySelectorAll("#mapping-table tbody tr").forEach(row => {
     const header = row.dataset.header.toLowerCase();
-    const select = row.querySelector(".field-select");
-    const selectedText = select.options[select.selectedIndex].text.toLowerCase();
-
-    row.style.display =
-      header.includes(filter) || selectedText.includes(filter)
-        ? ""
-        : "none";
+    const sel = row.querySelector(".field-select");
+    const selected = sel.options[sel.selectedIndex].text.toLowerCase();
+    row.style.display = (header.includes(filter) || selected.includes(filter)) ? "" : "none";
   });
 }
 
@@ -486,9 +359,49 @@ function clearSearch() {
 }
 
 // --------------------------------------------------
+// FILTER TABS (All / Mapped / Unmapped)
+// --------------------------------------------------
+let activeFilter = 'all';
+function filterRows(type) {
+  activeFilter = type;
+  ['all','mapped','unmapped'].forEach(t => {
+    document.getElementById('filter-' + t).classList.toggle('active', t === type);
+  });
+  document.querySelectorAll("#mapping-table tbody tr").forEach(row => {
+    const isMapped = row.dataset.mapped === 'true';
+    if (type === 'all') row.style.display = '';
+    else if (type === 'mapped') row.style.display = isMapped ? '' : 'none';
+    else row.style.display = !isMapped ? '' : 'none';
+  });
+}
+
+// --------------------------------------------------
+// UPDATE MAPPED-TO BADGE on a single row
+// --------------------------------------------------
+function updateRowBadge(row, value) {
+  const badge = row.querySelector('.mapped-badge');
+  const select = row.querySelector('.field-select');
+
+  if (value) {
+    badge.textContent = value;
+    badge.className = 'mapped-badge mapped-badge-visible';
+    badge.title = value;
+    select.classList.add('select-mapped');
+    row.dataset.mapped = 'true';
+  } else {
+    badge.textContent = '—';
+    badge.className = 'mapped-badge mapped-badge-empty';
+    badge.title = '';
+    select.classList.remove('select-mapped');
+    row.dataset.mapped = 'false';
+  }
+}
+
+// --------------------------------------------------
 // SAVE / DELETE MAPPING (AJAX)
 // --------------------------------------------------
-function saveMapping(rawField, mappedField) {
+// AFTER
+function saveMapping(rawField, mappedField, isRetest = false) {
   fetch("{% url 'update_field_mapping' %}", {
     method: "POST",
     headers: {
@@ -498,49 +411,49 @@ function saveMapping(rawField, mappedField) {
     body: JSON.stringify({
       raw_field: rawField,
       mapped_field: mappedField || "",
+      is_retest: isRetest,
     }),
-  }).catch(() => {
-    console.error("Failed to save mapping:", rawField);
-  });
+  }).catch(() => console.error("Failed to save mapping:", rawField));
 }
 
 // --------------------------------------------------
-// HANDLE SELECT CHANGE (COUNT + AUTOSAVE)
+// HANDLE SELECT CHANGE
 // --------------------------------------------------
 function handleMappingChange(selectEl) {
-  const rawField = selectEl.dataset.header;
-  const mappedField = selectEl.value;
-
+  const row = selectEl.closest('tr');
+  const isRetest = row.querySelector('.retest-checkbox')?.checked ?? false;
+  updateRowBadge(row, selectEl.value);
   updateMappingCount();
-  saveMapping(rawField, mappedField);
+  saveMapping(selectEl.dataset.header, selectEl.value, isRetest);
 }
 
 // --------------------------------------------------
-// AUTO-MAP LOGIC (WITH AUTOSAVE)
+// AUTO-MAP
 // --------------------------------------------------
+function normalize(str) {
+  return (str || "")
+    .toLowerCase()
+    .replace(/^f_/, "")
+    .replace(/^ab_/, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+
 function autoMap() {
   const selects = document.querySelectorAll(".field-select");
   let mappedCount = 0;
 
   selects.forEach(sel => {
-    const headerNorm = sel.dataset.header
-      .toLowerCase()
-      .replace(/[_\s-]/g, "");
+    if (sel.value && sel.classList.contains("select-mapped")) return;
+    const headerNorm = sel.dataset.header.toLowerCase().replace(/[_\s-]/g, "");
 
     for (let option of sel.options) {
-      const optionNorm = option.value
-        .toLowerCase()
-        .replace(/[_\s-]/g, "");
-
-      if (
-        optionNorm &&
-        (headerNorm === optionNorm ||
-          headerNorm.includes(optionNorm) ||
-          optionNorm.includes(headerNorm))
-      ) {
+      const optionNorm = option.value.toLowerCase().replace(/[_\s-]/g, "");
+      if (optionNorm && (headerNorm === optionNorm || headerNorm.includes(optionNorm) || optionNorm.includes(headerNorm))) {
         sel.value = option.value;
         mappedCount++;
-
+        const row = sel.closest('tr');
+        updateRowBadge(row, option.value);
         saveMapping(sel.dataset.header, option.value);
         break;
       }
@@ -550,109 +463,103 @@ function autoMap() {
   updateMappingCount();
   alert(`Auto-mapped ${mappedCount} field(s). Please review the mappings.`);
 }
+document.addEventListener("DOMContentLoaded", function () {
+  autoMap();
+});
 
 // --------------------------------------------------
 // UPDATE MAPPING COUNT + STATUS ICONS
 // --------------------------------------------------
 function updateMappingCount() {
   const selects = document.querySelectorAll(".field-select");
-  let mappedCount = 0;
+  let mapped = 0;
 
   selects.forEach(sel => {
     const row = sel.closest("tr");
     const icon = row.querySelector(".status-icon i");
-
     if (sel.value) {
-      mappedCount++;
+      mapped++;
       icon.className = "fas fa-check-circle text-success";
     } else {
       icon.className = "far fa-circle text-muted";
     }
   });
 
-  document.getElementById("mapped-count").textContent =
-    `${mappedCount} mapped`;
-  document.getElementById("unmapped-count").textContent =
-    `${selects.length - mappedCount} unmapped`;
+  document.getElementById("mapped-count").textContent = `${mapped} mapped`;
+  document.getElementById("unmapped-count").textContent = `${selects.length - mapped} unmapped`;
 }
 
 // --------------------------------------------------
-// CLEAR SINGLE ROW (UI + DB)
+// CLEAR SINGLE ROW
 // --------------------------------------------------
 function clearRowMapping(btn) {
   const row = btn.closest("tr");
   const select = row.querySelector(".field-select");
-  const rawField = select.dataset.header;
-
+  const checkbox = row.querySelector(".retest-checkbox");
   select.value = "";
+  if (checkbox) checkbox.checked = false;
+  updateRowBadge(row, "");
   updateMappingCount();
-  saveMapping(rawField, "");
+  saveMapping(select.dataset.header, "");  // mapped_field="" triggers delete in view
+  if (activeFilter === 'mapped') row.style.display = 'none';
 }
 
 // --------------------------------------------------
-// INITIALIZE COUNTS ON LOAD
+// INIT
 // --------------------------------------------------
 document.addEventListener("DOMContentLoaded", function () {
+  // Ensure badges match select state (in case Django rendering has trim issues)
+  document.querySelectorAll(".field-select").forEach(sel => {
+    const row = sel.closest('tr');
+    // Force-sync badge with actual select value after render
+    updateRowBadge(row, sel.value);
+  });
   updateMappingCount();
 });
 
 // --------------------------------------------------
-// FORM SUBMIT (GENERATE MAPPED EXCEL)
+// FORM SUBMIT
 // --------------------------------------------------
-document.getElementById("mapping-form")
-  .addEventListener("submit", function (e) {
-
-    const selects = document.querySelectorAll(".field-select");
-    const mapping = {};
-
-    selects.forEach(sel => {
-      if (sel.value) {
-        mapping[sel.dataset.header] = sel.value;
-      }
-    });
-
-    if (Object.keys(mapping).length === 0) {
-      if (!confirm("No fields are mapped. Continue anyway?")) {
-        e.preventDefault();
-        return;
-      }
-    }
-
-    document.getElementById("mapping-json").value =
-      JSON.stringify(mapping);
-
-    const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.innerHTML =
-      '<i class="fas fa-spinner fa-spin mr-1"></i>Generating...';
+document.getElementById("mapping-form").addEventListener("submit", function (e) {
+  const mapping = {};
+  document.querySelectorAll(".field-select").forEach(sel => {
+    if (sel.value) mapping[sel.dataset.header] = sel.value;
   });
 
-// --------------------------------------------------
-// ENTER KEY SUPPORT FOR SEARCH
-// --------------------------------------------------
-document.getElementById("search-input")
-  .addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      searchTable();
+  if (Object.keys(mapping).length === 0) {
+    if (!confirm("No fields are mapped. Continue anyway?")) {
+      e.preventDefault();
+      return;
     }
-  });
+  }
 
-// --------------------------------------------------
-// RESET GENERATE BUTTON AFTER DOWNLOAD / BACK
-// --------------------------------------------------
+  document.getElementById("mapping-json").value = JSON.stringify(mapping);
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Generating...';
+});
+
+// Enter key for search
+document.getElementById("search-input").addEventListener("keypress", function (e) {
+  if (e.key === "Enter") { e.preventDefault(); searchTable(); }
+});
+
+// Reset button after download / back
 window.addEventListener("pageshow", function () {
-  const btn = document.querySelector(
-    '#mapping-form button[type="submit"]'
-  );
+  const btn = document.querySelector('#mapping-form button[type="submit"]');
   if (btn) {
     btn.disabled = false;
-    btn.innerHTML =
-      '<i class="ni ni-cloud-download-95 mr-1"></i>Generate Mapped Excel';
+    btn.innerHTML = '<i class="ni ni-cloud-download-95 mr-1"></i>Generate Mapped Excel';
   }
 });
+
+// Handle RETEST Change
+function handleRetestChange(checkboxEl) {
+  const row = checkboxEl.closest('tr');
+  const select = row.querySelector('.field-select');
+  if (!select.value) return; // don't save if no field is mapped yet
+  saveMapping(select.dataset.header, select.value, checkboxEl.checked);
+}
+
 </script>
-
-
-
 {% endblock %}

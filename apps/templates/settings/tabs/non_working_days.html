@@ -1,0 +1,110 @@
+{% load static %}
+{% load widget_tweaks %}
+
+<div class="card shadow-sm">
+
+  <!-- HEADER -->
+  <div class="card-header d-flex justify-content-between align-items-center"
+       style="background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+              border-bottom: 2px solid #ffeeba;">
+
+    <h5 class="card-title mb-0">
+      <i class="fas fa-calendar-times mr-2"></i>
+      Add Non-Working Day
+    </h5>
+
+  </div>
+
+  <!-- BODY -->
+  <div class="card-body">
+
+    <form method="POST" action="{% url 'add_non_working_day' %}">
+      {% csrf_token %}
+
+      <div class="row">
+
+        <div class="col-md-4 mb-3">
+          <label>Date</label>
+          {{ non_working_form.date }}
+          <small class="helper-text">
+            <i class="fas fa-info-circle mr-1"></i>
+             Indicate non-working days & Holidays
+          </small>
+
+        </div>
+
+        <div class="col-md-4 mb-3">
+          <label>Description</label>
+          {{ non_working_form.description }}
+        </div>
+
+        <div class="col-md-4 mb-3">
+          <label>Applies To</label>
+          {{ non_working_form.applies_to }}
+        </div>
+
+      </div>
+
+      <div class="text-center mt-3">
+        <button type="submit" class="btn btn-warning px-4">
+          <i class="fas fa-save mr-2"></i>Save
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+
+<!-- ================= TABLE ================= -->
+
+<div class="card shadow-sm mt-4">
+
+  <div class="card-header"
+       style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+              border-bottom: 2px solid #dee2e6;">
+
+    <h5 class="mb-0">
+      <i class="fas fa-list mr-2"></i>Configured Non-Working Days
+    </h5>
+
+  </div>
+
+  <div class="card-body table-responsive">
+
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Applies To</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for day in non_working_days %}
+        <tr>
+          <td>{{ day.date }}</td>
+          <td>{{ day.description }}</td>
+          <td>{{ day.applies_to }}</td>
+          <td>
+            <a href="{% url 'delete_non_working_day' day.id %}"
+               class="btn btn-sm btn-danger"
+               onclick="return confirm('Delete this non-working day?');">
+               <i class="fas fa-trash"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="text-center text-muted">
+            No non-working days configured.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  </div>
+</div>

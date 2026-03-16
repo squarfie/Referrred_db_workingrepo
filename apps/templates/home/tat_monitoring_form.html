@@ -1,0 +1,814 @@
+{% extends 'layouts/base.html' %}
+{% load widget_tweaks %}
+{% load static %}
+
+{% block title %}TAT Monitoring - {{ batch.bat_Batch_Name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/argon-theme.css' %}">
+<style>
+  .formset-row {
+    background: #f8f9fc;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    border: 1px solid #e3e6f0;
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .formset-row:hover {
+    border-color: #1e5a96;
+    box-shadow: 0 2px 8px rgba(30, 90, 150, 0.1);
+  }
+  
+  .formset-row.to-delete {
+    opacity: 0.5;
+    background: #fee;
+    border-color: #dc3545;
+  }
+  
+  .delete-row-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+  }
+  
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #1e5a96 0%, #0f3a5f 100%);
+    color: white;
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+  }
+  
+  .add-step-btn {
+    width: 100%;
+    border: 2px dashed #00bcd4;
+    background: rgba(0, 188, 212, 0.05);
+    color: #00bcd4;
+    padding: 1rem;
+    transition: all 0.3s ease;
+  }
+  
+  .add-step-btn:hover {
+    background: rgba(0, 188, 212, 0.15);
+    border-color: #0097a7;
+    color: #0097a7;
+  }
+
+  .errorlist {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0 0;
+    color: #dc3545;
+    font-size: 0.875rem;
+  }
+
+  .errorlist li {
+    padding: 0.25rem 0;
+  }
+
+
+  /* The blue background area */
+.antibiotics-header {
+    background: linear-gradient(87deg, #1e5a96 0, #144677 100%);
+    padding-bottom: 8rem; /* Creates space for the content to overlap */
+    padding-top: 2rem;
+}
+
+/* The wrapper that pulls the content UP */
+.header-body-wrapper {
+    margin-top: -6rem; /* This creates the overlap seen in your image */
+    position: relative;
+    z-index: 10;
+}
+
+/* Ensure the breadcrumb and text are white */
+.breadcrumb-item, .breadcrumb-item a, .breadcrumb-item.active {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Target inputs that have both the form-control class AND the readonly attribute */
+input.form-control[readonly] {
+    cursor: not-allowed !important;
+    background-color: #e9ecef !important;
+    opacity: 1; /* Prevents some browsers from fading it out too much */
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+
+<!-- Header Section -->
+<div class="antibiotics-header" style="height: 180px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
+<div class="container-fluid" style="position: relative; z-index: 20;">
+        <div class="mt-3" style="text-align: right;">
+      <h2 class="text-white mb-2">
+        <i class="fas fa-clock mr-2"></i>TAT Monitoring
+      </h2>
+      <p class="text-white opacity-8 mb-0">
+        Track turnaround time for batch: <strong>{{ batch.bat_Batch_Name }}</strong>
+      </p>
+    </div>
+<div class="d-flex justify-content-between align-items-center">
+
+  <!-- LEFT SIDE -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb bg-transparent mb-0">
+      <li class="breadcrumb-item">
+        <a href="{% url 'home' %}">
+          <i class="fas fa-home"></i> Home
+        </a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'review_batches' %}">Batches</a>
+      </li>
+      <li class="breadcrumb-item active">
+        {{ batch.bat_Batch_Name }}
+      </li>
+    </ol>
+  </nav>
+
+  <!-- RIGHT SIDE BUTTON GROUP -->
+  <div class="d-flex gap-2">
+    <button class="btn btn-sm btn-secondary" onclick="history.back()">
+      <i class="fas fa-arrow-left mr-1"></i> Back
+    </button>
+
+    <a class="btn btn-sm btn-success" href="{% url 'tat_analysis' %}">
+      <i class="fas fa-chart-line mr-1"></i> TAT Analysis
+    </a>
+  </div>
+
+</div>
+
+
+  </div>
+</div>
+
+
+<div class="container-fluid header-body-wrapper">
+  <div class="row">
+    <div class="col-lg-3">
+        </div>
+
+    <div class="col-lg-9">
+        </div>
+  </div>
+</div>
+<!-- Main Content -->
+<div class="container-fluid mt-4 position-relative" style="z-index: 10;">
+  <div class="row">
+    
+    <!-- Sidebar Navigation -->
+    <div class="col-lg-3">
+      <div class="sticky-top" style="top: 20px;">
+        <div class="card form-card">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list mr-2"></i>Quick Navigation</h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              <a href="#batch-info" class="list-group-item list-group-item-action">
+                <i class="fas fa-info-circle mr-2"></i>Batch Information
+              </a>
+              <a href="#process-steps" class="list-group-item list-group-item-action">
+                <i class="fas fa-tasks mr-2"></i>Process Steps
+              </a>
+              <a href="#tat-calc" class="list-group-item list-group-item-action">
+                <i class="fas fa-calculator mr-2"></i>TAT Calculation
+              </a>
+              <a href="#status" class="list-group-item list-group-item-action">
+                <i class="fas fa-clipboard-check mr-2"></i>Status & Remarks
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Batch Summary Card -->
+        <div class="card form-card mt-4">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-chart-line mr-2"></i>Batch Summary</h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <small class="text-muted d-block">Batch Name</small>
+              <strong>{{ batch.bat_Batch_Name }}</strong>
+            </div>
+            <div class="mb-3">
+              <small class="text-muted d-block">Site</small>
+              <strong>{{ batch.bat_SiteCode|default:"Not set" }}</strong>
+            </div>
+            <div>
+              <small class="text-muted d-block">Status</small>
+                  <span class="badge badge-primary text-wrap" style="text-align: left; font-size: 12px;">
+                      {% if tat.current_step %}
+                          {{ tat.current_step.step_type }}
+                      {% else %}
+                          No Process Started
+                      {% endif %}
+                  </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Running TAT Card -->
+              <div class="card form-card mt-4">
+                <div class="card-header">
+                  <h5 class="mb-0">
+                    <i class="fas fa-clock mr-2"></i>Running TAT
+                  </h5>
+                </div>
+
+                <div class="card-body text-center">
+
+                        {% if tat.tat_Running_TAT is not None %}
+
+                            {% if tat.tat_Target_Days and tat.tat_Running_TAT > tat.tat_Target_Days %}
+                                <h2 class="text-danger mb-0" style="font-size: 34px;">
+                                    {{ tat.tat_Running_TAT }} Days
+                                </h2>
+
+                            {% elif tat.tat_Target_Days and tat.tat_Running_TAT >= tat.tat_Target_Days|add:"-5" %}
+                                <h2 class="text-warning mb-0" style="font-size: 34px;">
+                                    {{ tat.tat_Running_TAT }} Days
+                                </h2>
+
+                            {% else %}
+                                <h2 class="text-success mb-0" style="font-size: 34px;">
+                                    {{ tat.tat_Running_TAT }} Days
+                                </h2>
+                            {% endif %}
+
+                            <small class="text-muted">Since Referral Date</small>
+
+                        {% else %}
+                            <h5 class="text-muted mb-0">
+                                Not yet started
+                            </h5>
+                        {% endif %}
+
+
+                </div>
+              </div>
+            <!-- summary card -->
+                    <div class="card mt-4 shadow-sm">
+                      <div class="card-header bg-light">
+                        <h5 class="mb-0">Process Compliance Summary</h5>
+                      </div>
+                      <div class="card-body">
+                        <div class="row text-center mb-3">
+                          <div class="col-6 border-end">
+                            <h6 class="text-muted small uppercase">LAB</h6>
+                            <div class="d-flex justify-content-around">
+                              <div>
+                                <div class="text-success h5 mb-0">{{ tat.lab_within_tat }}</div>
+                                <small class="text-muted">Within</small>
+                              </div>
+                              <div>
+                                <div class="text-danger h5 mb-0">{{ tat.lab_outside_tat }}</div>
+                                <small class="text-muted">Outside</small>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div class="col-6">
+                            <h6 class="text-muted small uppercase">DMU</h6>
+                            <div class="d-flex justify-content-around">
+                              <div>
+                                <div class="text-success h5 mb-0">{{ tat.dmu_within_tat }}</div>
+                                <small class="text-muted">Within</small>
+                              </div>
+                              <div>
+                                <div class="text-danger h5 mb-0">{{ tat.dmu_outside_tat }}</div>
+                                <small class="text-muted">Outside</small>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="text-center">
+                          <span class="text-muted small d-block">Overall Compliance Rate</span>
+                          <h3 class="display-6 fw-bold 
+                            {% if tat.compliance_percentage >= 90 %} text-success
+                            {% elif tat.compliance_percentage >= 70 %} text-warning
+                            {% else %} text-danger {% endif %}">
+                            {{ tat.compliance_percentage }}%
+                          </h3>
+                        </div>
+                      </div>
+                    </div>
+
+
+
+      </div>
+    </div>
+
+    <!-- Main Form Content -->
+    <div class="col-lg-9">
+      <form method="POST" id="tat-form">
+        {% csrf_token %}
+        <!-- Batch Information -->
+        <div class="card form-card" id="batch-info">
+          <div class="card-header">
+            <h3 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Batch Information</h3>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4 form-group">
+                <label class="form-control-label">Site Code</label>
+                {{ form.tat_SiteCode|add_class:"form-control" }}
+                {% if form.tat_SiteCode.errors %}
+                  <ul class="errorlist">
+                    {% for error in form.tat_SiteCode.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+
+              <div class="col-md-4 form-group">
+                <label class="form-control-label">Referral Date</label>
+                {{ form.tat_Referral_Date|add_class:"form-control" }}
+                {% if form.tat_Referral_Date.errors %}
+                  <ul class="errorlist">
+                    {% for error in form.tat_Referral_Date.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+
+              <div class="col-md-4 form-group">
+                <label class="form-control-label">No. of Isolates</label>
+                {{ form.tat_Num_Isolate|add_class:"form-control" }}
+                {% if form.tat_Num_Isolate.errors %}
+                  <ul class="errorlist">
+                    {% for error in form.tat_Num_Isolate.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6 form-group">
+                <label class="form-control-label">Batch Location</label>
+                {{ form.tat_Batch_Location|add_class:"form-control" }}
+                {% if form.tat_Batch_Location.errors %}
+                  <ul class="errorlist">
+                    {% for error in form.tat_Batch_Location.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6 form-group">
+                <label class="form-control-label">Target Days</label>
+                {{ form.tat_Target_Days|add_class:"form-control" }}
+                {% if form.tat_Target_Days.errors %}
+                  <ul class="errorlist">
+                    {% for error in form.tat_Target_Days.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Process Steps (Formset) -->
+        <div class="card form-card mt-4" id="process-steps">
+          <div class="card-header">
+            <h3 class="mb-0"><i class="fas fa-tasks mr-2"></i>Process Steps (Status)</h3>
+            <p class="mb-0 mt-2 text-muted">Track each process step from receiving to releasing</p>
+          </div>
+          <div class="card-body">
+            
+            {{ formset.management_form }}
+            
+            <div id="formset-container">
+              {% for step_form in formset %}
+                <div class="formset-row" data-formset-form>
+                  <div class="row">
+                    <!-- Delete Button -->
+
+                    <!-- Hidden ID field -->
+                    {% if step_form.id %}
+                      {{ step_form.id }}
+                    {% endif %}
+                    
+                    <!-- Step Header -->
+                    <div class="col-12 mb-3">
+                      <div class="row" style="padding-left: 15px;">
+                  {% if not forloop.first or formset|length > 1 %}
+                    <button type="button" class="btn btn-sm btn-danger delete-row-btn" data-delete-form >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  {% endif %}
+                        <h5 class="mb-0 d-flex align-items-center justify-content-between w-100">
+                          <div>
+                            <span class="step-number">{{ forloop.counter }}</span>
+                            Process Step {{ forloop.counter }}
+                          </div>
+
+                          <div>
+                            {% if step_form.instance.within_tat == True %}
+                                <span class="badge badge-success px-3 py-2">
+                                    <i class="fa fa-check" aria-hidden="true" style="color: rgb(88, 204, 88);"></i> &nbsp;Within TAT
+                                </span>
+
+                            {% elif step_form.instance.within_tat == False %}
+                                <span class="badge badge-danger px-3 py-2">
+                                    <i class="fa fa-exclamation" aria-hidden="true" style="color: rgb(255, 36, 7);"></i>&nbsp; Out of TAT
+                                </span>
+
+                            {% elif step_form.instance.date_received and not step_form.instance.date_finished %}
+                                <span class="badge badge-warning px-3 py-2">
+                                   <i class="fa fa-hourglass-start" aria-hidden="true" style="color: #d68b4d;"></i>&nbsp; Ongoing
+                                </span>
+
+                            {% else %}
+                                <span class="badge badge-secondary px-3 py-2">
+                                    Not Started
+                                </span>
+                            {% endif %}
+                          </div>
+                        </h5>
+                    </div></div>
+
+                    <!-- Step Type -->
+                        <div class="col-md-12 form-group">
+                      <label class="form-control-label">Step Type</label>
+                      {{ step_form.step_config|add_class:"form-control" }}
+                      {% if step_form.step_config.errors %}
+                        <ul class="errorlist">
+                          {% for error in step_form.step_config.errors %}
+                            <li>{{ error }}</li>
+                          {% endfor %}
+                        </ul>
+                      {% endif %}
+                      </div>
+
+                    <!-- Date Received -->
+                    <div class="col-md-6 form-group">
+                      <label class="form-control-label">Date Received</label>
+                      {{ step_form.date_received|add_class:"form-control"|attr:"type:date" }}
+                      {% if step_form.date_received.errors %}
+                        <ul class="errorlist">
+                          {% for error in step_form.date_received.errors %}
+                            <li>{{ error }}</li>
+                          {% endfor %}
+                        </ul>
+                      {% endif %}
+                    </div>
+
+                    <!-- Date Finished -->
+                    <div class="col-md-6 form-group">
+                      <label class="form-control-label">Date Finished</label>
+
+                      {{ step_form.date_finished|add_class:"form-control"|attr:"type:date" }}
+                      {% if step_form.date_finished.errors %}
+                        <ul class="errorlist">
+                          {% for error in step_form.date_finished.errors %}
+                            <li>{{ error }}</li>
+                          {% endfor %}
+                        </ul>
+                      {% endif %}
+                    </div>
+
+                    <!-- Performed By -->
+                    <div class="col-md-12 form-group">
+                      <label class="form-control-label">Performed By</label>
+                      {{ step_form.performed_by|add_class:"form-control" }}
+                      {% if step_form.performed_by.errors %}
+                        <ul class="errorlist">
+                          {% for error in step_form.performed_by.errors %}
+                            <li>{{ error }}</li>
+                          {% endfor %}
+                        </ul>
+                      {% endif %}
+                    </div>
+
+                    <!-- Remarks -->
+                    <div class="col-md-12 form-group">
+                      <label class="form-control-label">Remarks</label>
+                      {{ step_form.remarks|add_class:"form-control"|attr:"rows:2" }}
+                      {% if step_form.remarks.errors %}
+                        <ul class="errorlist">
+                          {% for error in step_form.remarks.errors %}
+                            <li>{{ error }}</li>
+                          {% endfor %}
+                        </ul>
+                      {% endif %}
+                    </div>
+
+                    <!-- DELETE checkbox (hidden) -->
+                    <div class="col-12" style="display: none;">
+                      {{ step_form.DELETE }}
+                    </div>
+
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <!-- Add Step Button -->
+            <button type="button" class="btn add-step-btn mt-3" id="add-step">
+              <i class="fas fa-plus-circle mr-2"></i>Add Another Process Step
+            </button>
+            
+            <!-- EMPTY FORM TEMPLATE FOR JS -->
+              <div id="empty-form-template" style="display:none;">
+                <div class="formset-row" data-formset-form> {{ formset.empty_form.id }}
+
+                  <div class="row">
+                    <div class="col-12 mb-3">
+                      <h5>
+                        <span class="step-number">__num__</span>
+                        Process Step __num__
+                      </h5>
+                    </div>
+
+                    <div class="col-md-12 form-group">
+                      <label>Step Type</label>
+                      {{ formset.empty_form.step_config|add_class:"form-control" }}
+                    </div>
+
+
+                    <div class="col-md-6 form-group">
+                      <label>Date Received</label>
+                      {{ formset.empty_form.date_received|add_class:"form-control" }}
+                    </div>
+
+                    <div class="col-md-6 form-group">
+                      <label>Date Finished</label>
+                      {{ formset.empty_form.date_finished|add_class:"form-control" }}
+                    </div>
+
+                    <div class="col-md-12 form-group">
+                      <label>Performed By</label>
+                      {{ formset.empty_form.performed_by|add_class:"form-control" }}
+                    </div>
+
+                    <div class="col-md-12 form-group">
+                      <label>Remarks</label>
+                      {{ formset.empty_form.remarks|add_class:"form-control"|attr:"rows:2" }}
+                    </div>
+
+                    <div style="display:none;">
+                      {{ formset.empty_form.DELETE }}
+                    </div>
+                  </div>
+
+                  <button type="button" class="btn btn-sm btn-danger delete-row-btn">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+
+
+          </div>
+        </div>
+
+        <!-- TAT Calculation -->
+        <div class="card form-card mt-4" id="tat-calc">
+          <div class="card-header">
+            <h3 class="mb-0"><i class="fas fa-calculator mr-2"></i>TAT Calculation</h3>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4 form-group">
+                <label class="form-control-label">Running Days</label>
+                {{ form.tat_Running_TAT|add_class:"form-control"}}
+                {% if form.tat_Running_TAT.errors %}
+                  <ul class="errorlist">
+                    {% for error in form.tat_Running_TAT.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+
+              <div class="col-md-4 form-group">
+                <label class="form-control-label">Final TAT</label>
+                {{ form.tat_Final_TAT|add_class:"form-control" }}
+                {% if form.tat_Final_TAT.errors %}
+                  <ul class="errorlist">
+                    {% for error in form.tat_Final_TAT.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+
+              <div class="col-md-4 form-group">
+                <label class="form-control-label">Date Released</label>
+                {{ form.tat_Date_Released|add_class:"form-control" }}
+                {% if form.tat_Date_Released.errors %}
+                  <ul class="errorlist">
+                    {% for error in form.tat_Date_Released.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+
+              {% if form.instance.tat_Running_TAT %}
+              <div class="col-md-12 text-center">
+                <div class="badge badge-lg">
+                  <span class="badge-icon">⏱️</span>
+                  Current TAT: {{ form.instance.tat_Running_TAT }} days
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Status & Remarks -->
+        <div class="card form-card mt-4" id="status">
+          <div class="card-header">
+            <h3 class="mb-0"><i class="fas fa-clipboard-check mr-2"></i>Status & Remarks</h3>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6 form-group">
+                <label class="form-control-label">Release Status</label>
+                {{ form.tat_Status_Release|add_class:"form-control" }}
+                {% if form.tat_Status_Release.errors %}
+                  <ul class="errorlist">
+                    {% for error in form.tat_Status_Release.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+
+              <div class="col-md-12 form-group">
+                <label class="form-control-label">Overall Remarks</label>
+                {{ form.tat_Remarks|add_class:"form-control" }}
+                {% if form.tat_Remarks.errors %}
+                  <ul class="errorlist">
+                    {% for error in form.tat_Remarks.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Save Buttons -->
+        <div class="text-center mt-4 mb-5">
+          <button type="submit" class="btn btn-success btn-lg px-5">
+            <i class="fas fa-save mr-2"></i>Save TAT Record
+          </button>
+          <a href="{% url 'show_batches' %}" class="btn btn-secondary btn-lg px-5 ml-3">
+            <i class="fas fa-times mr-2"></i>Cancel
+          </a>
+        </div>
+
+      </form>
+    </div>
+
+  </div>
+  <div style="height: 50px;"></div>
+</div>
+
+
+{% block javascript %}
+<script>
+console.log("TAT Script Loaded");
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    console.log("DOM Fully Loaded");
+
+    const addButton = document.getElementById('add-step');
+    const container = document.getElementById('formset-container');
+    const totalFormsInput = document.querySelector('input[name="steps-TOTAL_FORMS"]');
+    const template = document.getElementById('empty-form-template');
+
+    if (!addButton || !container || !totalFormsInput || !template) {
+        console.error("Required elements missing.");
+        return;
+    }
+
+    // =========================
+    // ADD STEP
+    // =========================
+    addButton.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        let formIndex = parseInt(totalFormsInput.value);
+
+        let newHtml = template.innerHTML.replace(/__prefix__/g, formIndex);
+        newHtml = newHtml.replace(/__num__/g, formIndex + 1);
+
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = newHtml;
+
+        container.appendChild(tempDiv.firstElementChild);
+
+        totalFormsInput.value = formIndex + 1;
+    });
+
+    // =========================
+    // DELETE STEP
+    // =========================
+    container.addEventListener('click', function(e) {
+
+        if (e.target.closest('.delete-row-btn')) {
+
+            const formRow = e.target.closest('.formset-row');
+            const deleteCheckbox = formRow.querySelector('input[name$="-DELETE"]');
+
+            if (deleteCheckbox) {
+                deleteCheckbox.checked = true;
+                formRow.style.display = 'none';
+            } else {
+                formRow.remove();
+                totalFormsInput.value = container.querySelectorAll('.formset-row').length;
+            }
+        }
+    });
+
+});
+</script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Select the inputs
+    const referralDateInput = document.querySelector('input[name="tat_Referral_Date"]');
+    const dateReleasedInput = document.querySelector('input[name="tat_Date_Released"]');
+    const finalTatInput = document.querySelector('input[name="tat_Final_TAT"]');
+    const runningTatInput = document.querySelector('input[name="tat_Running_TAT"]');
+    const statusInput = document.querySelector('select[name="tat_Status_Release"]');
+
+    function calculateTAT() {
+        const refDateVal = referralDateInput.value;
+        const relDateVal = dateReleasedInput.value;
+
+        if (refDateVal && relDateVal) {
+            const refDate = new Date(refDateVal);
+            const relDate = new Date(relDateVal);
+            
+            // Calculate difference in days
+            const diffTime = relDate - refDate;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (!isNaN(diffDays)) {
+                // Update the fields instantly
+                finalTatInput.value = diffDays;
+                runningTatInput.value = diffDays;
+                
+                // Update status to 'Released'
+                if (statusInput) statusInput.value = "Released";
+            }
+        } else if (refDateVal && !relDateVal) {
+            // Logic for Running TAT based on 'today' if date released is cleared
+            const refDate = new Date(refDateVal);
+            const today = new Date();
+            const diffTime = today - refDate;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            runningTatInput.value = diffDays > 0 ? diffDays : 0;
+            finalTatInput.value = "";
+            if (statusInput) statusInput.value = "Ongoing";
+        }
+    }
+
+    // Listen for changes
+    dateReleasedInput.addEventListener('change', calculateTAT);
+    referralDateInput.addEventListener('change', calculateTAT);
+});
+</script>
+{% endblock %}
+
+
+{% endblock %}
+
+
+
+
+
+
+
+
+

@@ -7,7 +7,7 @@
 
 <style>
 @page {
-    size: A4 portrait;
+    size: Legal portrait;
     margin: 0.7cm;
     margin-bottom: auto;
 }
@@ -53,9 +53,23 @@ th, td {
 }
 
 .abx-col {
-    width: 24px;
-    min-width: 24px;
-    max-width: 24px;
+    white-space: normal;   
+    width: 25.2px;
+    min-width: 25.2px;
+    max-width: 25.2px;
+    font-size: 9px;
+    vertical-align: middle;
+    height: auto !important;
+}
+
+.abx-inner {
+    white-space: normal;      /* allows wrapping */
+    word-break: break-all;    /* allows breaking long values */
+    overflow-wrap: break-word;
+    vertical-align: middle;
+    font-size: 9px;
+    font-weight: bold;
+    line-height: auto !important;
 }
 
 .page-break {
@@ -175,13 +189,13 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
 <tr>
 <td colspan="8" style="font-size: 10px;">
     Identification <br>    {% if isolate.Site_OrgName %}
-        <strong><i>{{ isolate.Site_OrgName }}</i></strong>
+        <strong><i>{{ isolate.Site_OrgName|default:"" }}</i></strong>
     {% else %}
         <strong><i>No Organism Identified</i></strong>
     {% endif %}
 </td>
-<td colspan="6">{{ isolate.Site_Pre }}</td>
-<td colspan="6">{{ isolate.Site_Pos }}</td>
+<td colspan="6">{% if isolate.Site_Pre %}{{ isolate.Site_Pre|default:""}} {% else %} <span>&nbsp;</span>{% endif %} </td>
+<td colspan="6">{% if isolate.Site_Pos %} {{ isolate.Site_Pos|default:"" }} {% else %} <span>&nbsp;</span>{% endif %} </td>
 <td colspan="10" style="border-top: 0;">{{isolate.Comments}}.</td>
 </tr>
 
@@ -211,9 +225,9 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
 </tr>
 
 <tr>
-<td>DISK</td>
+<td rowspan="2">DISK</td>
 {% for abx, data in row %}
-    <td class="abx-col" style="font-size: 7px; font-weight: bold;">{{data.disk.ab_Disk_value|default:""}} {{ data.disk.ab_Disk_enRIS}}</td>
+    <td class="abx-col" style="font-size: 9px; font-weight: bold;">{% if data.disk.ab_Disk_value %}{{data.disk.ab_Disk_value|default:""}}{% else %} <span>&nbsp;</span> {% endif %}</td>
 {% endfor %}
 {% with abx_count=row|length %}
 {% for i in "x"|rjust:29 %}
@@ -224,13 +238,46 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
 {% endwith %}
 </tr>
 
+
 <tr>
-<td>MIC</td>
 {% for abx, data in row %}
-    <td class="abx-col mic" style="font-size: 7px; font-weight: bold;">
-        {{ data.mic.ab_MIC_operand }}
-        {{ data.mic.ab_MIC_value|floatformat:"-2"|default:"" }}
-        {{ data.mic.ab_MIC_enRIS}}
+    <td class="abx-col" style="font-size: 9px; font-weight: bold;">{% if data.disk.ab_Disk_enRIS %} {{ data.disk.ab_Disk_enRIS|default:""}} {% else %} <span>&nbsp;</span> {% endif %}</td>
+{% endfor %}
+{% with abx_count=row|length %}
+{% for i in "x"|rjust:29 %}
+    {% if forloop.counter > abx_count %}
+        <td class="abx-col">&nbsp;</td>
+    {% endif %}
+{% endfor %}
+{% endwith %}
+</tr>
+
+
+
+<tr>
+<td rowspan="2">MIC</td>
+{% for abx, data in row %}
+    <td class="abx-col mic" style="font-size: 9px; font-weight: bold;">
+        <div class="abx-inner">
+         {{ data.mic.ab_MIC_operand|default:""  }}
+      {% if data.mic.ab_MIC_value %}  {{ data.mic.ab_MIC_value|floatformat:"-2"|default:"" }} {% else %} <span>&nbsp;</span> {% endif %}
+        </div>
+    </td>
+{% endfor %}
+{% with abx_count=row|length %}
+{% for i in "x"|rjust:29 %}
+    {% if forloop.counter > abx_count %}
+        <td class="abx-col mic">&nbsp;</td>
+    {% endif %}
+{% endfor %}
+{% endwith %}
+</tr>
+
+<tr>
+
+{% for abx, data in row %}
+    <td class="abx-col mic" style="font-size: 9px; font-weight: bold;">
+     {% if data.mic.ab_MIC_enRIS %}   {{ data.mic.ab_MIC_enRIS}} {% else %} <span>&nbsp;</span> {% endif %}
     </td>
 {% endfor %}
 {% with abx_count=row|length %}
@@ -297,14 +344,24 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
 </tr>
 
 <tr>
-<td>DISK</td>
+<td rowspan="2">DISK</td>
+{% for i in "x"|rjust:29 %}
+    <td class="abx-col">&nbsp;</td>
+{% endfor %}
+</tr>
+<tr>
 {% for i in "x"|rjust:29 %}
     <td class="abx-col">&nbsp;</td>
 {% endfor %}
 </tr>
 
 <tr>
-<td>MIC</td>
+<td rowspan="2">MIC</td>
+{% for i in "x"|rjust:29 %}
+    <td class="abx-col mic">&nbsp;</td>
+{% endfor %}
+</tr>
+<tr>
 {% for i in "x"|rjust:29 %}
     <td class="abx-col mic">&nbsp;</td>
 {% endfor %}
@@ -327,22 +384,22 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
       Identification 
     <br>
     {% if isolate.ars_OrgName %}
-        <strong><i>{{ isolate.ars_OrgName }}</i></strong>
+        <strong><i>{{ isolate.ars_OrgName|default:"" }}</i></strong>
     {% else %}
         <strong><i>No Organism Identified</i></strong>
     {% endif %}
 </td>
-<td colspan="6">{{ isolate.ars_Pre }}</td>
-<td colspan="6">{{ isolate.ars_Post }}</td>
+<td colspan="6">{% if isolate.ars_Pre %} {{ isolate.ars_Pre|default:"" }} {% else %} <span>&nbsp;</span> {% endif %}</td>
+<td colspan="6">{% if isolate.ars_Post %}{{ isolate.ars_Post|default:"" }} {% else %} <span>&nbsp;</span> {% endif %} </td>
 <td colspan="4" style="text-align: left;"> <span style="font-weight: bold; padding-inline: 1px;"> ESBL </span> <br>
-CT/CTL: {{isolate.ars_ct_ctl}} <br>
-TZ/TZL: {{isolate.ars_tz_tzl}}
+CT/CTL: {{isolate.ars_ct_ctl|default:""}} <br>
+TZ/TZL: {{isolate.ars_tz_tzl|default:""}}
 </td>
 <td colspan="3" style="text-align: left; vertical-align: top;"> <span style="font-weight: bold;">ampC </span><br> 
-CN/CNI: <br>{{isolate.ars_cn_cni}}
+CN/CNI: <br>{{isolate.ars_cn_cni|default:""}}
 </td>
 <td colspan="3" style="text-align: left; vertical-align: top;"> <span style="font-weight: bold;"> MBL </span><br>
-IP/IPI: <br> {{isolate.ars_ip_ipi}}
+IP/IPI: <br> {{isolate.ars_ip_ipi|default:""}}
 </td>
 </tr>
 
@@ -376,11 +433,10 @@ IP/IPI: <br> {{isolate.ars_ip_ipi}}
     </tr>
 
     <tr>
-    <td>DISK</td>
+    <td rowspan="2">DISK</td>
     {% for abx, data in row %}
         <td class="abx-col" style="font-size: 7px; font-weight: bold;">
-            {{ data.disk.ab_Retest_DiskValue|default:"" }}
-            {{ data.disk.ab_Retest_Disk_enRIS}}
+          {% if data.disk.ab_Retest_DiskValue %}  {{ data.disk.ab_Retest_DiskValue|default:"" }} {% else %} <span>&nbsp;</span> {% endif %}
         </td>
     {% endfor %}
     {% with abx_count=row|length %}
@@ -392,13 +448,44 @@ IP/IPI: <br> {{isolate.ars_ip_ipi}}
     {% endwith %}
     </tr>
 
+        <tr>
+    {% for abx, data in row %}
+        <td class="abx-col" style="font-size: 7px; font-weight: bold;">
+       {% if data.disk.ab_Retest_Disk_enRIS %}     {{ data.disk.ab_Retest_Disk_enRIS|default:""}} {% else %} <span>&nbsp;</span> {% endif %}
+        </td>
+    {% endfor %}
+    {% with abx_count=row|length %}
+    {% for i in "x"|rjust:29 %}
+        {% if forloop.counter > abx_count %}
+            <td class="abx-col">&nbsp;</td>
+        {% endif %}
+    {% endfor %}
+    {% endwith %}
+    </tr>
+
+
     <tr>
-    <td>MIC</td>
+    <td rowspan="2">MIC</td>
     {% for abx, data in row %}
         <td class="abx-col mic" style="font-size: 7px; font-weight: bold;">
-            {{ data.mic.ab_Retest_MIC_operand }}
-            {{ data.mic.ab_Retest_MICValue|floatformat:"-2"|default:"" }}
-            {{ data.mic.ab_Retest_MIC_enRIS }}
+            <div class="abx-inner">
+            {{ data.mic.ab_Retest_MIC_operand|default:"" }}
+          {% if data.mic.ab_Retest.MICValue %}  {{ data.mic.ab_Retest_MICValue|floatformat:"-2"|default:"" }} {% else %} <span>&nbsp;</span> {% endif %}
+          </div>
+        </td>
+    {% endfor %}
+    {% with abx_count=row|length %}
+    {% for i in "x"|rjust:29 %}
+        {% if forloop.counter > abx_count %}
+            <td class="abx-col mic">&nbsp;</td>
+        {% endif %}
+    {% endfor %}
+    {% endwith %}
+    </tr>
+        <tr>
+    {% for abx, data in row %}
+        <td class="abx-col mic" style="font-size: 7px; font-weight: bold;">
+         {% if data.mic.ab_Retest_MIC_enRIS %}   {{ data.mic.ab_Retest_MIC_enRIS|default:"" }} {% else %} <span>&nbsp;</span> {% endif %}
         </td>
     {% endfor %}
     {% with abx_count=row|length %}
@@ -426,15 +513,26 @@ IP/IPI: <br> {{isolate.ars_ip_ipi}}
 
     <!-- DISK empty row -->
     <tr>
-        <td>DISK</td>
+        <td rowspan="2">DISK</td>
+        {% for i in "x"|rjust:29 %}
+            <td class="abx-col">&nbsp;</td>
+        {% endfor %}
+    </tr>
+        <tr>
         {% for i in "x"|rjust:29 %}
             <td class="abx-col">&nbsp;</td>
         {% endfor %}
     </tr>
 
+
     <!-- MIC empty row -->
     <tr>
-        <td>MIC</td>
+        <td rowspan="2">MIC</td>
+        {% for i in "x"|rjust:29 %}
+            <td class="abx-col mic">&nbsp;</td>
+        {% endfor %}
+    </tr>
+        <tr>
         {% for i in "x"|rjust:29 %}
             <td class="abx-col mic">&nbsp;</td>
         {% endfor %}
@@ -499,7 +597,7 @@ IP/IPI: <br> {{isolate.ars_ip_ipi}}
       <td colspan="2"></td>
       <td colspan="4" style="font-size: 8px;">  {{page.0.isolate.arsp_Encoder}}
         <br>
-        {% if page.0.isolate.arsp_Enc_Lic %}Lic No: {{page.0.isolate.arsp_Enc_Lic|default_if_none:""}}{% else %}&nbsp;{% endif %}
+        {% if page.0.isolate.arsp_Enc_Lic %}Lic No: {{page.0.isolate.arsp_Enc_Lic|default_if_none:""}}{% else %} <span>&nbsp;</span>{% endif %}
       </td>
       <td colspan="2"></td>
       <td colspan="4" style="font-size: 8px;">{{page.0.isolate.arsp_Checker}}

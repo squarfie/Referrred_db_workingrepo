@@ -1,0 +1,264 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="header-container">
+  <div class="grid-bg"></div>
+  <div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="scanner"></div>
+    <div class="scanner"></div>
+    <div class="scanner"></div>
+    <div class="glow-orb"></div>
+    <div class="glow-orb"></div>
+  </div>
+  <div class="overlay"></div>
+
+  <div class="header-content">
+    <h1>
+      <i class="fas fa-vial me-2"></i>
+      Concordance – Accession
+    </h1>
+    <p>Detailed AST comparison for this isolate</p>
+
+    <div class="badge-group">
+      <span class="badge">
+        <i class="fas fa-fingerprint badge-icon"></i>
+        {{ isolate.f_AccessionNo }}
+      </span>
+      <span class="badge">
+        <i class="fas fa-bacteria badge-icon"></i>
+        {{ isolate.f_ars_OrgName }}
+      </span>
+    </div>
+  </div>
+ <div class="d-flex justify-content-between align-items-center" style="z-index: 1000;">
+  
+  <a href="{% url 'export_concordance_accession_excel' report.id %}" class="btn-history">
+          <i class="fas fa-history"></i>
+          Excel(per accession)
+    </a>
+      <a href="{% url 'export_concordance_batch_excel' report.id %}" class="btn-history">
+          <i class="fas fa-history"></i>
+          Excel(per batch)
+    </a>
+  <button class="btn-new-crf" onclick="history.back()">
+    <i class="fas fa-arrow-left me-1"></i> Back
+  </button>
+  </div>
+</div>
+
+
+<div class="container-fluid px-4 py-4">
+
+  <!-- ══════════════ ISOLATE INFO + STATS ══════════════ -->
+  <div class="card mb-4" style="border-radius:16px; overflow:hidden; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.1);">
+
+    <div class="card-header d-flex align-items-center gap-2"
+         style="background:linear-gradient(135deg,#1e3a5f 0%,#0f2744 100%); padding:1.1rem 1.75rem; border:none;">
+      <i class="fas fa-info-circle" style="color:#00bcd4;"></i>
+      <h5 class="mb-0 text-white fw-bold">Isolate Information</h5>
+    </div>
+
+    <div class="card-body">
+
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <strong>Patient:</strong>
+          {{ isolate.f_First_Name }} {{ isolate.f_Last_Name }}
+        </div>
+        <div class="col-md-6">
+          <strong>Specimen:</strong>
+          {{ isolate.f_Spec_Type }}
+        </div>
+      </div>
+
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <strong>Site Organism:</strong>
+          {{ isolate.f_Site_OrgName }}
+        </div>
+        <div class="col-md-6">
+          <strong>ARSRL Organism:</strong>
+          {{ isolate.f_ars_OrgName }}
+        </div>
+      </div>
+
+      <hr>
+
+      <!-- AST SUMMARY -->
+      <div class="row text-center">
+
+        <div class="col-4">
+          <h6>Total Comparisons</h6>
+          <h2>{{ report.total_pairs }}</h2>
+        </div>
+
+        <div class="col-4">
+          <h6>Concordant</h6>
+          <h2>{{ report.concordant_pairs }}</h2>
+        </div>
+
+        <div class="col-4">
+          <h6>Concordance Rate</h6>
+          <h2>{{ report.ast_concordance_rate }}%</h2>
+        </div>
+
+      </div>
+
+      <hr>
+
+      <!-- ERROR SUMMARY -->
+      <div class="row text-center">
+
+        <div class="col-4 text-danger">
+          <h6>Very Major</h6>
+          <h3>{{ report.vmd }}</h3>
+        </div>
+
+        <div class="col-4 text-warning">
+          <h6>Major</h6>
+          <h3>{{ report.md }}</h3>
+        </div>
+
+        <div class="col-4 text-secondary">
+          <h6>Minor</h6>
+          <h3>{{ report.minor }}</h3>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ ORGANISM IDENTIFICATION ══════════════ -->
+<div class="card mt-4" style="border-radius:16px; overflow:hidden; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.1);">
+
+  <div class="card-header"
+       style="background:linear-gradient(135deg,#1e3a5f 0%,#0f2744 100%); padding:1rem 1.75rem;">
+    <h5 class="mb-0 text-white fw-bold">
+      <i class="fas fa-dna me-2"></i>Organism Identification Concordance
+    </h5>
+  </div>
+
+  <div class="card-body text-center">
+
+    <div class="row">
+
+      <div class="col-md-6">
+        <h6>Genus Concordance</h6>
+        <h3>
+          {% if report.genus_match == 1 %}
+            <span class="text-success">G (Match)</span>
+          {% else %}
+            <span class="text-danger">
+              {% if isolate.f_ars_Pre == "Mixed Culture" %}
+                M (Mixed)
+              {% elif isolate.f_ars_OrgName == "Not Viable" %}
+                N (Not Viable)
+              {% else %}
+                X (Discordant)
+              {% endif %}
+            </span>
+          {% endif %}
+        </h3>
+      </div>
+
+      <div class="col-md-6">
+        <h6>Species Concordance</h6>
+        <h3>
+          {% if report.species_match == 1 %}
+            <span class="text-success">S (Match)</span>
+          {% else %}
+            <span class="text-danger">
+              {% if isolate.f_ars_Pre == "Mixed Culture" %}
+                M (Mixed)
+              {% elif isolate.f_ars_OrgName == "Not Viable" %}
+                N (Not Viable)
+              {% else %}
+                X (Discordant)
+              {% endif %}
+            </span>
+          {% endif %}
+        </h3>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+  <!-- ══════════════ AST DETAIL TABLE ══════════════ -->
+  <div class="card" style="border-radius:16px; overflow:hidden; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.1);">
+
+    <div class="card-header d-flex justify-content-between align-items-center"
+         style="background:linear-gradient(135deg,#00bcd4,#0097a7); padding:1.1rem 1.75rem; border:none;">
+      <h5 class="mb-0 text-white fw-bold">
+        <i class="fas fa-table"></i> Antibiotic Comparison
+      </h5>
+      <span class="badge bg-light text-dark">
+        {{ details|length }} ROW{{ details|length|pluralize }}
+      </span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Antibiotic</th>
+            <th class="text-center">Site RIS</th>
+            <th class="text-center">ARS RIS</th>
+            <th class="text-center">Category</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for row in details %}
+          <tr>
+
+            <td>{{ row.antibiotic }}</td>
+
+            <td class="text-center fw-bold">{{ row.site_ris }}</td>
+
+            <td class="text-center fw-bold">{{ row.ars_ris }}</td>
+
+            <td class="text-center">
+
+              {% if row.deviation_code == "S" %}
+                <span class="badge bg-success">Concordant</span>
+              {% elif row.deviation_code == "A" %}
+                <span class="badge bg-danger">Very Major</span>
+              {% elif row.deviation_code == "B" %}
+                <span class="badge bg-warning text-dark">Major</span>
+              {% elif row.deviation_code == "C" %}
+                <span class="badge bg-secondary">Minor</span>
+              {% endif %}
+
+            </td>
+
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-center py-4">
+              No antibiotic comparison data available.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}
