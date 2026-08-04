@@ -49,6 +49,16 @@
         </label>
       </div>
 
+      <div class="form-group form-check mt-2">
+        <input type="checkbox" class="form-check-input" id="fdPartialUpdate">
+        <label class="form-check-label" for="fdPartialUpdate">
+          Partial update only
+          <i class="fas fa-question-circle text-secondary ml-1"
+             data-toggle="tooltip"
+             title="Updates only columns included in the uploaded file. Other Final Data fields are preserved."></i>
+        </label>
+      </div>
+
       <div class="d-flex align-items-center mt-4">
         <button id="fdUploadBtn"
                 class="btn btn-success px-4"
@@ -174,9 +184,11 @@
     if (!fileInput.files.length) return;
 
     const overwrite = document.getElementById('fdOverwrite').checked;
+    const partialUpdate = document.getElementById('fdPartialUpdate').checked;
     const formData  = new FormData();
     formData.append('final_data_file', fileInput.files[0]);
-    formData.append('overwrite', overwrite ? 'true' : 'false');
+    formData.append('overwrite', (overwrite || partialUpdate) ? 'true' : 'false');
+    formData.append('partial_update', partialUpdate ? 'true' : 'false');
 
     // UI: loading state
     document.getElementById('fdUploadBtn').disabled = true;
@@ -246,6 +258,7 @@
     document.getElementById('fdFileInput').value = '';
     document.getElementById('fdFileLabel').textContent = 'Choose file…';
     document.getElementById('fdOverwrite').checked = false;
+    document.getElementById('fdPartialUpdate').checked = false;
     document.getElementById('fdUploadBtn').disabled = true;
     document.getElementById('fdResultPanel').classList.add('d-none');
     document.getElementById('fdErrorDetails').classList.add('d-none');

@@ -511,7 +511,7 @@ label.form-control-label{
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk_enris' %}" 
                                    type="text" style="width: 70px; text-align: center; text-transform: uppercase;"
                                     oninput="this.value = this.value.toUpperCase();"
-                                    maxlength="1"
+                                    maxlength="4"
                                     list="enris-options" class="form-control form-control-sm text-center mx-auto">
                           </td>
                         
@@ -567,7 +567,7 @@ label.form-control-label{
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_enris' %}" 
                                    type="text" style="width: 70px; text-align: center;text-transform: uppercase;"
                                     oninput="this.value = this.value.toUpperCase();"
-                                    maxlength="1"
+                                    maxlength="4"
                                     list="enris-options" class="form-control form-control-sm text-center mx-auto">
                           </td>
                           <td>
@@ -756,7 +756,7 @@ label.form-control-label{
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk_enris' %}"
                                  type="text" style="width: 70px; text-align: center;text-transform: uppercase;"
                                     oninput="this.value = this.value.toUpperCase();"
-                                    maxlength="1"
+                                    maxlength="4"
                                     list="enris-options" class="form-control form-control-sm text-center mx-auto">
                         </td>
                       </tr>
@@ -811,7 +811,7 @@ label.form-control-label{
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_enris' %}"
                                  type="text" style="width: 70px; text-align: center;text-transform: uppercase;"
                                     oninput="this.value = this.value.toUpperCase();"
-                                    maxlength="1"
+                                    maxlength="4"
                                     list="enris-options" class="form-control form-control-sm text-center mx-auto">
                         </td>
                         <td>
@@ -1112,6 +1112,7 @@ function loadAntibiotics(org, retest = false) {
                             <td>
                                 <input type="text"
                                        name="${prefix}disk_enris_${code}"
+                                       maxlength="4"
                                        class="form-control form-control-sm text-center mx-auto"
                                        style="width:70px; text-align:center; height: 10px" oninput="this.value = this.value.toUpperCase();"
                  list="enris-options">
@@ -1140,6 +1141,7 @@ function loadAntibiotics(org, retest = false) {
                                 <input type="text"
                                        name="${prefix}mic_enris_${code}"
                                        list="enris-options"
+                                       maxlength="4"
                                        class="form-control form-control-sm text-center mx-auto"
                                        style="width:70px; text-align:center; height: 10px"
                                        oninput="this.value = this.value.toUpperCase();">

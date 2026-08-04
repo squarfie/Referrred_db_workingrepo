@@ -4,8 +4,326 @@
 {% load custom_filters %}
 {% block title %}TAT Analysis - ARSRL System{% endblock %}
 
+
+{% block stylesheets %}
+<style>
+.tat-analysis-page {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f1423 0%, #172740 48%, #0d747f 100%);
+    min-height: 100vh;
+    padding: 1.25rem 0 2rem;
+}
+
+.tat-analysis-page::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
+        url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+    opacity: .42;
+    pointer-events: none;
+}
+
+.tat-analysis-page::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 38%;
+    background: radial-gradient(circle at 50% 100%, rgba(0, 188, 212, .24), transparent 58%);
+    pointer-events: none;
+}
+
+.tat-analysis-page > * {
+    position: relative;
+    z-index: 1;
+}
+
+.tat-analysis-page > .header-container {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(0, 188, 212, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    margin: 0 1.5rem 1.25rem !important;
+    min-height: 145px !important;
+    overflow: visible;
+}
+
+.tat-analysis-page > .header-container::before,
+.tat-analysis-page > .header-container::after {
+    display: none !important;
+}
+
+.tat-analysis-page > .header-container .grid-bg,
+.tat-analysis-page > .header-container .particles {
+    opacity: .22;
+}
+
+.tat-analysis-page .header-container > div:first-of-type + div,
+.tat-analysis-page .header-container > div:nth-of-type(3) {
+    max-width: 100%;
+}
+
+.tat-analysis-page .header-container > div:nth-of-type(3) {
+    background: transparent !important;
+}
+
+.tat-analysis-page .header-container > div:nth-of-type(4) {
+    background: rgba(255, 255, 255, .035);
+    border: 1px solid rgba(0, 188, 212, .16);
+    border-radius: 10px;
+    padding: 1rem 1.25rem !important;
+    margin-bottom: 1rem;
+}
+
+.tat-analysis-page .card {
+    border: 0;
+    border-radius: 10px;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, .16) !important;
+    overflow: hidden;
+}
+
+.tat-analysis-page .card-header {
+    background: linear-gradient(135deg, #00bcd4, #0097a7) !important;
+    color: #fff !important;
+    border: 0 !important;
+    gap: .75rem;
+    font-weight: 800;
+}
+
+.tat-analysis-page .card-header strong,
+.tat-analysis-page .card-header i {
+    color: #fff !important;
+}
+
+.tat-analysis-page .card-header,
+.tat-analysis-page .card-header strong,
+.tat-analysis-page .card-header small,
+.tat-analysis-page .card-header .text-muted,
+.tat-analysis-page .card-header .fw-normal {
+    color: #fff !important;
+}
+
+.tat-analysis-page .card-header small,
+.tat-analysis-page .card-header form small {
+    color: rgba(255, 255, 255, .82) !important;
+    font-weight: 600;
+}
+
+.tat-analysis-page .card-header .btn {
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, .45) !important;
+}
+
+.tat-analysis-page .card-header .form-control {
+    background: rgba(255, 255, 255, .95);
+    color: #0f2f4c;
+    border-color: rgba(255, 255, 255, .55);
+}
+
+.tat-analysis-page .card-header form {
+    align-items: center !important;
+}
+
+.tat-analysis-page .card-header form .form-control-sm {
+    height: 30px;
+    width: 112px !important;
+    font-size: .76rem;
+}
+
+.tat-analysis-page .card-header form .btn-sm {
+    min-height: 30px;
+    padding: .35rem .7rem !important;
+    line-height: 1;
+}
+
+.tat-analysis-page .card-header form small {
+    flex-basis: 100%;
+    margin-top: .15rem;
+    text-align: right !important;
+}
+
+.tat-analysis-page .card-header .tat-card-tools {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: .45rem;
+}
+
+/* Stacked header layout: title row, then toolbar row underneath.
+   Fixes the title/date-picker collision that happened when both
+   tried to share one flex row at col-lg-6 width. */
+.tat-analysis-page .card-header.tat-header-stacked {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: .5rem;
+}
+
+.tat-analysis-page .card-header.tat-header-stacked form {
+    width: 100%;
+}
+
+.tat-analysis-kpi {
+    min-height: 150px;
+    background: #fff;
+    border: 1px solid rgba(0, 188, 212, .12) !important;
+    border-left: 5px solid transparent !important;
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.tat-analysis-kpi::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 5px;
+    background: var(--tat-card-accent, linear-gradient(135deg, #00bcd4, #1abc9c));
+}
+
+.tat-analysis-kpi .card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+}
+
+.tat-analysis-kpi-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: var(--tat-card-accent, linear-gradient(135deg, #00bcd4, #1abc9c));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: .9rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+}
+
+.tat-analysis-kpi-icon i {
+    color: #fff;
+    font-size: 1.45rem;
+}
+
+.tat-analysis-kpi-number {
+    font-size: 2.15rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: .55rem;
+    color: var(--tat-card-number, #00a9bd);
+}
+
+.tat-analysis-kpi-label {
+    color: #344767;
+    font-size: .9rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .55px;
+    margin: 0;
+}
+
+.tat-analysis-page .card .text-muted,
+.tat-analysis-page .card small.text-muted,
+.tat-analysis-page .card p.text-muted {
+    color: #526579 !important;
+    font-weight: 600;
+}
+
+.tat-analysis-page .card-body small,
+.tat-analysis-page .table td,
+.tat-analysis-page .table th {
+    font-size: .82rem;
+}
+
+.tat-analysis-page .table td,
+.tat-analysis-page .table th {
+    padding: .65rem .75rem;
+}
+
+.tat-analysis-page .table thead th {
+    font-weight: 800;
+    letter-spacing: .35px;
+}
+
+.tat-analysis-kpis > [class*="col-"]:nth-child(1) { --tat-card-accent: linear-gradient(135deg, #5a85dd, #4a6fa5); --tat-card-number: #1e5a96; }
+.tat-analysis-kpis > [class*="col-"]:nth-child(2) { --tat-card-accent: linear-gradient(135deg, #1abc9c, #16a085); --tat-card-number: #009688; }
+.tat-analysis-kpis > [class*="col-"]:nth-child(3) { --tat-card-accent: linear-gradient(135deg, #00bcd4, #0097a7); --tat-card-number: #00a9bd; }
+.tat-analysis-kpis > [class*="col-"]:nth-child(4) { --tat-card-accent: linear-gradient(135deg, #e67e22, #d35400); --tat-card-number: #ff7043; }
+
+.tat-analysis-page .table thead {
+    background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+    backdrop-filter: blur(14px) saturate(125%);
+    -webkit-backdrop-filter: blur(14px) saturate(125%);
+    border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+}
+
+.tat-analysis-page .table thead th {
+    color: #fff;
+    background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+    border-color: rgba(255, 255, 255, .12);
+    backdrop-filter: blur(14px) saturate(125%);
+    -webkit-backdrop-filter: blur(14px) saturate(125%);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .28);
+}
+
+.tat-target-card .tat-target-ring {
+    width: 118px;
+    height: 118px;
+}
+
+.tat-target-card .tat-target-ring-inner {
+    width: 84px;
+    height: 84px;
+}
+
+.tat-target-label {
+    color: #344767 !important;
+    font-size: .9rem !important;
+    font-weight: 800;
+}
+
+.tat-target-status {
+    border-radius: 999px;
+    color: #fff !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    font-size: .78rem !important;
+    font-weight: 800;
+    letter-spacing: .25px;
+    min-width: 160px;
+    padding: .48rem .85rem !important;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.tat-target-status.bg-warning {
+    color: #4a2d00 !important;
+}
+
+.tat-analysis-page .container-fluid.px-4 {
+    max-width: none;
+}
+
+@media (max-width: 992px) {
+    .tat-analysis-page .header-container > div:nth-of-type(3),
+    .tat-analysis-page .header-container > div:nth-of-type(4) {
+        grid-template-columns: 1fr;
+        align-items: flex-start !important;
+    }
+}
+</style>
+{% endblock stylesheets%}
+
+
 {% block content %}
 
+<div class="tat-analysis-page">
 <!-- ================= PAGE HEADER ================= -->
 <div class="header-container mb-4" style="min-height:160px; padding: 0 30px; display:flex; flex-direction:column; justify-content:center; gap:12px;">
     <div class="grid-bg"></div>
@@ -15,76 +333,109 @@
         <div class="particle"></div>
     </div>
 
-    <!-- TOP ROW: Back | Toggle | Export -->
-    <div style="position:relative; z-index:3; display:flex; align-items:center; justify-content:space-between; width:100%; padding-top:16px;">
+    <!-- TOP ROW: Back | Toggle | Export — 3-column grid keeps the
+         toggle truly centered regardless of how wide the left/right
+         content is (space-between only centers it when both sides
+         are equal width, which they weren't). -->
+    <div style="position:relative; z-index:3; display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; width:100%; padding-top:16px;">
 
-        <!-- Back -->
-            <a href="{% url 'tat_review_view' %}"
-            style="cursor:pointer; background:rgba(255,255,255,0.12); color:white;
-                    border:1px solid rgba(255,255,255,0.3); backdrop-filter:blur(8px);
-                    padding:6px 16px; border-radius:6px; font-size:0.82rem;
-                    text-decoration:none; transition:background 0.2s ease; flex-shrink:0;"
-            onmouseover="this.style.background='rgba(255,255,255,0.22)'"
-            onmouseout="this.style.background='rgba(255,255,255,0.12)'">
-                <i class="bi bi-arrow-left me-1"></i> Dashboard
+    <!-- Left -->
+    <div style="justify-self:start;">
+        <a href="{% url 'tat_review_view' %}"
+        style="cursor:pointer; background:rgba(255,255,255,0.12); color:white;
+                border:1px solid rgba(255,255,255,0.3); backdrop-filter:blur(8px);
+                padding:6px 16px; border-radius:6px; font-size:0.82rem;
+                text-decoration:none; transition:background 0.2s ease;"
+        onmouseover="this.style.background='rgba(255,255,255,0.22)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.12)'">
+            <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
+    </div>
+
+    <!-- Sliding toggle: center -->
+    <div style="justify-self:center; text-align:center;">
+        <div style="position:relative; display:inline-flex; background:rgba(0,0,0,0.3); border-radius:30px;
+                    padding:4px; border:1px solid rgba(255,255,255,0.15); backdrop-filter:blur(10px);">
+
+            <!-- Sliding pill -->
+            <div style="position:absolute; top:4px; bottom:4px; border-radius:25px;
+                        transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
+                        {% if include_ongoing == '1' %}
+                            left:50%; right:4px;
+                            background:linear-gradient(135deg,#f39c12,#e67e22);
+                            box-shadow:0 2px 10px rgba(243,156,18,0.5);
+                        {% else %}
+                            left:4px; right:50%;
+                            background:white;
+                            box-shadow:0 2px 10px rgba(0,0,0,0.25);
+                        {% endif %}">
+            </div>
+
+            <a href="{% url 'tat_analysis' %}?tat_year={{ tat_year|urlencode }}"
+               style="position:relative; z-index:1; padding:7px 22px; border-radius:25px;
+                      font-size:0.82rem; font-weight:600; text-decoration:none; white-space:nowrap;
+                      color:{% if not include_ongoing %}#0f3a5f{% else %}rgba(255,255,255,0.6){% endif %};">
+                <i class="bi bi-patch-check me-1"></i> Final TAT
             </a>
 
-        <!-- Sliding toggle: center -->
-        <div style="text-align:center; flex-shrink:0;">
-            <div style="position:relative; display:inline-flex; background:rgba(0,0,0,0.3); border-radius:30px;
-                        padding:4px; border:1px solid rgba(255,255,255,0.15); backdrop-filter:blur(10px);">
-
-                <!-- Sliding pill -->
-                <div style="position:absolute; top:4px; bottom:4px; border-radius:25px;
-                            transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
-                            {% if include_ongoing == '1' %}
-                                left:50%; right:4px;
-                                background:linear-gradient(135deg,#f39c12,#e67e22);
-                                box-shadow:0 2px 10px rgba(243,156,18,0.5);
-                            {% else %}
-                                left:4px; right:50%;
-                                background:white;
-                                box-shadow:0 2px 10px rgba(0,0,0,0.25);
-                            {% endif %}">
-                </div>
-
-                <a href="{% url 'tat_analysis' %}"
-                   style="position:relative; z-index:1; padding:7px 22px; border-radius:25px;
-                          font-size:0.82rem; font-weight:600; text-decoration:none; white-space:nowrap;
-                          color:{% if not include_ongoing %}#0f3a5f{% else %}rgba(255,255,255,0.6){% endif %};">
-                    <i class="bi bi-patch-check me-1"></i> Final TAT
-                </a>
-
-                <a href="{% url 'tat_analysis' %}?include_ongoing=1"
-                   style="position:relative; z-index:1; padding:7px 22px; border-radius:25px;
-                          font-size:0.82rem; font-weight:600; text-decoration:none; white-space:nowrap;
-                          color:{% if include_ongoing == '1' %}white{% else %}rgba(255,255,255,0.6){% endif %};">
-                    <i class="bi bi-eye me-1"></i> Ongoing TAT
-                </a>
-            </div>
-
-            <!-- Mode hint -->
-            <div style="margin-top:5px;">
-                {% if include_ongoing == '1' %}
-                    <small style="color:rgba(243,156,18,0.9); font-size:0.7rem; font-weight:600; letter-spacing:0.4px;">
-                        <i class="bi bi-exclamation-circle me-1"></i>PREVIEW — includes in-progress batches
-                    </small>
-                {% else %}
-                    <small style="color:rgba(255,255,255,0.4); font-size:0.7rem; letter-spacing:0.4px;">
-                        <i class="bi bi-check-circle me-1"></i>OFFICIAL — released batches only
-                    </small>
-                {% endif %}
-            </div>
+            <a href="{% url 'tat_analysis' %}?include_ongoing=1&tat_year={{ tat_year|urlencode }}"
+               style="position:relative; z-index:1; padding:7px 22px; border-radius:25px;
+                      font-size:0.82rem; font-weight:600; text-decoration:none; white-space:nowrap;
+                      color:{% if include_ongoing == '1' %}white{% else %}rgba(255,255,255,0.6){% endif %};">
+                <i class="bi bi-eye me-1"></i> Ongoing TAT
+            </a>
         </div>
 
-        <!-- Export -->
-        <a href="{% url 'export_tat_excel' %}"
-           style="flex-shrink:0; background:linear-gradient(135deg,#00bcd4,#26c6da); color:#0a0e1a;
-                  border:none; padding:8px 20px; border-radius:25px; font-weight:700; cursor:pointer;
-                  transition:all 0.3s ease; box-shadow:0 4px 15px rgba(0,188,212,0.4);
-                  text-transform:uppercase; letter-spacing:0.8px; font-size:0.8rem; text-decoration:none;">
-            <i class="bi bi-file-excel me-2"></i>Export Excel
-        </a>
+        <!-- Mode hint -->
+        <div style="margin-top:5px;">
+            {% if include_ongoing == '1' %}
+                <small style="color:rgba(243,156,18,0.9); font-size:0.7rem; font-weight:600; letter-spacing:0.4px;">
+                    <i class="bi bi-exclamation-circle me-1"></i>PREVIEW — includes in-progress batches
+                </small>
+            {% else %}
+                <small style="color:rgba(255,255,255,0.4); font-size:0.7rem; letter-spacing:0.4px;">
+                    <i class="bi bi-check-circle me-1"></i>OFFICIAL — released batches only
+                </small>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right buttons -->
+    <div style="justify-self:end; display:flex; align-items:center; gap:5px;">
+
+        <form method="get" action="{% url 'tat_analysis' %}" style="display:flex; align-items:center; gap:8px;">
+            {% if include_ongoing == '1' %}
+                <input type="hidden" name="include_ongoing" value="1">
+            {% endif %}
+            <select name="tat_year" title="Referral year"
+                    style="height:34px; min-width:120px; border-radius:18px; border:1px solid rgba(255,255,255,0.2); padding:0 10px; font-size:0.78rem;">
+                <option value="all" {% if tat_year == "all" %}selected{% endif %}>All Years</option>
+                {% for year in tat_years %}
+                    <option value="{{ year }}" {% if tat_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit"
+               style="background:rgba(0,188,212,0.15); color:#00d5ee;
+                      border:1px solid rgba(0,188,212,0.45); padding:7px 14px;
+                      border-radius:25px; font-weight:700; cursor:pointer;
+                      text-transform:uppercase; letter-spacing:0.5px; font-size:0.75rem;">
+                <i class="bi bi-funnel me-1"></i> Filter
+            </button>
+        </form>
+
+        <button type="button"
+                onclick="history.back()"
+                style="background:linear-gradient(135deg,#00bcd4,#26c6da); color:#0a0e1a;
+                       border:none; padding:8px 20px; border-radius:25px; font-weight:700;
+                       cursor:pointer; transition:all 0.3s ease;
+                       box-shadow:0 4px 15px rgba(0,188,212,0.4);
+                       text-transform:uppercase; letter-spacing:0.8px;
+                       font-size:0.8rem;">
+            <i class="fas fa-arrow-left mr-2"></i>Back
+        </button>
+
+    </div>
+
     </div>
 
     <!-- BOTTOM ROW: Title left | Stats right -->
@@ -99,6 +450,11 @@
             </h1>
             <p style="margin:0; font-size:0.9rem; color:rgba(200,220,255,0.85);">
                 Turnaround Time Performance Review
+                &nbsp;<span style="background:rgba(0,188,212,0.18);color:#00d5ee;
+                                   border:1px solid rgba(0,188,212,0.35);
+                                   padding:2px 10px;border-radius:12px;font-size:0.72rem;font-weight:700;">
+                    REFERRAL YEAR: {{ tat_year_label }}
+                </span>
                 {% if include_ongoing == '1' %}
                     &nbsp;<span style="background:rgba(243,156,18,0.25);color:#f39c12;
                                        border:1px solid rgba(243,156,18,0.4);
@@ -130,42 +486,112 @@
 </div>
 
 {% if stats and stats.total_batches > 0 %}
+<div class="container-fluid px-4">
+<!-- ================= IPCR EXPORT ================= -->
+<div class="card shadow-sm mb-3" style="border:1px solid rgba(17,205,239,0.22); border-left:4px solid #11cdef;">
+    <div class="card-body py-3">
+<form method="get"
+      action="{% url 'download_tat_ipcr_template' %}"
+      class="d-flex align-items-center justify-content-between flex-wrap"
+      style="gap:12px;">
+
+    <div>
+        <strong style="color:#24466f; letter-spacing:.02em;">
+            <i class="bi bi-file-earmark-spreadsheet me-1" style="color:#11cdef;"></i>
+            TAT Export Tools
+        </strong>
+        <div class="text-muted" style="font-size:.78rem;">
+            Use one referral date range for the full TAT Excel export and the IPCR process summary.
+        </div>
+    </div>
+
+    <div class="d-flex flex-column align-items-end">
+
+        <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+
+            <input type="hidden" name="tat_year" value="{{ tat_year }}">
+
+            {% if include_ongoing == '1' %}
+                <input type="hidden" name="include_ongoing" value="1">
+                <input type="hidden" name="tat_status" value="Ongoing">
+            {% else %}
+                <input type="hidden" name="tat_status" value="Released">
+            {% endif %}
+
+            <input type="date"
+                   name="date_from"
+                   class="form-control form-control-sm"
+                   style="width:150px;">
+
+            <input type="date"
+                   name="date_to"
+                   class="form-control form-control-sm"
+                   style="width:150px;">
+
+            <button type="submit"
+                    formaction="{% url 'export_tat_excel' %}"
+                    class="btn btn-sm "
+                    style="background:#123a63;color:#fff;border:none;border-radius:20px;font-weight:800;padding:.45rem 1rem;text-transform:uppercase;letter-spacing:.04em;">
+                <i class="bi bi-file-excel me-1"></i>
+                Running TAT
+            </button>
+
+            <button type="submit"
+                    class="btn btn-sm"
+                    style="background:linear-gradient(135deg,#00bcd4,#26c6da);color:#0a0e1a;border:none;border-radius:20px;font-weight:800;padding:.45rem 1rem;text-transform:uppercase;letter-spacing:.04em;">
+                <i class="bi bi-download me-1"></i>
+                IPCR Summary
+            </button>
+
+        </div>
+
+        <small class="text-muted mt-1" style="font-size:.7rem;">
+            Filtered by: TAT Referral Date.
+        </small>
+
+    </div>
+
+</form>
+    </div>
+</div>
 
 <!-- ================= KPI CARDS ================= -->
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-4 tat-analysis-kpis">
     <div class="col-md-3 col-sm-6">
-        <div class="card shadow-sm text-center h-100" style="border-top:4px solid var(--card-blue);">
+        <div class="card shadow-sm text-center h-100 tat-analysis-kpi">
             <div class="card-body py-4">
-                <i class="bi bi-layers-fill" style="font-size:1.8rem; color:var(--card-blue); opacity:0.7;"></i>
-                <h2 class="mt-2 mb-0" style="color:var(--primary-color); font-weight:800;">{{ stats.total_batches }}</h2>
-                <p class="text-muted mb-0 mt-1" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px;">Total Completed Batches</p>
+                <span class="tat-analysis-kpi-icon"><i class="bi bi-layers-fill"></i></span>
+                <h2 class="tat-analysis-kpi-number">{{ stats.total_batches }}</h2>
+                <p class="tat-analysis-kpi-label">
+                    {% if include_ongoing == '1' %}Ongoing Batches{% else %}Total Completed Batches{% endif %}
+                </p>
             </div>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
-        <div class="card shadow-sm text-center h-100" style="border-top:4px solid var(--accent-teal);">
+        <div class="card shadow-sm text-center h-100 tat-analysis-kpi">
             <div class="card-body py-4">
-                <i class="bi bi-speedometer2" style="font-size:1.8rem; color:var(--accent-teal); opacity:0.7;"></i>
-                <h2 class="mt-2 mb-0" style="color:var(--accent-teal); font-weight:800;">{{ stats.average_tat|floatformat:1 }}</h2>
-                <p class="text-muted mb-0 mt-1" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px;">Average TAT (Days)</p>
+                <span class="tat-analysis-kpi-icon"><i class="bi bi-speedometer2"></i></span>
+                <h2 class="tat-analysis-kpi-number">{{ stats.average_tat|floatformat:1 }}</h2>
+                <p class="tat-analysis-kpi-label">Average TAT (Days)</p>
             </div>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
-        <div class="card shadow-sm text-center h-100" style="border-top:4px solid var(--success);">
+        <div class="card shadow-sm text-center h-100 tat-analysis-kpi">
             <div class="card-body py-4">
-                <i class="bi bi-arrow-down-circle-fill" style="font-size:1.8rem; color:var(--success); opacity:0.7;"></i>
-                <h2 class="mt-2 mb-0" style="color:var(--success); font-weight:800;">{{ stats.min_tat }}</h2>
-                <p class="text-muted mb-0 mt-1" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px;">Min TAT (Days)</p>
+                <span class="tat-analysis-kpi-icon"><i class="bi bi-arrow-down-circle-fill"></i></span>
+                <h2 class="tat-analysis-kpi-number">{{ stats.min_tat }}</h2>
+                <p class="tat-analysis-kpi-label">Min TAT (Days)</p>
             </div>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
-        <div class="card shadow-sm text-center h-100" style="border-top:4px solid var(--card-orange);">
+        <div class="card shadow-sm text-center h-100 tat-analysis-kpi">
             <div class="card-body py-4">
-                <i class="bi bi-arrow-up-circle-fill" style="font-size:1.8rem; color:var(--card-orange); opacity:0.7;"></i>
-                <h2 class="mt-2 mb-0" style="color:var(--card-orange); font-weight:800;">{{ stats.max_tat }}</h2>
-                <p class="text-muted mb-0 mt-1" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px;">Max TAT (Days)</p>
+                <span class="tat-analysis-kpi-icon"><i class="bi bi-arrow-up-circle-fill"></i></span>
+                <h2 class="tat-analysis-kpi-number">{{ stats.max_tat }}</h2>
+                <p class="tat-analysis-kpi-label">Max TAT (Days)</p>
             </div>
         </div>
     </div>
@@ -175,7 +601,7 @@
 <div class="row g-3 mb-4">
     <div class="col-md-8">
         <div class="card shadow-sm h-100">
-            <div class="card-header d-flex align-items-center gap-2">
+            <div class="card-header d-flex align-items-center gap-2" style="background:rgba(0,188,212,0.2); color:#00bcd4; font-weight:700; border:1px solid rgba(0,188,212,0.3);">
                 <i class="bi bi-bar-chart-fill" style="color:var(--primary-color);"></i>
                 <strong>Performance Summary</strong>
             </div>
@@ -215,31 +641,31 @@
     </div>
 
     <div class="col-md-4">
-        <div class="card shadow-sm h-100 text-center">
-            <div class="card-header d-flex align-items-center gap-2">
+        <div class="card shadow-sm h-100 text-center tat-target-card">
+            <div class="card-header d-flex align-items-center gap-2" style="background:rgba(0,188,212,0.2); color:#00bcd4; font-weight:700; border:1px solid rgba(0,188,212,0.3);">
                 <i class="bi bi-trophy-fill" style="color:var(--warning);"></i>
                 <strong>Target Performance</strong>
             </div>
             <div class="card-body d-flex flex-column align-items-center justify-content-center py-4">
-                <div style="width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;
+                <div class="tat-target-ring" style="border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;
                     background: conic-gradient(
                         {% if stats.within_tat_pct >= 80 %}#26a69a{% elif stats.within_tat_pct >= 60 %}#f39c12{% else %}#e74c3c{% endif %}
                         {{ stats.within_tat_pct }}%,
                         rgba(0,0,0,0.08) {{ stats.within_tat_pct }}%
                     );
                     box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
-                    <div style="width:80px;height:80px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                    <div class="tat-target-ring-inner" style="border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;">
                         <span class="fw-bold {% if stats.within_tat_pct >= 80 %}text-success{% elif stats.within_tat_pct >= 60 %}text-warning{% else %}text-danger{% endif %}"
                               style="font-size:1.3rem;line-height:1;">{{ stats.within_tat_pct }}%</span>
                     </div>
                 </div>
-                <p class="text-muted mb-2" style="font-size:0.82rem;">Within TAT Target</p>
+                <p class="tat-target-label mb-2">Within TAT Target</p>
                 {% if stats.within_tat_pct >= 80 %}
-                    <span class="badge bg-success" style="font-size:0.8rem;padding:6px 14px;">🏆 Excellent Performance</span>
+                    <span class="badge bg-success tat-target-status"><i class="bi bi-trophy-fill"></i> Excellent Performance</span>
                 {% elif stats.within_tat_pct >= 60 %}
-                    <span class="badge bg-warning text-dark" style="font-size:0.8rem;padding:6px 14px;">📈 Good Performance</span>
+                    <span class="badge bg-warning tat-target-status"><i class="bi bi-graph-up-arrow"></i> Good Performance</span>
                 {% else %}
-                    <span class="badge bg-danger" style="font-size:0.8rem;padding:6px 14px;">⚠ Needs Improvement</span>
+                    <span class="badge bg-danger tat-target-status"><i class="bi bi-exclamation-triangle-fill"></i> Needs Improvement</span>
                 {% endif %}
             </div>
         </div>
@@ -299,6 +725,7 @@
     </div>
 </div>
 {% else %}
+
 <div class="card text-center py-5 mb-4 shadow-sm">
     <div class="card-body">
         <i class="bi bi-inbox display-4 text-muted"></i>
@@ -309,6 +736,7 @@
         </a>
     </div>
 </div>
+
 {% endif %}
 
 <!-- ================= OWNER & STAFF SUMMARY ================= -->
@@ -318,10 +746,35 @@
     {% if owner_summary %}
     <div class="col-lg-{% if staff_performance %}6{% else %}12{% endif %}">
         <div class="card shadow-sm h-100">
-            <div class="card-header d-flex align-items-center gap-2">
-                <i class="bi bi-person-badge-fill" style="color:var(--primary-color);"></i>
-                <strong>Owner Performance Summary</strong>
-            </div>
+                <div class="card-header tat-header-stacked">
+
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-badge-fill" style="color:var(--primary-color);"></i>
+                        <strong>Owner Performance Summary</strong>
+                    </div>
+
+                    <form method="get" action="{% url 'export_tat_owner_performance_excel' %}" class="d-flex align-items-center flex-wrap justify-content-end gap-1">
+                        <input type="hidden" name="tat_year" value="{{ tat_year }}">
+                        {% if include_ongoing == '1' %}
+                            <input type="hidden" name="include_ongoing" value="1">
+                        {% endif %}
+                        <input type="date" name="date_from" title="Referral date from" class="form-control form-control-sm" style="width:122px;">
+                        <input type="date" name="date_to" title="Referral date to" class="form-control form-control-sm" style="width:122px;">
+                        <button type="submit"
+                        class="btn btn-sm"
+                        style="background:linear-gradient(135deg,#00bcd4,#26c6da);
+                                color:#0a0e1a;
+                                border-radius:18px;
+                                font-weight:700;
+                                font-size:0.72rem;">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </button>
+                        <small class="text-muted w-100 text-right" style="font-size:0.68rem;">
+                            Filtered by: TAT Referral Date.
+                        </small>
+                    </form>
+
+                </div>
             <div class="card-body table-responsive p-0">
                 <table class="table table-hover table-compact mb-0">
                     <thead>
@@ -363,9 +816,36 @@
     {% if staff_performance %}
     <div class="col-lg-{% if owner_summary %}6{% else %}12{% endif %}">
         <div class="card shadow-sm h-100">
-            <div class="card-header d-flex align-items-center gap-2">
-                <i class="bi bi-people-fill" style="color:var(--primary-color);"></i>
-                <strong>Staff Performance <small class="text-muted fw-normal">(IPCR Basis)</small></strong>
+            <div class="card-header tat-header-stacked">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-people-fill" style="color:var(--primary-color);"></i>
+                    <strong>Staff Performance <small class="text-muted fw-normal">(IPCR Basis)</small></strong>
+                </div>
+
+                <!-- Merged into one shared date range with two submit targets,
+                     instead of two separate forms each with their own date pickers. -->
+                <form method="get" action="{% url 'export_tat_ipcr_basis_excel' %}" class="d-flex align-items-center flex-wrap justify-content-end gap-1">
+                    <input type="hidden" name="tat_year" value="{{ tat_year }}">
+                    {% if include_ongoing == '1' %}
+                        <input type="hidden" name="include_ongoing" value="1">
+                    {% endif %}
+                    <input type="date" name="date_from" title="Referral date from" class="form-control form-control-sm" style="width:122px;">
+                    <input type="date" name="date_to" title="Referral date to" class="form-control form-control-sm" style="width:122px;">
+                    <button type="submit"
+                       formaction="{% url 'download_tat_ipcr_template' %}"
+                       class="btn btn-sm"
+                       style="background:rgba(17,205,239,0.12);color:#0b86a0;border:1px solid rgba(17,205,239,0.35);border-radius:18px;font-weight:700;font-size:0.72rem;">
+                        <i class="bi bi-download me-1"></i> IPCR
+                    </button>
+                    <button type="submit"
+                       class="btn btn-sm"
+                       style="background:linear-gradient(135deg,#00bcd4,#26c6da);color:#0a0e1a;border-radius:18px;font-weight:700;font-size:0.72rem;">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                    </button>
+                    <small class="text-muted w-100 text-right" style="font-size:0.68rem;">
+                        Filtered by: TAT Referral Date.
+                    </small>
+                </form>
             </div>
             <div class="card-body table-responsive p-0">
                 <table class="table table-hover table-compact mb-0">
@@ -412,6 +892,7 @@
 
 {% else %}
 <!-- ================= EMPTY STATE ================= -->
+ <div class="container-fluid px-4">
 <div class="card text-center py-5 shadow-sm">
     <div class="card-body">
         <i class="bi bi-graph-up display-4 text-muted"></i>
@@ -422,6 +903,8 @@
         </a>
     </div>
 </div>
+</div>
 {% endif %}
-
+</div>
+</div>
 {% endblock %}

@@ -147,6 +147,36 @@
   letter-spacing: 0.5px;
 }
 
+.history-filter-panel {
+  background: #fff;
+  border: 1px solid #dbe4f0;
+  border-bottom: 0;
+  padding: 1rem 1.25rem;
+}
+
+.history-filter-panel label {
+  color: #24466f;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.history-filter-panel .form-control {
+  border-radius: 8px;
+  height: 42px;
+}
+
+.history-table-scroll {
+  max-height: 560px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.history-table-scroll .concordance-table {
+  min-width: 1380px;
+}
+
 /* ── Table ───────────────────────────────────────────────── */
 .concordance-table {
   margin: 0;
@@ -154,22 +184,30 @@
 }
 
 .concordance-table thead {
-  background: linear-gradient(135deg, #f0f4f8 0%, #e8edf2 100%);
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .concordance-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
   padding: 1rem 1.25rem;
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #1e3a5f;
+  color: #fff;
   border: none;
-  border-bottom: 2px solid #d1e8ed;
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
   white-space: nowrap;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.34);
 }
 
 .concordance-table tbody td {
@@ -343,6 +381,40 @@
   color: white;
 }
 
+.print-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.btn-print {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+  transition: all 0.25s ease;
+}
+
+.btn-print:hover {
+  transform: translateY(-2px);
+  color: #fff;
+}
+
+.btn-print-pdf {
+  background: #e53935;
+}
+
+.btn-print-excel {
+  background: #1f9d55;
+}
+
 /* ── Empty State ─────────────────────────────────────────── */
 .empty-state {
   padding: 5rem 2rem;
@@ -405,8 +477,123 @@
 }
 </style>
 
-<div class="page-wrapper">
+<style>
+/* TAT dashboard matching pass */
+.concordance-history-wrapper {
+  background: linear-gradient(135deg, #0f1423 0%, #172740 48%, #0d747f 100%) !important;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: 1.25rem 0 4rem;
+}
+
+.concordance-history-wrapper::before {
+  background:
+    linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
+    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat !important;
+  opacity: .42 !important;
+}
+
+.concordance-history-wrapper::after {
+  inset: auto 0 0 !important;
+  height: 38% !important;
+  background: radial-gradient(circle at 50% 100%, rgba(0, 188, 212, 0.24), transparent 58%) !important;
+  opacity: 1 !important;
+}
+
+.concordance-history-wrapper .dashboard-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.concordance-history-wrapper .breadcrumb a,
+.concordance-history-wrapper .breadcrumb-item {
+  color: rgba(174, 195, 255, 0.84);
+  font-weight: 600;
+}
+
+.concordance-history-wrapper .page-header {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(0, 188, 212, 0.2) !important;
+  border-radius: 14px;
+  padding: 1.5rem 2rem;
+  margin: 0 0 1.25rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.concordance-history-wrapper .page-title {
+  font-size: 2rem;
+}
+
+.concordance-history-wrapper .btn-back {
+  padding: 0.55rem 1rem;
+  border-radius: 6px;
+  background: #11cdef;
+  box-shadow: none;
+}
+
+.concordance-history-wrapper .info-banner {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(0, 188, 212, 0.2) !important;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.concordance-history-wrapper .report-card {
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+}
+
+.concordance-history-wrapper .report-card-header {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid rgba(0, 188, 212, 0.22);
+  padding: 1rem 1.25rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.concordance-history-wrapper .record-count-badge {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.concordance-history-wrapper .history-filter-panel {
+  border-color: #e3e6f0;
+  padding: 1rem 1.25rem;
+}
+
+.concordance-history-wrapper .concordance-table thead,
+.concordance-history-wrapper .concordance-table thead th {
+  color: #fff !important;
+}
+
+.concordance-history-wrapper .concordance-table thead {
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+}
+
+.concordance-history-wrapper .concordance-table thead th {
+  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+}
+</style>
+
+<div class="page-wrapper concordance-history-wrapper">
   <div class="container-fluid px-4">
+    <div class="dashboard-topbar">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb bg-transparent mb-0">
+          <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i> Home</a></li>
+          <li class="breadcrumb-item"><i class="fas fa-history"></i> Concordance History</li>
+        </ol>
+      </nav>
+    </div>
 
     <!-- ══════════════ PAGE HEADER ══════════════ -->
     <div class="page-header">
@@ -435,8 +622,7 @@
         represents the concordance analysis results for a specific accession at the time it was generated.
       </p>
       <p>
-        To generate a new report, return to the View Final Data and click
-        <strong>"Concordance"</strong> for an accession.
+        To generate a new report, use the pdf and excel export buttons for a batch or accession in the <strong>Snapshot reports table</strong> below, or use the generate concordance button in the <strong>View Final Data</strong> section.
       </p>
     </div>
 
@@ -445,22 +631,88 @@
 
       <div class="report-card-header">
         <h5>
-          <i class="fas fa-table"></i>
+          <i class="fas fa-table"></i> &nbsp;
           Snapshot Reports
         </h5>
         <span class="record-count-badge">
-          {{ reports|length }} RECORD{{ reports|length|pluralize }}
+          {{ report_count }} RECORD{{ report_count|pluralize }}
         </span>
       </div>
 
-<div class="table-responsive">
+      <form method="get" class="history-filter-panel">
+        <div class="row align-items-end">
+          <div class="col-lg-4 col-md-12 mb-3 mb-lg-0">
+            <label>Batch / Accession / Site</label>
+            <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Search batch, accession, site, or ref range">
+          </div>
+          <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+            <label>Report Type</label>
+            <select name="report_type" class="form-control">
+              <option value="">All Types</option>
+              <option value="batch" {% if report_type == "batch" %}selected{% endif %}>Batch</option>
+              <option value="accession" {% if report_type == "accession" %}selected{% endif %}>Accession</option>
+            </select>
+          </div>
+          <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+            <label>Quality</label>
+            <select name="quality" class="form-control">
+              <option value="">All Quality</option>
+              {% for value, label in quality_choices %}
+                <option value="{{ value }}" {% if quality == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+            <label>Generated By</label>
+            <select name="generated_by" class="form-control">
+              <option value="">All Users</option>
+              {% for user in users %}
+                <option value="{{ user.id }}" {% if generated_by == user.id|stringformat:"s" %}selected{% endif %}>{{ user.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-lg-1 col-md-4 mb-3 mb-lg-0">
+            <label>Referral Year</label>
+            <select name="year" class="form-control">
+              <option value="">All</option>
+              {% for item in years %}
+                <option value="{{ item }}" {% if year == item|stringformat:"s" %}selected{% endif %}>{{ item }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-lg-1 col-md-4 d-flex">
+            <button class="btn btn-primary flex-fill mr-2" type="submit">
+              <i class="fas fa-search"></i>
+            </button>
+            <a href="{% url 'concordance_history' %}" class="btn btn-secondary">Reset</a>
+          </div>
+          <div class="col-12 mt-3">
+            <label class="d-inline-flex align-items-center mb-0" style="gap:.5rem; cursor:pointer;">
+              <input type="checkbox"
+                     name="show_all"
+                     value="1"
+                     {% if show_all %}checked{% endif %}
+                     onchange="this.form.submit()">
+              <span>
+                Show all historical snapshots
+                {% if not show_all %}
+                  <small class="text-muted">(latest per batch/accession only)</small>
+                {% endif %}
+              </span>
+            </label>
+          </div>
+        </div>
+      </form>
+
+<div class="table-responsive history-table-scroll">
   <table class="table concordance-table">
     <thead>
       <tr>
         <th>#</th>
-        <th><i class="fas fa-layer-group me-1"></i>Batch</th>
-        <th><i class="far fa-clock me-1"></i>Date Generated</th>
-        <th><i class="fas fa-user me-1"></i>Generated By</th>
+        <th><i class="fas fa-layer-group me-1"></i> &nbsp;Batch</th>
+        <th><i class="fas fa-vial me-1"></i> &nbsp;Accession</th>
+        <th><i class="far fa-clock me-1"></i> &nbsp;Date Generated</th>
+        <th><i class="fas fa-user me-1"></i> &nbsp;Generated By</th>
         <th class="text-center">Total Pairs</th>
         <th class="text-center">Concordance %</th>
         <th class="text-center">VMD</th>
@@ -468,6 +720,7 @@
         <th class="text-center">Minor</th>
         <th class="text-center">Total Dev</th>
         <th class="text-center">Quality</th>
+        <th class="text-center">Print</th>
         <th class="text-center">Action</th>
       </tr>
     </thead>
@@ -498,6 +751,18 @@
   {% endif %}
 
 </td>
+
+        <!-- ACCESSION -->
+        <td class="accession-cell">
+          {% if report.final_data %}
+            <i class="fas fa-vial me-1 text-info"></i>
+            <strong>{{ report.final_data.f_AccessionNo }}</strong>
+          {% elif report.batch %}
+            <span class="text-muted">{{ report.batch.bat_RefNo|default:"Batch report" }}</span>
+          {% else %}
+            <span class="text-muted fst-italic">Unknown</span>
+          {% endif %}
+        </td>
 
         <!-- DATE -->
         <td class="date-cell">
@@ -577,6 +842,24 @@
           {% endif %}
         </td>
 
+        <!-- PRINT -->
+        <td class="text-center">
+          <div class="print-actions">
+            {% if report.final_data %}
+              <a href="{% url 'export_concordance_accession_excel' report.id %}" class="btn-print btn-print-excel" title="Download Excel">
+                <i class="fas fa-file-excel"></i>
+              </a>
+            {% else %}
+              <a href="{% url 'export_concordance_report_pdf' report.id %}" class="btn-print btn-print-pdf" target="_blank" title="Print PDF">
+                <i class="fas fa-file-pdf"></i>
+              </a>
+              <a href="{% url 'export_concordance_batch_excel' report.id %}" class="btn-print btn-print-excel" title="Download Excel">
+                <i class="fas fa-file-excel"></i>
+              </a>
+            {% endif %}
+          </div>
+        </td>
+
         <!-- ACTION -->
          <td>
           {% if report.final_data %}
@@ -593,7 +876,7 @@
       {% endwith %}
       {% empty %}
       <tr>
-        <td colspan="13">
+        <td colspan="14">
           <div class="empty-state">
             <div class="empty-icon">
               <i class="fas fa-file-alt"></i>
@@ -608,6 +891,51 @@
 
   </table>
 </div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="card-footer py-3 d-flex justify-content-between align-items-center flex-wrap">
+  <span class="text-muted mb-2 mb-md-0">
+    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+  </span>
+  <nav>
+    <ul class="pagination mb-0">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page=1{% if preserved_params %}&{{ preserved_params }}{% endif %}">
+            <i class="fas fa-angle-double-left"></i>
+          </a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if preserved_params %}&{{ preserved_params }}{% endif %}">
+            <i class="fas fa-angle-left"></i>
+          </a>
+        </li>
+      {% endif %}
+
+      {% for num in page_obj.paginator.page_range %}
+        {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+          <li class="page-item {% if num == page_obj.number %}active{% endif %}">
+            <a class="page-link" href="?page={{ num }}{% if preserved_params %}&{{ preserved_params }}{% endif %}">{{ num }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if preserved_params %}&{{ preserved_params }}{% endif %}">
+            <i class="fas fa-angle-right"></i>
+          </a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if preserved_params %}&{{ preserved_params }}{% endif %}">
+            <i class="fas fa-angle-double-right"></i>
+          </a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endif %}
 
     </div>
 

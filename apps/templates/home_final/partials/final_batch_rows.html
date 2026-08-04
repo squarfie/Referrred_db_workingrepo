@@ -1,0 +1,114 @@
+{% load custom_filters %}
+{% for isolate in records %}
+<tr class="searchable-row batch-child-row is-visible"
+    data-batch-row="{{ batch_dom_id }}"
+    data-search-text="{{ isolate.f_AccessionNo }} {{ isolate.f_First_Name }} {{ isolate.f_Last_Name }} {{ isolate.f_Spec_Type }}">
+  <td style="text-align:center;"><span class="row-num">{{ isolate.f_AccessionNo|accession_ref_no|default:isolate.f_bat_seq }}</span></td>
+  <td style="text-align:center;">
+    {% if user_access.can_update and user_access.can_view_all or user_access.can_update and isolate.f_Batch_id.created_by_id == request.user.id %}
+    <div class="action-row" style="justify-content:center;">
+      <a href="{% url 'edit_final_data' isolate.pk %}" class="action-btn-icon edit" title="Edit record"><i class="fa fa-pencil-alt"></i></a>
+      <button type="button" class="action-btn-icon del delete-btn" data-toggle="modal" data-target="#deleteModal" data-url="{% url 'delete_final_data' isolate.pk %}" title="Delete record"><i class="fa fa-trash"></i></button>
+    </div>
+    {% else %}
+      <span style="color:#9fb0c4; font-size:0.72rem;">View only</span>
+    {% endif %}
+  </td>
+  <td class="info-cell">
+    <div class="info-row"><span class="info-value">{{ isolate.f_Batch_Code }}</span></div>
+    <div class="info-row"><span class="info-label">Accession</span><span class="info-value primary">{{ isolate.f_AccessionNo }}</span></div>
+    <div class="info-row"><span class="info-label">Referral</span><span class="info-value">{{ isolate.f_Referral_Date }}</span></div>
+    <div class="info-row"><span class="info-label">Site</span><span class="info-value">{{ isolate.f_SiteCode }}</span></div>
+  </td>
+  <td class="info-cell">
+    <div class="info-row"><span class="info-label">Name</span><span class="info-value primary">{{ isolate.f_First_Name }} {{ isolate.f_Last_Name }}</span></div>
+    <div class="info-row"><span class="info-label">Admission</span><span class="info-value">{{ isolate.f_Date_Admis }}</span></div>
+    <div style="display:flex; gap:1rem;">
+      <div class="info-row"><span class="info-label">Age</span><span class="info-value">{{ isolate.f_Age }}</span></div>
+      <div class="info-row"><span class="info-label">Sex</span><span class="info-value">{{ isolate.f_Sex }}</span></div>
+    </div>
+  </td>
+  <td class="info-cell">
+    <div class="info-row"><span class="info-label">Date</span><span class="info-value">{{ isolate.f_Spec_Date }}</span></div>
+    <div class="info-row"><span class="info-label">Type</span><span class="info-value primary">{{ isolate.f_Spec_Type }}</span></div>
+    <div class="info-row"><span class="info-label">Spec No.</span><span class="info-value">{{ isolate.f_Spec_Num }}</span></div>
+    <div style="display:flex; gap:1rem;">
+      <div class="info-row"><span class="info-label">Site Org</span><span class="info-value">{{ isolate.f_Site_Org }}</span></div>
+      <div class="info-row"><span class="info-label">ARS Org</span><span class="info-value">{{ isolate.f_ars_OrgCode }}</span></div>
+    </div>
+  </td>
+  <td style="text-align:center;"><span class="date-chip"><i class="fa fa-clock"></i> {{ isolate.f_Date_of_Entry|date:"M d, Y" }}</span></td>
+  <td class="abx-cell">
+    <div class="abx-scroll">
+      {% for entry in isolate.final_entries.all %}
+        {% if entry.ab_Disk_value or entry.ab_MIC_value %}
+        <div class="abx-entry">
+          <span class="abx-name">{{ entry.ab_Antibiotic }}</span>
+          (
+          {% if entry.ab_Disk_value %}
+            Disk: <strong>{{ entry.ab_Disk_value }}</strong>
+            {% if entry.ab_Disk_enRIS %}<strong class="enris-badge">{{ entry.ab_Disk_enRIS }}</strong>{% endif %})
+            {% if entry.ab_Disk_RIS %}&nbsp;<span class="abx-ris">{{ entry.ab_Disk_RIS }}</span>{% endif %}
+          {% endif %}
+          {% if entry.ab_Disk_value and entry.ab_MIC_value %},{% endif %}
+          {% if entry.ab_MIC_value %}
+            MIC: <strong>{% if entry.ab_MIC_operand %}{{ entry.ab_MIC_operand }}{% endif %}{{ entry.ab_MIC_value|floatformat:"-3" }}</strong>
+            {% if entry.ab_MIC_enRIS %}<strong class="enris-badge">{{ entry.ab_MIC_enRIS }}</strong>{% endif %})
+            {% if entry.ab_MIC_RIS %}&nbsp;<span class="abx-ris">{{ entry.ab_MIC_RIS }}</span>{% endif %}
+            {% if entry.ab_AlertMIC %}&nbsp;<span class="abx-alert">Alert:</span> {{ entry.ab_Alert_val }}{% endif %}
+          {% endif %}
+        </div>
+        {% endif %}
+      {% empty %}
+        <span class="no-abx"><i class="fas fa-info-circle"></i> No data</span>
+      {% endfor %}
+      {% for retest in isolate.final_entries.all %}
+        {% if retest.ab_Retest_DiskValue or retest.ab_Retest_MICValue %}
+        {% if forloop.first %}<hr class="abx-divider">{% endif %}
+        <div class="abx-entry">
+          <span class="abx-name">{{ retest.ab_Retest_Antibiotic }}</span>
+          (
+          {% if retest.ab_Retest_DiskValue %}
+            Retest Disk: <strong>{{ retest.ab_Retest_DiskValue }}</strong>
+            {% if retest.ab_Retest_Disk_enRIS %}<strong class="enris-badge">{{ retest.ab_Retest_Disk_enRIS }}</strong>{% endif %})
+            {% if retest.ab_Retest_Disk_RIS %}&nbsp;<span class="abx-ris">{{ retest.ab_Retest_Disk_RIS }}</span>{% endif %}
+          {% endif %}
+          {% if retest.ab_Retest_DiskValue and retest.ab_Retest_MICValue %},{% endif %}
+          {% if retest.ab_Retest_MICValue %}
+            Retest MIC: <strong>{% if retest.ab_Retest_MIC_operand %}{{ retest.ab_Retest_MIC_operand }}{% endif %}{{ retest.ab_Retest_MICValue|floatformat:"-3" }}</strong>
+            {% if retest.ab_Retest_MIC_enRIS %}&nbsp;<strong class="enris-badge">{{ retest.ab_Retest_MIC_enRIS }}</strong>{% endif %})
+            {% if retest.ab_Retest_MIC_RIS %}&nbsp;<span class="abx-ris">{{ retest.ab_Retest_MIC_RIS }}</span>{% endif %}
+            {% if retest.ab_Retest_AlertMIC %}&nbsp;<span class="abx-alert">Alert:</span> {{ retest.ab_Retest_Alert_val }}{% endif %}
+          {% endif %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </td>
+  <td style="text-align:center;">
+    {% if isolate.f_Batch_id %}
+    <a href="{% url 'generate_final_batch_pdf' isolate.f_Batch_id.id %}" class="action-btn-icon pdf" title="Generate Final PDF" target="_blank"><i class="fa fa-file-pdf"></i></a>
+    {% endif %}
+  </td>
+  <td style="text-align:center;">
+    {% if isolate.f_Batch_id and user_access.can_update and user_access.can_view_all or isolate.f_Batch_id and user_access.can_update and isolate.f_Batch_id.created_by_id == request.user.id %}
+    <a href="{% url 'batch_edit_view' isolate.f_Batch_id.id %}" class="action-btn-icon edit" title="Edit Batch"><i class="ni ni-single-02"></i></a>
+    {% else %}
+      <span style="color:#ccc;">-</span>
+    {% endif %}
+  </td>
+  <td style="text-align:center;">
+    {% if isolate.f_Batch_id %}
+    <form method="POST" action="{% url 'concordance_generate_batch' %}">
+      {% csrf_token %}
+      <input type="hidden" name="batch_id" value="{{ isolate.f_Batch_id.id }}">
+      <button type="submit" class="btn-concordance" title="Generate Batch Concordance"><i class="fas fa-chart-bar"></i></button>
+    </form>
+    {% endif %}
+  </td>
+</tr>
+{% empty %}
+<tr class="batch-child-row is-visible" data-batch-row="{{ batch_dom_id }}">
+  <td colspan="10" class="text-center text-muted py-4">No records found in this batch.</td>
+</tr>
+{% endfor %}

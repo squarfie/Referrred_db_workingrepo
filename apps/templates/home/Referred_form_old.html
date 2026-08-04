@@ -461,7 +461,9 @@ label.form-control-label{
                           <td>
                             <input name="disk_enris_{{ entry.Whonet_Abx }}" 
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk_enris' %}" 
-                                   type="text" style="width: 50px;">
+                                   type="text" maxlength="4"
+                                   oninput="this.value = this.value.toUpperCase();"
+                                   style="width: 70px; text-align: center; text-transform: uppercase;">
                           </td>
                         
                         </tr>
@@ -514,7 +516,9 @@ label.form-control-label{
                           <td>
                             <input name="mic_enris_{{ entry.Whonet_Abx }}"
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_enris' %}" 
-                                   type="text" style="width: 50px;">
+                                   type="text" maxlength="4"
+                                   oninput="this.value = this.value.toUpperCase();"
+                                   style="width: 70px; text-align: center; text-transform: uppercase;">
                           </td>
                           <td>
                             {% get_existing_value existing_entries entry.Whonet_Abx 'alert_mic' as alert_mic_checked %}
@@ -678,7 +682,9 @@ label.form-control-label{
                         <td>
                           <input name="retest_disk_enris_{{ retest.Whonet_Abx }}" 
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk_enris' %}"
-                                 type="text" style="width: 50px;">
+                                 type="text" maxlength="4"
+                                 oninput="this.value = this.value.toUpperCase();"
+                                 style="width: 70px; text-align: center; text-transform: uppercase;">
                         </td>
                       </tr>
                     {% endif %}
@@ -720,7 +726,9 @@ label.form-control-label{
                         <td>
                           <input name="retest_mic_operand_{{ retest.Whonet_Abx }}" 
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_operand' %}"
-                                 type="text" style="width: 50px;">
+                                 type="text" maxlength="4"
+                                 oninput="this.value = this.value.toUpperCase();"
+                                 style="width: 70px; text-align: center; text-transform: uppercase;">
                         </td>
                         <td>
                           <input name="retest_mic_{{ retest.Whonet_Abx }}" 
@@ -968,7 +976,7 @@ function loadAntibiotics(org, retest = false) {
                 <td>${abx.name}</td>
                 <td>${abx.whonet}</td>
                 <td><input name="disk_${abx.whonet}" type="number" min="0" style="width:70px"></td>
-                <td><input name="disk_enris_${abx.whonet}" type="text" style="width:50px"></td>
+                <td><input name="disk_enris_${abx.whonet}" type="text" maxlength="4" style="width:70px; text-align:center; text-transform:uppercase;" oninput="this.value = this.value.toUpperCase();"></td>
               </tr>
             `);
           } else {
@@ -978,7 +986,7 @@ function loadAntibiotics(org, retest = false) {
                 <td>${abx.whonet}</td>
                 <td><input name="mic_operand_${abx.whonet}" type="text" style="width:50px"></td>
                 <td><input name="mic_${abx.whonet}" type="number" step="0.001" style="width:70px"></td>
-                <td><input name="mic_enris_${abx.whonet}" type="text" style="width:50px"></td>
+                <td><input name="mic_enris_${abx.whonet}" type="text" maxlength="4" style="width:70px; text-align:center; text-transform:uppercase;" oninput="this.value = this.value.toUpperCase();"></td>
                 <td><input type="checkbox" name="alert_mic_${abx.whonet}"></td>
               </tr>
             `);
@@ -995,7 +1003,7 @@ function loadAntibiotics(org, retest = false) {
                 <td>${abx.name}</td>
                 <td>${abx.whonet}</td>
                 <td><input name="retest_disk_${abx.whonet}" type="number" min="0" style="width:70px"></td>
-                <td><input name="retest_disk_enris_${abx.whonet}" type="text" style="width:50px"></td>
+                <td><input name="retest_disk_enris_${abx.whonet}" type="text" maxlength="4" style="width:70px; text-align:center; text-transform:uppercase;" oninput="this.value = this.value.toUpperCase();"></td>
               </tr>
             `);
           } else {
@@ -1005,7 +1013,7 @@ function loadAntibiotics(org, retest = false) {
                 <td>${abx.whonet}</td>
                 <td><input name="retest_mic_operand_${abx.whonet}" type="text" style="width:50px"></td>
                 <td><input name="retest_mic_${abx.whonet}" type="number" step="0.001" style="width:70px"></td>
-                <td><input name="retest_mic_enris_${abx.whonet}" type="text" style="width:50px"></td>
+                <td><input name="retest_mic_enris_${abx.whonet}" type="text" maxlength="4" style="width:70px; text-align:center; text-transform:uppercase;" oninput="this.value = this.value.toUpperCase();"></td>
                 <td><input type="checkbox" name="retest_alert_mic_${abx.whonet}"></td>
               </tr>
             `);

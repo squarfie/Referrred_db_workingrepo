@@ -1,6 +1,82 @@
 from .models import *
 from django import forms
+from django.db.models import Q
+from apps.home.permissions import ROLE_ADMIN, ROLE_CHECKER, ROLE_ENCODER, ROLE_LAB_ENCODER, ROLE_LAB_MANAGER, ROLE_VERIFIER
+import re
 
+
+STAFF_ROLE_CHOICES = (
+    (ROLE_ENCODER, ROLE_ENCODER),
+    (ROLE_LAB_ENCODER, ROLE_LAB_ENCODER),
+    (ROLE_VERIFIER, ROLE_VERIFIER),
+    (ROLE_CHECKER, ROLE_CHECKER),
+    (ROLE_LAB_MANAGER, ROLE_LAB_MANAGER),
+    (ROLE_ADMIN, ROLE_ADMIN),
+)
+
+
+def staff_role_q(*roles):
+    query = Q()
+    for role in roles:
+        query |= Q(Staff_Role=role)
+        query |= Q(Staff_Role__startswith=f"{role}|")
+        query |= Q(Staff_Role__endswith=f"|{role}")
+        query |= Q(Staff_Role__contains=f"|{role}|")
+    return query
+
+
+def staff_with_role(*roles):
+    return (
+        arsStaff_Details.objects
+        .filter(staff_role_q(*roles))
+        .select_related("User_Account")
+        .distinct()
+        .order_by("Staff_Name", "User_Account__first_name", "User_Account__username")
+    )
+
+
+def apply_required_widget_attrs(form):
+    for field in form.fields.values():
+        widget = field.widget
+        if (
+            field.required
+            and not widget.attrs.get("readonly")
+            and not widget.attrs.get("disabled")
+        ):
+            widget.attrs.setdefault("required", "required")
+            widget.attrs.setdefault("data-required", "true")
+
+
+def duplicate_exists(model, field_name, value, instance=None):
+    if value in (None, ""):
+        return False
+    qs = model.objects.filter(**{f"{field_name}__iexact": str(value).strip()})
+    if instance and instance.pk:
+        qs = qs.exclude(pk=instance.pk)
+    return qs.exists()
+
+
+def recommendation_code_choices():
+    codes = (
+        Recommendation_items.objects
+        .exclude(RecoCode__isnull=True)
+        .exclude(RecoCode="")
+        .order_by("RecoCode")
+        .values_list("RecoCode", flat=True)
+        .distinct()
+    )
+    return [("", "Select no"), *[(code, code) for code in codes]]
+
+
+def accession_year_prefix(accession):
+    match = re.match(r"\s*(\d{2})ARS", str(accession or "").strip(), re.IGNORECASE)
+    return match.group(1) if match else ""
+
+
+class RequiredAttrsModelForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_required_widget_attrs(self)
 
 
 
@@ -19,10 +95,13 @@ class Referred_Form(forms.ModelForm):
             widget=forms.Select(attrs={'class': "form-select fw-bold"}),
             empty_label="Select Specimen",
             required=False,
+            error_messages={
+                "invalid_choice": "Invalid specimen type. Select a specimen from the list.",
+            },
         )
 
         ars_OrgCode = forms.ModelChoiceField(
-            queryset=Organism_List.objects.all(),
+            queryset=Organism_List.objects.all().order_by('Whonet_Org_Code'),
             to_field_name='Whonet_Org_Code',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Organism",
@@ -30,7 +109,7 @@ class Referred_Form(forms.ModelForm):
             
         )
         Site_Org = forms.ModelChoiceField(
-            queryset=Organism_List.objects.all(),
+            queryset=Organism_List.objects.all().order_by('Whonet_Org_Code'),
             to_field_name='Whonet_Org_Code', 
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Organism",
@@ -55,17 +134,15 @@ class Referred_Form(forms.ModelForm):
         )
 
         
-        ars_reco_Code = forms.ModelChoiceField(
-            queryset=Recommendation_items.objects.all(),
-            to_field_name='RecoCode',  
+        ars_reco_Code = forms.ChoiceField(
+            choices=recommendation_code_choices,
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-            empty_label="Select no",
             required=False,
             
         )
 
         Site_Pre = forms.ModelChoiceField(
-            queryset=Phenotype_Pre.objects.all(),
+            queryset=Phenotype_Pre.objects.all().order_by('Pre_Phenotypes'),
             to_field_name='Pre_Phenotypes',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Phenotype",
@@ -74,7 +151,7 @@ class Referred_Form(forms.ModelForm):
         )
 
         Site_Pos = forms.ModelChoiceField(
-            queryset=Phenotype_Post.objects.all(),
+            queryset=Phenotype_Post.objects.all().order_by('Post_Phenotypes'),
             to_field_name='Post_Phenotypes',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Phenotype",
@@ -84,7 +161,7 @@ class Referred_Form(forms.ModelForm):
 
 
         ars_Pre = forms.ModelChoiceField(
-            queryset=Phenotype_Pre.objects.all(),
+            queryset=Phenotype_Pre.objects.all().order_by('Pre_Phenotypes'),
             to_field_name='Pre_Phenotypes',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Phenotype",
@@ -93,7 +170,7 @@ class Referred_Form(forms.ModelForm):
         )
 
         ars_Post = forms.ModelChoiceField(
-            queryset=Phenotype_Post.objects.all(),
+            queryset=Phenotype_Post.objects.all().order_by('Post_Phenotypes'),
             to_field_name='Post_Phenotypes',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Phenotype",
@@ -112,7 +189,11 @@ class Referred_Form(forms.ModelForm):
             'RefNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 0001'}),
             'BatchNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1.1'}),
             'Growth_others' :forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ex. after 24 hrs of incubation'}),
+            'Site_Pre_ed': forms.TextInput(attrs={'class': 'form-control'}),
+            'Site_Pos_ed': forms.TextInput(attrs={'class': 'form-control'}),
             'Comments': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '3'}),
+            'ars_Pre_ed': forms.TextInput(attrs={'class': 'form-control'}),
+            'ars_Post_ed': forms.TextInput(attrs={'class': 'form-control'}),
             'ars_reco': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '11'}),
             'ars_description': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '6'}),
             "Batch_id": forms.HiddenInput(),
@@ -124,6 +205,17 @@ class Referred_Form(forms.ModelForm):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.fields['bat_seq'].widget.attrs['readonly'] = True
+            accession = (
+                self.data.get("AccessionNo")
+                if self.is_bound
+                else getattr(self.instance, "AccessionNo", "")
+            )
+            derived_seq = accession_ref_sequence(accession)
+            if derived_seq is not None:
+                self.initial["bat_seq"] = derived_seq
+                self.fields["bat_seq"].initial = derived_seq
+                if self.instance:
+                    self.instance.bat_seq = derived_seq
             self.fields["Batch_id"].disabled = True      
             self.fields['SiteCode'].widget.attrs['readonly'] = True
             self.fields['Batch_Code'].widget.attrs['readonly'] = True
@@ -135,6 +227,9 @@ class Referred_Form(forms.ModelForm):
             self.fields['BatchNo'].widget.attrs['readonly'] = True
             self.fields['Site_Name'].widget.attrs['readonly'] = True
             self.fields['Age'].widget.attrs['readonly'] = True
+            self.fields['Age_Display'].widget.attrs['readonly'] = True
+            self.fields['Age_Display'].widget.attrs['class'] = 'form-control'
+            self.fields['Age_Display'].widget.attrs['tabindex'] = '-1'
             # Dynamic queryset loading
             self.fields['Site_Org'].queryset = Organism_List.objects.all() # Always load the latest Site Code
             self.fields['Site_Org'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
@@ -142,6 +237,28 @@ class Referred_Form(forms.ModelForm):
             self.fields['ars_OrgCode'].queryset = Organism_List.objects.all() # Always load the latest Organism_List
             self.fields['ars_OrgCode'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
             self.fields['ars_OrgName'].label_from_instance = lambda obj: obj.Organism 
+
+        def clean_bat_seq(self):
+            accession = (
+                self.cleaned_data.get("AccessionNo")
+                or getattr(self.instance, "AccessionNo", "")
+            )
+            derived_seq = accession_ref_sequence(accession)
+            if derived_seq is not None:
+                return derived_seq
+            return self.cleaned_data.get("bat_seq")
+
+        def clean(self):
+            cleaned_data = super().clean()
+            accession = (
+                cleaned_data.get("AccessionNo")
+                or getattr(self.instance, "AccessionNo", "")
+            )
+            derived_seq = accession_ref_sequence(accession)
+            if derived_seq is not None:
+                cleaned_data["bat_seq"] = derived_seq
+
+            return cleaned_data
 
 
         
@@ -214,6 +331,11 @@ class BatchTable_form(forms.ModelForm):
 
         def __init__(self, *args, **kwargs):
             super(BatchTable_form, self).__init__(*args, **kwargs)
+            self.fields['bat_Encoder'].queryset = staff_with_role(ROLE_ENCODER, ROLE_ADMIN)
+            self.fields['bat_Checker'].queryset = staff_with_role(ROLE_CHECKER)
+            self.fields['bat_Verifier'].queryset = staff_with_role(ROLE_VERIFIER, ROLE_ADMIN)
+            self.fields['bat_LabManager'].queryset = staff_with_role(ROLE_LAB_MANAGER)
+            self.fields['bat_Head'].queryset = staff_with_role(ROLE_LAB_MANAGER)
             self.fields['bat_SiteCode'].queryset = SiteData.objects.all() # Always load the latest Site Code instances
             self.fields['bat_AccessionNo'].widget.attrs['readonly'] = True  # AccessionNo read-only
             self.fields['bat_Batch_Name'].widget.attrs['readonly'] = True  # Batch_Name read-only
@@ -251,6 +373,14 @@ class BatchTable_form(forms.ModelForm):
 
 
 class BatchEditForm(forms.ModelForm):
+    bat_SiteCode = forms.ModelChoiceField(
+            queryset=SiteData.objects.all(),
+            to_field_name='SiteCode',
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            empty_label="Select Site Code",
+            required=False,
+        )
+
     bat_Checker = forms.ModelChoiceField(
             queryset=arsStaff_Details.objects.all(),
             to_field_name='Staff_Name',  # Specify the field you want as the value
@@ -293,7 +423,13 @@ class BatchEditForm(forms.ModelForm):
     class Meta:
         model = Batch_Table
         fields = [
-            # ONLY fields allowed to change in edit
+            "bat_SiteCode",
+            "bat_Referral_Date",
+            "bat_BatchNo",
+            "bat_Total_batch",
+            "bat_RefNo",
+            "bat_Site_NameGen",
+            "bat_Batch_Name",
             "bat_Encoder",
             "bat_Enc_Lic",
             "bat_Checker",
@@ -307,12 +443,26 @@ class BatchEditForm(forms.ModelForm):
             "bat_Date_Accomplished",
         ]
         widgets = {
-            'bat_Date_of_Entry': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
+            'bat_Referral_Date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
+            'bat_RefNo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ex. 0001-0002'}),
+            'bat_BatchNo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1'}),
+            'bat_Total_batch': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1'}),
+            'bat_Site_NameGen': forms.TextInput(attrs={'class': 'form-control'}),
+            'bat_Batch_Name': forms.TextInput(attrs={'class': 'form-control'}),
             'bat_Date_Accomplished': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
         }
 
     def __init__(self, *args, **kwargs):
                 super(BatchEditForm, self).__init__(*args, **kwargs)
+                self.fields['bat_SiteCode'].queryset = SiteData.objects.all()
+                self.fields['bat_Encoder'].queryset = staff_with_role(ROLE_ENCODER, ROLE_ADMIN)
+                self.fields['bat_Checker'].queryset = staff_with_role(ROLE_CHECKER)
+                self.fields['bat_Verifier'].queryset = staff_with_role(ROLE_VERIFIER, ROLE_ADMIN)
+                self.fields['bat_LabManager'].queryset = staff_with_role(ROLE_LAB_MANAGER)
+                self.fields['bat_Head'].queryset = staff_with_role(ROLE_LAB_MANAGER)
+                if self.instance and self.instance.pk and not self.initial.get("bat_Site_NameGen"):
+                    self.initial["bat_Site_NameGen"] = self.instance.bat_Site_Name
+                self.fields['bat_Batch_Name'].widget.attrs['readonly'] = True
                 self.fields['bat_Enc_Lic'].widget.attrs['readonly'] = True  
                 self.fields['bat_Chec_Lic'].widget.attrs['readonly'] = True  
                 self.fields['bat_Ver_Lic'].widget.attrs['readonly'] = True  
@@ -343,13 +493,60 @@ class BatchEditForm(forms.ModelForm):
 
 
 #for adding of site code
-class SiteCode_Form(forms.ModelForm):
+class SiteCode_Form(RequiredAttrsModelForm):
+    Site_Lab_Head_Contact = forms.CharField(required=False)
+    Site_Med_Ctr_Chief_Contact = forms.CharField(required=False)
+    Site_MedTech_Contact = forms.CharField(required=False)
+
     class Meta:
         model = SiteData
-        fields = ['SiteCode', 'SiteName']
+        fields = [
+            'SiteCode',
+            'SiteName',
+            'Site_Address',
+            'Site_Lab_Head',
+            'Site_Lab_Head_Credentials',
+            'Site_Lab_Head_Designation',
+            'Site_Lab_Head_Email',
+            'Site_Lab_Head_Contact',
+            'Site_Med_Ctr_Chief',
+            'Site_Med_Ctr_Chief_Credentials',
+            'Site_Med_Ctr_Chief_Designation',
+            'Site_Med_Ctr_Chief_Email',
+            'Site_Med_Ctr_Chief_Contact',
+            'Site_MedTech',
+            'Site_MedTech_Credentials',
+            'Site_MedTech_Designation',
+            'Site_MedTech_Email',
+            'Site_MedTech_Contact',
+        ]
+        widgets = {
+            'Site_Address': forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def clean_SiteCode(self):
+        value = (self.cleaned_data.get("SiteCode") or "").strip().upper()
+        if duplicate_exists(SiteData, "SiteCode", value, self.instance):
+            raise forms.ValidationError("Site code already exists.")
+        return value
+
+    def clean(self):
+        cleaned_data = super().clean()
+        for name_field, credential_field in (
+            ("Site_Lab_Head", "Site_Lab_Head_Credentials"),
+            ("Site_Med_Ctr_Chief", "Site_Med_Ctr_Chief_Credentials"),
+            ("Site_MedTech", "Site_MedTech_Credentials"),
+        ):
+            name = (cleaned_data.get(name_field) or "").strip()
+            credentials = (cleaned_data.get(credential_field) or "").strip()
+            if name and not credentials and "," in name:
+                clean_name, clean_credentials = name.split(",", 1)
+                cleaned_data[name_field] = clean_name.strip()
+                cleaned_data[credential_field] = clean_credentials.strip()
+        return cleaned_data
 
 
-class SiteCode_uploadForm(forms.ModelForm):
+class SiteCode_uploadForm(RequiredAttrsModelForm):
      class Meta:
           model = SiteCode_upload
           fields = ['File_uploadSite']
@@ -365,22 +562,29 @@ def save(self, commit=True):
 
 
 #Breakpoints data
-class BreakpointsForm(forms.ModelForm):
+class BreakpointsForm(RequiredAttrsModelForm):
+    EMERGING_INTERPRETATION_CHOICES = [
+        ("R", "R - Resistant"),
+        ("I", "I - Intermediate"),
+        ("S", "S - Susceptible"),
+        ("NS", "NS - Nonsusceptible"),
+        ("SDD", "SDD - Susceptible dose-dependent"),
+    ]
 
     Org = forms.ModelChoiceField(
         queryset=Organism_List.objects.all(),
         to_field_name='Whonet_Org_Code',
-        widget=forms.Select(attrs={'class': "form-select fw-bold"}),
+        widget=forms.Select(attrs={'class': "form-select fw-bold", "required": "required"}),
         empty_label="Select Organism",
-        required=False,
+        required=True,
     )
 
     Whonet_Abx = forms.ModelChoiceField(
             queryset=Antibiotic_List.objects.all(),
             to_field_name='Whonet_Abx',  # Specify the field you want as the value
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
+            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;', "required": "required"}),
             empty_label="Select Antibiotic Code",
-            required=False,
+            required=True,
             
         )
 
@@ -399,22 +603,207 @@ class BreakpointsForm(forms.ModelForm):
         widget=forms.TextInput(attrs={"class": "form-control", "readonly": True, "style": "background-color: #e9ecef !important; cursor: not-allowed;"})
     )
 
-    Spec_code = forms.ModelChoiceField(
-            queryset=SpecimenTypeModel.objects.all(),
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-            empty_label="Select Specimen",
-            required=False,
-            
-        )
+    Spec_code = forms.MultipleChoiceField(
+        choices=[],
+        widget=forms.SelectMultiple(
+            attrs={
+                "class": "form-select fw-bold specimen-group-select",
+                "size": 8,
+            }
+        ),
+        required=False,
+    )
+
+    Emerging_Pheno_Flag = forms.MultipleChoiceField(
+        choices=EMERGING_INTERPRETATION_CHOICES,
+        widget=forms.SelectMultiple(
+            attrs={
+                "class": "form-select fw-bold",
+                "size": 5,
+            }
+        ),
+        required=False,
+    )
+
+    Emerging_Pheno_Flag_Other = forms.MultipleChoiceField(
+        choices=EMERGING_INTERPRETATION_CHOICES,
+        widget=forms.SelectMultiple(
+            attrs={
+                "class": "form-select fw-bold",
+                "size": 5,
+            }
+        ),
+        required=False,
+    )
 
 
     class Meta:
         model = BreakpointsTable
         fields = "__all__"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        group_ids = (
+            SpecimenTypeModel.objects
+            .exclude(Specimen_Code_Grp__isnull=True)
+            .values_list("Specimen_Code_Grp_id", flat=True)
+            .distinct()
+        )
+        groups = (
+            SpecimenTypeModel.objects
+            .filter(pk__in=group_ids)
+            .order_by("Specimen_Grp_Name", "Specimen_name", "Specimen_code")
+        )
+
+        choices = []
+        for group in groups:
+            code = (group.Specimen_code or "").strip()
+            if not code:
+                continue
+            name = (
+                group.Specimen_Grp_Name
+                or group.Specimen_name
+                or code
+            ).strip()
+            choices.append((code, f"{code} - {name}"))
+
+        self.fields["Spec_code"].choices = choices
+
+        if self.instance and self.instance.pk and self.instance.Spec_code:
+            selected_codes = [
+                code.strip().lower()
+                for code in self.instance.Spec_code.split("|")
+                if code.strip()
+            ]
+            valid_codes = {value for value, _ in choices}
+            self.initial["Spec_code"] = [
+                code
+                for code in selected_codes
+                if code in valid_codes
+            ]
+
+        for field_name in (
+            "Emerging_Pheno_Flag",
+            "Emerging_Pheno_Flag_Other",
+        ):
+            expression = getattr(self.instance, field_name, "") or ""
+            self.initial[field_name] = [
+                value.strip().upper()
+                for value in expression.split("|")
+                if value.strip()
+            ]
+
+    def clean_Spec_code(self):
+        selected_codes = self.cleaned_data.get("Spec_code") or []
+        return "|".join(dict.fromkeys(
+            code.strip().lower()
+            for code in selected_codes
+            if code.strip()
+        ))
+
+    @staticmethod
+    def _normal_text(value, *, upper=False):
+        if value in (None, ""):
+            return ""
+        for attr in ("Whonet_Abx", "Whonet_Org_Code"):
+            attr_value = getattr(value, attr, None)
+            if attr_value not in (None, ""):
+                value = attr_value
+                break
+        text = str(value).strip()
+        return text.upper() if upper else text
+
+    @classmethod
+    def _normal_breakpoint_value(cls, value):
+        text = cls._normal_text(value)
+        if not text:
+            return ""
+
+        import re
+        from decimal import Decimal, InvalidOperation
+
+        match = re.match(r"^(<=|>=|<|>|=)?\s*(-?\d+(?:\.\d+)?)$", text)
+        if not match:
+            return text
+
+        operator, number_text = match.groups()
+        try:
+            number = Decimal(number_text).normalize()
+        except InvalidOperation:
+            return text
+
+        return f"{operator or ''}{format(number, 'f')}"
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        whonet_abx = self._normal_text(cleaned_data.get("Whonet_Abx"), upper=True)
+        year = self._normal_text(cleaned_data.get("Year"))
+        org = self._normal_text(cleaned_data.get("Org"))
+        test_method = self._normal_text(cleaned_data.get("Test_Method"), upper=True)
+        spec_code = self._normal_text(cleaned_data.get("Spec_code"))
+
+        if not (whonet_abx and year and org and test_method):
+            return cleaned_data
+
+        submitted_values = {
+            "R_val": self._normal_breakpoint_value(cleaned_data.get("R_val")),
+            "I_val": self._normal_breakpoint_value(cleaned_data.get("I_val")),
+            "SDD_val": self._normal_breakpoint_value(cleaned_data.get("SDD_val")),
+            "S_val": self._normal_breakpoint_value(cleaned_data.get("S_val")),
+        }
+
+        candidates = BreakpointsTable.objects.filter(
+            Whonet_Abx=whonet_abx,
+            Year=year,
+            Org=org,
+            Test_Method=test_method,
+            Spec_code=spec_code,
+        )
+        if self.instance and self.instance.pk:
+            candidates = candidates.exclude(pk=self.instance.pk)
+
+        for breakpoint in candidates:
+            existing_values = {
+                "R_val": self._normal_breakpoint_value(breakpoint.R_val),
+                "I_val": self._normal_breakpoint_value(breakpoint.I_val),
+                "SDD_val": self._normal_breakpoint_value(breakpoint.SDD_val),
+                "S_val": self._normal_breakpoint_value(breakpoint.S_val),
+            }
+            if existing_values == submitted_values:
+                raise forms.ValidationError(
+                    "Duplicate breakpoint already exists for this antibiotic, year, organism, test method, specimen, and breakpoint values."
+                )
+
+        return cleaned_data
+
+    def _get_validation_exclusions(self):
+        exclusions = super()._get_validation_exclusions()
+        exclusions.update({
+            "Emerging_Pheno_Flag",
+            "Emerging_Pheno_Flag_Other",
+        })
+        return exclusions
+
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+
+        for field_name in (
+            "Emerging_Pheno_Flag",
+            "Emerging_Pheno_Flag_Other",
+        ):
+            values = self.cleaned_data.get(field_name) or []
+            setattr(
+                instance,
+                field_name,
+                "|".join(dict.fromkeys(
+                    value.strip().upper()
+                    for value in values
+                    if value.strip()
+                )),
+            )
 
         if instance.Whonet_Abx:
             try:
@@ -436,7 +825,7 @@ class BreakpointsForm(forms.ModelForm):
 
                         
 
-class Breakpoint_uploadForm(forms.ModelForm):
+class Breakpoint_uploadForm(RequiredAttrsModelForm):
      class Meta:
           model = Breakpoint_upload
           fields = ['File_uploadBP']
@@ -479,7 +868,7 @@ class RawAntibioticUploadForm(forms.ModelForm):
 
 
 
-class SpecimenTypeForm(forms.ModelForm):
+class SpecimenTypeForm(RequiredAttrsModelForm):
     class Meta:
         model = SpecimenTypeModel  
         fields = ['Specimen_name', 'Specimen_code', 'Emerging_Spec_Flag', 'Specimen_Code_Grp', 'Specimen_Grp_Name']  # Include the fields you want in the form
@@ -493,8 +882,14 @@ class SpecimenTypeForm(forms.ModelForm):
             vals = SpecimenTypeModel.objects.values_list("Specimen_code", flat=True).distinct()
             self.fields["Specimen_Code_Grp"].choices = [(v, v) for v in vals]
 
+    def clean_Specimen_code(self):
+        value = (self.cleaned_data.get("Specimen_code") or "").strip().lower()
+        if duplicate_exists(SpecimenTypeModel, "Specimen_code", value, self.instance):
+            raise forms.ValidationError("Specimen code already exists.")
+        return value
 
-class SpecimenUploadForm(forms.ModelForm):
+
+class SpecimenUploadForm(RequiredAttrsModelForm):
     class Meta:
         model = Specimen_upload
         fields = ['File_uploadSpec']
@@ -504,23 +899,74 @@ class SpecimenUploadForm(forms.ModelForm):
 
 
 
-class ContactForm(forms.ModelForm):
+class ContactForm(RequiredAttrsModelForm):
+    Staff_Role = forms.MultipleChoiceField(
+        choices=STAFF_ROLE_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={"class": "custom-control-input"}),
+        help_text="Select one or more roles for this staff member.",
+    )
+
     class Meta:
         model = arsStaff_Details
         fields = '__all__'
+        widgets = {
+            "User_Account": forms.Select(attrs={"class": "form-control"}),
+        }
 
     def __init__(self, *args, **kwargs):
+        self.can_edit_roles = kwargs.pop("can_edit_roles", True)
         super(ContactForm, self).__init__(*args, **kwargs)
+        roles = str(getattr(self.instance, "Staff_Role", "") or "")
+        self.initial["Staff_Role"] = [
+            role.strip()
+            for role in roles.replace(",", "|").replace(";", "|").split("|")
+            if role.strip()
+        ]
         self.fields['Staff_Telnum'].widget = forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': '09171234567',  # Philippine phone number format
             'readonly': False  # Ensure it's not blocking JavaScript updates
         })
+        if not self.can_edit_roles:
+            self.fields["Staff_Role"].required = False
+
+    def clean_Staff_Role(self):
+        if not self.can_edit_roles:
+            return getattr(self.instance, "Staff_Role", "") or ""
+        roles = self.cleaned_data.get("Staff_Role") or []
+        return "|".join(dict.fromkeys(roles))
+
+    def clean_User_Account(self):
+        value = self.cleaned_data.get("User_Account")
+        if value and arsStaff_Details.objects.filter(User_Account=value).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("This user account is already assigned to another staff record.")
+        return value
+
+    def clean_Staff_Name(self):
+        value = (self.cleaned_data.get("Staff_Name") or "").strip()
+        account = self.cleaned_data.get("User_Account")
+        if not value and account:
+            value = (account.get_full_name() or account.username or "").strip()
+        if duplicate_exists(arsStaff_Details, "Staff_Name", value, self.instance):
+            raise forms.ValidationError("Staff name already exists.")
+        return value
+
+    def clean_Staff_EmailAdd(self):
+        value = (self.cleaned_data.get("Staff_EmailAdd") or "").strip()
+        if duplicate_exists(arsStaff_Details, "Staff_EmailAdd", value, self.instance):
+            raise forms.ValidationError("Staff email already exists.")
+        return value
+
+    def _get_validation_exclusions(self):
+        exclusions = super()._get_validation_exclusions()
+        exclusions.add("Staff_Role")
+        return exclusions
 
 
 
 #Antibiotic Data
-class AntibioticsForm(forms.ModelForm):
+class AntibioticsForm(RequiredAttrsModelForm):
      class Meta:
           model = Antibiotic_List
           fields = '__all__'
@@ -529,6 +975,12 @@ class AntibioticsForm(forms.ModelForm):
                'Abx_code' :forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ex. AMX'}),
                'Whonet_Abx':forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ex. AMX_ND10 if disk or AMX_NM'}), 
           }
+
+     def clean_Whonet_Abx(self):
+        value = (self.cleaned_data.get("Whonet_Abx") or "").strip().upper()
+        if duplicate_exists(Antibiotic_List, "Whonet_Abx", value, self.instance):
+            raise forms.ValidationError("Antibiotic code already exists.")
+        return value
           
      def save(self, commit=True):
         instance = super().save(commit=False)
@@ -544,57 +996,81 @@ class AntibioticsForm(forms.ModelForm):
             self.save_m2m()
         return instance
 
-class Antibiotics_uploadForm(forms.ModelForm):
+class Antibiotics_uploadForm(RequiredAttrsModelForm):
      class Meta:
           model = Antibiotic_upload
           fields = ['File_uploadAbx']
 
 
 # Organism Data
-class OrganismForm(forms.ModelForm):
+class OrganismForm(RequiredAttrsModelForm):
      class Meta:
           model = Organism_List
           fields = '__all__'
 
+     def clean_Whonet_Org_Code(self):
+        value = (self.cleaned_data.get("Whonet_Org_Code") or "").strip().upper()
+        if duplicate_exists(Organism_List, "Whonet_Org_Code", value, self.instance):
+            raise forms.ValidationError("Organism code already exists.")
+        return value
 
-class Organism_uploadForm(forms.ModelForm):
+
+class Organism_uploadForm(RequiredAttrsModelForm):
      class Meta:
           model = Organism_upload
           fields =['File_uploadOrg']
 
 
-class Emerge_Pheno_Form(forms.ModelForm):
+class Emerge_Pheno_Form(RequiredAttrsModelForm):
 
         class Meta:
           model = Emerging_Filter_Age
           fields = '__all__'
 
+        def clean_Eme_Age(self):
+          value = self.cleaned_data.get("Eme_Age")
+          if value is not None and Emerging_Filter_Age.objects.filter(Eme_Age=value).exclude(pk=self.instance.pk).exists():
+               raise forms.ValidationError("Emerging age criterion already exists.")
+          return value
 
-class Eme_Crit_Upload_Form(forms.ModelForm):
+
+class Eme_Crit_Upload_Form(RequiredAttrsModelForm):
      class Meta:
           model = Emerging_Crit_upload
           fields =['File_uploadEme']
 
 
 
-class Phenotype_Pre_Form(forms.ModelForm):
+class Phenotype_Pre_Form(RequiredAttrsModelForm):
      class Meta:
           model = Phenotype_Pre
           fields = '__all__'
 
-class Pheno_pre_upForm(forms.ModelForm):
+     def clean_Pre_Phenotypes(self):
+        value = (self.cleaned_data.get("Pre_Phenotypes") or "").strip()
+        if duplicate_exists(Phenotype_Pre, "Pre_Phenotypes", value, self.instance):
+            raise forms.ValidationError("Phenotype pre already exists.")
+        return value
+
+class Pheno_pre_upForm(RequiredAttrsModelForm):
      class Meta:
           model = Pheno_upload_Pre
           fields = ['File_Pheno_pre']
 
 
 
-class Phenotype_Post_Form(forms.ModelForm):
+class Phenotype_Post_Form(RequiredAttrsModelForm):
      class Meta:
           model = Phenotype_Post
           fields = '__all__'
 
-class Pheno_post_upForm(forms.ModelForm):
+     def clean_Post_Phenotypes(self):
+        value = (self.cleaned_data.get("Post_Phenotypes") or "").strip()
+        if duplicate_exists(Phenotype_Post, "Post_Phenotypes", value, self.instance):
+            raise forms.ValidationError("Phenotype post already exists.")
+        return value
+
+class Pheno_post_upForm(RequiredAttrsModelForm):
      class Meta:
           model = Pheno_upload_Post
           fields = ['File_Pheno_post']
@@ -602,14 +1078,20 @@ class Pheno_post_upForm(forms.ModelForm):
 
 
 
-class Recco_item_Form(forms.ModelForm):
+class Recco_item_Form(RequiredAttrsModelForm):
      class Meta:
           model = Recommendation_items
           fields = '__all__'
+
+     def clean_RecoCode(self):
+        value = (self.cleaned_data.get("RecoCode") or "").strip()
+        if duplicate_exists(Recommendation_items, "RecoCode", value, self.instance):
+            raise forms.ValidationError("Recommendation code already exists.")
+        return value
           
 
 
-class Reco_item_upForm (forms.ModelForm):
+class Reco_item_upForm (RequiredAttrsModelForm):
      class Meta:
           model = Reco_item_upload
           fields = ['File_reco_desc']
@@ -617,7 +1099,7 @@ class Reco_item_upForm (forms.ModelForm):
 
 
 #for tat monitoring
-class TATStepConfigUploadForm(forms.ModelForm):
+class TATStepConfigUploadForm(RequiredAttrsModelForm):
     class Meta:
         model = TATStepConfigUpload
         fields = ['tat_file']
@@ -645,7 +1127,18 @@ class TATMonitoringForm(forms.ModelForm):
             }),
         }
 
-class TATStepConfigForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["tat_Running_TAT"].disabled = True
+        self.fields["tat_Final_TAT"].disabled = True
+
+    def clean_tat_Running_TAT(self):
+        return self.instance.tat_Running_TAT
+
+    def clean_tat_Final_TAT(self):
+        return self.instance.tat_Final_TAT
+
+class TATStepConfigForm(RequiredAttrsModelForm):
     class Meta:
         model = TATStepConfig
         fields = '__all__'
@@ -719,7 +1212,7 @@ TATStepFormSet = forms.inlineformset_factory(
 
 
 
-class NonWorkingDayForm(forms.ModelForm):
+class NonWorkingDayForm(RequiredAttrsModelForm):
     class Meta:
         model = NonWorkingDay
         fields = ['date', 'description', 'applies_to']

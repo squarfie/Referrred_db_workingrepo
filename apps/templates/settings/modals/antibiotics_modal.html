@@ -8,7 +8,7 @@
 
 <div class="modal fade" id="UploadModal" tabindex="-1" role="dialog" aria-labelledby="UploadModalLabel" aria-hidden="true">
   <form method="POST" action="{% url 'upload_antibiotics' %}" autocomplete="on" enctype="multipart/form-data"
-        onsubmit="return confirmOverwrite();" id="uploadbreakpointform">
+        onsubmit="return confirmOverwrite();" id="uploadbreakpointform" novalidate>
 
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered" role="document">

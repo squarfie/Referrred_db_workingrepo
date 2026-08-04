@@ -42,7 +42,7 @@
 
 </head>
 
-<body>
+<body class="arsp-compact">
 
   <!-- SIDE NAV -->
   {% include "includes/sidenav.html" %}
@@ -58,6 +58,11 @@
 
   <!-- Scripts -->
   {% include "includes/scripts.html" %}
+  <script src="/static/assets/js/required-field-highlighter.js"></script>
+  <script src="/static/assets/js/sortable-tables.js"></script>
+  <script src="/static/assets/js/modal-layer-fix.js"></script>
+  <script src="/static/assets/js/stable-back-buttons.js"></script>
+  <script src="/static/assets/js/multi-select-clear.js"></script>
 
   {% block javascripts %}
       <script src="/static/assets/js/argon.js?v=1.2.0"></script>
@@ -65,6 +70,7 @@
       <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
       <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
       <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
+
   {% endblock javascripts %}
 
 </body>

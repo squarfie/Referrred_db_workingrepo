@@ -9,9 +9,37 @@
    ============================================================ */
 
 .page-wrapper {
-  background: linear-gradient(135deg, #0f1423 0%, #1a1f3a 50%, #1a2a4a 100%);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0f1423 0%, #172740 48%, #0d747f 100%);
   min-height: 100vh;
   padding: 2rem 0 4rem;
+}
+
+.concordance-report-wrapper::before,
+.concordance-report-wrapper::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.concordance-report-wrapper::before {
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
+    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+  opacity: .42;
+}
+
+.concordance-report-wrapper::after {
+  inset: auto 0 0;
+  height: 38%;
+  background: radial-gradient(circle at 50% 100%, rgba(0, 188, 212, 0.24), transparent 58%);
+}
+
+.concordance-report-wrapper > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Page Header ─────────────────────────────────────────── */
@@ -385,22 +413,30 @@
 }
 
 .detail-table thead {
-  background: linear-gradient(135deg, #f0f4f8 0%, #e8edf2 100%);
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
   position: sticky;
   top: 0;
   z-index: 5;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .detail-table thead th {
+  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
   padding: 1rem 1.25rem;
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #1e3a5f;
+  color: #fff;
   border: none;
-  border-bottom: 2px solid #d1e8ed;
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
   white-space: nowrap;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.32);
 }
 
 .detail-table tbody td {
@@ -529,7 +565,7 @@
 }
 </style>
 
-<div class="page-wrapper">
+<div class="page-wrapper concordance-report-wrapper">
   <div class="container-fluid px-4">
 
     <!-- ══════════════ PAGE HEADER ══════════════ -->

@@ -9,9 +9,46 @@
 <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
 <link rel="stylesheet" href="{% static 'assets/css/headers.css' %}">
 
+<style>
+  .breakpoint-select-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .5rem;
+  }
+
+  .breakpoint-clear-select {
+    appearance: none;
+    border: 1px solid rgba(0, 188, 212, .45);
+    border-radius: 999px;
+    background: rgba(0, 188, 212, .14);
+    color: #005f6c;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    font-size: .72rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: .35rem .65rem;
+    position: relative;
+    z-index: 5;
+    box-shadow: 0 4px 10px rgba(0, 91, 107, .12);
+    white-space: nowrap;
+  }
+
+  .breakpoint-clear-select:hover,
+  .breakpoint-clear-select:focus {
+    background: #00bcd4;
+    border-color: #00bcd4;
+    color: #fff;
+    outline: none;
+  }
+</style>
 {% endblock stylesheets %}
 {% block content %}
-<div class="header-container pb-6" style="min-height: 180px; position: relative;">
+<div class="header-container settings-edit-header" style="position: relative;">
   <!-- Animated background elements -->
   <div class="grid-bg"></div>
 
@@ -57,13 +94,14 @@
  </div>
 
 <!-- Main Content -->
-<div class="container-fluid" style="position: relative; z-index: 3; margin-top: 20px;">
+<div class="container-fluid settings-edit-content" style="position: relative; z-index: 3;">
   <div class="card shadow form-card">
     <div class="card-body p-4">
       {% if breakpoint_form %}
       <form method="POST"
             action="{% url 'edit_breakpoints' pk=breakpoint_form.instance.pk %}"
-            id="breakpointsform">
+            id="breakpointsform"
+            novalidate>
 
         {% csrf_token %}
         
@@ -118,7 +156,7 @@
               </label>
               <select name="Guidelines" class="form-control">
                 <option value="" disabled selected>Select Guidelines</option>
-                {% for value, label in form.fields.Guidelines.choices %}
+                {% for value, label in breakpoint_form.fields.Guidelines.choices %}
                 <option value="{{ value }}" {% if breakpoint.Guidelines == value %}selected{% endif %}>
                   {{ label }}
                 </option>
@@ -141,8 +179,8 @@
               </label>
               <select name="Test_Method" class="form-control">
                 <option value="" disabled selected>Select Test Method</option>
-                {% for value, label in form.fields.Test_Method.choices %}
-                <option value="{{ value }}" {% if form.Test_Method.value == value %}selected{% endif %}>
+                {% for value, label in breakpoint_form.fields.Test_Method.choices %}
+                <option value="{{ value }}" {% if breakpoint_form.Test_Method.value == value %}selected{% endif %}>
                   {{ label }}
                 </option>
                 {% endfor %}
@@ -159,11 +197,58 @@
         </div>
           <div class="row">
           <div class="col-md-6">
+            <div class="checkbox-wrapper mb-3">
+              <label class="form-control-label mb-2" for="id_Emerging_Org_Flag">
+                <i class="fas fa-exclamation-triangle mr-1" style="color: #fb6340;"></i>Emerging Organism Flag
+              </label>
+              {{ breakpoint_form.Emerging_Org_Flag|add_class:"form-check-input" }}
+            </div>
+          </div>
+          <div class="col-md-6">
             <div class="form-group">
               <label class="form-control-label" for="Org">
                 <i class="fa fa-bug mr-2"></i>Organism Code
               </label>
-              <input id="Org" class="form-control" value="{{breakpoint.Org}}" type="text" name="Org" />
+              <input id="Org" class="form-control" value="{{breakpoint.Org}}" type="text" name="Org" required data-required="true" />
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Specimen Information -->
+        <div class="section-divider">
+          <h5 class="mb-0" style="color: #1a7a8e;">
+            <i class="fas fa-vials mr-2"></i>Specimen Assignment
+          </h5>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="checkbox-wrapper mb-3">
+              <label class="form-control-label mb-2" for="id_Emerging_specimen">
+                <i class="fas fa-exclamation-triangle mr-1" style="color: #fb6340;"></i>Emerging Specimen Flag
+              </label>
+              {{ breakpoint_form.Emerging_specimen|add_class:"form-check-input" }}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <div class="breakpoint-select-label">
+                <label class="form-control-label mb-0" for="id_Spec_code">
+                  <i class="fas fa-tag mr-1"></i>Specimen Group(s)
+                </label>
+                <!-- <button type="button"
+                        class="breakpoint-clear-select"
+                        data-clear-multiselect="id_Spec_code"
+                        title="Clear selected specimen groups">
+                  <i class="fas fa-times mr-1"></i>Clear
+                </button> -->
+              </div>
+              {{ breakpoint_form.Spec_code|append_attr:"class: form-control" }}
+              <small class="form-text text-muted">
+                Hold Ctrl (Windows/Linux) or Command (macOS) to select multiple groups.
+                Selections are saved as an OR expression, for example
+                <code>bl|sf|ur</code>.
+              </small>
             </div>
           </div>
         </div>
@@ -174,6 +259,69 @@
           <h5 class="mb-0" style="color: #1a7a8e;">
             <i class="fas fa-pills mr-2"></i>Antibiotic Information
           </h5>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="checkbox-wrapper mb-3">
+              <label class="form-control-label mb-2" for="id_Emerging_Abx_Flag">
+                <i class="fas fa-exclamation-triangle mr-1" style="color: #fb6340;"></i>Emerging Antibiotic Flag
+              </label>
+              {{ breakpoint_form.Emerging_Abx_Flag|add_class:"form-check-input" }}
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="form-group">
+              <div class="breakpoint-select-label">
+                <label class="form-control-label mb-0" for="id_Emerging_Pheno_Flag">
+                  <i class="fas fa-filter mr-1"></i>Emerging Phenotype
+                </label>
+                <!-- <button type="button"
+                        class="breakpoint-clear-select"
+                        data-clear-multiselect="id_Emerging_Pheno_Flag"
+                        title="Clear selected emerging phenotypes">
+                  <i class="fas fa-times mr-1"></i>Clear
+                </button> -->
+              </div>
+              {{ breakpoint_form.Emerging_Pheno_Flag|append_attr:"class: form-control" }}
+              <small class="form-text text-muted">
+                Hold Ctrl/Command to select multiple interpretations. They are saved as OR, for example <code>R|I</code>.
+              </small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="form-group">
+              <div class="breakpoint-select-label">
+                <label class="form-control-label mb-0" for="id_Emerging_Pheno_Flag_Other">
+                  <i class="fas fa-filter mr-1"></i>Other Phenotype
+                </label>
+                <!-- <button type="button"
+                        class="breakpoint-clear-select"
+                        data-clear-multiselect="id_Emerging_Pheno_Flag_Other"
+                        title="Clear selected other phenotypes">
+                  <i class="fas fa-times mr-1"></i>Clear
+                </button> -->
+              </div>
+              {{ breakpoint_form.Emerging_Pheno_Flag_Other|append_attr:"class: form-control" }}
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="form-control-label" for="id_Antibiotic_list">
+                <i class="fas fa-link mr-1"></i>Antibiotic List Link
+              </label>
+              {{ breakpoint_form.Antibiotic_list|append_attr:"class: form-control" }}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="form-control-label" for="Whonet_Abx">
+                <i class="fas fa-globe mr-1"></i>WHONET Code
+              </label>
+              <input id="Whonet_Abx" class="form-control" value="{{breakpoint.Whonet_Abx}}" type="text" name="Whonet_Abx" placeholder="e.g. CFM_ND30" required data-required="true"/>
+            </div>
+          </div>
         </div>
         <div class="row">
           <div class="col-md-6">
@@ -201,14 +349,6 @@
                 <i class="fas fa-weight mr-1"></i>Potency
               </label>
               <input id="Potency" class="form-control" value="{{breakpoint.Potency}}" type="text" name="Potency" placeholder="e.g. 30µg"/>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="form-group">
-              <label class="form-control-label" for="Whonet_Abx">
-                <i class="fas fa-globe mr-1"></i>WHONET Code
-              </label>
-              <input id="Whonet_Abx" class="form-control" value="{{breakpoint.Whonet_Abx}}" type="text" name="Whonet_Abx" placeholder="e.g. CFM_ND30"/>
             </div>
           </div>
           <div class="col-md-4">
@@ -287,7 +427,7 @@
 
 <!-- Upload Modal -->
 <div class="modal fade" id="UploadModal" tabindex="-1" role="dialog" aria-labelledby="UploadModalLabel" aria-hidden="true">
-  <form method="POST" action="{% url 'upload_breakpoints' %}" autocomplete="on" enctype="multipart/form-data" onsubmit="return confirmOverwrite();" id="uploadbreakpointform">
+  <form method="POST" action="{% url 'upload_breakpoints' %}" autocomplete="on" enctype="multipart/form-data" onsubmit="return confirmOverwrite();" id="uploadbreakpointform" novalidate>
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content" style="border-top: 4px solid #2d9cad;">
@@ -302,7 +442,7 @@
         <div class="modal-body">
           <div class="alert" style="background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-left: 4px solid #e6c86b; color: #856404;">
             <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>Warning:</strong> Uploading will replace all existing breakpoints.
+            <strong>Warning:</strong> Uploading will update matching breakpoint definitions and add new breakpoint records. It will not delete all breakpoints.
           </div>
           <div class="form-group">
             <label for="File_uploadBP" class="form-control-label">
@@ -332,8 +472,25 @@ function refresh() {
 }
 
 function confirmOverwrite() {
-  return confirm("⚠️ WARNING: Uploading will replace all existing breakpoints. Are you sure you want to proceed?");
+  return confirm("Uploading will update matching breakpoint definitions and add new breakpoint records. It will not delete all breakpoints. Continue?");
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-clear-multiselect]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var select = document.getElementById(button.dataset.clearMultiselect);
+      if (!select) {
+        return;
+      }
+
+      Array.prototype.forEach.call(select.options, function (option) {
+        option.selected = false;
+      });
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      select.focus();
+    });
+  });
+});
 </script>
 
 {% endblock content %}

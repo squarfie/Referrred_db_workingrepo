@@ -3,9 +3,10 @@
 
 {% block content %}
 
-<div class="header-container">
+<div class="concordance-detail-shell concordance-accession-shell">
+<div class="header-container concordance-accession-header">
   <div class="grid-bg"></div>
-  <div class="particles">
+  <!-- <div class="particles">
     <div class="particle"></div>
     <div class="particle"></div>
     <div class="particle"></div>
@@ -20,10 +21,10 @@
     <div class="scanner"></div>
     <div class="glow-orb"></div>
     <div class="glow-orb"></div>
-  </div>
+  </div> -->
   <div class="overlay"></div>
 
-  <div class="header-content">
+  <div class="header-content concordance-accession-title">
     <h1>
       <i class="fas fa-vial me-2"></i>
       Concordance – Accession
@@ -41,20 +42,20 @@
       </span>
     </div>
   </div>
- <div class="d-flex justify-content-between align-items-center" style="z-index: 1000;">
+<div class="concordance-accession-actions">
   
-  <a href="{% url 'export_concordance_accession_excel' report.id %}" class="btn-history">
-          <i class="fas fa-history"></i>
-          Excel(per accession)
-    </a>
-      <a href="{% url 'export_concordance_batch_excel' report.id %}" class="btn-history">
-          <i class="fas fa-history"></i>
-          Excel(per batch)
-    </a>
-  <button class="btn-new-crf" onclick="history.back()">
-    <i class="fas fa-arrow-left me-1"></i> Back
+  <a href="{% url 'export_concordance_accession_excel' report.id %}"
+     class="btn btn-success btn-md">
+    <i class="fas fa-file-excel mr-2"></i>
+    Generate Excel
+  </a>
+
+  <button type="button" class="btn btn-success btn-md" onclick="history.back()">
+    <i class="fas fa-arrow-left mr-2"></i>
+    Back
   </button>
-  </div>
+
+</div>
 </div>
 
 
@@ -66,7 +67,7 @@
     <div class="card-header d-flex align-items-center gap-2"
          style="background:linear-gradient(135deg,#1e3a5f 0%,#0f2744 100%); padding:1.1rem 1.75rem; border:none;">
       <i class="fas fa-info-circle" style="color:#00bcd4;"></i>
-      <h5 class="mb-0 text-white fw-bold">Isolate Information</h5>
+      <h2 class="mb-0 text-white fw-bold">&nbsp;Isolate Information</h2>
     </div>
 
     <div class="card-body">
@@ -99,17 +100,17 @@
       <div class="row text-center">
 
         <div class="col-4">
-          <h6>Total Comparisons</h6>
+          <h6>&nbsp;Total Comparisons</h6>
           <h2>{{ report.total_pairs }}</h2>
         </div>
 
         <div class="col-4">
-          <h6>Concordant</h6>
+          <h6>&nbsp;Concordant</h6>
           <h2>{{ report.concordant_pairs }}</h2>
         </div>
 
         <div class="col-4">
-          <h6>Concordance Rate</h6>
+          <h6>&nbsp;Concordance Rate</h6>
           <h2>{{ report.ast_concordance_rate }}%</h2>
         </div>
 
@@ -145,9 +146,9 @@
 
   <div class="card-header"
        style="background:linear-gradient(135deg,#1e3a5f 0%,#0f2744 100%); padding:1rem 1.75rem;">
-    <h5 class="mb-0 text-white fw-bold">
-      <i class="fas fa-dna me-2"></i>Organism Identification Concordance
-    </h5>
+    <h2 class="mb-0 text-white fw-bold">
+      <i class="fas fa-dna me-2"></i>&nbsp;Organism Identification Concordance
+    </h2>
   </div>
 
   <div class="card-body text-center">
@@ -202,22 +203,22 @@
 
     <div class="card-header d-flex justify-content-between align-items-center"
          style="background:linear-gradient(135deg,#00bcd4,#0097a7); padding:1.1rem 1.75rem; border:none;">
-      <h5 class="mb-0 text-white fw-bold">
-        <i class="fas fa-table"></i> Antibiotic Comparison
-      </h5>
+      <h2 class="mb-0 text-white fw-bold">
+        <i class="fas fa-table"></i>&nbsp;Antibiotic Comparison
+      </h2>
       <span class="badge bg-light text-dark">
         {{ details|length }} ROW{{ details|length|pluralize }}
       </span>
     </div>
 
-    <div class="table-responsive">
+    <div class="table-responsive snapshot-table-scroll">
       <table class="table table-hover mb-0">
-        <thead>
+        <thead class="table-light">
           <tr>
-            <th>Antibiotic</th>
-            <th class="text-center">Site RIS</th>
-            <th class="text-center">ARS RIS</th>
-            <th class="text-center">Category</th>
+            <th class="text-center text-dark" >Antibiotic</th>
+            <th class="text-center text-dark">Site RIS</th>
+            <th class="text-center text-dark">ARS RIS</th>
+            <th class="text-center text-dark">Category</th>
           </tr>
         </thead>
 
@@ -225,7 +226,7 @@
           {% for row in details %}
           <tr>
 
-            <td>{{ row.antibiotic }}</td>
+            <td class="text-center">{{ row.antibiotic }}</td>
 
             <td class="text-center fw-bold">{{ row.site_ris }}</td>
 
@@ -234,9 +235,9 @@
             <td class="text-center">
 
               {% if row.deviation_code == "S" %}
-                <span class="badge bg-success">Concordant</span>
+                <span class="badge bg-success" style="color: #eef3f8;">Concordant</span>
               {% elif row.deviation_code == "A" %}
-                <span class="badge bg-danger">Very Major</span>
+                <span class="badge bg-danger" style="color: #eef3f8;">Very Major</span>
               {% elif row.deviation_code == "B" %}
                 <span class="badge bg-warning text-dark">Major</span>
               {% elif row.deviation_code == "C" %}
@@ -260,5 +261,196 @@
   </div>
 
 </div>
+</div>
+
+<style>
+.concordance-detail-shell {
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  padding-bottom: 2rem;
+  background: linear-gradient(135deg, #0f1423 0%, #172740 48%, #0d747f 100%);
+}
+
+.concordance-detail-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
+    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+  opacity: .42;
+  pointer-events: none;
+}
+
+.concordance-detail-shell::after {
+  content: "";
+  position: absolute;
+  inset: auto -12% -18% 30%;
+  height: 38%;
+  background: radial-gradient(circle, rgba(0, 207, 232, 0.2), transparent 64%);
+  pointer-events: none;
+}
+
+.concordance-detail-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.concordance-accession-header {
+  position: relative;
+  min-height: 180px;
+  padding: 1.35rem 2rem;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-bottom: 3px solid #00cfe8;
+}
+
+.concordance-accession-header .concordance-accession-title {
+  position: absolute;
+  left: 2rem;
+  top: 50%;
+  z-index: 3;
+  width: min(920px, calc(100% - 360px));
+  margin: 0;
+  text-align: left;
+  transform: translateY(-42%);
+}
+
+.concordance-accession-header .concordance-accession-title h1 {
+  max-width: none;
+  margin-bottom: 0.45rem;
+  font-size: 1.35rem;
+  line-height: 1.28;
+  word-break: break-word;
+}
+
+.concordance-accession-header .concordance-accession-title p {
+  margin-bottom: 0.75rem;
+  font-size: 0.88rem;
+}
+
+.concordance-accession-actions {
+  position: absolute;
+  top: 1.35rem;
+  right: 2rem;
+  z-index: 3;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.concordance-accession-actions .btn {
+  border-radius: 25px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.55rem 1rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.concordance-accession-shell .container-fluid {
+  padding-top: 1.35rem !important;
+}
+
+.concordance-accession-shell .card {
+  border-radius: 12px !important;
+  box-shadow: 0 12px 30px rgba(7, 22, 36, 0.16) !important;
+}
+
+.concordance-accession-shell .card-header {
+  padding: 0.8rem 1.25rem !important;
+  background: rgba(10, 48, 72, 0.86) !important;
+  border-bottom: 1px solid rgba(0, 207, 232, 0.25) !important;
+}
+
+.concordance-accession-shell .card-header h2 {
+  font-size: 1rem !important;
+  line-height: 1.25;
+}
+
+.concordance-accession-shell .card-body {
+  padding: 1.15rem 1.3rem !important;
+  font-size: 0.9rem;
+}
+
+.concordance-accession-shell .card-body h2 {
+  font-size: 1.25rem;
+}
+
+.concordance-accession-shell .card-body h3 {
+  font-size: 1.1rem;
+}
+
+.concordance-accession-shell .card-body h6 {
+  color: #5f7188;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 1200px) {
+  .concordance-accession-header {
+    min-height: 280px;
+    align-items: flex-end;
+    padding-top: 5rem;
+  }
+
+  .concordance-accession-header .concordance-accession-title {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    transform: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .concordance-accession-header {
+    min-height: 330px;
+    padding: 5.5rem 1rem 1.5rem;
+  }
+
+  .concordance-accession-actions {
+    left: 1rem;
+    right: 1rem;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .concordance-accession-header .concordance-accession-title h1 {
+    font-size: 1.35rem;
+  }
+}
+
+.snapshot-table-scroll {
+  max-height: 520px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.snapshot-table-scroll thead {
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+}
+
+.snapshot-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+}
+</style>
 
 {% endblock %}

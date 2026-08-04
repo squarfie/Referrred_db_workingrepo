@@ -4,6 +4,7 @@ urlpatterns = [
 
         path("edit_final/<int:id>/", views.edit_final_data, name="edit_final_data"),
         path("show_final_table", views.show_final_table, name="show_final_table"),
+        path("show_final_table/batch-rows/", views.final_batch_rows, name="final_batch_rows"),
         path("final_lab_result/<int:id>/", views.generate_final_batch_pdf, name="generate_final_batch_pdf"),
        
         path('ajax/get-antibiotic-details/', views.get_antibiotic_details, name='get_antibiotic_details'),
@@ -39,7 +40,7 @@ urlpatterns = [
         path("concordance_report/<int:report_id>/export/batch/",views.export_concordance_batch_excel,name="export_concordance_batch_excel",),
         path("concordance_report/<int:report_id>/export/accession/",views.export_concordance_accession_excel,name="export_concordance_accession_excel",),
         
-        path("concordance_report/<int:report_id>/export_pdf/",views.export_concordance_report_pdf,name="export_concordance_report_pdf",),
+        path("concordance_report/<int:report_id>/export_pdf/",views.export_concordance_report_pdf_v2,name="export_concordance_report_pdf",),
 
 
 ]

@@ -1,22 +1,20 @@
 {% extends 'layouts/base.html' %}
-{% block title %}AMRFinder Plus{% endblock %}
+{% block title %}BactScout{% endblock %}
 
 {% block content %}
 
-<!-- Header Section -->
-<div class="header bg-primary pb-6" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
-    <span class="mask bg-gradient-default opacity-3"></span>
+<div class="header bg-primary pb-3 wgs-page-header" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
+  <span class="mask bg-gradient-default opacity-3"></span>
   <div class="container-fluid">
     <div class="header-body">
       <div class="row align-items-center py-4">
         <div class="col-lg-6 col-7">
-          <h6 class="h2 text-white d-inline-block mb-0">AMRFinder Plus</h6>
+          <h6 class="h2 text-white d-inline-block mb-0">BactScout</h6>
           <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
             <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
               <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
-              <li class="breadcrumb-item"><a href="{% url 'batch_create_view' %}">New Batch</a></li>
               <li class="breadcrumb-item"><a href="{% url 'upload_wgs_view' %}">Upload Data</a></li>
-              <li class="breadcrumb-item active" aria-current="page">AMRFinder Data</li>
+              <li class="breadcrumb-item active" aria-current="page">BactScout Data</li>
             </ol>
           </nav>
         </div>
@@ -31,15 +29,13 @@
   </div>
 </div>
 
-<!-- Main Content -->
-<div class="container-fluid mt--6">
-  <div class="card shadow">
-    <!-- Card Header -->
-    <div class="card-header border-0" style="background: linear-gradient(135deg, #8965e0 0%, #bc65e0 100%);">
+<div class="container-fluid wgs-list-page">
+  <div class="card shadow wgs-list-card">
+    <div class="card-header border-0 wgs-list-card-header">
       <div class="row align-items-center">
         <div class="col">
           <h3 class="mb-0 text-white">
-            <i class="ni ni-lock-circle-open text-white"></i>&nbsp;AMRFinder Plus Records
+            <i class="fas fa-bacteria text-white"></i>&nbsp;BactScout Records
           </h3>
         </div>
         <div class="col text-right">
@@ -50,16 +46,14 @@
       </div>
     </div>
 
-    <!-- Toolbar Section -->
     <div class="card-body border-bottom">
       <div class="row align-items-center">
-        <!-- Search Bar -->
         <div class="col-md-6 mb-3 mb-md-0">
           <div class="input-group input-group-alternative">
             <div class="input-group-prepend">
               <span class="input-group-text"><i class="fas fa-search"></i></span>
             </div>
-            <input id="search-input" class="form-control" placeholder="Search by name, accession, or protein..." type="text" onkeyup="searchTable()">
+            <input id="search-input" class="form-control" placeholder="Search by name, accession, species, or status..." type="text" onkeyup="searchTable()">
             <div class="input-group-append">
               <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()">
                 <i class="fas fa-times"></i>
@@ -68,9 +62,8 @@
           </div>
         </div>
 
-        <!-- Delete by Date -->
         <div class="col-md-6">
-          <form method="POST" action="{% url 'delete_amrfinder_by_date' %}" class="form-inline justify-content-md-end">
+          <form method="POST" action="{% url 'delete_bactscout_by_date' %}" class="form-inline justify-content-md-end">
             {% csrf_token %}
             <label class="mr-2 mb-0"><strong>Delete by Date:</strong></label>
             <input type="date" name="upload_date" class="form-control form-control-sm mr-2" required>
@@ -82,64 +75,47 @@
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="table-responsive" style="max-height: 470px; overflow-y: auto;">
-      <table class="table table-hover align-items-center table-flush" id="amrfinder-table">
+    <div class="table-responsive wgs-list-table-shell" style="max-height: 470px; overflow-y: auto;">
+      <table class="table table-hover align-items-center table-flush" id="bactscout-table">
         <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
           <tr>
             <th style="width: 100px;">Actions</th>
             <th style="width: 130px;">Date Uploaded</th>
             <th>Name</th>
-            <th>AMRFinder Accession</th>
-            <th>Protein ID</th>
-            <th>Contig ID</th>
+            <th>BactScout Accession</th>
+            <th>Status</th>
+            <th>Species</th>
+            <th>Coverage Status</th>
+            <th>Contamination Status</th>
+            <th>MLST Status</th>
           </tr>
         </thead>
         <tbody class="list">
-          {% for amrfinder in page_obj %}
+          {% for bactscout in page_obj %}
           <tr>
             <td>
-              <a href="#" class="btn btn-sm btn-danger delete-btn" 
-                 data-toggle="modal" 
-                 data-target="#deleteModal" 
-                 data-url="{% url 'delete_amrfinder' amrfinder.id %}"
+              <a href="#" class="btn btn-sm btn-danger delete-btn"
+                 data-toggle="modal"
+                 data-target="#deleteModal"
+                 data-url="{% url 'delete_bactscout' bactscout.id %}"
                  title="Delete record">
                 <i class="fa fa-trash"></i>
               </a>
             </td>
-            <td>
-              <span class="text-muted">{{ amrfinder.Date_uploaded_am|date:"M d, Y" }}</span>
-            </td>
-            <td>
-              <strong class="text-primary">{{ amrfinder.name }}</strong>
-            </td>
-            <td>
-              {% if amrfinder.Amrfinder_Accession %}
-                <span>{{ amrfinder.Amrfinder_Accession }}</span>
-              {% else %}
-                <span class="badge badge-light">Not Assigned</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if amrfinder.protein_id %}
-                <span class="text-muted">{{ amrfinder.protein_id }}</span>
-              {% else %}
-                <span class="badge badge-light">N/A</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if amrfinder.contig_id %}
-                <span class="text-muted">{{ amrfinder.contig_id }}</span>
-              {% else %}
-                <span class="badge badge-light">N/A</span>
-              {% endif %}
-            </td>
+            <td><span class="text-muted">{{ bactscout.Date_uploaded_bs|date:"M d, Y" }}</span></td>
+            <td><strong class="text-primary">{{ bactscout.name|default:"N/A" }}</strong></td>
+            <td>{{ bactscout.BactScout_Accession|default:"Not Assigned" }}</td>
+            <td>{{ bactscout.a_final_status|default:bactscout.status|default:"N/A" }}</td>
+            <td>{{ bactscout.species|default:"N/A" }}</td>
+            <td>{{ bactscout.coverage_status|default:"N/A" }}</td>
+            <td>{{ bactscout.contamination_status|default:"N/A" }}</td>
+            <td>{{ bactscout.mlst_status|default:"N/A" }}</td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="6" class="text-center py-5">
+            <td colspan="9" class="text-center py-5">
               <i class="ni ni-folder-17 text-muted" style="font-size: 3rem;"></i>
-              <p class="text-muted mt-3 mb-0">No AMRFinder records found</p>
+              <p class="text-muted mt-3 mb-0">No BactScout records found</p>
             </td>
           </tr>
           {% endfor %}
@@ -147,101 +123,34 @@
       </table>
     </div>
 
-    <!-- Card Footer with Pagination -->
     <div class="card-footer py-4 bg-light">
       <div class="row align-items-center">
-        <!-- Go To Page Form -->
         <div class="col-md-4">
           <form method="get" class="form-inline">
             <label class="mr-2 mb-0 text-primary">Go to page:</label>
-            <input type="number" name="page"
-                   min="1"
-                   max="{{ page_obj.paginator.num_pages }}"
-                   value="{{ page_obj.number }}"
-                   class="form-control form-control-sm mr-2"
-                   style="width: 70px;">
-            <button type="submit" class="btn btn-sm btn-primary">
-              <i class="fas fa-arrow-right"></i>
-            </button>
+            <input type="number" name="page" min="1" max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}" class="form-control form-control-sm mr-2" style="width: 70px;">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-arrow-right"></i></button>
           </form>
         </div>
-
-        <!-- Page Info -->
         <div class="col-md-4 text-center">
-          <span class="text-primary">
-            Page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong>
-          </span>
+          <span class="text-primary">Page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong></span>
         </div>
-
-        <!-- Pagination Controls -->
         <div class="col-md-4">
           <nav aria-label="Page navigation">
             <ul class="pagination justify-content-end mb-0">
-              <!-- First Page -->
               {% if page_obj.has_previous %}
-                <li class="page-item">
-                  <a class="page-link" href="?page=1" title="First page">
-                    <i class="fas fa-angle-double-left"></i>
-                  </a>
-                </li>
+                <li class="page-item"><a class="page-link" href="?page=1"><i class="fas fa-angle-double-left"></i></a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}"><i class="fas fa-angle-left"></i></a></li>
               {% else %}
-                <li class="page-item disabled">
-                  <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
-                </li>
+                <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-left"></i></span></li>
+                <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-left"></i></span></li>
               {% endif %}
-
-              <!-- Previous -->
-              {% if page_obj.has_previous %}
-                <li class="page-item">
-                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}" title="Previous page">
-                    <i class="fas fa-angle-left"></i>
-                  </a>
-                </li>
-              {% else %}
-                <li class="page-item disabled">
-                  <span class="page-link"><i class="fas fa-angle-left"></i></span>
-                </li>
-              {% endif %}
-
-              <!-- Page Numbers -->
-              {% for num in page_obj.paginator.page_range %}
-                {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
-                  {% if num == page_obj.number %}
-                    <li class="page-item active">
-                      <span class="page-link">{{ num }}</span>
-                    </li>
-                  {% else %}
-                    <li class="page-item">
-                      <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                    </li>
-                  {% endif %}
-                {% endif %}
-              {% endfor %}
-
-              <!-- Next -->
               {% if page_obj.has_next %}
-                <li class="page-item">
-                  <a class="page-link" href="?page={{ page_obj.next_page_number }}" title="Next page">
-                    <i class="fas fa-angle-right"></i>
-                  </a>
-                </li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}"><i class="fas fa-angle-right"></i></a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}"><i class="fas fa-angle-double-right"></i></a></li>
               {% else %}
-                <li class="page-item disabled">
-                  <span class="page-link"><i class="fas fa-angle-right"></i></span>
-                </li>
-              {% endif %}
-
-              <!-- Last Page -->
-              {% if page_obj.number < page_obj.paginator.num_pages %}
-                <li class="page-item">
-                  <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" title="Last page">
-                    <i class="fas fa-angle-double-right"></i>
-                  </a>
-                </li>
-              {% else %}
-                <li class="page-item disabled">
-                  <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
-                </li>
+                <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-right"></i></span></li>
+                <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-right"></i></span></li>
               {% endif %}
             </ul>
           </nav>
@@ -251,7 +160,6 @@
   </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
@@ -279,44 +187,26 @@
           <button type="submit" class="btn btn-danger">
             <i class="fa fa-trash mr-1"></i>Delete Record
           </button>
-          <a href="{% url 'delete_all_amrfinder' %}" class="btn btn-warning" onclick="return confirm('⚠️ WARNING: This will delete ALL AMRFinder records. Are you absolutely sure?')">
+          <button type="submit" formaction="{% url 'delete_all_bactscout' %}" class="btn btn-warning" onclick="return confirm('WARNING: This will delete ALL BactScout records. Are you absolutely sure?')">
             <i class="fa fa-trash-alt mr-1"></i>Delete All
-          </a>
+          </button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Styles -->
 <style>
 .input-group-alternative {
   box-shadow: 0 1px 3px rgba(50, 50, 93, 0.15), 0 1px 0 rgba(0, 0, 0, 0.02);
   border: 0;
   transition: box-shadow 0.15s ease;
 }
-
-.input-group-alternative .form-control {
-  border: 0;
-}
-
-.badge-lg {
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-}
-
-thead.thead-light {
-  background-color: #f6f9fc;
-}
-
-.table-hover tbody tr:hover {
-  background-color: #f8f9fa;
-}
-
-.btn-sm {
-  padding: 0.375rem 0.75rem;
-}
-
+.input-group-alternative .form-control { border: 0; }
+.badge-lg { padding: 0.5rem 1rem; font-size: 0.9rem; }
+thead.thead-light { background-color: #f6f9fc; }
+.table-hover tbody tr:hover { background-color: #f8f9fa; }
+.btn-sm { padding: 0.375rem 0.75rem; }
 #search-input:focus {
   box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
@@ -324,58 +214,39 @@ thead.thead-light {
 
 {% endblock content %}
 
-<!-- JavaScript -->
 {% block javascripts %}
 <script>
-// Search table function
 function searchTable() {
   var input = document.getElementById("search-input");
   var filter = input.value.toLowerCase();
-  var table = document.getElementById("amrfinder-table");
+  var table = document.getElementById("bactscout-table");
   var rows = table.querySelectorAll("tbody tr");
 
   rows.forEach(row => {
     if (row.cells.length > 1) {
-      var date = row.cells[1].textContent.toLowerCase();
-      var name = row.cells[2].textContent.toLowerCase();
-      var accession = row.cells[3].textContent.toLowerCase();
-      var proteinId = row.cells[4].textContent.toLowerCase();
-      var contigId = row.cells[5].textContent.toLowerCase();
-
-      if (date.includes(filter) || name.includes(filter) || accession.includes(filter) || 
-          proteinId.includes(filter) || contigId.includes(filter)) {
-        row.style.display = "";
-      } else {
-        row.style.display = "none";
-      }
+      var searchable = Array.from(row.cells).slice(1).map(cell => cell.textContent.toLowerCase()).join(" ");
+      row.style.display = searchable.includes(filter) ? "" : "none";
     }
   });
 }
 
-// Clear search function
 function clearSearch() {
   document.getElementById("search-input").value = "";
   searchTable();
 }
 
-// Enter key support for search
 document.getElementById("search-input").addEventListener("keypress", function(event) {
   if (event.key === "Enter") {
     event.preventDefault();
     searchTable();
   }
 });
-</script>
 
-<!-- Specific JS goes HERE --> 
-
-<script>
 $(document).ready(function(){
-    $('.delete-btn').click(function(){
-        var url = $(this).data('url');          // Get URL from data-url
-        $('#deleteForm').attr('action', url);    // Set form action to the delete URL
-    });
+  $('.delete-btn').click(function(){
+    var url = $(this).data('url');
+    $('#deleteForm').attr('action', url);
+  });
 });
 </script>
-
 {% endblock javascripts %}

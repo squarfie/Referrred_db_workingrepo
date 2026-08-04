@@ -192,7 +192,7 @@
         <i class="fas fa-database"></i>
       </div>
       <div class="batch-header-title">
-        <h6>{% if editing %}Edit Batch{% else %}Create New Batch{% endif %}</h6>
+        <h6>{% if editing %}Edit Batch{% else %}Create Batch{% endif %}</h6>
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb breadcrumb-links breadcrumb-dark mb-0">
             <li class="breadcrumb-item">
@@ -208,11 +208,6 @@
         </nav>
       </div>
     </div>
-
-    <div class="mode-badge">
-      <i class="fas fa-{% if editing %}pencil-alt{% else %}plus{% endif %}"></i>
-      {% if editing %}Edit Mode{% else %}New Entry{% endif %}
-    </div>
   </div>
 
   <!-- ── Main Content ── -->
@@ -223,18 +218,7 @@
           id="accession-form"
           novalidate>
       {% csrf_token %}
-
-      <!-- Overwrite alert -->
-      {% if not editing and confirm_overwrite %}
-      <div class="alert-overwrite">
-        <i class="fa fa-exclamation-triangle"></i>
-        <div>
-          <strong>Batch already exists.</strong>
-          Confirming will replace the existing record permanently. This cannot be undone.
-        </div>
-      </div>
-      <input type="hidden" name="confirm_overwrite" value="true">
-      {% endif %}
+      {% include "includes/form_errors.html" with form=form %}
 
       <div class="form-outer-card">
 
@@ -394,26 +378,17 @@
 
         <!-- ══ ACTION BAR ══ -->
         <div class="action-bar">
-          {% if confirm_overwrite %}
-            <button type="submit" class="btn btn-danger">
-              <i class="fa fa-trash"></i> Confirm Overwrite
-            </button>
-            <a href="{% url 'show_batches' %}" class="btn btn-secondary">
-              <i class="fas fa-times"></i> Cancel
-            </a>
-          {% else %}
-            <button type="button" class="btn btn-secondary" onclick="refresh()">
-              <i class="ni ni-refresh-02"></i> Reset
-            </button>
-            <a href="{% url 'show_batches' %}" class="btn btn-primary">
-              <i class="ni ni-bullet-list-67"></i> View Batches
-            </a>
-            <button type="submit"
-                    class="btn {% if editing %}btn-warning{% else %}btn-success{% endif %}">
-              <i class="ni {% if editing %}ni-ruler-pencil{% else %}ni-fat-add{% endif %}"></i>
-              {% if editing %}Update Batch{% else %}Save Batch{% endif %}
-            </button>
-          {% endif %}
+          <button type="button" class="btn btn-secondary" onclick="refresh()">
+            <i class="ni ni-refresh-02"></i> Reset
+          </button>
+          <a href="{% url 'show_batches' %}" class="btn btn-primary">
+            <i class="ni ni-bullet-list-67"></i> View Batches
+          </a>
+          <button type="submit"
+                  class="btn {% if editing %}btn-warning{% else %}btn-success{% endif %}">
+            <i class="ni {% if editing %}ni-ruler-pencil{% else %}ni-fat-add{% endif %}"></i>
+            {% if editing %}Update Batch{% else %}Save Batch{% endif %}
+          </button>
         </div>
 
       </div><!-- /form-outer-card -->

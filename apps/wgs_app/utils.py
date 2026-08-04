@@ -1,7 +1,7 @@
 # egasp/utils.py
 import os
 import re
-from apps.home.models import SiteData
+from apps.home.models import *
 
 def format_accession(raw_name: str) -> str:
     """
@@ -58,3 +58,5 @@ def format_accession(raw_name: str) -> str:
             return f"{prefix}_{part}{digits}" if digits else f"{prefix}_{part}"
 
     return ""
+
+

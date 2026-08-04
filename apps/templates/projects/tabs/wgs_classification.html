@@ -51,58 +51,92 @@
           <tr>
             <th style="width: 160px;">Accession No</th>
             <th class="text-center">Emerging</th>
+            <th class="text-center">Structured</th>
             <th class="text-center">Satscan</th>
             <th class="text-center">Serotyping</th>
             <th class="text-center">GHRU (All)</th>
             <th class="text-center">GHRU (Neo)</th>
+            <th class="text-center">EGASP</th>
             <th class="text-center">Tricycle</th>
+            <th class="text-center">PulseNet</th>
+            <th class="text-center">TULIP</th>
             <th style="width: 140px;" class="text-center">Actions</th>
           </tr>
         </thead>
 
         <tbody>
         {% for ref in referred_list %}
-        {% with class_obj=ref.class_entry.first %}
+        {% with sample_obj=ref.sampleinfo_flags %}
         <tr class="classification-row">
 
           <form method="POST"
-                action="{% url 'update_wgs_classification_inline' ref.AccessionNo %}">
+                action="{% url 'update_wgs_classification_inline' ref.f_AccessionNo %}">
             {% csrf_token %}
 
             <!-- ACCESSION -->
             <td class="font-weight-bold accession-cell">
-              {{ ref.AccessionNo }}
+              {{ ref.f_AccessionNo }}
             </td>
 
             <!-- CHECKBOXES -->
             <td class="text-center">
               <input type="checkbox" name="Class_Chk_Emerging"
-                     {% if class_obj and class_obj.Class_Chk_Emerging %}checked{% endif %}>
+                     {% if sample_obj and sample_obj.emerging %}checked{% endif %}
+                     {% if not user_access.can_wgs_update %}disabled{% endif %}>
+            </td>
+
+            <td class="text-center">
+              <input type="checkbox" name="Class_Chk_Structured"
+                     {% if sample_obj and sample_obj.structured %}checked{% endif %}
+                     {% if not user_access.can_wgs_update %}disabled{% endif %}>
             </td>
 
             <td class="text-center">
               <input type="checkbox" name="Class_Chk_Satscan"
-                     {% if class_obj and class_obj.Class_Chk_Satscan %}checked{% endif %}>
+                     {% if sample_obj and sample_obj.satscan %}checked{% endif %}
+                     {% if not user_access.can_wgs_update %}disabled{% endif %}>
             </td>
 
             <td class="text-center">
               <input type="checkbox" name="Class_Chk_Serotyping"
-                     {% if class_obj and class_obj.Class_Chk_Serotyping %}checked{% endif %}>
+                     {% if sample_obj and sample_obj.serotyping %}checked{% endif %}
+                     {% if not user_access.can_wgs_update %}disabled{% endif %}>
             </td>
 
             <td class="text-center">
               <input type="checkbox" name="Class_Chk_GHRU_all"
-                     {% if class_obj and class_obj.Class_Chk_GHRU_all %}checked{% endif %}>
+                     {% if sample_obj and sample_obj.ghru_all %}checked{% endif %}
+                     {% if not user_access.can_wgs_update %}disabled{% endif %}>
             </td>
 
             <td class="text-center">
               <input type="checkbox" name="Class_Chk_GHRU_Neo"
-                     {% if class_obj and class_obj.Class_Chk_GHRU_Neo %}checked{% endif %}>
+                     {% if sample_obj and sample_obj.ghru_neo %}checked{% endif %}
+                     {% if not user_access.can_wgs_update %}disabled{% endif %}>
+            </td>
+
+            <td class="text-center">
+              <input type="checkbox" name="Class_Chk_EGASP"
+                     {% if sample_obj and sample_obj.egasp %}checked{% endif %}
+                     {% if not user_access.can_wgs_update %}disabled{% endif %}>
             </td>
 
             <td class="text-center">
               <input type="checkbox" name="Class_Chk_Tricycle"
-                     {% if class_obj and class_obj.Class_Chk_Tricycle %}checked{% endif %}>
+                     {% if sample_obj and sample_obj.tricycle %}checked{% endif %}
+                     {% if not user_access.can_wgs_update %}disabled{% endif %}>
+            </td>
+
+            <td class="text-center">
+              <input type="checkbox" name="Class_Chk_Pulsenet"
+                     {% if sample_obj and sample_obj.pulsenet %}checked{% endif %}
+                     {% if not user_access.can_wgs_update %}disabled{% endif %}>
+            </td>
+
+            <td class="text-center">
+              <input type="checkbox" name="Class_Chk_Tulip"
+                     {% if sample_obj and sample_obj.tulip %}checked{% endif %}
+                     {% if not user_access.can_wgs_update %}disabled{% endif %}>
             </td>
 
             <!-- ACTIONS -->
@@ -110,6 +144,7 @@
 
               <div class="btn-group" role="group">
 
+                {% if user_access.can_wgs_update %}
                 <button type="button"
                         class="btn btn-sm btn-outline-success"
                         onclick="toggleRow(this, true)"
@@ -129,6 +164,9 @@
                         title="Save classification">
                   <i class="fas fa-save"></i>
                 </button>
+                {% else %}
+                <span class="badge badge-light">Read only</span>
+                {% endif %}
 
               </div>
 
@@ -140,7 +178,7 @@
         {% endwith %}
         {% empty %}
         <tr>
-          <td colspan="8" class="text-center py-5 text-muted">
+          <td colspan="12" class="text-center py-5 text-muted">
             <i class="ni ni-folder-17" style="font-size:2rem;"></i>
             <p class="mt-2 mb-0">No referred records found.</p>
           </td>
@@ -169,7 +207,7 @@ function filterAccession() {
 
 function toggleRow(btn, state) {
   const row = btn.closest("tr");
-  row.querySelectorAll("input[type='checkbox']").forEach(cb => {
+  row.querySelectorAll("input[type='checkbox']:not(:disabled)").forEach(cb => {
     cb.checked = state;
   });
 }

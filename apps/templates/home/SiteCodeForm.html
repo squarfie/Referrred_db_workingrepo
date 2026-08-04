@@ -5,13 +5,13 @@
 {% block title %} Add New Hospital {% endblock title %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{% static 'css/arsp.css' %}">
-<link rel="stylesheet" href="{% static 'css/header.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
 {% endblock stylesheets %}
 
 {% block content %}
 <!-- Header Section -->
-<div class="header pb-6" style="height: 180px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
+<div class="header pb-6 settings-edit-header" style="position: relative; overflow: hidden;">
   <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%); opacity: 0.6;"></div>
   <div class="container-fluid" style="position: relative; z-index: 1;">
     <div class="header-body">
@@ -34,7 +34,7 @@
 </div>
 
 <!-- Main Content -->
-<div class="container-fluid mt-4" style="z-index: 2;">
+<div class="container-fluid settings-edit-content" style="z-index: 2;">
   <div class="row justify-content-center">
     <div class="col-lg-10 col-xl-8">
 
@@ -61,23 +61,118 @@
 
         <!-- Card Body -->
         <div class="card-body p-4">
-          <form method="POST" action="{% url 'add_dropdown' %}" id="dropdownform" autocomplete="on">
+          <form method="POST" action="{% if editing %}{% url 'edit_sitecode' site.pk %}{% else %}{% url 'add_dropdown' %}{% endif %}" id="dropdownform" autocomplete="on">
             {% csrf_token %}
+            {% include "includes/form_errors.html" with form=site_form %}
             
             <!-- Form Fields -->
             <div class="row">
-              <div class="col-md-6 mb-3">
+              <div class="col-md-4 mb-3">
                 <label class="form-control-label font-weight-bold" for="SiteCode">
                   Site Code <span class="text-danger">*</span>
                 </label>
                 {{ site_form.SiteCode|append_attr:"class: form-control rounded-pill" }}
               </div>
 
-              <div class="col-md-6 mb-3">
+              <div class="col-md-8 mb-3">
                 <label class="form-control-label font-weight-bold" for="SiteName">
                   Name of Hospital <span class="text-danger">*</span>
                 </label>
                 {{ site_form.SiteName|append_attr:"class: form-control " }}
+              </div>
+
+              <div class="col-md-12 mb-3">
+                <label class="form-control-label font-weight-bold" for="Site_Address">
+                  Hospital Address
+                </label>
+                {{ site_form.Site_Address|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-12 mt-2 mb-2">
+                <h6 class="text-uppercase text-muted">Lab Manager / Head of Laboratory</h6>
+              </div>
+
+              <div class="col-md-4 mb-3">
+                <label class="form-control-label font-weight-bold">Lab Manager</label>
+                {{ site_form.Site_Lab_Head|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-2 mb-3">
+                <label class="form-control-label font-weight-bold">Credentials</label>
+                {{ site_form.Site_Lab_Head_Credentials|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-control-label font-weight-bold">Designation</label>
+                {{ site_form.Site_Lab_Head_Designation|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-control-label font-weight-bold">Email</label>
+                {{ site_form.Site_Lab_Head_Email|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-control-label font-weight-bold">Contact No.</label>
+                {{ site_form.Site_Lab_Head_Contact|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-12 mt-2 mb-2">
+                <h6 class="text-uppercase text-muted">Medical Center Chief</h6>
+              </div>
+
+              <div class="col-md-4 mb-3">
+                <label class="form-control-label font-weight-bold">Name</label>
+                {{ site_form.Site_Med_Ctr_Chief|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-2 mb-3">
+                <label class="form-control-label font-weight-bold">Credentials</label>
+                {{ site_form.Site_Med_Ctr_Chief_Credentials|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-control-label font-weight-bold">Designation</label>
+                {{ site_form.Site_Med_Ctr_Chief_Designation|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-control-label font-weight-bold">Email</label>
+                {{ site_form.Site_Med_Ctr_Chief_Email|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-control-label font-weight-bold">Contact No.</label>
+                {{ site_form.Site_Med_Ctr_Chief_Contact|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-12 mt-2 mb-2">
+                <h6 class="text-uppercase text-muted">Medical Technologist</h6>
+              </div>
+
+              <div class="col-md-4 mb-3">
+                <label class="form-control-label font-weight-bold">Name</label>
+                {{ site_form.Site_MedTech|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-2 mb-3">
+                <label class="form-control-label font-weight-bold">Credentials</label>
+                {{ site_form.Site_MedTech_Credentials|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-control-label font-weight-bold">Designation</label>
+                {{ site_form.Site_MedTech_Designation|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-control-label font-weight-bold">Email</label>
+                {{ site_form.Site_MedTech_Email|append_attr:"class: form-control" }}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-control-label font-weight-bold">Contact No.</label>
+                {{ site_form.Site_MedTech_Contact|append_attr:"class: form-control" }}
               </div>
             </div>
 

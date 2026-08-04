@@ -11,17 +11,18 @@
 
 {% block content %}
 
-<div class="container-fluid mt-5">
-<h2><i class="fas fa-cogs mr-2"></i> System Settings </h2>
-<br>
-    <div class="row mt--10">
+<div class="container-fluid settings-page-shell">
+    <div class="settings-hero">
+        <h2 class="settings-title"><i class="fas fa-cogs mr-2"></i> System Settings</h2>
+    </div>
+
+    <div class="row settings-layout-row">
 
         <!-- LEFT SIDEBAR -->
         <div class="col-md-4 col-lg-3 ">
 
-            <div class="card">
-                <div class="card-header" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
-                    border-bottom: 2px solid #d1e8ed;">
+            <div class="card settings-sidebar">
+                <div class="card-header settings-menu-header">
                     <h5 class="card-title mb-0" >Configuration Menu</h5>
                 </div>
 
@@ -52,10 +53,18 @@
                             <i class="fas fa-vial mr-2"></i> Specimen Types
                         </a>
 
-                        <a class="list-group-item list-group-item-action"
-                            data-toggle="list" href="#contact_tab" role="tab">
-                            <i class="fas fa-user-md mr-2"></i> ARSP Staff
-                        </a>
+                        {% if user_access.can_add_staff %}
+                            <a class="list-group-item list-group-item-action"
+                                data-toggle="list" href="#contact_tab" role="tab">
+                                <i class="fas fa-user-md mr-2"></i> ARSP Staff
+                            </a>
+                        {% endif %}
+                        {% if user_access.can_manage_staff %}
+                            <a class="list-group-item list-group-item-action"
+                                data-toggle="list" href="#accounts_tab" role="tab">
+                                <i class="fas fa-users-cog mr-2"></i> Accounts
+                            </a>
+                        {% endif %}
                         <a class="list-group-item list-group-item-action"
                             data-toggle="list" href="#emerging_tab" role="tab">
                             <i class="fa fa-exclamation-triangle mr-2"></i> Flag Age <small>(Emerging Resistance)</small>
@@ -125,10 +134,18 @@
                     {% include "settings/tabs/specimen_tab.html" %}
                 </div>
 
-                <!-- ARSP Contact -->
-                <div class="tab-pane fade" id="contact_tab" role="tabpanel">
-                    {% include "settings/tabs/contact_tab.html" %}
-                </div>
+                {% if user_access.can_add_staff %}
+                    <!-- ARSP Contact -->
+                    <div class="tab-pane fade" id="contact_tab" role="tabpanel">
+                        {% include "settings/tabs/contact_tab.html" %}
+                    </div>
+                {% endif %}
+                {% if user_access.can_manage_staff %}
+                    <!-- Registered Accounts -->
+                    <div class="tab-pane fade" id="accounts_tab" role="tabpanel">
+                        {% include "settings/tabs/accounts_tab.html" %}
+                    </div>
+                {% endif %}
                 <!-- Lab Result Recommendations -->
                 <div class="tab-pane fade" id="emerging_tab" role="tabpanel">
                     {% include "settings/tabs/emerging_tab.html" %}
@@ -178,6 +195,128 @@ document.addEventListener("DOMContentLoaded", function () {
             `a[data-toggle="list"][href="#${tab}_tab"]`
         );
         if (trigger) trigger.click();
+    }
+
+    const duplicateCheckUrl = "{% url 'check_setting_duplicate' %}";
+    const duplicateFields = [
+        { selector: '#siteform [name="SiteCode"]', type: 'site_code', label: 'Site Code' },
+        { selector: '#antibioticsform [name="Whonet_Abx"]', type: 'antibiotic', label: 'Antibiotic WHONET Code' },
+        { selector: '#organismform [name="Whonet_Org_Code"]', type: 'organism', label: 'Organism Code' },
+        { selector: '#specimenForm [name="Specimen_code"]', type: 'specimen', label: 'Specimen Code' },
+        { selector: '#contactform [name="Staff_Name"]', type: 'staff_name', label: 'Staff Name' },
+        { selector: '#contactform [name="Staff_EmailAdd"]', type: 'staff_email', label: 'Staff Email' },
+        { selector: '#contactform [name="User_Account"]', type: 'staff_user', label: 'Linked User Account' },
+        { selector: '#emergingform [name="Eme_Age"]', type: 'emerging_age', label: 'Emerging Age Criterion' },
+        { selector: '#phenotypepreform [name="Pre_Phenotypes"]', type: 'phenotype_pre', label: 'Phenotype Pre' },
+        { selector: '#phenotypepostform [name="Post_Phenotypes"]', type: 'phenotype_post', label: 'Phenotype Post' },
+        { selector: '#recoform [name="RecoCode"]', type: 'recommendation', label: 'Recommendation Code' },
+        { selector: '#nonWorkingDayForm [name="date"]', type: 'non_working_day', label: 'Non-working Day' },
+        {
+            selector: '#tatStepConfigForm [name="step_type"]',
+            type: 'tat_config',
+            label: 'TAT Step Configuration',
+            extra: function () {
+                const owner = document.querySelector('#tatStepConfigForm [name="step_owner"]');
+                return { step_owner: owner ? owner.value : '' };
+            }
+        },
+    ];
+
+    function ensureWarningBox(input) {
+        let box = input.closest('.mb-3, .col-md-6, .col-md-4, .col-md-12, .form-group')?.querySelector('.duplicate-warning-box');
+        if (!box) {
+            box = document.createElement('div');
+            box.className = 'duplicate-warning-box mt-2';
+            input.insertAdjacentElement('afterend', box);
+        }
+        return box;
+    }
+
+    function setDuplicateState(input, box, config, exists) {
+        input.dataset.duplicateExists = exists ? '1' : '0';
+        if (exists) {
+            box.innerHTML = `
+                <div class="alert alert-danger py-1 px-2 mb-0 text-left">
+                    <strong>Duplicate ${config.label} detected:</strong> This entry already exists.
+                </div>
+            `;
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+        } else {
+            box.innerHTML = `
+                <div class="alert alert-success py-1 px-2 mb-0 text-left">
+                    ${config.label} available.
+                </div>
+            `;
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+        }
+    }
+
+    function clearDuplicateState(input, box) {
+        input.dataset.duplicateExists = '0';
+        box.innerHTML = '';
+        input.classList.remove('is-invalid', 'is-valid');
+    }
+
+    function checkDuplicate(input, config) {
+        const value = (input.value || '').trim();
+        const box = ensureWarningBox(input);
+        if (!value) {
+            clearDuplicateState(input, box);
+            return;
+        }
+
+        const params = new URLSearchParams({
+            type: config.type,
+            value: value,
+        });
+        if (config.extra) {
+            const extra = config.extra() || {};
+            Object.keys(extra).forEach((key) => params.append(key, extra[key]));
+        }
+
+        fetch(`${duplicateCheckUrl}?${params.toString()}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then((response) => response.json())
+            .then((data) => setDuplicateState(input, box, config, data.exists))
+            .catch(() => {
+                box.innerHTML = '';
+            });
+    }
+
+    duplicateFields.forEach((config) => {
+        const input = document.querySelector(config.selector);
+        if (!input) return;
+
+        let timer = null;
+        const runCheck = () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => checkDuplicate(input, config), 300);
+        };
+
+        input.addEventListener('input', runCheck);
+        input.addEventListener('change', runCheck);
+        const form = input.closest('form');
+        if (form && !form.dataset.duplicateGuardBound) {
+            form.dataset.duplicateGuardBound = '1';
+            form.addEventListener('submit', function (event) {
+                const duplicateInput = form.querySelector('[data-duplicate-exists="1"]');
+                if (duplicateInput) {
+                    event.preventDefault();
+                    duplicateInput.focus();
+                }
+            });
+        }
+    });
+
+    const tatOwner = document.querySelector('#tatStepConfigForm [name="step_owner"]');
+    const tatStep = document.querySelector('#tatStepConfigForm [name="step_type"]');
+    if (tatOwner && tatStep) {
+        tatOwner.addEventListener('change', function () {
+            tatStep.dispatchEvent(new Event('change'));
+        });
     }
 });
 </script>

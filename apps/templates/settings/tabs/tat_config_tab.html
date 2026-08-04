@@ -33,6 +33,10 @@
       <i class="fas fa-file-upload mr-1"></i> Upload
     </button>
 
+    <a href="{% url 'export_tat_step_config' %}" class="btn btn-sm btn-outline-primary mr-2">
+      <i class="fas fa-file-export mr-1"></i> Export
+    </a>
+
     <!-- View All -->
     <a href="{% url 'tat_step_config_list' %}" class="btn btn-sm btn-primary">
       <i class="fas fa-table mr-1"></i> View All
@@ -52,9 +56,11 @@
                   {% else %}
                     {% url 'add_tat_step_config' %}
                   {% endif %}"
-          id="tatStepConfigForm">
+          id="tatStepConfigForm"
+          novalidate>
 
       {% csrf_token %}
+      {% include "includes/form_errors.html" with form=tat_config_form %}
 
       <!-- FORM FIELDS -->
       <div class="row">
@@ -137,7 +143,8 @@
   <form method="POST"
         action="{% url 'upload_tat_step_config' %}"
         enctype="multipart/form-data"
-        onsubmit="return confirm('⚠️ This will replace all existing TAT Step Configurations. Continue?');">
+        onsubmit="return confirm('⚠️ This will replace all existing TAT Step Configurations. Continue?');"
+        novalidate>
 
     {% csrf_token %}
 

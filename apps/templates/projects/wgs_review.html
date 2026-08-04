@@ -54,7 +54,7 @@
   </div>
 
   <!-- ================= WGS RESULTS ================= -->
-  {% if wgs %}
+  {% if wgs_project %}
   <div class="card shadow-sm mb-4">
     <div class="card-header bg-info text-white">
       <h5 class="mb-0">
@@ -64,29 +64,31 @@
 
     <div class="card-body">
 
-      <!-- FASTQ QC -->
-   {% if fastq %}
-<h6 class="text-uppercase text-muted">FASTQ Quality Control</h6>
+      <!-- BACTSCOUT QC -->
+   {% if bactscout %}
+<h6 class="text-uppercase text-muted">BactScout Quality Control</h6>
 <table class="table table-sm table-bordered">
   <thead>
     <tr>
       <th>Accession</th>
-      <th>Sample</th>
-      <th>Q30 (%)</th>
-      <th>GC (%)</th>
+      <th>Name</th>
+      <th>Species</th>
+      <th>Q30 Rate</th>
+      <th>GC Content</th>
       <th>Status</th>
     </tr>
   </thead>
   <tbody>
-  {% for fq in fastq %}
+  {% for bs in bactscout %}
     <tr>
-      <td>{{ fq.FastQ_Accession }}</td>
-      <td>{{ fq.sample }}</td>
-      <td>{{ fq.post_trim_q30_pct }}</td>
-      <td>{{ fq.after_gc_pct }}</td>
+      <td>{{ bs.BactScout_Accession }}</td>
+      <td>{{ bs.name }}</td>
+      <td>{{ bs.species }}</td>
+      <td>{{ bs.read_q30_rate }}</td>
+      <td>{{ bs.gc_content }}</td>
       <td>
-        <span class="badge badge-{% if fq.q30_status == 'PASS' %}success{% else %}danger{% endif %}">
-          {{ fq.q30_status }}
+        <span class="badge badge-{% if bs.read_q30_status == 'PASS' or bs.a_final_status == 'PASS' %}success{% else %}danger{% endif %}">
+          {{ bs.read_q30_status|default:bs.a_final_status }}
         </span>
       </td>
     </tr>
@@ -97,9 +99,9 @@
 
 
       <!-- GAMBIT -->
-      {% if wgs.gambit_entries.exists %}
+      {% if wgs_project.gambit_entries.exists %}
       <h6 class="text-uppercase text-muted">GAMBIT Identification</h6>
-      {% for g in wgs.gambit_entries.all %}
+      {% for g in wgs_project.gambit_entries.all %}
         <p class="mb-1">
           <strong>{{ g.predicted_name }}</strong>
           ({{ g.predicted_rank }})<br>
@@ -112,9 +114,9 @@
       {% endif %}
 
       <!-- MLST -->
-      {% if wgs.mlst_entries.exists %}
+      {% if wgs_project.mlst_entries.exists %}
       <h6 class="text-uppercase text-muted">MLST</h6>
-      {% for m in wgs.mlst_entries.all %}
+      {% for m in wgs_project.mlst_entries.all %}
         <p class="mb-1">
           <strong>Scheme:</strong> {{ m.scheme }} |
           <strong>ST:</strong> {{ m.mlst }}
@@ -124,9 +126,9 @@
       {% endif %}
 
       <!-- CHECKM2 -->
-      {% if wgs.checkm2_entries.exists %}
+      {% if wgs_project.checkm2_entries.exists %}
       <h6 class="text-uppercase text-muted">Genome Quality (CheckM2)</h6>
-      {% for c in wgs.checkm2_entries.all %}
+      {% for c in wgs_project.checkm2_entries.all %}
         <div class="row text-sm mb-2">
           <div class="col-md-3">Completeness: {{ c.Completeness }}%</div>
           <div class="col-md-3">Contamination: {{ c.Contamination }}%</div>
@@ -138,9 +140,9 @@
       {% endif %}
 
       <!-- ASSEMBLY -->
-      {% if wgs.assembly_entries.exists %}
+      {% if wgs_project.assembly_entries.exists %}
       <h6 class="text-uppercase text-muted">Assembly Metrics</h6>
-      {% for a in wgs.assembly_entries.all %}
+      {% for a in wgs_project.assembly_entries.all %}
         <p class="mb-1">
           Contigs: {{ a.total_contig }},
           N50: {{ a.n50_contig_length }},
@@ -151,9 +153,9 @@
       {% endif %}
 
       <!-- AMRFINDER -->
-      {% if wgs.amrfinder_entries.exists %}
+      {% if wgs_project.amrfinder_entries.exists %}
       <h6 class="text-uppercase text-muted">AMR Genes</h6>
-      {% for amr in wgs.amrfinder_entries.all %}
+      {% for amr in wgs_project.amrfinder_entries.all %}
         <span class="badge badge-warning mb-1">
           {{ amr.element_symbol }} ({{ amr.class_field }})
         </span>

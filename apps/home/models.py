@@ -5,8 +5,53 @@ from django.core.validators import EmailValidator
 from phonenumber_field.modelfields import PhoneNumberField
 from django.contrib.auth.models import User
 from apps.home.utils import working_days
+from datetime import timedelta
+import re
 
 # Create your models here.
+
+
+def accession_ref_sequence(accession):
+    """
+    Return the accession reference suffix as an integer.
+
+    Examples:
+    - 25ARS_APM0278 -> 278
+    - 25ARS_APM0009 -> 9
+    """
+    match = re.search(r"(\d+)(?!.*\d)", str(accession or "").strip())
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def format_age_display(birth_date, specimen_date, age):
+    if age in ("", " ", None):
+        return ""
+    if not birth_date or not specimen_date or specimen_date < birth_date:
+        return str(age)
+
+    years = specimen_date.year - birth_date.year
+    months = specimen_date.month - birth_date.month
+    days = specimen_date.day - birth_date.day
+
+    if days < 0:
+        previous_month_last_day = (
+            specimen_date.replace(day=1) - timedelta(days=1)
+        ).day
+        days += previous_month_last_day
+        months -= 1
+
+    if months < 0:
+        months += 12
+        years -= 1
+
+    if years > 0:
+        return str(age)
+
+    if months > 0:
+        return f"{months}m"
+    return f"{days}d"
 
 
 class Batch_Table(models.Model):
@@ -21,6 +66,13 @@ class Batch_Table(models.Model):
         ('Other','Other'),
     )
 
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_batches",
+    )
     bat_SiteCode = models.CharField(max_length=255, blank=True, default='')
     bat_Seq_No = models.IntegerField(null=True, blank=True)
     bat_Site_Name = models.CharField(max_length=255, blank=True)
@@ -178,6 +230,7 @@ class Referred_Data(models.Model):
     null=True,
     validators=[MinValueValidator(0), MaxValueValidator(120)]
     )
+    Age_Display = models.CharField(max_length=20, blank=True, default="")
     Sex=models.CharField(max_length=255, blank=True, choices=Gender_Choice, default="n/a")
     Date_Admis=models.DateField(null=True, blank=True)
     Nosocomial=models.CharField(max_length=255, choices=Common_Choices, default="n/a")
@@ -205,10 +258,12 @@ class Referred_Data(models.Model):
     ICR=models.CharField(max_length=255, choices=Common_pheno, default="n/a")
     OtherResMech=models.CharField(max_length=255, blank=True)
     #Organism Result
-    Site_Pre=models.CharField(max_length=255, blank=True, default='', null=True)
+    Site_Pre=models.CharField(max_length=255, blank=True, default="")
+    Site_Pre_ed=models.TextField(blank=True, default="")
     Site_Org=models.CharField(max_length=255, blank=True, default="")
     Site_OrgName=models.CharField(max_length=255, blank=True, null=True)
-    Site_Pos=models.CharField(max_length=255, blank=True, null=True, default="")
+    Site_Pos=models.CharField(max_length=255, blank=True, default="")
+    Site_Pos_ed=models.TextField(blank=True, default="")
     Comments=models.TextField(blank=True, null=True)
     
     #ARSRL Sty Results
@@ -223,8 +278,10 @@ class Referred_Data(models.Model):
     ars_MR=models.CharField(max_length=255, choices=Common_pheno, default="n/a")
     ars_mecA=models.CharField(max_length=255, choices=Common_pheno, default="n/a")
     ars_ICR=models.CharField(max_length=255, choices=Common_pheno, default="n/a")
-    ars_Pre=models.CharField( max_length=255, blank=True, default="", null=True)
-    ars_Post=models.CharField(max_length=255, blank=True, default="", null=True)
+    ars_Pre=models.CharField( max_length=255, blank=True, default="")
+    ars_Pre_ed=models.TextField(blank=True, default="")
+    ars_Post=models.CharField(max_length=255, blank=True, default="")
+    ars_Post_ed=models.TextField(blank=True, default="")
     ars_OrgCode=models.CharField(max_length=255, blank=True, default="")
     ars_OrgName=models.CharField(max_length=255, blank=True,)
     ars_ct_ctl=models.CharField(max_length=255, blank=True,)
@@ -273,6 +330,13 @@ class Referred_Data(models.Model):
 
     def save(self, *args, **kwargs):
         # Fill defaults to prevent NULL insertion
+        derived_seq = accession_ref_sequence(self.AccessionNo)
+        if derived_seq is not None:
+            self.bat_seq = derived_seq
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None and "bat_seq" not in update_fields:
+                kwargs["update_fields"] = list(update_fields) + ["bat_seq"]
+
         self.arsp_Encoder = self.arsp_Encoder or ""
         self.arsp_Enc_Lic = self.arsp_Enc_Lic or ""
         self.arsp_Checker = self.arsp_Checker or ""
@@ -283,9 +347,17 @@ class Referred_Data(models.Model):
         self.arsp_Lab_Lic = self.arsp_Lab_Lic or ""
         self.arsp_Head = self.arsp_Head or ""
         self.arsp_Head_Lic = self.arsp_Head_Lic or ""
+        self.Site_Pre = self.Site_Pre or ""
+        self.Site_Pre_ed = self.Site_Pre_ed or ""
+        self.Site_Pos = self.Site_Pos or ""
+        self.Site_Pos_ed = self.Site_Pos_ed or ""
         self.Site_Org = self.Site_Org or ""
         self.ars_OrgCode = self.ars_OrgCode or ""
         self.Site_OrgName = self.Site_OrgName or ""
+        self.ars_Pre = self.ars_Pre or ""
+        self.ars_Pre_ed = self.ars_Pre_ed or ""
+        self.ars_Post = self.ars_Post or ""
+        self.ars_Post_ed = self.ars_Post_ed or ""
 
 
 
@@ -293,6 +365,14 @@ class Referred_Data(models.Model):
         if self.Age in ("", " ", None):
             self.Age = None
 
+        self.Age_Display = format_age_display(
+            self.Date_Birth,
+            self.Spec_Date,
+            self.Age,
+        )
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and "Age_Display" not in update_fields:
+            kwargs["update_fields"] = list(update_fields) + ["Age_Display"]
 
         super().save(*args, **kwargs)
 
@@ -304,7 +384,6 @@ class Referred_Data(models.Model):
         db_table ="Referred_Data"
         constraints = [
             models.UniqueConstraint(fields=['AccessionNo', 'Batch_Code'], name='unique_accession_batch'),
-            models.UniqueConstraint(fields=["Batch_id", "bat_seq"],name="unique_bat_seq_per_batch")
         
         ]
 
@@ -321,13 +400,26 @@ class ReferredData_upload(models.Model):
 
 
 
-
-
-
-
 class SiteData(models.Model):
     SiteCode=models.CharField(max_length=3, blank=True)
     SiteName=models.CharField(max_length=155, blank=True)
+    Site_Address = models.CharField(max_length=255, blank=True)
+    Site_Lab_Head = models.CharField(max_length=255, blank=True)
+    Site_Lab_Head_Credentials = models.CharField(max_length=100, blank=True)
+    Site_Lab_Head_Designation = models.CharField(max_length=255, blank=True)
+    Site_Lab_Head_Email = models.EmailField(blank=True, validators=[EmailValidator()])
+    Site_Lab_Head_Contact = models.CharField(max_length=100, blank=True)
+    Site_Med_Ctr_Chief = models.CharField(max_length=255, blank=True)
+    Site_Med_Ctr_Chief_Credentials = models.CharField(max_length=100, blank=True)
+    Site_Med_Ctr_Chief_Designation= models.CharField(max_length=255, blank=True)
+    Site_Med_Ctr_Chief_Email = models.EmailField(blank=True, validators=[EmailValidator()])
+    Site_Med_Ctr_Chief_Contact = models.CharField(max_length=100, blank=True)
+    Site_MedTech = models.CharField(max_length=255, blank=True)
+    Site_MedTech_Credentials = models.CharField(max_length=100, blank=True)
+    Site_MedTech_Email = models.EmailField(blank=True, validators=[EmailValidator()])
+    Site_MedTech_Contact = models.CharField(max_length=100, blank=True)
+    Site_MedTech_Designation = models.CharField(max_length=255, blank=True)
+
     def __str__(self):
         return self.SiteCode 
     
@@ -371,6 +463,7 @@ class BreakpointsTable(models.Model):
     Guidelines = models.CharField(max_length=100, choices=GuidelineChoices, blank=True, default='')
     Year = models.CharField(max_length=100, blank=True, default='')
     Org = models.CharField(max_length=100, blank=True, default='')
+    Org_Code_type = models.CharField(max_length=100, blank=True, default='')
     Spec_code = models.CharField(max_length=100, blank=True, null=True)
     Emerging_specimen =models.BooleanField(default=False)
     Test_Method = models.CharField(max_length=20, choices=TestMethodChoices, blank=True, default='')
@@ -443,7 +536,8 @@ class AntibioticEntry(models.Model):
 
 
     ab_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
-    ab_MIC_value = models.DecimalField(max_digits=7, decimal_places=3, blank=True, null=True)
+    ab_MIC_value = models.DecimalField(max_digits=10, decimal_places=5, blank=True, null=True)
+
     ab_MIC_RIS = models.CharField(max_length=4, blank=True)
     ab_MIC_enRIS = models.CharField(max_length=4, blank=True, default='')
     
@@ -466,12 +560,13 @@ class AntibioticEntry(models.Model):
     ab_Retest_Abx_code = models.CharField(max_length=100, blank=True, null=True)
     ab_Retest_Abx = models.CharField(max_length=100, blank=True, null=True)
     
-    ab_Retest_DiskValue = models.IntegerField(blank=True, null=True)
+    ab_Retest_DiskValue = models.IntegerField(blank=True, null=True, )
     ab_Retest_Disk_RIS = models.CharField(max_length=4, blank=True)
     ab_Retest_Disk_enRIS = models.CharField(max_length=4, blank=True, default='')
     
     ab_Retest_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
-    ab_Retest_MICValue = models.DecimalField(max_digits=8, decimal_places=3, blank=True, null=True)
+    ab_Retest_MICValue = models.DecimalField(max_digits=10, decimal_places=5, blank=True, null=True)
+
     ab_Retest_MIC_RIS = models.CharField(max_length=4, blank=True)
     ab_Retest_MIC_enRIS = models.CharField(max_length=4, blank=True, default='')    
     
@@ -539,14 +634,77 @@ class Specimen_upload(models.Model):
 
 #Address Book
 class arsStaff_Details(models.Model):
+    Role_choices = (
+        ('',''),
+        ('DMU Encoder', 'DMU Encoder'),
+        ('LAB Encoder', 'LAB Encoder'),
+        ('Verifier','Verifier'),
+        ('Checker', 'Checker'),
+        ('Manager', 'Manager'),
+        ('Admin', 'Admin'),
+
+    )
+
+    User_Account = models.OneToOneField(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="arsp_staff_profile",
+    )
     Staff_Name = models.CharField(max_length=100, blank=True, null=True)
     Staff_Designation= models.CharField(max_length=100, blank=True, null=True)
     Staff_Telnum= PhoneNumberField(blank=True, region="PH", null=True)
     Staff_EmailAdd = models.EmailField(max_length=100, blank=True, null=True)
     Staff_License = models.CharField(max_length=100, blank=True, null=True)
+    Staff_Credentials = models.CharField(max_length=100, blank=True, default="")
+    Staff_Role = models.CharField(max_length=150, choices=Role_choices,  blank=True, default="")
+
+    @property
+    def role_list(self):
+        return [
+            role.strip()
+            for role in str(self.Staff_Role or "").replace(",", "|").replace(";", "|").split("|")
+            if role.strip()
+        ]
+
+    @property
+    def display_roles(self):
+        roles = self.role_list
+        return ", ".join(roles) if roles else "Checker"
+
+    @property
+    def display_name(self):
+        name = (self.Staff_Name or "").strip()
+        if not name and self.User_Account_id:
+            name = (
+                self.User_Account.get_full_name()
+                or self.User_Account.username
+                or self.User_Account.email
+                or ""
+            ).strip()
+        credentials = (self.Staff_Credentials or "").strip()
+        if name and credentials:
+            return f"{name}, {credentials}"
+        return name or "Unnamed Staff"
 
     def __str__(self):
-        return self.Staff_Name if self.Staff_Name else "Unnamed Staff"
+        return self.display_name
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    Middle_Name = models.CharField(max_length=150, blank=True, default="")
+
+    class Meta:
+        db_table = "UserProfile"
+
+    def __str__(self):
+        return self.user.get_full_name() or self.user.username
 
 
 class Recommendation(models.Model):
@@ -728,6 +886,9 @@ class TATform(models.Model):
     tat_BatchNumber = models.CharField(max_length=255, blank=True)
     tat_Total_Batch = models.CharField(max_length=100, blank=True)
     tat_Num_Isolate = models.PositiveIntegerField(null=True, blank=True)
+    tat_Scanning_raw = models.BooleanField(default=False)
+    tat_Scanning_ws = models.BooleanField(default=False)
+    tat_Scanning_final = models.BooleanField(default=False)
     tat_Batch_Location = models.CharField(
         max_length=20,
         choices=(
@@ -862,7 +1023,7 @@ class TATStep(models.Model):
 
 
 
-    step_type = models.CharField(max_length=100)
+    step_type = models.CharField(max_length=500)
     step_owner = models.CharField(max_length=10, blank=True)
 
     step_days_count = models.PositiveIntegerField(null=True, blank=True)
@@ -974,4 +1135,3 @@ class NonWorkingDay(models.Model):
 
     def __str__(self):
         return f"{self.date} - {self.description}"
-

@@ -1,0 +1,133 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %} Edit ARSP Staff {% endblock title %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="header bg-primary pb-6 settings-edit-header" style="background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
+    <span class="mask bg-gradient-default opacity-3"></span>
+    <div class="container-fluid">
+        <div class="header-body">
+            <div class="row align-items-center py-4">
+                <div class="col-lg-7 col-7">
+                    <h6 class="h2 text-white d-inline-block mb-0">Edit ARSP Staff</h6>
+                    <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+                        <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'contact_view' %}">ARSP Staff</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Edit</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="col-lg-5 col-5 text-right">
+                    <a class="btn btn-sm btn-secondary" href="{% url 'contact_view' %}">
+                        <i class="fas fa-arrow-left mr-1"></i>Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid settings-edit-content">
+    <div class="card shadow-sm">
+        <div class="card-header"
+             style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%);
+                    border-bottom: 2px solid #d1e8ed;">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-user-edit mr-2"></i>
+                {{ contact_item.display_name }}
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" id="contactEditForm" autocomplete="on">
+                {% csrf_token %}
+                {% include "includes/form_errors.html" with form=contact_form %}
+
+                <div class="section-divider">Staff Information</div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Linked User Account</label>
+                        {{ contact_form.User_Account|append_attr:"class:form-control" }}
+                        <small class="text-muted">Use this to connect the staff role to a Django login.</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Staff Name</label>
+                        {{ contact_form.Staff_Name|append_attr:"class:form-control" }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label>Credentials</label>
+                        {{ contact_form.Staff_Credentials|append_attr:"class:form-control"|append_attr:"placeholder:e.g. MD, RMT, MPH" }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label>Designation</label>
+                        {{ contact_form.Staff_Designation|append_attr:"class:form-control" }}
+                    </div>
+                    {% if user_access.can_edit_staff_roles %}
+                        <div class="col-md-4 mb-3">
+                            <label>Role</label>
+                            <div class="border rounded p-3 bg-light">
+                                {% for checkbox in contact_form.Staff_Role %}
+                                    <div class="custom-control custom-checkbox mb-1">
+                                        {{ checkbox.tag }}
+                                        <label class="custom-control-label" for="{{ checkbox.id_for_label }}">
+                                            {{ checkbox.choice_label }}
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <small class="text-muted">You may select more than one role, e.g. Verifier and DMU Encoder.</small>
+                        </div>
+                    {% else %}
+                        <div class="col-md-4 mb-3">
+                            <label>Role</label>
+                            <div class="border rounded p-3 bg-light">
+                                {% if contact_item.Staff_Role %}
+                                    {% for role in contact_item.role_list %}
+                                        <span class="badge badge-primary mr-1">{{ role }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="badge badge-light">No role assigned</span>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">Only Admin can edit staff roles.</small>
+                        </div>
+                    {% endif %}
+                    <div class="col-md-6 mb-3">
+                        <label>License Number</label>
+                        {{ contact_form.Staff_License|append_attr:"class:form-control" }}
+                    </div>
+                </div>
+
+                <div class="section-divider mt-4">Contact Details</div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Telephone Number</label>
+                        {{ contact_form.Staff_Telnum|append_attr:"class:form-control" }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Email Address</label>
+                        {{ contact_form.Staff_EmailAdd|append_attr:"class:form-control" }}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-4 flex-wrap">
+                    <a href="{% url 'contact_view' %}" class="btn btn-secondary mr-2">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-2"></i>Update Staff
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% include "includes/footer.html" %}
+</div>
+{% endblock content %}

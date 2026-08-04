@@ -35,7 +35,9 @@
                         <td>
                           <input name="disk_enris_{{ entry.Whonet_Abx }}"
                                  value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk_enris' %}"
-                                 type="text" style="width: 50px;">
+                                 type="text" maxlength="4"
+                                 oninput="this.value = this.value.toUpperCase();"
+                                 style="width: 70px; text-align: center; text-transform: uppercase;">
                         </td>
                       </tr>
                     {% endif %}
@@ -89,7 +91,9 @@
                         <td>
                           <input name="mic_enris_{{ entry.Whonet_Abx }}"
                                  value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_enris' %}"
-                                 type="text" style="width: 50px;">
+                                 type="text" maxlength="4"
+                                 oninput="this.value = this.value.toUpperCase();"
+                                 style="width: 70px; text-align: center; text-transform: uppercase;">
                         </td>
                         <td>
                           {% get_existing_value existing_entries entry.Whonet_Abx 'alert_mic' as alert_mic_checked %}

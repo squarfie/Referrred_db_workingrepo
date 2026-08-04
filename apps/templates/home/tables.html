@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
   <link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
   <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+
   <style>
     /* ── Page wrapper ── */
     .page-wrapper {
@@ -70,7 +71,9 @@
       transition: color 0.2s;
     }
 
-    .batch-header-title .breadcrumb-item a:hover { color: #00bcd4; }
+    .batch-header-title .breadcrumb-item a:hover {
+      color: #00bcd4;
+    }
 
     .batch-header-title .breadcrumb-item + .breadcrumb-item::before {
       color: rgba(200,220,255,0.3);
@@ -79,8 +82,10 @@
     .batch-header-actions {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
       gap: 0.5rem;
       flex-wrap: wrap;
+      margin-left: auto;
     }
 
     /* ── Content area ── */
@@ -110,13 +115,60 @@
       display: flex;
       align-items: center;
       gap: 0.75rem;
+    }
+
+    .toolbar-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      width: 100%;
+      flex-wrap: nowrap;
+    }
+
+    .toolbar-search-form {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .toolbar-search-form > div:not(.search-input-wrap),
+    .toolbar-search-form select {
+      flex-shrink: 0;
+    }
+
+    .toolbar-download-form {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.35rem;
+      flex: 0 0 auto;
+      margin-left: auto;
       flex-wrap: wrap;
+    }
+
+    .toolbar-download-form input {
+      width: 135px;
+    }
+
+    .toolbar-download-form small {
+      display: block;
+      flex-basis: 100%;
+      color: #6c757d;
+      font-size: 0.7rem;
+      line-height: 1.2;
+      margin: 0.15rem 0 0 0;
+      white-space: nowrap;
+      text-align: right;
+      order: 4;
     }
 
     .search-input-wrap {
       position: relative;
-      flex: 1;
-      min-width: 220px;
+      flex: 1 1 auto;
+      min-width: 350px;
     }
 
     .search-input-wrap .search-icon {
@@ -153,38 +205,62 @@
 
     /* ── Table card ── */
     .table-card {
-      border: 1px solid #e3e6f0;
+      background:
+        linear-gradient(180deg, rgba(245, 252, 254, 0.98), rgba(255, 255, 255, 0.98));
+      border: 1px solid rgba(0,188,212,0.22);
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 4px 16px rgba(30,90,150,0.08);
+      box-shadow: 0 14px 30px rgba(15,58,95,0.12);
     }
 
     .table-responsive {
       max-height: 650px;
       overflow-y: auto;
       overflow-x: auto;
+      background:
+        linear-gradient(90deg, rgba(224,248,252,0.84) 0%, rgba(255,255,255,0.7) 48%, rgba(224,248,252,0.84) 100%),
+        url("{% static 'assets/img/theme/microbial.jpg' %}") center 36% / cover no-repeat;
     }
 
-    .table-responsive::-webkit-scrollbar { width: 5px; height: 5px; }
-    .table-responsive::-webkit-scrollbar-track { background: #f1f1f1; }
-    .table-responsive::-webkit-scrollbar-thumb { background: #c0cfe0; border-radius: 4px; }
-    .table-responsive::-webkit-scrollbar-thumb:hover { background: #1e5a96; }
+    .table-responsive::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+
+    .table-responsive::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb {
+      background: #c0cfe0;
+      border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+      background: #1e5a96;
+    }
 
     /* ── Data table ── */
     .data-table {
       margin: 0;
       border-collapse: collapse;
       width: 100%;
+      background: transparent;
     }
 
     .data-table thead {
       position: sticky;
       top: 0;
       z-index: 10;
+      background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+      backdrop-filter: blur(14px) saturate(125%);
+      -webkit-backdrop-filter: blur(14px) saturate(125%);
+      border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
     }
 
     .data-table thead th {
-      background: linear-gradient(135deg, #1e5a96 0%, #0f3a5f 100%);
+      background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
       color: white;
       font-size: 0.72rem;
       font-weight: 700;
@@ -193,6 +269,9 @@
       padding: 0.9rem 0.9rem;
       border: none;
       white-space: nowrap;
+      backdrop-filter: blur(14px) saturate(125%);
+      -webkit-backdrop-filter: blur(14px) saturate(125%);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.34);
     }
 
     .data-table thead th a {
@@ -204,20 +283,138 @@
       transition: opacity 0.2s;
     }
 
-    .data-table thead th a:hover { opacity: 0.8; }
+    .data-table thead th a:hover {
+      opacity: 0.8;
+    }
 
     .data-table tbody tr {
-      border-bottom: 1px solid #f0f2f7;
+      border-bottom: 1px solid rgba(15,58,95,0.08);
       transition: background 0.18s ease;
     }
 
-    .data-table tbody tr:hover { background-color: rgba(0,188,212,0.04); }
+    .data-table tbody tr:hover {
+      background-color: rgba(0,188,212,0.06);
+    }
 
     .data-table tbody td {
       padding: 0.8rem 0.9rem;
       vertical-align: middle;
       font-size: 0.82rem;
       color: #3c4a5c;
+    }
+
+    .batch-accordion-row {
+      cursor: pointer;
+      background: transparent;
+      border-top: 1px solid rgba(0,188,212,0.2);
+      border-bottom: 1px solid rgba(15,58,95,0.1);
+      box-shadow: inset 4px 0 0 #00bcd4;
+    }
+
+    .batch-accordion-row:hover {
+      background: transparent !important;
+    }
+
+    .batch-accordion-cell {
+      padding: 0.85rem 1rem !important;
+      color: #0f3a5f !important;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      background: rgba(232, 248, 252, 0.44);
+    }
+
+    .batch-accordion-row:hover .batch-accordion-cell {
+      background: rgba(218, 245, 250, 0.58);
+    }
+
+    .batch-toggle-icon {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      background: #0f3a5f;
+      border: 1px solid rgba(0,188,212,0.45);
+      color: #ffffff;
+      margin-right: 0.65rem;
+      transition: transform 0.18s ease;
+    }
+
+    .batch-accordion-row.is-open .batch-toggle-icon {
+      transform: rotate(90deg);
+    }
+
+    .batch-count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(0,188,212,0.14);
+      border: 1px solid rgba(0,188,212,0.44);
+      color: #07889a;
+      font-size: 0.72rem;
+      font-weight: 800;
+      margin-left: 0.65rem;
+    }
+
+    .batch-site-code {
+      color: #075f78 !important;
+      font-size: 0.72rem;
+      font-weight: 900;
+      margin-left: 0.5rem;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+    }
+
+    .batch-accordion-inner {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+    }
+
+    .batch-accordion-title {
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .batch-overwrite-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin: 0 0 0 auto;
+      color: #ffe9a8;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .batch-overwrite-option input {
+      width: 13px;
+      height: 13px;
+      margin: 0;
+    }
+
+    .batch-child-row {
+      display: none;
+    }
+
+    .batch-child-row.is-visible {
+      display: table-row;
+    }
+
+    .batch-child-row.is-visible td {
+      background: #f8fdff;
+    }
+
+    .batch-child-row.is-visible:hover td {
+      background: #eefaff;
     }
 
     /* ── Row number badge ── */
@@ -258,7 +455,9 @@
     }
 
     /* ── Info cells ── */
-    .info-cell { min-width: 170px; }
+    .info-cell {
+      min-width: 170px;
+    }
 
     .info-label {
       font-size: 0.68rem;
@@ -276,7 +475,10 @@
       margin-bottom: 5px;
     }
 
-    .info-value.primary { color: #1e5a96; font-size: 0.95rem; }
+    .info-value.primary {
+      color: #1e5a96;
+      font-size: 0.95rem;
+    }
 
     .info-row {
       display: flex;
@@ -285,7 +487,9 @@
       margin-bottom: 4px;
     }
 
-    .info-row:last-child { margin-bottom: 0; }
+    .info-row:last-child {
+      margin-bottom: 0;
+    }
 
     /* ── Date chip ── */
     .date-chip {
@@ -302,38 +506,39 @@
       white-space: nowrap;
     }
 
+    /* ── Antibiotic results cell ── */
+    .abx-cell {
+      min-width: 280px;
+      max-width: 380px;
+      font-size: 0.78rem;
+      line-height: 1.55;
+      color: #3c4a5c;
+      padding-top: 4px;
+    }
 
-/* ── Antibiotic results cell ── */
-.abx-cell {
-  min-width: 280px;
-  max-width: 380px;
-  font-size: 0.78rem;
-  line-height: 1.55;
-  color: #3c4a5c;
-  padding-top: 4px;
-}
+    .abx-scroll {
+      max-height: 170px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
 
-.abx-scroll {
-  max-height: 170px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
+    .abx-cell::-webkit-scrollbar {
+      width: 6px;
+    }
 
-.abx-cell::-webkit-scrollbar {
-  width: 6px;
-}
+    .abx-cell::-webkit-scrollbar-thumb {
+      background: rgba(30,90,150,0.25);
+      border-radius: 6px;
+    }
 
-.abx-cell::-webkit-scrollbar-thumb {
-  background: rgba(30,90,150,0.25);
-  border-radius: 6px;
-}
     .abx-entry {
       padding: 4px 0;
       border-bottom: 1px dashed #eef0f4;
-      
     }
 
-    .abx-entry:last-child { border-bottom: none; }
+    .abx-entry:last-child {
+      border-bottom: none;
+    }
 
     .abx-name {
       font-weight: 700;
@@ -343,6 +548,13 @@
     .abx-ris {
       font-weight: 700;
       color: #e74c3c;
+    }
+
+    .enris-badge {
+      display: inline-block;
+      white-space: nowrap;
+      font-weight: 800;
+      letter-spacing: 0;
     }
 
     .abx-alert {
@@ -360,7 +572,9 @@
     }
 
     /* ── Action buttons ── */
-    .action-col { min-width: 42px; }
+    .action-col {
+      min-width: 42px;
+    }
 
     .action-btn-icon {
       display: inline-flex;
@@ -382,42 +596,91 @@
       border-color: rgba(38,166,154,0.4);
       background: rgba(38,166,154,0.07);
     }
-    .action-btn-icon.edit:hover { background: #26a69a; color: white; border-color: #26a69a; transform: translateY(-1px); }
+
+    .action-btn-icon.edit:hover {
+      background: #26a69a;
+      color: white;
+      border-color: #26a69a;
+      transform: translateY(-1px);
+    }
 
     .action-btn-icon.del {
       color: #e74c3c;
       border-color: rgba(231,76,60,0.4);
       background: rgba(231,76,60,0.07);
     }
-    .action-btn-icon.del:hover { background: #e74c3c; color: white; border-color: #e74c3c; transform: translateY(-1px); }
+
+    .action-btn-icon.del:hover {
+      background: #e74c3c;
+      color: white;
+      border-color: #e74c3c;
+      transform: translateY(-1px);
+    }
 
     .action-btn-icon.copy {
       color: #00bcd4;
       border-color: rgba(0,188,212,0.4);
       background: rgba(0,188,212,0.07);
     }
-    .action-btn-icon.copy:hover { background: #00bcd4; color: white; border-color: #00bcd4; transform: translateY(-1px); }
+
+    .action-btn-icon.copy:hover {
+      background: #00bcd4;
+      color: white;
+      border-color: #00bcd4;
+      transform: translateY(-1px);
+    }
 
     .action-btn-icon.batch-copy {
       color: #7b5ea7;
       border-color: rgba(123,94,167,0.4);
       background: rgba(123,94,167,0.07);
     }
-    .action-btn-icon.batch-copy:hover { background: #7b5ea7; color: white; border-color: #7b5ea7; transform: translateY(-1px); }
+
+    .action-btn-icon.batch-copy:hover {
+      background: #7b5ea7;
+      color: white;
+      border-color: #7b5ea7;
+      transform: translateY(-1px);
+    }
 
     .action-btn-icon.undo {
       color: #f39c12;
       border-color: rgba(243,156,18,0.4);
       background: rgba(243,156,18,0.07);
     }
-    .action-btn-icon.undo:hover { background: #f39c12; color: white; border-color: #f39c12; transform: translateY(-1px); }
+
+    .action-btn-icon.undo:hover {
+      background: #f39c12;
+      color: white;
+      border-color: #f39c12;
+      transform: translateY(-1px);
+    }
 
     .action-btn-icon.pdf {
       color: #00bcd4;
       border-color: rgba(0,188,212,0.4);
       background: rgba(0,188,212,0.07);
     }
-    .action-btn-icon.pdf:hover { background: #00bcd4; color: white; border-color: #00bcd4; transform: translateY(-1px); }
+
+    .action-btn-icon.pdf:hover {
+      background: #00bcd4;
+      color: white;
+      border-color: #00bcd4;
+      transform: translateY(-1px);
+    }
+
+    .action-btn-icon.delete {
+      color: #f39c12;
+      border-color: rgba(243,156,18,0.4);
+      background: rgba(243,156,18,0.07);
+    }
+
+    .action-btn-icon.delete:hover {
+      background: #f39c12;
+      color: white;
+      border-color: #f39c12;
+      transform: translateY(-1px);
+    }
 
     /* ── Action grid layout ── */
     .action-grid {
@@ -430,6 +693,39 @@
     .action-row {
       display: flex;
       gap: 4px;
+      align-items: center;
+    }
+
+    .batch-copy-form {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin: 0;
+    }
+
+    .accession-copy-form {
+      display: inline-flex;
+      align-items: center;
+      margin: 0;
+    }
+
+    .overwrite-copy-option {
+      display: inline-flex;
+      align-items: center;
+      margin: 0;
+      padding: 2px;
+      border: 1px solid rgba(243,156,18,0.35);
+      border-radius: 6px;
+      background: rgba(243,156,18,0.08);
+      color: #8a5a00;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .overwrite-copy-option input {
+      width: 12px;
+      height: 12px;
+      margin: 0;
     }
 
     /* ── Footer ── */
@@ -488,7 +784,9 @@
       outline: none;
     }
 
-    .pagination { margin: 0; }
+    .pagination {
+      margin: 0;
+    }
 
     .pagination .page-link {
       width: 32px;
@@ -532,10 +830,19 @@
       padding: 1rem 1.5rem;
     }
 
-    .modal-header-danger .modal-title { color: white !important; font-weight: 700 !important; }
-    .modal-header-danger .close span { color: rgba(255,255,255,0.8); }
+    .modal-header-danger .modal-title {
+      color: white !important;
+      font-weight: 700 !important;
+    }
 
-    .modal-body { padding: 2rem; text-align: center; }
+    .modal-header-danger .close span {
+      color: rgba(255,255,255,0.8);
+    }
+
+    .modal-body {
+      padding: 2rem;
+      text-align: center;
+    }
 
     .delete-confirm-icon {
       width: 64px;
@@ -551,8 +858,17 @@
       color: #e74c3c;
     }
 
-    .delete-confirm-text { font-size: 1.05rem; font-weight: 600; color: #2c3e50; }
-    .delete-confirm-sub { font-size: 0.83rem; color: #6c757d; margin-top: 0.5rem; }
+    .delete-confirm-text {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .delete-confirm-sub {
+      font-size: 0.83rem;
+      color: #6c757d;
+      margin-top: 0.5rem;
+    }
 
     /* ── Empty state ── */
     .empty-state {
@@ -560,11 +876,74 @@
       padding: 4rem 2rem;
       color: #9aa4b8;
     }
-    .empty-state i { font-size: 3rem; margin-bottom: 1rem; color: #c0cfe0; }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: #c0cfe0;
+    }
+
+    @media (max-width: 1200px) {
+      .toolbar-controls {
+        flex-wrap: wrap;
+      }
+
+      .toolbar-search-form {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      .search-input-wrap {
+        min-width: 300px;
+      }
+
+      .toolbar-download-form {
+        flex: 1 1 100%;
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .toolbar-download-form small {
+        text-align: left;
+        white-space: normal;
+      }
+    }
 
     @media (max-width: 768px) {
-      .batch-header { padding: 1.25rem; }
-      .content-area { padding: 1rem; }
+      .batch-header {
+        padding: 1.25rem;
+      }
+
+      .content-area {
+        padding: 1rem;
+      }
+
+      .batch-header-actions {
+        justify-content: flex-start;
+        margin-left: 0;
+      }
+
+      .toolbar-search-form {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      .search-input-wrap {
+        min-width: 100%;
+      }
+
+      .toolbar-download-form {
+        width: 100%;
+        margin-left: 0;
+        flex-wrap: wrap;
+      }
+
+      .toolbar-download-form input {
+        flex: 1 1 130px;
+        width: auto;
+      }
     }
   </style>
 {% endblock stylesheets %}
@@ -592,20 +971,19 @@
     </div>
 
     <div class="batch-header-actions">
-      <a class="btn btn-sm btn-primary" href="{% url 'batch_create_view' %}" title="Create a new batch">
-        <i class="fas fa-plus mr-1"></i>Add Batch
-      </a>
-      <a class="btn btn-sm btn-info" href="{% url 'show_batches' %}" title="Review existing batches">
+      {% if user_access.can_create %}
+        <a class="btn btn-sm btn-primary" href="{% url 'batch_create_view' %}" title="Create a new batch">
+          <i class="fas fa-plus mr-1"></i>Add Batch
+        </a>
+      {% endif %}
+      <a class="btn btn-sm btn-info" href="{% url 'show_batches' %}" title="Show previous batch">
         <i class="fas fa-check-circle mr-1"></i>Show Previous
       </a>
-      <a class="btn btn-sm btn-info" href="{% url 'abxentry_view' %}" title="Enter antibiotic results">
+      <!-- <a class="btn btn-sm btn-info" href="{% url 'abxentry_view' %}" title="Enter antibiotic results">
         <i class="fas fa-microscope mr-1"></i>Antibiotic Results
-      </a>
+      </a> -->
       <a class="btn btn-sm btn-secondary" href="{% url 'review_batches' %}" title="Review existing batches">
         <i class="fa fa-bell mr-1"></i>Batch Overview
-      </a>
-      <a class="btn btn-sm btn-success" href="{% url 'download_combined_table' %}">
-        <i class="ni ni-cloud-download-95 mr-1"></i>Download Raw
       </a>
     </div>
   </div>
@@ -616,7 +994,8 @@
     <!-- Search Toolbar -->
     <div class="toolbar-row">
       <div class="search-panel">
-        <form method="get">
+        <div class="toolbar-controls">
+        <form method="get" class="toolbar-search-form">
           <div class="search-input-wrap">
             <i class="fas fa-search search-icon"></i>
             <input
@@ -653,6 +1032,15 @@
 
             </select>
         </form>
+        <form method="get" action="{% url 'download_combined_table' %}" class="toolbar-download-form">
+          <input type="date" name="date_from" class="form-control form-control-sm" title="Date of Entry from">
+          <input type="date" name="date_to" class="form-control form-control-sm" title="Date of Entry to">
+          <button class="btn btn-sm btn-success" type="submit">
+            <i class="ni ni-cloud-download-95 mr-1"></i>Download Raw
+          </button>
+          <small>Filtered by: Date of Entry; falls back to Specimen Date when Date of Entry is blank.</small>
+        </form>
+        </div>
         {% if query %}
         <div class="search-result-info">
           <i class="fas fa-info-circle mr-1"></i>Results for: <strong>{{ query }}</strong>
@@ -717,19 +1105,40 @@
               <th><i class="fas fa-pills mr-1"></i>Antibiotic Results</th>
 
               <th style="width:44px; text-align:center;"><i class="fa fa-file-pdf"></i></th>
-              <th style="width:44px; text-align:center;"><i class="fa fa-pencil-alt"></i></th>
-              <th style="width:44px; text-align:center;"><i class="fa fa-trash"></i></th>
+              <th style="width:44px; text-align:center;"><i class="ni ni-single-02"></i></th>
+              <th style="width:44px; text-align:center;"><i class="ni ni-archive-2"></i></th>
             </tr>
           </thead>
 
           <tbody>
-            {% for isolate in page_obj %}
-            <tr class="searchable-row"
+            {% for batch_group in page_groups %}
+            <tr class="batch-accordion-row"
+                data-batch-target="raw-batch-{{ forloop.counter }}"
+                data-batch-id="{{ batch_group.batch_id }}"
+                data-load-url="{% url 'raw_batch_rows' %}"
+                aria-expanded="false">
+              <td colspan="11" class="batch-accordion-cell">
+                <div class="batch-accordion-inner">
+                  <span class="batch-toggle-icon"><i class="fas fa-chevron-right"></i></span>
+                  <span class="batch-accordion-title">
+                    <i class="fas fa-layer-group mr-2"></i>{{ batch_group.code }}
+                    {% if batch_group.site_code %}
+                      <span class="batch-site-code">{{ batch_group.site_code }}</span>
+                    {% endif %}
+                    <span class="batch-count-badge">{{ batch_group.count }}</span>
+                  </span>
+                </div>
+              </td>
+            </tr>
+            {% if batch_group.records %}
+            {% for isolate in batch_group.records %}
+            <tr class="searchable-row batch-child-row"
+                data-batch-row="raw-batch-{{ forloop.parentloop.counter }}"
                 data-search-text="{{ isolate.AccessionNo }} {{ isolate.First_Name }} {{ isolate.Last_Name }} {{ isolate.Spec_Type }}">
 
               <!-- Row number -->
               <td style="text-align:center;">
-                <span class="row-num">{{ isolate.bat_seq }}</span>
+                <span class="row-num">{{ isolate.AccessionNo|accession_ref_no|default:isolate.bat_seq }}</span>
               </td>
 
               <!-- Copied status -->
@@ -743,6 +1152,7 @@
 
               <!-- Actions -->
               <td class="action-col">
+                {% if user_access.can_update and user_access.can_view_all or user_access.can_update and isolate.Batch_id.created_by_id == request.user.id %}
                 <div class="action-grid">
                   <div class="action-row">
                     <a href="{% url 'edit_data' isolate.id %}" class="action-btn-icon edit" title="Edit record">
@@ -756,28 +1166,44 @@
                     </button>
                   </div>
                   <div class="action-row">
-                    {% if isolate.Batch_id_id %}
-                    <button type="button" class="action-btn-icon copy"
-                            onclick="if(confirm('Copy this isolate to Final Data?')) window.location.href='{% url 'copy_data_to_final' isolate.id %}'"
-                            title="Copy isolate to Final">
-                      <i class="fas fa-copy"></i>
-                    </button>
+                    {% if isolate.Batch_id_id and user_access.can_update and user_access.can_view_all or isolate.Batch_id_id and user_access.can_update and isolate.Batch_id.created_by_id == request.user.id %}
+                    <form method="post"
+                          id="copy-accession-{{ isolate.id }}"
+                          action="{% url 'copy_data_to_final' isolate.id %}"
+                          class="accession-copy-form"
+                          onsubmit="return confirmAccessionCopyToFinal(this, '{{ isolate.AccessionNo|escapejs }}');">
+                      {% csrf_token %}
+                      <button type="submit" class="action-btn-icon copy"
+                              title="Copy accession to Final">
+                        <i class="fas fa-clipboard"></i>
+                      </button>
+                    </form>
 
-                    <button type="button" class="action-btn-icon batch-copy"
-                            title="Copy entire batch to Final"
-                            onclick="return confirm('Copy ALL isolates in batch {{ isolate.Batch_id.bat_Batch_Name }} to Final Data?\n\nThis will overwrite existing Final records.') && (window.location.href='{% url 'copy_batch_to_final' isolate.Batch_id.id %}')">
-                      <i class="fa fa-share"></i>
-                    </button>
-                   {% endif %}
-                    {% if isolate.AccessionNo in copied_ids %}
+                    <form method="post"
+                          id="copy-batch-{{ isolate.Batch_id.id }}-{{ isolate.id }}"
+                          action="{% url 'copy_batch_to_final' isolate.Batch_id.id %}"
+                          class="batch-copy-form"
+                          onsubmit="return confirmBatchCopyToFinal(this, '{{ isolate.Batch_id.bat_Batch_Name|escapejs }}');">
+                      {% csrf_token %}
+                      <button type="submit" class="action-btn-icon batch-copy"
+                              title="Copy entire batch to Final">
+                        <i class="fa fa-share"></i>
+                      </button>
+                    </form>
+
+                    {% if copied_ids %}
                     <button type="button" class="action-btn-icon undo"
-                            onclick="if(confirm('Undo finalization and remove from Final Data?')) window.location.href='{% url 'undo_copy_to_final' isolate.id %}'"
-                            title="Undo finalization">
+                            onclick="return confirm('Undo FINAL COPY for the whole batch {{ isolate.Batch_id.bat_Batch_Name }}?\n\nThis will DELETE all Final Data and Final Antibiotic results copied from this batch.') && (window.location.href='{% url 'undo_copy_batch_to_final' isolate.Batch_id.id %}')"
+                            title="Undo final copy for this batch">
                       <i class="fas fa-undo"></i>
                     </button>
                     {% endif %}
+                   {% endif %}
                   </div>
                 </div>
+                {% else %}
+                  <span style="color:#9fb0c4; font-size:0.72rem;">View only</span>
+                {% endif %}
               </td>
 
               <!-- Identification -->
@@ -866,7 +1292,7 @@
                     {% if antibiotic_entry.ab_Disk_value %}
                       Disk: <strong>{{ antibiotic_entry.ab_Disk_value }}</strong>
                       {% if antibiotic_entry.ab_Disk_enRIS %}
-                        <strong>{{ antibiotic_entry.ab_Disk_enRIS }}</strong>)
+                        <strong class="enris-badge">{{ antibiotic_entry.ab_Disk_enRIS }}</strong>)
                         &nbsp;<span class="abx-ris">{{ antibiotic_entry.ab_Disk_RIS }}</span>
                       {% endif %}
                     {% endif %}
@@ -877,7 +1303,7 @@
                         {{ antibiotic_entry.ab_MIC_value|floatformat:"-3" }}
                       </strong>
                       {% if antibiotic_entry.ab_MIC_enRIS %}
-                        <strong>{{ antibiotic_entry.ab_MIC_enRIS }}</strong>)
+                        <strong class="enris-badge">{{ antibiotic_entry.ab_MIC_enRIS }}</strong>)
                         &nbsp;<span class="abx-ris">{{ antibiotic_entry.ab_MIC_RIS }}</span>
                       {% endif %}
                       {% if antibiotic_entry.ab_AlertMIC %}
@@ -898,7 +1324,7 @@
                     (
                     {% if retest.ab_Retest_DiskValue %}
                       Retest Disk: <strong>{{ retest.ab_Retest_DiskValue }}</strong>
-                      <strong>{{ retest.ab_Retest_Disk_enRIS }}</strong>
+                      <strong class="enris-badge">{{ retest.ab_Retest_Disk_enRIS }}</strong>
                       &nbsp;<span class="abx-ris">{{ retest.ab_Retest_Disk_RIS }}</span>
                     {% endif %}
                     {% if retest.ab_Retest_DiskValue and retest.ab_Retest_MICValue %},{% endif %}
@@ -906,7 +1332,7 @@
                       Retest MIC: <strong>
                         {% if retest.ab_Retest_MIC_operand %}{{ retest.ab_Retest_MIC_operand }}{% endif %}
                         {{ retest.ab_Retest_MICValue|floatformat:"-3" }}
-                        {{ retest.ab_Retest_MIC_enRIS }}
+                        <span class="enris-badge">{{ retest.ab_Retest_MIC_enRIS }}</span>
                         &nbsp;<span class="abx-ris">{{ retest.ab_Retest_MIC_RIS }}</span>
                       </strong>
                       {% if retest.ab_Retest_AlertMIC %}
@@ -932,25 +1358,32 @@
 
               <!-- Edit Author -->
                     <td style="text-align:center;">
-                    {% if isolate.Batch_id_id %}
+                    {% if isolate.Batch_id_id and user_access.can_update and user_access.can_view_all or isolate.Batch_id_id and user_access.can_update and isolate.Batch_id.created_by_id == request.user.id %}
                       <a href="{% url 'batch_edit_view' isolate.Batch_id.id %}"
-                        class="action-btn-icon edit" title="Edit Batch Author">
-                        <i class="fa fa-pencil-alt"></i>
+                        class="action-btn-icon edit" title="Edit Batch">
+                        <i class="ni ni-single-02"></i>
                       </a>
+                    {% else %}
+                      <span style="color:#ccc;">-</span>
+                    {% endif %}
+                    </td>
 
               <td style="text-align:center;">
+                {% if isolate.Batch_id_id and user_access.can_delete and user_access.can_view_all or isolate.Batch_id_id and user_access.can_delete and isolate.Batch_id.created_by_id == request.user.id %}
                 <a href="{% url 'delete_batch' isolate.Batch_id.id %}"
                    class="action-btn-icon delete" title="Delete Batch">
-                  <i class="fa fa-trash text-warning"></i>
+                  <i class="ni  ni-archive-2 text-warning"></i>
                 </a> 
                                     {% else %}
                       <span style="color:#ccc;">—</span>
                     {% endif %}
                     </td>
             </tr>
+            {% endfor %}
+            {% endif %}
             {% empty %}
             <tr>
-              <td colspan="10">
+              <td colspan="11">
                 <div class="empty-state">
                   <i class="fas fa-inbox d-block"></i>
                   <p class="mb-0 font-weight-600">No records found. Try adjusting your search.</p>
@@ -967,7 +1400,7 @@
 
   <span class="page-info-text">
     Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-    &mdash; {{ page_obj.paginator.count }} total record(s)
+    &mdash; {{ page_obj.paginator.count }} batch group(s), {{ total_records }} total record(s)
   </span>
 
   <div class="footer-right">
@@ -1144,14 +1577,68 @@
 {% block javascripts %}
 
 <script>
+function confirmAccessionCopyToFinal(form, accessionNo) {
+    return confirm(
+        `Copy accession ${accessionNo} to Final Data?\n\n` +
+        "WARNING: If this accession already exists in Final, every existing Final instance for this accession will be overwritten from Raw, including edited Final data and antibiotic results.\n\n" +
+        "Raw data will remain unchanged after copying."
+    );
+}
+
+function confirmBatchCopyToFinal(form, batchName) {
+    return confirm(
+        `Copy ALL isolates in batch ${batchName} to Final Data?\n\n` +
+        "WARNING: If any records in this batch already exist in Final, every existing Final instance for those records will be overwritten from Raw, including edited Final data and antibiotic results.\n\n" +
+        "Raw data will remain unchanged after copying."
+    );
+}
+
 document.addEventListener("DOMContentLoaded", function() {
-    const deleteButtons = document.querySelectorAll(".delete-btn");
     const deleteForm = document.getElementById("deleteForm");
 
-    deleteButtons.forEach(button => {
-        button.addEventListener("click", function() {
-            const url = this.getAttribute("data-url");
+    document.addEventListener("click", function(event) {
+        const deleteButton = event.target.closest(".delete-btn");
+        if (deleteButton && deleteForm) {
+            const url = deleteButton.getAttribute("data-url");
             deleteForm.setAttribute("action", url);
+        }
+    });
+
+    document.querySelectorAll(".batch-accordion-row").forEach(row => {
+        row.addEventListener("click", async function() {
+            const target = this.getAttribute("data-batch-target");
+            const loadUrl = this.getAttribute("data-load-url");
+            const isOpen = this.classList.toggle("is-open");
+            this.setAttribute("aria-expanded", isOpen ? "true" : "false");
+
+            if (isOpen && !this.dataset.loaded && loadUrl) {
+                const loadingRow = document.createElement("tr");
+                loadingRow.setAttribute("data-batch-row", target);
+                loadingRow.className = "batch-child-row is-visible";
+                loadingRow.innerHTML = `<td colspan="11" style="text-align:center; padding:1rem; color:#7f8fa4;">Loading records...</td>`;
+                this.insertAdjacentElement("afterend", loadingRow);
+
+                const params = new URLSearchParams(window.location.search);
+                params.set("batch_id", this.getAttribute("data-batch-id") || "");
+                params.set("target", target);
+
+                try {
+                    const response = await fetch(`${loadUrl}?${params.toString()}`, {
+                        headers: {"X-Requested-With": "XMLHttpRequest"}
+                    });
+                    const payload = await response.json();
+                    loadingRow.remove();
+                    this.insertAdjacentHTML("afterend", payload.html || "");
+                    this.dataset.loaded = "1";
+                } catch (error) {
+                    loadingRow.innerHTML = `<td colspan="11" style="text-align:center; padding:1rem; color:#f5365c;">Unable to load records. Please try again.</td>`;
+                    return;
+                }
+            }
+
+            document.querySelectorAll(`[data-batch-row="${target}"]`).forEach(childRow => {
+                childRow.classList.toggle("is-visible", isOpen);
+            });
         });
     });
 });

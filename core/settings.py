@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'phonenumber_field',
     'phonenumbers',
     'apps.wgs_app.apps.WgsAppConfig', 
-    'apps.home_final', 
+    'apps.home_final.apps.HomeFinalConfig',
     # "apps.wgs_app",
 ]
 
@@ -56,7 +56,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 
-LOGIN_URL = '/auth/login/'
+LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'      # this sends users to the home app (dashboard)
 LOGOUT_REDIRECT_URL = 'home'
 
@@ -76,6 +76,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'apps.home.context_processors.user_access',
             ],
         },
     },

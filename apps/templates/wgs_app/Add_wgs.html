@@ -132,8 +132,12 @@
 .a-blue::before   { background: linear-gradient(90deg,var(--primary-color),var(--secondary-color)); }
 .a-cyan::before   { background: linear-gradient(90deg,#00bcd4,#26c6da); }
 .a-green::before  { background: linear-gradient(90deg,#26a69a,#2dcecc); }
+.a-emerald::before{ background: linear-gradient(90deg,#16a34a,#22c55e); }
+.a-indigo::before { background: linear-gradient(90deg,#4f46e5,#2563eb); }
 .a-purple::before { background: linear-gradient(90deg,#8965e0,#bc65e0); }
+.a-rose::before   { background: linear-gradient(90deg,#e11d48,#fb7185); }
 .a-red::before    { background: linear-gradient(90deg,#e74c3c,#ff7043); }
+.a-slate::before  { background: linear-gradient(90deg,#475569,#0f766e); }
 .a-warn::before   { background: linear-gradient(90deg,#f39c12,#e67e22); }
 
 .card-top { display: flex; align-items: flex-start; gap: 0.8rem; }
@@ -145,8 +149,12 @@
 .ci-blue   { background:rgba(30,90,150,.1);    color:var(--primary-color); }
 .ci-cyan   { background:rgba(0,188,212,.1);    color:var(--secondary-color); }
 .ci-green  { background:rgba(38,166,154,.1);   color:#26a69a; }
+.ci-emerald{ background:rgba(22,163,74,.1);    color:#16a34a; }
+.ci-indigo { background:rgba(79,70,229,.1);    color:#4f46e5; }
 .ci-purple { background:rgba(137,101,224,.1);  color:#8965e0; }
+.ci-rose   { background:rgba(225,29,72,.1);    color:#e11d48; }
 .ci-red    { background:rgba(231,76,60,.1);    color:#e74c3c; }
+.ci-slate  { background:rgba(71,85,105,.1);    color:#475569; }
 .ci-warn   { background:rgba(243,156,18,.1);   color:#f39c12; }
 
 .card-text h5 { font-size: 0.9rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 0.18rem; }
@@ -187,17 +195,47 @@
 /* Button gradient variants */
 .g-success { background: linear-gradient(135deg,#26a69a,#1f8e7d); }
 .g-success:hover { background: linear-gradient(135deg,#1f8e7d,#187560); }
+.g-orange  { background: linear-gradient(135deg,#ff7043,#ffa726); }
+.g-orange:hover  { background: linear-gradient(135deg,#f4511e,#fb8c00); }
+.g-emerald { background: linear-gradient(135deg,#16a34a,#22c55e); }
+.g-emerald:hover { background: linear-gradient(135deg,#15803d,#16a34a); }
 .g-blue    { background: linear-gradient(135deg,var(--primary-color),var(--primary-dark)); }
 .g-blue:hover    { background: linear-gradient(135deg,var(--primary-dark),#082847); }
 .g-cyan    { background: linear-gradient(135deg,#00bcd4,#26c6da); }
 .g-cyan:hover    { background: linear-gradient(135deg,#00acc1,#00bcd4); }
+.g-indigo  { background: linear-gradient(135deg,#4f46e5,#2563eb); }
+.g-indigo:hover  { background: linear-gradient(135deg,#4338ca,#1d4ed8); }
 .g-purple  { background: linear-gradient(135deg,#8965e0,#bc65e0); }
 .g-purple:hover  { background: linear-gradient(135deg,#7551d0,#a855d0); }
+.g-rose    { background: linear-gradient(135deg,#e11d48,#fb7185); }
+.g-rose:hover    { background: linear-gradient(135deg,#be123c,#e11d48); }
 .g-red     { background: linear-gradient(135deg,#e74c3c,#c0392b); }
 .g-red:hover     { background: linear-gradient(135deg,#c0392b,#a93226); }
+.g-slate   { background: linear-gradient(135deg,#475569,#0f766e); }
+.g-slate:hover   { background: linear-gradient(135deg,#334155,#115e59); }
 .g-warn    { background: linear-gradient(135deg,#f39c12,#e67e22); }
 .g-warn:hover    { background: linear-gradient(135deg,#e67e22,#ca6f1e); }
 
+
+.card-actions .relink-form {
+  flex: 0 0 58px;
+  min-width: 58px;
+}
+.card-actions .btn-relink {
+  width: 100%;
+  min-width: 0;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+  font-size: 0.68rem !important;
+  line-height: 1;
+}
+.card-actions .btn-relink i {
+  font-size: 0.68rem !important;
+}
+.card-actions .btn-relink span {
+  font-size: 0.68rem !important;
+  white-space: nowrap;
+}
 /* ── MODAL ── */
 .modal-bg {
   position: fixed; inset: 0; z-index: 1040;
@@ -206,6 +244,13 @@
   opacity: 0; pointer-events: none; transition: opacity 0.2s;
 }
 .modal-bg.open { opacity: 1; pointer-events: all; }
+.modal-bg:not(.open),
+.modal-bg:not(.open) * { pointer-events: none !important; }
+.modal-bg.open .mbox,
+.modal-bg.open button,
+.modal-bg.open a,
+.modal-bg.open input,
+.modal-bg.open label { pointer-events: auto !important; }
 .mbox {
   background: #fff; border: 1px solid var(--border-light);
   border-radius: 14px; width: 100%; max-width: 450px; overflow: hidden;
@@ -219,12 +264,17 @@
   display: flex; align-items: center; justify-content: space-between;
 }
 .mhdr-success { background: linear-gradient(135deg,#26a69a,#1f8e7d); }
+.mhdr-orange  { background: linear-gradient(135deg,#ff7043,#ffa726); }
+.mhdr-emerald { background: linear-gradient(135deg,#16a34a,#22c55e); }
 .mhdr-blue    { background: linear-gradient(135deg,var(--primary-color),var(--primary-dark)); }
 .mhdr-cyan    { background: linear-gradient(135deg,#00bcd4,#26c6da); }
+.mhdr-indigo  { background: linear-gradient(135deg,#4f46e5,#2563eb); }
 .mhdr-purple  { background: linear-gradient(135deg,#8965e0,#bc65e0); }
+.mhdr-rose    { background: linear-gradient(135deg,#e11d48,#fb7185); }
 .mhdr-warn    { background: linear-gradient(135deg,#f39c12,#e67e22); }
 .mhdr-danger  { background: linear-gradient(135deg,#e74c3c,#c0392b); }
 .mhdr-info    { background: linear-gradient(135deg,#00bcd4,var(--primary-color)); }
+.mhdr-slate   { background: linear-gradient(135deg,#475569,#0f766e); }
 
 .mtitle {
   font-weight: 700; font-size: 0.93rem; color: #fff !important;
@@ -249,6 +299,12 @@
   margin-bottom: 1.1rem;
   display: flex; align-items: center; gap: 0.4rem;
 }
+.overwrite-choice {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin: 0.8rem 0 0; font-size: 0.84rem;
+  font-weight: 700; color: var(--primary-dark);
+}
+.overwrite-choice input { width: 16px; height: 16px; }
 .drop-zone {
   border: 2px dashed var(--border-light);
   border-radius: 10px; padding: 1.75rem 1.5rem;
@@ -337,6 +393,7 @@
 </div>
 
 <!-- Main Content -->
+<div class="upload-page">
 <div class="upload-main">
 
   <!-- ── REFERRED ISOLATES SECTION ── -->
@@ -366,9 +423,14 @@
         </ol>
       </div>
       <div class="card-actions">
-        <button class="btn-up g-success" onclick="openM('mDemographic')">
-          <i class="ni ni-cloud-upload-96"></i> Upload
+        {% if user_access.can_create %}
+        <button type="button" class="btn-up g-orange" onclick="openDemographicUpload('raw')">
+          <i class="ni ni-cloud-upload-96"></i> Upload Raw
         </button>
+        <button type="button" class="btn-up g-orange" onclick="openDemographicUpload('final')">
+          <i class="ni ni-cloud-upload-96"></i> Upload Final
+        </button>
+        {% endif %}
       </div>
             <div class="card-actions">
           <a href="{% url 'show_referred_data' %}" class="btn-view" >
@@ -385,7 +447,7 @@
       <div class="card-top">
         <div class="ci ci-blue"><i class="fas fa-pills"></i></div>
         <div class="card-text">
-          <h5>Sentinel Site Test Results</h5>
+          <h5>Raw Antibiotic Test Data</h5>
           <p>Susceptibility testing</p>
         </div>
       </div>
@@ -394,13 +456,15 @@
          <ol>
           <li>Map fields using the field mapper tool</li>
           <li>Download the mapped Excel file</li>
-          <li>Upload antibiotic data from sentinel sites.</li>
+          <li>Upload the raw antibiotic test data.</li>
       </ol>
       </div>
       <div class="card-actions">
-        <button class="btn-up g-blue" onclick="openM('mSentinel')">
+        {% if user_access.can_create %}
+        <button type="button" class="btn-up g-blue" data-modal-target="mSentinel" onclick="openM('mSentinel')">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
+        {% endif %}
         <a href="{% url 'show_raw_antibiotic' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
@@ -408,11 +472,11 @@
     </div>
 
     <!-- ARS Test Results -->
-    <div class="upload-card a-cyan">
+    <div class="upload-card a-emerald">
       <div class="card-top">
-        <div class="ci ci-cyan"><i class="fas fa-medkit"></i></div>
+        <div class="ci ci-emerald"><i class="fas fa-medkit"></i></div>
         <div class="card-text">
-          <h5>ARSRL Test Results</h5>
+          <h5>Final Antibiotic Test Data</h5>
           <p>Verified AST results</p>
         </div>
       </div>
@@ -421,13 +485,15 @@
         <ol>
           <li>Map fields using the field mapper tool</li>
           <li>Download the mapped Excel file</li>
-          <li>Upload the antibiotic arsrl data</li>
+          <li>Upload the final antibiotic test data</li>
         </ol>
       </div>
       <div class="card-actions">
-        <button class="btn-up g-success" onclick="openM('mARS')">
+        {% if user_access.can_create %}
+        <button type="button" class="btn-up g-emerald" onclick="openM('mARS')">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
+        {% endif %}
         <a href="{% url 'show_final_antibiotic' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
@@ -446,19 +512,49 @@
 
   <div class="upload-card-grid">
 
-    <!-- BactScout -->
+    <!-- Sample Information -->
     <div class="upload-card a-blue">
       <div class="card-top">
-        <div class="ci ci-blue"><i class="fas fa-bacteria"></i></div>
+        <div class="ci ci-blue"><i class="ni ni-single-copy-04"></i></div>
+        <div class="card-text">
+          <h5>Sample Information</h5>
+          <p>Sample batch and program flags</p>
+        </div>
+      </div>
+      <div class="card-actions">
+        {% if user_access.can_wgs_create %}
+        <button type="button" class="btn-up g-blue" onclick="openM('mSampleInfo')">
+          <i class="ni ni-cloud-upload-96"></i> Upload
+        </button>
+        <form method="POST" action="{% url 'relink_sample_information_matches' %}" class="relink-form">
+          {% csrf_token %}
+                <button type="submit" class="btn-up g-blue btn-relink">
+                    <i class="ni ni-refresh-02"></i>
+                    <span>Relink</span>
+                  </button>
+        </form>
+        {% endif %}
+        <a href="{% url 'show_sample_information' %}" class="btn-view">
+          <i class="ni ni-folder-17"></i> View Data
+        </a>
+      </div>
+    </div>
+
+    <!-- BactScout -->
+    <div class="upload-card a-green">
+      <div class="card-top">
+        <div class="ci ci-green"><i class="fas fa-bacteria"></i></div>
         <div class="card-text">
           <h5>BactScout</h5>
           <p>Bacterial genome data</p>
         </div>
       </div>
       <div class="card-actions">
-        <button class="btn-up g-blue" onclick="openM('mBactscout')">
+        {% if user_access.can_wgs_create %}
+        <button type="button" class="btn-up g-success" onclick="openM('mBactscout')">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
+        {% endif %}
         <a href="{% url 'show_bactscout' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
@@ -466,56 +562,41 @@
     </div>
 
     <!-- GtdbTK -->
-    <div class="upload-card a-blue">
+    <div class="upload-card a-rose">
       <div class="card-top">
-        <div class="ci ci-blue"><i class="fas fa-sitemap"></i></div>
+        <div class="ci ci-rose"><i class="fas fa-sitemap"></i></div>
         <div class="card-text">
           <h5>GtdbTK</h5>
           <p>Taxonomic classification data</p>
         </div>
       </div>
       <div class="card-actions">
-        <button class="btn-up g-blue" onclick="openM('mGtdbtk')">
+        {% if user_access.can_wgs_create %}
+        <button type="button" class="btn-up g-rose" onclick="openM('mGtdbtk')">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
+        {% endif %}
         <a href="{% url 'show_gtdbtk' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
       </div>
     </div>
 
-    <!-- FastQ Summary -->
-    <div class="upload-card a-cyan">
-      <div class="card-top">
-        <div class="ci ci-cyan"><i class="fas fa-chart-line"></i></div>
-        <div class="card-text">
-          <h5>FastQ Summary</h5>
-          <p>Read quality metrics</p>
-        </div>
-      </div>
-      <div class="card-actions">
-        <button class="btn-up g-cyan" onclick="openM('mFastq')">
-          <i class="ni ni-cloud-upload-96"></i> Upload
-        </button>
-        <a href="{% url 'show_fastq' %}" class="btn-view">
-          <i class="ni ni-folder-17"></i> View Data
-        </a>
-      </div>
-    </div>
-
     <!-- Gambit -->
-    <div class="upload-card a-blue">
+    <div class="upload-card a-indigo">
       <div class="card-top">
-        <div class="ci ci-blue"><i class="fas fa-microscope"></i></div>
+        <div class="ci ci-indigo"><i class="fas fa-microscope"></i></div>
         <div class="card-text">
           <h5>Gambit</h5>
           <p>Species identification</p>
         </div>
       </div>
       <div class="card-actions">
-        <button class="btn-up g-blue" onclick="openM('mGambit')">
+        {% if user_access.can_wgs_create %}
+        <button type="button" class="btn-up g-indigo" onclick="openM('mGambit')">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
+        {% endif %}
         <a href="{% url 'show_gambit' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
@@ -532,9 +613,11 @@
         </div>
       </div>
       <div class="card-actions">
-        <button class="btn-up g-warn" onclick="openM('mMlst')">
+        {% if user_access.can_wgs_create %}
+        <button type="button" class="btn-up g-warn" onclick="openM('mMlst')">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
+        {% endif %}
         <a href="{% url 'show_mlst' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
@@ -542,18 +625,20 @@
     </div>
 
     <!-- CheckM2 -->
-    <div class="upload-card a-blue">
+    <div class="upload-card a-slate">
       <div class="card-top">
-        <div class="ci ci-blue"><i class="ni ni-check-bold"></i></div>
+        <div class="ci ci-slate"><i class="ni ni-check-bold"></i></div>
         <div class="card-text">
           <h5>CheckM2</h5>
           <p>Genome quality</p>
         </div>
       </div>
       <div class="card-actions">
-        <button class="btn-up g-cyan" onclick="openM('mCheckm2')">
+        {% if user_access.can_wgs_create %}
+        <button type="button" class="btn-up g-slate" onclick="openM('mCheckm2')">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
+        {% endif %}
         <a href="{% url 'show_checkm2' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
@@ -570,9 +655,11 @@
         </div>
       </div>
       <div class="card-actions">
-        <button class="btn-up g-red" onclick="openM('mAssembly')">
+        {% if user_access.can_wgs_create %}
+        <button type="button" class="btn-up g-red" onclick="openM('mAssembly')">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
+        {% endif %}
         <a href="{% url 'show_assembly' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
@@ -589,9 +676,11 @@
         </div>
       </div>
       <div class="card-actions">
-        <button class="btn-up g-purple" onclick="openM('mAmrfinder')">
+        {% if user_access.can_wgs_create %}
+        <button type="button" class="btn-up g-purple" onclick="openM('mAmrfinder')">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
+        {% endif %}
         <a href="{% url 'show_amrfinder' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
@@ -600,6 +689,7 @@
 
   </div><!-- /wgs grid -->
 </div><!-- /upload-main -->
+</div><!-- /upload-page -->
 
 
 <!-- =======================================================
@@ -608,12 +698,14 @@
 
 
 <!-- Upload Final Referred Data (Demographic) -->
+{% if user_access.can_create %}
 <div class="modal-bg" id="mDemographic">
-  <form method="POST" action="{% url 'upload_referred_table' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+  <form method="POST" action="{% url 'upload_referred_table' %}" enctype="multipart/form-data" onsubmit="return confirmOverwriteChoice(this);">
     {% csrf_token %}
+    <input type="hidden" name="demographic_upload_mode" id="demographicUploadMode" value="raw">
     <div class="mbox">
-      <div class="mhdr mhdr-success">
-        <span class="mtitle"><i class="ni ni-single-copy-04"></i> Upload Demographic Data</span>
+      <div class="mhdr mhdr-orange">
+        <span class="mtitle" id="demographicUploadTitle"><i class="ni ni-single-copy-04"></i> Upload Raw Demographic Data</span>
         <button type="button" class="mclose" onclick="closeM('mDemographic')">×</button>
       </div>
       <div class="mbody">
@@ -628,24 +720,34 @@
               id="fDemographic"
               class="form-control-file">
         </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite existing accessions</span>
+        </label>
+        <div class="minfo mt-2 mb-0">
+          <i class="ni ni-notification-70"></i>
+          <span id="demographicUploadHint">Raw upload creates/updates raw records, batches, and TAT only.</span>
+        </div>
       </div>
       <div class="mfoot">
         <button type="button" class="btn-mcancel" onclick="closeM('mDemographic')">Cancel</button>
-        <button type="submit" class="btn-msubmit g-success"><i class="ni ni-cloud-upload-96"></i> Upload</button>
+        <button type="submit" class="btn-msubmit g-orange" id="demographicUploadSubmit"><i class="ni ni-cloud-upload-96"></i> Upload Raw</button>
       </div>
     </div>
   </form>
 </div>
+{% endif %}
 
 
 
 <!-- Upload Referred Antiboitic (Sentinel Site) -->
+{% if user_access.can_create %}
 <div class="modal-bg" id="mSentinel">
-  <form method="POST" action="{% url 'upload_raw_antibiotics' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+  <form method="POST" action="{% url 'upload_raw_antibiotics' %}" enctype="multipart/form-data" onsubmit="return confirmOverwriteChoice(this);">
     {% csrf_token %}
     <div class="mbox">
       <div class="mhdr mhdr-blue">
-        <span class="mtitle"><i class="ni ni-single-copy-04"></i> Upload Raw Referred Data</span>
+        <span class="mtitle"><i class="ni ni-single-copy-04"></i> Upload Raw Antibiotic Test Data</span>
         <button type="button" class="mclose" onclick="closeM('mSentinel')">×</button>
       </div>
       <div class="mbody">
@@ -660,6 +762,14 @@
               id="fSentinel"
               class="form-control-file">
         </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite existing antibiotic tests</span>
+        </label>
+        <div class="minfo mt-2 mb-0">
+          <i class="ni ni-notification-70"></i>
+          Leave unchecked to add missing tests only.
+        </div>
       </div>
       <div class="mfoot">
         <button type="button" class="btn-mcancel" onclick="closeM('mSentinel')">Cancel</button>
@@ -668,13 +778,15 @@
     </div>
   </form>
 </div>
+{% endif %}
 
 <!-- Upload Final Antibiotic (ARS) -->
+{% if user_access.can_create %}
 <div class="modal-bg" id="mARS">
-  <form method="POST" action="{% url 'upload_final_antibiotics' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+  <form method="POST" action="{% url 'upload_final_antibiotics' %}" enctype="multipart/form-data" onsubmit="return confirmOverwriteChoice(this);">
     {% csrf_token %}
     <div class="mbox">
-      <div class="mhdr mhdr-success">
+      <div class="mhdr mhdr-emerald">
         <span class="mtitle"><i class="ni ni-single-copy-04"></i> Upload Final Antibiotic Data</span>
         <button type="button" class="mclose" onclick="closeM('mARS')">×</button>
       </div>
@@ -690,10 +802,62 @@
               id="fARS"
               class="form-control-file">
         </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite existing antibiotic tests</span>
+        </label>
+        <div class="minfo mt-2 mb-0">
+          <i class="ni ni-notification-70"></i>
+          Leave unchecked to add missing tests only.
+        </div>
       </div>
       <div class="mfoot">
         <button type="button" class="btn-mcancel" onclick="closeM('mARS')">Cancel</button>
-        <button type="submit" class="btn-msubmit g-success"><i class="ni ni-cloud-upload-96"></i> Upload</button>
+        <button type="submit" class="btn-msubmit g-emerald"><i class="ni ni-cloud-upload-96"></i> Upload</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- Sample Information -->
+{% if user_access.can_wgs_create %}
+<div class="modal-bg" id="mSampleInfo">
+  <form method="POST" action="{% url 'upload_sample_information' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
+    {% csrf_token %}
+    <div class="mbox">
+      <div class="mhdr mhdr-blue">
+        <span class="mtitle">
+          <i class="ni ni-cloud-upload-96"></i> Upload Sample Information
+        </span>
+        <button type="button" class="mclose" onclick="closeM('mSampleInfo')">&times;</button>
+      </div>
+      <div class="mbody">
+        <div class="minfo">
+          <i class="ni ni-notification-70"></i>
+          <strong>Accepted formats:</strong> CSV, XLSX, XLS
+        </div>
+        <div class="drop-zone" onclick="trig('fSampleInfo')">
+          <div class="dicon">
+            <i class="ni ni-cloud-upload-96"></i>
+          </div>
+          <strong>Click to choose a file</strong>
+          <p>or drag &amp; drop here</p>
+          <div class="fname" id="nSampleInfo"></div>
+          {{ sampleinfo_form.sampleinfo|add_class:"form-control-file"|attr:"id:fSampleInfo" }}
+        </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite existing WGS records</span>
+        </label>
+      </div>
+      <div class="mfoot">
+        <button type="button" class="btn-mcancel" onclick="closeM('mSampleInfo')">
+          Cancel
+        </button>
+        <button type="submit" class="btn-msubmit g-blue">
+          <i class="ni ni-cloud-upload-96"></i> Upload
+        </button>
       </div>
     </div>
   </form>
@@ -704,7 +868,7 @@
   <form method="POST" action="{% url 'upload_bactscout' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="mbox">
-      <div class="mhdr mhdr-blue">
+      <div class="mhdr mhdr-success">
         <span class="mtitle">
           <i class="ni ni-cloud-upload-96"></i> Upload BactScout
         </span>
@@ -724,6 +888,10 @@
           <div class="fname" id="nBactscout"></div>
           {{ bactscout_form.bactscoutfile|add_class:"form-control-file"|attr:"id:fBactscout" }}
         </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite existing WGS records</span>
+        </label>
 
       </div>
 
@@ -732,7 +900,7 @@
           Cancel
         </button>
 
-        <button type="submit" class="btn-msubmit g-blue">
+        <button type="submit" class="btn-msubmit g-success">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
       </div>
@@ -746,7 +914,7 @@
   <form method="POST" action="{% url 'upload_gtdbtk' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="mbox">
-      <div class="mhdr mhdr-blue">
+      <div class="mhdr mhdr-rose">
         <span class="mtitle"><i class="ni ni-cloud-upload-96"></i> Upload GtdbTK</span>
         <button type="button" class="mclose" onclick="closeM('mGtdbtk')">×</button>
       </div>
@@ -758,36 +926,14 @@
           <div class="fname" id="nGtdbtk"></div>
           {{ gtdbtk_form.GtdbTkFile|add_class:"form-control-file"|attr:"id:fGtdbtk" }}
         </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite existing WGS records</span>
+        </label>
       </div>
       <div class="mfoot">
         <button type="button" class="btn-mcancel" onclick="closeM('mGtdbtk')">Cancel</button>
-        <button type="submit" class="btn-msubmit g-blue"><i class="ni ni-cloud-upload-96"></i> Upload</button>
-      </div>
-    </div>
-  </form>
-</div>
-
-<!-- FastQ -->
-<div class="modal-bg" id="mFastq">
-  <form method="POST" action="{% url 'upload_fastq' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
-    {% csrf_token %}
-    <div class="mbox">
-      <div class="mhdr mhdr-cyan">
-        <span class="mtitle"><i class="ni ni-cloud-upload-96"></i> Upload FastQ Summary</span>
-        <button type="button" class="mclose" onclick="closeM('mFastq')">×</button>
-      </div>
-      <div class="mbody">
-        <div class="drop-zone" onclick="trig('fFastq')">
-          <div class="dicon"><i class="ni ni-cloud-upload-96"></i></div>
-          <strong>Click to choose a file</strong>
-          <p>or drag &amp; drop here</p>
-          <div class="fname" id="nFastq"></div>
-          {{ fastq_form.fastqfile|add_class:"form-control-file"|attr:"id:fFastq" }}
-        </div>
-      </div>
-      <div class="mfoot">
-        <button type="button" class="btn-mcancel" onclick="closeM('mFastq')">Cancel</button>
-        <button type="submit" class="btn-msubmit g-cyan"><i class="ni ni-cloud-upload-96"></i> Upload</button>
+        <button type="submit" class="btn-msubmit g-rose"><i class="ni ni-cloud-upload-96"></i> Upload</button>
       </div>
     </div>
   </form>
@@ -798,7 +944,7 @@
   <form method="POST" action="{% url 'upload_gambit' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="mbox">
-      <div class="mhdr mhdr-blue">
+      <div class="mhdr mhdr-indigo">
         <span class="mtitle"><i class="ni ni-chart-bar-32"></i> Upload Gambit Summary</span>
         <button type="button" class="mclose" onclick="closeM('mGambit')">×</button>
       </div>
@@ -810,10 +956,14 @@
           <div class="fname" id="nGambit"></div>
           {{ gambit_form.GambitFile|add_class:"form-control-file"|attr:"id:fGambit" }}
         </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite existing WGS records</span>
+        </label>
       </div>
       <div class="mfoot">
         <button type="button" class="btn-mcancel" onclick="closeM('mGambit')">Cancel</button>
-        <button type="submit" class="btn-msubmit g-blue"><i class="ni ni-cloud-upload-96"></i> Upload</button>
+        <button type="submit" class="btn-msubmit g-indigo"><i class="ni ni-cloud-upload-96"></i> Upload</button>
       </div>
     </div>
   </form>
@@ -836,6 +986,10 @@
           <div class="fname" id="nMlst"></div>
           {{ mlst_form.Mlstfile|add_class:"form-control-file"|attr:"id:fMlst" }}
         </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite existing WGS records</span>
+        </label>
       </div>
       <div class="mfoot">
         <button type="button" class="btn-mcancel" onclick="closeM('mMlst')">Cancel</button>
@@ -850,7 +1004,7 @@
   <form method="POST" action="{% url 'upload_checkm2' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="mbox">
-      <div class="mhdr mhdr-info">
+      <div class="mhdr mhdr-slate">
         <span class="mtitle"><i class="ni ni-check-bold"></i> Upload CheckM2 Summary</span>
         <button type="button" class="mclose" onclick="closeM('mCheckm2')">×</button>
       </div>
@@ -862,10 +1016,14 @@
           <div class="fname" id="nCheckm2"></div>
           {{ checkm2_form.Checkm2file|add_class:"form-control-file"|attr:"id:fCheckm2" }}
         </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite existing WGS records</span>
+        </label>
       </div>
       <div class="mfoot">
         <button type="button" class="btn-mcancel" onclick="closeM('mCheckm2')">Cancel</button>
-        <button type="submit" class="btn-msubmit g-cyan"><i class="ni ni-cloud-upload-96"></i> Upload</button>
+        <button type="submit" class="btn-msubmit g-slate"><i class="ni ni-cloud-upload-96"></i> Upload</button>
       </div>
     </div>
   </form>
@@ -888,6 +1046,10 @@
           <div class="fname" id="nAssembly"></div>
           {{ assembly_form.Assemblyfile|add_class:"form-control-file"|attr:"id:fAssembly" }}
         </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite existing WGS records</span>
+        </label>
       </div>
       <div class="mfoot">
         <button type="button" class="btn-mcancel" onclick="closeM('mAssembly')">Cancel</button>
@@ -914,6 +1076,10 @@
           <div class="fname" id="nAmrfinder"></div>
           {{ amrfinder_form.Amrfinderfile|add_class:"form-control-file"|attr:"id:fAmrfinder" }}
         </div>
+        <label class="overwrite-choice">
+          <input type="checkbox" name="overwrite" value="true">
+          <span>Overwrite matching AMRFinder rows</span>
+        </label>
       </div>
       <div class="mfoot">
         <button type="button" class="btn-mcancel" onclick="closeM('mAmrfinder')">Cancel</button>
@@ -922,6 +1088,7 @@
     </div>
   </form>
 </div>
+{% endif %}
 
 {% block javascripts %}
 <script>
@@ -931,6 +1098,31 @@
         if (modal) {
             modal.classList.add('open');
         }
+    }
+
+    function openDemographicUpload(mode) {
+        const uploadMode = mode === 'final' ? 'final' : 'raw';
+        const modeInput = document.getElementById('demographicUploadMode');
+        const title = document.getElementById('demographicUploadTitle');
+        const hint = document.getElementById('demographicUploadHint');
+        const submit = document.getElementById('demographicUploadSubmit');
+
+        if (modeInput) {
+            modeInput.value = uploadMode;
+        }
+        if (title) {
+            title.innerHTML = '<i class="ni ni-single-copy-04"></i> Upload ' + (uploadMode === 'final' ? 'Final' : 'Raw') + ' Demographic Data';
+        }
+        if (hint) {
+            hint.textContent = uploadMode === 'final'
+                ? 'Final upload creates/updates Final Data and refreshes final-side concordance and emerging only.'
+                : 'Raw upload creates/updates raw records, batches, and TAT only.';
+        }
+        if (submit) {
+            submit.innerHTML = '<i class="ni ni-cloud-upload-96"></i> Upload ' + (uploadMode === 'final' ? 'Final' : 'Raw');
+        }
+
+        openM('mDemographic');
     }
 
     // 2. Function to close the modal
@@ -969,6 +1161,22 @@
     function confirmOverwrite() {
         return confirm("Are you sure you want to upload this file? Existing data for this batch may be overwritten.");
     }
+
+    function confirmOverwriteChoice(form) {
+        const overwriteInput = form.querySelector('input[name="overwrite"]');
+        const overwrite = overwriteInput && overwriteInput.checked;
+        if (overwrite) {
+            return confirm("Matching existing records will be overwritten with this upload. Continue?");
+        }
+        return confirm("Existing matching records will be skipped. Only new or missing records will be added. Continue?");
+    }
+
+    document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('[data-modal-target]');
+        if (trigger) {
+            openM(trigger.getAttribute('data-modal-target'));
+        }
+    });
 
     // Close modal if clicking outside the box
     window.onclick = function(event) {

@@ -32,18 +32,21 @@
     <div class="card-body">
 
             <form method="POST"
+                id="breakpointsform"
                 action="{% if editing and breakpoint %}
                             {% url 'edit_breakpoints' pk=breakpoint.pk %}
                         {% else %}
                             {% url 'add_breakpoints' %}
-                        {% endif %}">
+                        {% endif %}"
+                novalidate>
 
             {% csrf_token %}
+            {% include "includes/form_errors.html" with form=breakpoint_form %}
 
             <!-- Upload + Disk -->
-            <div class="row mb-4">
+            <div class="row mb-4 align-items-center">
 
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <button type="button"
                             class="btn btn-secondary"
                             data-toggle="modal"
@@ -52,7 +55,7 @@
                     </button>
                 </div>
 
-                <div class="col-md-6 text-md-right mt-3 mt-md-0">
+                <div class="col-md-4 text-center mt-3 mt-md-0">
                     <label class="font-weight-bold mb-0">
                         <input type="checkbox"
                                name="Disk_Abx"
@@ -60,6 +63,12 @@
                                {% if breakpoint_form.Disk_Abx.value %}checked{% endif %}>
                         Disk Diffusion Method
                     </label>
+                </div>
+
+                <div class="col-md-4 text-md-right mt-3 mt-md-0">
+                    <a href="{% url 'export_breakpoints' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-file-export mr-1"></i> Export Excel
+                    </a>
                 </div>
 
             </div>
@@ -106,15 +115,21 @@
                     
                 <div class="col-md-6 mb-3">
                     <label>Organism Code</label>
-                    {{ breakpoint_form.Org|append_attr:"class: form-control" }}
+                    {{ breakpoint_form.Org|append_attr:"class: form-control"|attr:"required:required" }}
                 </div>
                     </div>
 
             <div class="section-divider">Specimen</div>
-
+                              <small class="form-text text-muted">
+                <i class="fas fa-info-circle mr-1"></i> Hold Ctrl (Windows/Linux) or Command (macOS) to select multiple groups.
+                Selections are saved as an OR expression, for example
+                <code>bl|sf|ur</code>.
+              </small>
                 <div class="col-md-6 mb-3">
+                    <br>
                     <label>Specimen Code</label>
                     {{ breakpoint_form.Spec_code|append_attr:"class: form-control" }}
+      
                 </div>
 
 
@@ -156,11 +171,14 @@
                             <div class="row">
                                 <div class="col-md-6">
                             <label class="fw-semibold mb-1 d-block">
-                            <i class="fas fa-filter text-warning mr-1"></i>
+                            <i class="fa fa-bug text-warning mr-1"></i>
                             <span class="text-warning font-weight-bold">Emerging Phenotype</span>
                             </label>
 
                             {{ breakpoint_form.Emerging_Pheno_Flag|add_class:"form-control" }}
+                            <small class="form-text text-muted">
+                                Hold Ctrl/Command to select multiple interpretations. Saved as OR, for example <code>R|I</code>.
+                            </small>
 
                             <small class="helper-text mt-1 d-block">
                             <i class="fas fa-info-circle mr-1"></i>
@@ -169,7 +187,7 @@
                                 </div>
                             <div class="col-md-6">
                             <label class="fw-semibold mb-1 d-block">
-                            <i class="fas fa-filter text-warning mr-1"></i>
+                            <i class="fa fa-bug text-warning mr-1"></i>
                             <span class="text-warning font-weight-bold">Other Emerging Phenotype</span>
                             </label>
 
@@ -188,7 +206,7 @@
 
                 <div class="col-md-3 mb-3">
                     <label class="form-control-label" for="id_Whonet_Abx">WHONET Code</label>
-                    {{ breakpoint_form.Whonet_Abx|append_attr:"class: form-control"|attr:"placeholder:e.g. CFM_ND30" }}
+                    {{ breakpoint_form.Whonet_Abx|append_attr:"class: form-control"|attr:"placeholder:e.g. CFM_ND30"|attr:"required:required" }}
                 </div>
 
   
@@ -280,7 +298,8 @@
     <form method="POST"
           action="{% url 'upload_breakpoints' %}"
           enctype="multipart/form-data"
-          onsubmit="return confirmOverwrite();">
+          onsubmit="return confirmOverwrite();"
+          novalidate>
 
         {% csrf_token %}
 
@@ -317,7 +336,7 @@
 
 <script>
 function confirmOverwrite() {
-    return confirm("⚠️ Uploading will replace all existing breakpoints. Continue?");
+    return confirm("Uploading will update matching breakpoint definitions and add new breakpoint records. It will not delete all breakpoints. Continue?");
 }
 </script>
 

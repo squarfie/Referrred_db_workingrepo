@@ -149,20 +149,20 @@
 
             <div class="row">
 
-              <!-- FastQ -->
+              <!-- BactScout -->
               <div class="col-lg-4 col-md-6 mb-4">
                 <div class="card wgs-card shadow-sm h-100 hover-lift">
                   <div class="card-body text-center">
                     <div class="icon-circle" style="background:linear-gradient(135deg,#2dce89,#2dcecc);">
-                      <i class="ni ni-cloud-upload-96 text-white" style="font-size:1.5rem;"></i>
+                      <i class="fas fa-bacteria text-white" style="font-size:1.5rem;"></i>
                     </div>
-                    <div class="card-title">FastQ Summary</div>
-                    <div class="card-subtitle">Read quality metrics</div>
+                    <div class="card-title">BactScout</div>
+                    <div class="card-subtitle">Bacterial genome QC and read metrics</div>
                     <button class="btn btn-upload-grad btn-sm btn-block"
-                            data-toggle="modal" data-target="#UploadModal">
+                            data-toggle="modal" data-target="#BactScoutModal">
                       <i class="ni ni-cloud-upload-96 mr-1"></i>Upload
                     </button>
-                    <a href="{% url 'show_fastq' %}"
+                    <a href="{% url 'show_bactscout' %}"
                        class="btn btn-outline-secondary btn-sm btn-block mt-2">
                       <i class="ni ni-folder-17 mr-1"></i>View Data
                     </a>
@@ -330,6 +330,16 @@
                     </label>
                   </div>
 
+                  <div class="form-group form-check mt-2">
+                    <input type="checkbox" class="form-check-input" id="fdPartialUpdate">
+                    <label class="form-check-label" for="fdPartialUpdate">
+                      Partial update only
+                      <i class="fas fa-question-circle text-secondary ml-1"
+                         data-toggle="tooltip"
+                         title="Updates only columns included in the uploaded file. Other Final Data fields are preserved."></i>
+                    </label>
+                  </div>
+
                   <div class="d-flex align-items-center mt-4">
                     <button id="fdUploadBtn"
                             class="btn btn-success px-4"
@@ -428,22 +438,22 @@
      WGS UPLOAD MODALS
 ═══════════════════════════════════════════════ -->
 
-<!-- FastQ -->
-<div class="modal fade" id="UploadModal" tabindex="-1" role="dialog">
-  <form method="POST" action="{% url 'upload_fastq' %}" enctype="multipart/form-data"
+<!-- BactScout -->
+<div class="modal fade" id="BactScoutModal" tabindex="-1" role="dialog">
+  <form method="POST" action="{% url 'upload_bactscout' %}" enctype="multipart/form-data"
         onsubmit="return confirmWgsOverwrite(this);">
     {% csrf_token %}
     <div class="modal-dialog modal-dialog-centered modal-sm">
       <div class="modal-content">
         <div class="modal-header bg-gradient-success text-white py-3">
           <h5 class="modal-title text-sm">
-            <i class="ni ni-cloud-upload-96 mr-2"></i>FastQ Summary
+            <i class="ni ni-cloud-upload-96 mr-2"></i>BactScout
           </h5>
           <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
         </div>
         <div class="modal-body">
           <label class="form-control-label small font-weight-bold">Choose File</label>
-          {{ fastq_form.fastqfile|add_class:"form-control-file" }}
+          {{ bactscout_form.bactscoutfile|add_class:"form-control-file" }}
         </div>
         <div class="modal-footer py-2">
           <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancel</button>
@@ -635,9 +645,11 @@ function submitFinalDataUpload() {
   if (!fileInput.files.length) return;
 
   const overwrite = document.getElementById('fdOverwrite').checked;
+  const partialUpdate = document.getElementById('fdPartialUpdate').checked;
   const fd = new FormData();
   fd.append('final_data_file', fileInput.files[0]);
-  fd.append('overwrite', overwrite ? 'true' : 'false');
+  fd.append('overwrite', (overwrite || partialUpdate) ? 'true' : 'false');
+  fd.append('partial_update', partialUpdate ? 'true' : 'false');
 
   document.getElementById('fdUploadBtn').disabled = true;
   document.getElementById('fdUploadSpinner').classList.remove('d-none');
@@ -740,6 +752,7 @@ function resetFinalUpload() {
   document.getElementById('fdFileInput').value = '';
   document.getElementById('fdFileLabel').textContent = 'Choose file…';
   document.getElementById('fdOverwrite').checked = false;
+  document.getElementById('fdPartialUpdate').checked = false;
   document.getElementById('fdUploadBtn').disabled = true;
   document.getElementById('fdResultPanel').classList.add('d-none');
   const alert = document.getElementById('fdGlobalAlert');
@@ -800,6 +813,7 @@ function resetFinalUpload() {
   document.getElementById('fdFileInput').value = '';
   document.getElementById('fdFileLabel').textContent = 'Choose file…';
   document.getElementById('fdOverwrite').checked = false;
+  document.getElementById('fdPartialUpdate').checked = false;
   document.getElementById('fdUploadBtn').disabled = true;
   document.getElementById('fdResultPanel').classList.add('d-none');
 }

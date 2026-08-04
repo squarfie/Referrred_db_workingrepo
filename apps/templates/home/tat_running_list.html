@@ -1,0 +1,614 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+{% endblock stylesheets %}
+
+{% block content %}
+
+<style>
+.tat-page {
+  background: transparent;
+  min-height: 100vh;
+  font-size: 0.9rem;
+}
+
+.tat-hero {
+  background: linear-gradient(135deg, #101a34 0%, #153a5f 100%);
+  color: #fff;
+  padding: 1.45rem 2rem;
+  border-bottom: 4px solid #00bcd4;
+}
+
+.tat-title {
+  margin: 0;
+  font-weight: 800;
+  color: #00d4e8;
+  font-size: 1.55rem;
+}
+
+.tat-subtitle {
+  color: #c8d7ea;
+  margin: .35rem 0 0;
+  font-size: 0.9rem;
+}
+
+.tat-card {
+  background: #fff;
+  border: 1px solid #dbe4f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(15, 39, 68, .08);
+}
+
+.tat-control-card {
+  background: #fff;
+  border: 1px solid #dbe4f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(15, 39, 68, .08);
+}
+
+.tat-control-shell {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-wrap: nowrap;
+}
+
+.tat-filter-card {
+  flex: 1 1 47%;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.tat-action-card {
+  flex: 1 1 53%;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 0;
+}
+
+.tat-action-card-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.tat-filter-form,
+.tat-upload-form,
+.tat-export-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.tat-filter-form {
+  width: 100%;
+}
+
+.tat-upload-form {
+  flex: 0 1 350px;
+}
+
+.tat-export-form {
+  flex: 1 1 440px;
+  padding-left: 0.9rem;
+  border-left: 1px solid #dbe4f0;
+}
+
+.tat-control-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.tat-control-field label {
+  margin: 0;
+  color: #24466f;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tat-field-search { flex: 1 1 280px; }
+.tat-field-select { flex: 0 0 120px; }
+.tat-field-buttons { flex: 0 0 170px; }
+.tat-field-file { flex: 1 1 200px; }
+.tat-field-date { flex: 0 0 108px; }
+.tat-field-export-buttons { flex: 0 0 200px; }
+
+.tat-control-field .d-flex {
+  gap: 0.45rem;
+}
+
+.tat-control-hint {
+  margin-top: 0.45rem;
+  color: #718096;
+  font-size: 0.64rem;
+  text-align: left;
+}
+
+.tat-table-wrap {
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.tat-running-table {
+  min-width: 1680px;
+  margin: 0;
+  font-size: .78rem;
+}
+
+.tat-running-table thead {
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+}
+
+.tat-running-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+  color: #fff;
+  border: 0;
+  white-space: nowrap;
+  font-size: .66rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.34);
+}
+
+.tat-running-table td {
+  vertical-align: middle;
+  border-color: #e7edf5;
+  white-space: nowrap;
+}
+
+.tat-running-table tbody tr:hover {
+  background: #eefaff;
+}
+
+.status-pill {
+  border-radius: 999px;
+  padding: .22rem .55rem;
+  font-weight: 700;
+  font-size: .68rem;
+  display: inline-block;
+}
+
+.status-released { background: #d4f4dd; color: #0f5132; }
+.status-ongoing { background: #fff4d8; color: #7d4e00; }
+.status-overdue { background: #ffd7d7; color: #8a1f16; }
+.status-near { background: #d8f4fb; color: #035f70; }
+
+.step-ok { color: #15936b; font-weight: 800; }
+.step-bad { color: #d34234; font-weight: 800; }
+.step-muted { color: #94a3b8; }
+
+.scan-check-cell {
+  text-align: center;
+}
+
+.scan-check {
+  width: 1rem;
+  height: 1rem;
+  accent-color: #17845f;
+  cursor: pointer;
+}
+
+.scan-check.is-saving {
+  opacity: .5;
+  cursor: wait;
+}
+
+.tat-pagination .page-link {
+  color: #174f82;
+  border-color: #d8e4f2;
+  font-weight: 700;
+}
+
+.tat-pagination .page-item.active .page-link {
+  background: #174f82;
+  border-color: #174f82;
+}
+
+@media (max-width: 1600px) {
+  .tat-control-shell {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .tat-filter-card,
+  .tat-action-card {
+    flex: 1 1 100%;
+    border-radius: 8px;
+    border-left: 1px solid #dbe4f0;
+  }
+
+  .tat-action-card-inner {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 768px) {
+  .tat-action-card-inner,
+  .tat-filter-form,
+  .tat-upload-form,
+  .tat-export-form {
+    flex-wrap: wrap;
+    flex-basis: 100%;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .tat-control-field,
+  .tat-field-search,
+  .tat-field-select,
+  .tat-field-buttons,
+  .tat-field-file,
+  .tat-field-date,
+  .tat-field-export-buttons {
+    flex: 1 1 100%;
+  }
+}
+
+
+</style>
+
+<div class="tat-page">
+  <div class="tat-hero">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <h1 class="tat-title"><i class="fas fa-clock me-2"></i>&nbsp;Running TAT Monitoring</h1>
+        <p class="tat-subtitle">Review running TAT and update statuses</p>
+      </div>
+      <div class="d-flex flex-wrap justify-content-end gap-2">
+        <a href="{% url 'tat_review_view' %}" class="btn btn-light btn-sm">
+          <i class="fas fa-chart-line me-1"></i> Dashboard
+        </a>
+        <a href="{% url 'tat_analysis' %}" class="btn btn-outline-light btn-sm">
+          <i class="fas fa-chart-pie me-1"></i> Analysis
+        </a>
+        <!-- <form method="get" action="{% url 'export_tat_excel' %}" class="d-flex align-items-center flex-wrap justify-content-end" style="gap:0.35rem;">
+          <input type="hidden" name="q" value="{{ q }}">
+          <input type="hidden" name="status" value="{{ status }}">
+          <input type="hidden" name="year" value="{{ year }}">
+          <input type="hidden" name="tat_year" value="{{ year }}">
+          {% if status %}
+            <input type="hidden" name="tat_status" value="{{ status }}">
+          {% endif %}
+          <input type="date" name="date_from" class="form-control form-control-sm" title="Referral date from" style="width:135px;">
+          <input type="date" name="date_to" class="form-control form-control-sm" title="Referral date to" style="width:135px;">
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-file-excel me-1"></i> Running TAT
+          </button>
+          <button type="submit" formaction="{% url 'download_tat_ipcr_template' %}" class="btn btn-info btn-sm text-white">
+            <i class="fas fa-download me-1"></i> IPCR Summary
+          </button>
+        </form> -->
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid px-4 py-4">
+      <div class="tat-control-shell mb-4">
+        <div class="tat-control-card tat-filter-card p-3">
+          <form method="get" class="tat-filter-form">
+            <div class="tat-control-field tat-field-search">
+              <label>Search</label>
+              <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Batch, site, or accession range">
+            </div>
+            <div class="tat-control-field tat-field-select">
+              <label>Status</label>
+              <select name="status" class="form-control">
+                <option value="">All Status</option>
+                {% for item in status_choices %}
+                  <option value="{{ item }}" {% if status == item %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="tat-control-field tat-field-select">
+              <label>Year</label>
+              <select name="year" class="form-control">
+                <option value="">All Years</option>
+                {% for item in years %}
+                  <option value="{{ item }}" {% if year == item|stringformat:"s" %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="tat-control-field tat-field-buttons">
+              <label>&nbsp;</label>
+              <div class="d-flex gap-2">
+                <button class="btn btn-primary flex-fill" type="submit">
+                  <i class="fas fa-search me-1"></i> Filter
+                </button>
+                <a href="{% url 'tat_running_list' %}" class="btn btn-secondary">
+                  <i class="fas fa-sync-alt me-1"></i> Reset
+                </a>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="tat-control-card tat-action-card p-3">
+          <div class="tat-action-card-inner">
+            <form method="post"
+                  action="{% url 'upload_running_tat' %}"
+                  enctype="multipart/form-data"
+                  class="tat-upload-form"
+                  onsubmit="return confirm('Upload this Running TAT workbook? Existing matching batches will be updated.');">
+              {% csrf_token %}
+              <div class="tat-control-field tat-field-file">
+                <label>Import</label>
+                <input type="file" name="tat_file" accept=".xlsx,.xls" class="form-control" required>
+              </div>
+              <div class="tat-control-field">
+                <label>&nbsp;</label>
+                <button type="submit" class="btn btn-success text-nowrap">
+                  <i class="fas fa-upload me-1"></i> Upload
+                </button>
+              </div>
+            </form>
+
+            <form method="get" action="{% url 'export_tat_excel' %}" class="tat-export-form">
+              <input type="hidden" name="q" value="{{ q }}">
+              <input type="hidden" name="status" value="{{ status }}">
+              <input type="hidden" name="year" value="{{ year }}">
+              <input type="hidden" name="tat_year" value="{{ year }}">
+              {% if status %}<input type="hidden" name="tat_status" value="{{ status }}">{% endif %}
+              <div class="tat-control-field tat-field-date">
+                <label>Export</label>
+                <input type="date" name="date_from" class="form-control" title="Referral date from">
+              </div>
+              <div class="tat-control-field tat-field-date">
+                <label>&nbsp;</label>
+                <input type="date" name="date_to" class="form-control" title="Referral date to">
+              </div>
+              <div class="tat-control-field tat-field-export-buttons">
+                <label>&nbsp;</label>
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary btn-sm text-nowrap">
+                    <i class="fas fa-file-excel me-1"></i> Running TAT
+                  </button>
+                  <button type="submit" formaction="{% url 'download_tat_ipcr_template' %}" class="btn btn-info btn-sm text-white text-nowrap">
+                    <i class="fas fa-download me-1"></i> IPCR Summary
+                  </button>
+                </div>
+                <small class="tat-control-hint">Filtered by: TAT Referral Date.</small>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+    <div class="tat-card">
+      <div class="d-flex justify-content-between align-items-center flex-wrap px-3 py-3 border-bottom" style="gap:0.75rem; overflow:visible;">
+        <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-list me-2"></i>&nbsp;Running Batch List</h5>
+
+      <div class="row" style="align-items: right; justify-content: space-between; padding: 0.5rem 1rem;">
+
+                          <p style="margin:0; font-size:0.9rem; color:rgba(200,220,255,0.85);"> 
+                          &nbsp;<span style="background:rgba(243,156,18,0.25);color:#f39c12;
+                                            border:1px solid rgba(243,156,18,0.4);
+                                            padding:2px 10px;border-radius:12px;font-size:0.72rem;font-weight:700;">
+                            <i class="fas fa-info-circle me-1"></i> 
+                            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ total_rows }} rows
+                          </span>
+                              </p>
+
+
+      </div>
+
+      <div class="tat-table-wrap">
+        <table class="table table-hover tat-running-table">
+          <thead>
+            <tr>
+              <th>BatchCode</th>
+              <th>SiteCode</th>
+              <th>RefDate</th>
+              <th>No_Isolates</th>
+              <th>BatchNumber</th>
+              <th>TotalBatch</th>
+              <th>Running TAT</th>
+              <th>Location</th>
+              <th>Date Received</th>
+              <th>Status</th>
+              <th>Action Taken</th>
+              <th>Scanning Raw</th>
+              <th>Scanning Worksheet</th>
+              <th>Scanning Final</th>
+              <th>Assigned To</th>
+              <th>Date Released</th>
+              <th>Final TAT</th>
+              <th>Status/Release</th>
+              <th>Remarks</th>
+              <th>Last Update</th>
+              <th>Action</th>
+              {% for config in configs %}
+                <th>{{ config.step_type }} Days</th>
+                <th>{{ config.step_type }} Status</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in running_rows %}
+            <tr>
+              <td class="fw-bold text-primary">{{ row.batch_name|default:"-" }}</td>
+              <td>{{ row.site_code|default:"-" }}</td>
+              <td>{{ row.referral_date|date:"M d, Y"|default:"-" }}</td>
+              <td>{{ row.num_isolates|default:"-" }}</td>
+              <td>{{ row.batch_number|default:"-" }}</td>
+              <td>{{ row.total_batch|default:"-" }}</td>
+              <td class="fw-bold">{{ row.tat.tat_Running_TAT|default:"-" }}</td>
+              <td>{{ row.location|default:"-" }}</td>
+              <td>{{ row.date_received|date:"M d, Y"|default:"-" }}</td>
+              <td>
+                {% if row.is_overdue %}
+                  <span class="status-pill status-overdue">Overdue</span>
+                {% elif row.near_due %}
+                  <span class="status-pill status-near">Near Due</span>
+                {% else %}
+                  <span class="status-pill status-ongoing">{{ row.tat.tat_Status_Release }}</span>
+                {% endif %}
+              </td>
+              <td>{{ row.action_taken|default:"-" }}</td>
+              <td class="scan-check-cell">
+                <input type="checkbox"
+                       class="scan-check"
+                       data-url="{% url 'update_tat_scanning_flags' row.tat.id %}"
+                       data-field="tat_Scanning_raw"
+                       {% if row.tat.tat_Scanning_raw %}checked{% endif %}
+                       title="Scanning Raw">
+              </td>
+              <td class="scan-check-cell">
+                <input type="checkbox"
+                       class="scan-check"
+                       data-url="{% url 'update_tat_scanning_flags' row.tat.id %}"
+                       data-field="tat_Scanning_ws"
+                       {% if row.tat.tat_Scanning_ws %}checked{% endif %}
+                       title="Scanning Worksheet">
+              </td>
+              <td class="scan-check-cell">
+                <input type="checkbox"
+                       class="scan-check"
+                       data-url="{% url 'update_tat_scanning_flags' row.tat.id %}"
+                       data-field="tat_Scanning_final"
+                       {% if row.tat.tat_Scanning_final %}checked{% endif %}
+                       title="Scanning Final">
+              </td>
+              <td>{{ row.assigned_to|default:"-" }}</td>
+              <td>{{ row.tat.tat_Date_Released|date:"M d, Y"|default:"-" }}</td>
+              <td>{{ row.tat.tat_Final_TAT|default:"-" }}</td>
+              <td>
+                <span class="status-pill {% if row.tat.tat_Status_Release == 'Released' %}status-released{% elif row.is_overdue %}status-overdue{% else %}status-ongoing{% endif %}">
+                  {{ row.tat.tat_Status_Release }}
+                </span>
+              </td>
+              <td>{{ row.tat.tat_Remarks|default:"" }}</td>
+              <td>{{ row.tat.tat_Date_Last_Update|date:"M d, Y"|default:"-" }}</td>
+              <td>
+                {% if row.batch %}
+                  <a href="{% url 'tat_monitoring_view' row.batch.id %}" class="btn btn-sm btn-primary" style="color: #c8d7ea;">
+                    <i class="fas fa-tasks me-1"></i> Update Process
+                  </a>
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              {% for cell in row.step_cells %}
+                <td>{{ cell.step.step_days_count|default:"-" }}</td>
+                <td>
+                  {% if cell.step.within_tat %}
+                    <span class="step-ok">Within</span>
+                  {% elif cell.step.within_tat == False %}
+                    <span class="step-bad">Outside</span>
+                  {% else %}
+                    <span class="step-muted">-</span>
+                  {% endif %}
+                </td>
+              {% endfor %}
+
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="21" class="text-center py-5 text-muted">No TAT records found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if page_obj.paginator.num_pages > 1 %}
+      <div class="d-flex justify-content-between align-items-center px-3 py-3 border-top bg-white">
+        <small class="text-muted">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </small>
+        <nav aria-label="Running TAT pagination">
+          <ul class="pagination pagination-sm mb-0 tat-pagination">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page=1{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&laquo;</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&lsaquo;</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+              <li class="page-item disabled"><span class="page-link">&lsaquo;</span></li>
+            {% endif %}
+
+            <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&rsaquo;</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&raquo;</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">&rsaquo;</span></li>
+              <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const csrfToken = '{{ csrf_token }}';
+
+  document.querySelectorAll('.scan-check').forEach(function(input) {
+    input.addEventListener('change', function() {
+      const previousValue = !input.checked;
+      const body = new URLSearchParams();
+      body.append('field', input.dataset.field);
+      body.append('value', input.checked ? 'true' : 'false');
+
+      input.classList.add('is-saving');
+      input.disabled = true;
+
+      fetch(input.dataset.url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrfToken,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: body.toString()
+      })
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('Failed to update scanning field.');
+        }
+        return response.json();
+      })
+      .then(function(data) {
+        if (!data.ok) {
+          throw new Error(data.error || 'Failed to update scanning field.');
+        }
+      })
+      .catch(function() {
+        input.checked = previousValue;
+        alert('Could not update the scanning checkbox. Please try again.');
+      })
+      .finally(function() {
+        input.disabled = false;
+        input.classList.remove('is-saving');
+      });
+    });
+  });
+});
+</script>
+
+{% endblock %}

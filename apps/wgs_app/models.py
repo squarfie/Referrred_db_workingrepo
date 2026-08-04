@@ -1,5 +1,7 @@
 from django.db import models
 
+from apps.home_final.models import Classification_Table, Final_Data
+
 # Create your models here.
 
 
@@ -33,8 +35,6 @@ class WGS_Project(models.Model):
     WGS_GtdbTkSummary = models.BooleanField(default=False, blank=True)
 
 
-    WGS_FastQ_Acc = models.CharField(max_length=255, blank=True, null=True)
-    WGS_FastqSummary = models.BooleanField(default=False, blank=True)  # indicates if FastqSummary entries exist
     WGS_Gambit_Acc = models.CharField(max_length=255, blank=True, null=True)
     WGS_GambitSummary = models.BooleanField(default=False, blank=True)
     WGS_Mlst_Acc = models.CharField(max_length=255, blank=True, null=True)
@@ -70,6 +70,14 @@ class SampleInformation(models.Model):
     batch_code = models.CharField(max_length=255, blank=True, null=True)
     sample_name = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(max_length=255, blank=True, null=True)
+    DNA_extraction = models.BooleanField(default=False, blank=True, db_default=False)
+    dna_performed_by = models.CharField(max_length=255, blank=True, null=True)
+    dna_performed_date = models.DateField(blank=True, null=True)
+    library_preparation = models.BooleanField(default=False, blank=True, db_default=False)
+    library_performed_by = models.CharField(max_length=255, blank=True, null=True)
+    library_performed_date = models.DateField(blank=True, null=True)
+    sequencing_platform = models.BooleanField(default=False, blank=True, db_default=False)
+
 
     # surveillance / programme flags
     emerging = models.BooleanField(default=False)
@@ -77,10 +85,13 @@ class SampleInformation(models.Model):
     satscan = models.BooleanField(default=False)
     serotyping = models.BooleanField(default=False)
     ghru = models.BooleanField(default=False)
+    ghru_all = models.BooleanField(default=False)
+    ghru_neo = models.BooleanField(default=False)
     egasp = models.BooleanField(default=False)
     tricycle = models.BooleanField(default=False)
     pulsenet = models.BooleanField(default=False)
     tulip = models.BooleanField(default=False)
+    
 
     Date_uploaded_si = models.DateField(auto_now_add=True)
 
@@ -110,7 +121,7 @@ class BactScout(models.Model):
         null=True,
         related_name="bactscout_entries"
     )
-    BactScout_Accession = models.CharField(max_length=255, blank=True, null=True)
+    BactScout_Accession = models.CharField(max_length=255, blank=True, null=True, db_index=True)
 
     # sample information
     name = models.CharField(max_length=255, blank=True, null=True)
@@ -147,8 +158,8 @@ class BactScout(models.Model):
 
     # species
     species = models.CharField(max_length=255, blank=True, null=True)
-    species_abundance = models.FloatField(blank=True, null=True)                    # e.g. 93.875
-    species_coverage = models.FloatField(blank=True, null=True)                     # e.g. 254.4
+    species_abundance = models.TextField(blank=True, null=True)                     # e.g. 93.875 or 94.0779;0.5709
+    species_coverage = models.TextField(blank=True, null=True)                      # e.g. 254.4 or 28.808;0.278
     species_message = models.TextField(blank=True, null=True)
 
     # contamination
@@ -198,6 +209,7 @@ class BactScout(models.Model):
     # reference
     ref_genome = models.CharField(max_length=255, blank=True, null=True)            # e.g. GCF_003697165.2
     genome_size_expected = models.IntegerField(blank=True, null=True)               # e.g. 5200000
+    genome_size_expected_status = models.TextField(blank=True, null=True)
 
     Date_uploaded_bs = models.DateField(auto_now_add=True)
 
@@ -205,7 +217,7 @@ class BactScout(models.Model):
         db_table = "BactScout"
 
     def __str__(self):
-        return self.sample_name or ""
+        return self.name or ""
 
 
 class BactScoutUpload(models.Model):
@@ -227,7 +239,7 @@ class GtdbTk(models.Model):
         null=True,
         related_name="gtdbtk_entries"
     )
-    GtdbTk_Accession = models.CharField(max_length=255, blank=True, null=True)
+    GtdbTk_Accession = models.CharField(max_length=255, blank=True, null=True, db_index=True)
     user_genome = models.CharField(max_length=255, blank=True, null=True)           # sample ID
     classification = models.TextField(blank=True, null=True)                        # full taxonomy string d__;p__;...
 
@@ -273,83 +285,6 @@ class GtdbTkUpload(models.Model):
 
 
 
-# fastq summary
-class FastqSummary(models.Model):
-    fastq_project = models.ForeignKey(
-        "wgs_app.WGS_Project",   # connects to WGS_Project model
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="fastq_entries"
-    )
-    FastQ_Accession = models.CharField(max_length=255, blank=True, null=True)
-    sample = models.CharField(max_length=255, blank=True, null=True)
-    fastp_version = models.CharField(max_length=255, blank=True, null=True)
-    sequencing = models.CharField(max_length=255, blank=True, null=True)
-    before_total_reads = models.CharField(max_length=255, blank=True, null=True)
-    before_total_bases = models.CharField(max_length=255, blank=True, null=True)
-    before_q20_rate = models.CharField(max_length=255, blank=True, null=True)
-    before_q30_rate = models.CharField(max_length=255, blank=True, null=True)
-    before_read1_mean_len = models.CharField(max_length=255, blank=True, null=True)
-    before_read2_mean_len = models.CharField(max_length=255, blank=True, null=True)
-    before_gc_content = models.CharField(max_length=255, blank=True, null=True)
-    after_total_reads = models.CharField(max_length=255, blank=True, null=True)
-    after_total_bases = models.CharField(max_length=255, blank=True, null=True)
-    after_q20_rate = models.CharField(max_length=255, blank=True, null=True)
-    after_q30_rate = models.CharField(max_length=255, blank=True, null=True)
-    after_read1_mean_len = models.CharField(max_length=255, blank=True, null=True)
-    after_read2_mean_len = models.CharField(max_length=255, blank=True, null=True)
-    after_gc_content = models.CharField(max_length=255, blank=True, null=True)
-    passed_filter_reads = models.CharField(max_length=255, blank=True, null=True)
-    low_quality_reads = models.CharField(max_length=255, blank=True, null=True)
-    too_many_N_reads = models.CharField(max_length=255, blank=True, null=True)
-    too_short_reads = models.CharField(max_length=255, blank=True, null=True)
-    too_long_reads = models.CharField(max_length=255, blank=True, null=True)
-    combined_total_bp = models.CharField(max_length=255, blank=True, null=True)
-    combined_qual_mean = models.CharField(max_length=255, blank=True, null=True)
-    post_trim_q30_rate = models.CharField(max_length=255, blank=True, null=True)
-    post_trim_q30_pct = models.CharField(max_length=255, blank=True, null=True)
-    post_trim_q20_rate = models.CharField(max_length=255, blank=True, null=True)
-    post_trim_q20_pct = models.CharField(max_length=255, blank=True, null=True)
-    after_gc_pct = models.CharField(max_length=255, blank=True, null=True)
-    duplication_rate = models.CharField(max_length=255, blank=True, null=True)
-    read_length_mean_after = models.CharField(max_length=255, blank=True, null=True)
-    adapter_trimmed_reads = models.CharField(max_length=255, blank=True, null=True)
-    adapter_trimmed_reads_pct = models.CharField(max_length=255, blank=True, null=True)
-    adapter_trimmed_bases = models.CharField(max_length=255, blank=True, null=True)
-    adapter_trimmed_bases_pct = models.CharField(max_length=255, blank=True, null=True)
-    insert_size_peak = models.CharField(max_length=255, blank=True, null=True)
-    insert_size_unknown = models.CharField(max_length=255, blank=True, null=True)
-    overrep_r1_count = models.CharField(max_length=255, blank=True, null=True)
-    overrep_r2_count = models.CharField(max_length=255, blank=True, null=True)
-    ns_overrep_none = models.CharField(max_length=255, blank=True, null=True)
-    qc_q30_pass = models.CharField(max_length=255, blank=True, null=True)
-    q30_status = models.CharField(max_length=255, blank=True, null=True)
-    q20_status = models.CharField(max_length=255, blank=True, null=True)
-    adapter_reads_status = models.CharField(max_length=255, blank=True, null=True)
-    adapter_bases_status = models.CharField(max_length=255, blank=True, null=True)
-    duplication_status = models.CharField(max_length=255, blank=True, null=True)
-    readlen_status = models.CharField(max_length=255, blank=True, null=True)
-    ns_overrep_status = models.CharField(max_length=255, blank=True, null=True)
-    raw_reads_qc_summary = models.CharField(max_length=255, blank=True, null=True)
-    Date_uploaded_f = models.DateField(auto_now_add=True)
-   
-
-    class Meta:
-        db_table = "FastqSummary"
-
-    def __str__(self):
-        return self.sample or ""
-
-    
-    
-# uploading project files
-class FastqUpload(models.Model):
-    fastqfile = models.FileField(upload_to='uploads/wgs/fastq/', null=True, blank=True)
-
-    class Meta:
-        db_table = "FastqUpload"
-
-
 # gambit
 class Gambit(models.Model):
     gambit_project = models.ForeignKey(
@@ -358,7 +293,7 @@ class Gambit(models.Model):
         null=True,
         related_name="gambit_entries"
     )
-    Gambit_Accession = models.CharField(max_length=255, blank=True, null=True)
+    Gambit_Accession = models.CharField(max_length=255, blank=True, null=True, db_index=True)
     sample = models.CharField(max_length=255, blank=True, null=True)
     predicted_name = models.CharField(max_length=255, blank=True, null=True)
     predicted_rank = models.CharField(max_length=255, blank=True, null=True)
@@ -403,7 +338,7 @@ class Mlst(models.Model):
         null=True,
         related_name="mlst_entries"
     )
-    Mlst_Accession = models.CharField(max_length=255, blank=True, null=True)
+    Mlst_Accession = models.CharField(max_length=255, blank=True, null=True, db_index=True)
     name = models.CharField(max_length=255, blank=True, null=True)
     scheme = models.CharField(max_length=255, blank=True, null=True)
     mlst = models.CharField(max_length=255, blank=True, null=True)
@@ -435,7 +370,7 @@ class Checkm2(models.Model):
         null=True,
         related_name="checkm2_entries"
     )
-    Checkm2_Accession = models.CharField(max_length=255, blank=True, null=True)
+    Checkm2_Accession = models.CharField(max_length=255, blank=True, null=True, db_index=True)
     Name = models.CharField(max_length=255, blank=True, null=True)
     Completeness = models.CharField(max_length=255, blank=True, null=True)
     Contamination = models.CharField(max_length=255, blank=True, null=True)
@@ -471,7 +406,7 @@ class AssemblyScan(models.Model):
         null=True,
         related_name="assembly_entries"
     )
-    Assembly_Accession = models.CharField(max_length=255, blank=True, null=True)
+    Assembly_Accession = models.CharField(max_length=255, blank=True, null=True, db_index=True)
     sample = models.CharField(max_length=255, blank=True, null=True)
     total_contig = models.CharField(max_length=255, blank=True, null=True)
     total_contig_length = models.CharField(max_length=255, blank=True, null=True)
@@ -516,7 +451,7 @@ class Amrfinderplus(models.Model):
         null=True,
         related_name="amrfinder_entries"
     )
-    Amrfinder_Accession = models.CharField(max_length=255, blank=True, null=True)
+    Amrfinder_Accession = models.CharField(max_length=255, blank=True, null=True, db_index=True)
     name = models.CharField(max_length=255, blank=True, null=True)
     protein_id = models.CharField(max_length=255, blank=True, null=True)
     contig_id = models.CharField(max_length=255, blank=True, null=True)

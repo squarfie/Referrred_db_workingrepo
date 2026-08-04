@@ -1,0 +1,58 @@
+{% if form.errors %}
+  <div class="alert alert-danger form-error-summary" role="alert">
+    <strong>Please check the highlighted field{{ form.errors|length|pluralize }}.</strong>
+    <ul class="mb-0 mt-2 pl-3">
+      {% for field in form.visible_fields %}
+        {% for error in field.errors %}
+          <li>
+            <a href="#{{ field.id_for_label }}" class="alert-link">
+              {{ field.label|default:field.name }}:
+            </a>
+            {{ error }}
+          </li>
+        {% endfor %}
+      {% endfor %}
+      {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const fieldErrors = [
+        {% for field in form.visible_fields %}
+          {% if field.errors %}
+            {
+              id: "{{ field.id_for_label|escapejs }}",
+              message: "{% for error in field.errors %}{{ error|escapejs }}{% if not forloop.last %} {% endif %}{% endfor %}"
+            },
+          {% endif %}
+        {% endfor %}
+      ];
+
+      fieldErrors.forEach(function (item) {
+        const field = document.getElementById(item.id);
+        if (!field) return;
+
+        field.classList.add("is-invalid");
+        field.setAttribute("aria-invalid", "true");
+
+        const parent = field.closest(".form-group, .mb-3, .col-md-4, .col-md-6, .col-lg-2, .col-lg-4, .col-lg-6, .col-lg-12") || field.parentElement;
+        if (!parent || parent.querySelector(".field-error-detail[data-for='" + item.id + "']")) return;
+
+        const detail = document.createElement("div");
+        detail.className = "invalid-feedback d-block field-error-detail";
+        detail.dataset.for = item.id;
+        detail.textContent = item.message;
+        parent.appendChild(detail);
+      });
+
+      const firstInvalid = document.querySelector(".is-invalid");
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstInvalid.focus({ preventScroll: true });
+      }
+    });
+  </script>
+{% endif %}

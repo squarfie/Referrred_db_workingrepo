@@ -1,4 +1,5 @@
 # apps/wgs_app/signals.py
+from django.apps import apps
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import *
@@ -8,7 +9,9 @@ from .models import *
 def update_summary_flag(project, field_name):
     """Recalculate the flag value dynamically based on whether related records still exist."""
     related_model_map = {
-        'WGS_FastqSummary': (FastqSummary, 'fastq_project'),
+        'WGS_SampleInfoSummary': (SampleInformation, 'sample_project'),
+        'WGS_BactScoutSummary': (BactScout, 'bactscout_project'),
+        'WGS_GtdbTkSummary': (GtdbTk, 'gtdbtk_project'),
         'WGS_MlstSummary': (Mlst, 'mlst_project'),
         'WGS_Checkm2Summary': (Checkm2, 'checkm2_project'),
         'WGS_AssemblySummary': (AssemblyScan, 'assembly_project'),
@@ -21,11 +24,72 @@ def update_summary_flag(project, field_name):
     setattr(project, field_name, has_records)
     project.save(update_fields=[field_name])
 
-# === Fastq ===
-@receiver([post_save, post_delete], sender=FastqSummary)
-def sync_fastq_flag(sender, instance, **kwargs):
-    if instance.fastq_project:
-        update_summary_flag(instance.fastq_project, 'WGS_FastqSummary')
+
+def sync_classification_from_sampleinfo(sampleinfo):
+    """
+    Keep WGS sample-info programme flags in the final isolate classification row.
+    SampleInformation is the WGS-facing source of truth for programme flags.
+    """
+    accession = (sampleinfo.sample_accession or "").strip()
+    if not accession:
+        return
+
+    FinalData = apps.get_model("home_final", "Final_Data")
+    ClassificationTable = apps.get_model("home_final", "Classification_Table")
+
+    isolate = FinalData.objects.filter(f_AccessionNo=accession).first()
+    if not isolate:
+        return
+
+    classification, _ = ClassificationTable.objects.get_or_create(
+        Class_idNumReferred=isolate,
+        defaults={"Class_AccessionNo": accession},
+    )
+
+    classification.Class_AccessionNo = accession
+    classification.Class_Chk_Emerging = bool(sampleinfo.emerging)
+    classification.Class_Chk_Structured = bool(sampleinfo.structured)
+    classification.Class_Chk_Satscan = bool(sampleinfo.satscan)
+    classification.Class_Chk_Serotyping = bool(sampleinfo.serotyping)
+    classification.Class_Chk_GHRU_all = bool(sampleinfo.ghru_all or sampleinfo.ghru)
+    classification.Class_Chk_GHRU_Neo = bool(sampleinfo.ghru_neo)
+    classification.Class_Chk_EGASP = bool(sampleinfo.egasp)
+    classification.Class_Chk_Tricycle = bool(sampleinfo.tricycle)
+    classification.Class_Chk_Pulsenet = bool(sampleinfo.pulsenet)
+    classification.Class_Chk_Tulip = bool(sampleinfo.tulip)
+    classification.save(update_fields=[
+        "Class_AccessionNo",
+        "Class_Chk_Emerging",
+        "Class_Chk_Structured",
+        "Class_Chk_Satscan",
+        "Class_Chk_Serotyping",
+        "Class_Chk_GHRU_all",
+        "Class_Chk_GHRU_Neo",
+        "Class_Chk_EGASP",
+        "Class_Chk_Tricycle",
+        "Class_Chk_Pulsenet",
+        "Class_Chk_Tulip",
+    ])
+
+# === Sample Information ===
+@receiver([post_save, post_delete], sender=SampleInformation)
+def sync_sampleinfo_flag(sender, instance, **kwargs):
+    if instance.sample_project:
+        update_summary_flag(instance.sample_project, 'WGS_SampleInfoSummary')
+    if kwargs.get("signal") == post_save:
+        sync_classification_from_sampleinfo(instance)
+
+# === BactScout ===
+@receiver([post_save, post_delete], sender=BactScout)
+def sync_bactscout_flag(sender, instance, **kwargs):
+    if instance.bactscout_project:
+        update_summary_flag(instance.bactscout_project, 'WGS_BactScoutSummary')
+
+# === GTDB-Tk ===
+@receiver([post_save, post_delete], sender=GtdbTk)
+def sync_gtdbtk_flag(sender, instance, **kwargs):
+    if instance.gtdbtk_project:
+        update_summary_flag(instance.gtdbtk_project, 'WGS_GtdbTkSummary')
 
 # === MLST ===
 @receiver([post_save, post_delete], sender=Mlst)

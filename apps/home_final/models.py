@@ -3,11 +3,51 @@ from django.apps import apps
 from apps.home.models import *
 from apps.wgs_app.models import *
 from .models import *
+from datetime import timedelta
+import re
 
 
 
 
 # Create your models here.
+
+
+def final_accession_ref_sequence(accession):
+    match = re.search(r"(\d+)(?!.*\d)", str(accession or "").strip())
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def format_final_age_display(birth_date, specimen_date, age):
+    if age in ("", " ", None):
+        return ""
+    if not birth_date or not specimen_date or specimen_date < birth_date:
+        return str(age)
+
+    years = specimen_date.year - birth_date.year
+    months = specimen_date.month - birth_date.month
+    days = specimen_date.day - birth_date.day
+
+    if days < 0:
+        previous_month_last_day = (
+            specimen_date.replace(day=1) - timedelta(days=1)
+        ).day
+        days += previous_month_last_day
+        months -= 1
+
+    if months < 0:
+        months += 12
+        years -= 1
+
+    if years > 0:
+        return str(age)
+
+    if months > 0:
+        return f"{months}m"
+    return f"{days}d"
+
+
 # for final edit table
 class Final_Data(models.Model):
 
@@ -93,6 +133,7 @@ class Final_Data(models.Model):
     null=True,
     validators=[MinValueValidator(0), MaxValueValidator(120)]
     )
+    f_Age_Display = models.CharField(max_length=20, blank=True, default="")
     f_Emerging_Flag_Age=models.BooleanField(default=False)
     f_Sex = models.CharField(max_length=255, blank=True, choices=Gender_Choice, default="n/a")
 
@@ -142,9 +183,11 @@ class Final_Data(models.Model):
 
     # ========= ORGANISM =========
     f_Site_Pre = models.CharField(max_length=255, blank=True, null=True, default="")
+    f_Site_Pre_ed = models.TextField(blank=True, default="")
     f_Site_Org = models.CharField(max_length=255, blank=True, default="")
     f_Site_OrgName = models.CharField(max_length=255, blank=True, default="")
     f_Site_Pos = models.CharField(max_length=255, blank=True, null=True, default="")
+    f_Site_Pos_ed = models.TextField(blank=True, default="")
     f_Comments = models.TextField(blank=True, default="")
 
     # ========= ARSRL =========
@@ -160,7 +203,9 @@ class Final_Data(models.Model):
     f_ars_mecA=models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
     f_ars_ICR=models.CharField(max_length=255, choices=f_Common_pheno, default="n/a")
     f_ars_Pre=models.CharField( max_length=255, blank=True, null=True, default='')
+    f_ars_Pre_ed=models.TextField(blank=True, default="")
     f_ars_Post=models.CharField(max_length=255, blank=True, null=True, default='')
+    f_ars_Post_ed=models.TextField(blank=True, default="")
     f_ars_OrgCode=models.CharField(max_length=255, blank=True, default="")
     f_ars_OrgName=models.CharField(max_length=255, blank=True,)
     f_ars_ct_ctl=models.CharField(max_length=255, blank=True,)
@@ -193,6 +238,13 @@ class Final_Data(models.Model):
 
     def save(self, *args, **kwargs):
 
+        derived_seq = final_accession_ref_sequence(self.f_AccessionNo)
+        if derived_seq is not None:
+            self.f_bat_seq = derived_seq
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None and "f_bat_seq" not in update_fields:
+                kwargs["update_fields"] = list(update_fields) + ["f_bat_seq"]
+
         self.f_arsp_Encoder     = self.f_arsp_Encoder or ""
         self.f_arsp_Enc_Lic     = self.f_arsp_Enc_Lic or ""
         self.f_arsp_Checker     = self.f_arsp_Checker or ""
@@ -203,6 +255,21 @@ class Final_Data(models.Model):
         self.f_arsp_Lab_Lic     = self.f_arsp_Lab_Lic or ""
         self.f_arsp_Head        = self.f_arsp_Head or ""
         self.f_arsp_Head_Lic    = self.f_arsp_Head_Lic or ""
+
+        self.f_Batch_Code       = self.f_Batch_Code or ""
+        self.f_Batch_Name       = self.f_Batch_Name or ""
+        self.f_RefNo            = self.f_RefNo or ""
+        self.f_BatchNo          = self.f_BatchNo or ""
+        self.f_Total_batch      = self.f_Total_batch or ""
+
+        self.f_Site_Pre         = self.f_Site_Pre or ""
+        self.f_Site_Pre_ed      = self.f_Site_Pre_ed or ""
+        self.f_Site_Pos         = self.f_Site_Pos or ""
+        self.f_Site_Pos_ed      = self.f_Site_Pos_ed or ""
+        self.f_ars_Pre          = self.f_ars_Pre or ""
+        self.f_ars_Pre_ed       = self.f_ars_Pre_ed or ""
+        self.f_ars_Post         = self.f_ars_Post or ""
+        self.f_ars_Post_ed      = self.f_ars_Post_ed or ""
 
         
         self.f_Site_Org         = self.f_Site_Org or ""
@@ -220,6 +287,7 @@ class Final_Data(models.Model):
         self.f_Mid_Name   = self.f_Mid_Name or ""
         self.f_Last_Name  = self.f_Last_Name or ""
 
+        site = None
         if self.f_SiteCode:
             site = SiteData.objects.filter(SiteCode=self.f_SiteCode).first()
         if site:
@@ -227,6 +295,15 @@ class Final_Data(models.Model):
 
         if self.f_Age in ("", " ", None):
             self.f_Age = None
+
+        self.f_Age_Display = format_final_age_display(
+            self.f_Date_Birth,
+            self.f_Spec_Date,
+            self.f_Age,
+        )
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and "f_Age_Display" not in update_fields:
+            kwargs["update_fields"] = list(update_fields) + ["f_Age_Display"]
     
 
         super().save(*args, **kwargs)
@@ -242,9 +319,6 @@ class Final_Data(models.Model):
                 fields=['f_AccessionNo', 'f_Batch_Code'],
                 name='unique_final_accession_batch'
             ),
-            models.UniqueConstraint(
-                fields=["f_Batch_id", "f_bat_seq"],
-                name="unique_final_bat_seq_per_batch"),
         
         ]
 
@@ -290,6 +364,7 @@ class Final_AntibioticEntry(models.Model):
     
     ab_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
     ab_MIC_value = models.DecimalField(max_digits=7, decimal_places=3, blank=True, null=True)
+
     ab_MIC_RIS = models.CharField(max_length=4, blank=True)
     ab_MIC_enRIS = models.CharField(max_length=4, blank=True, default='')
     
@@ -312,6 +387,7 @@ class Final_AntibioticEntry(models.Model):
     
     ab_Retest_MIC_operand=models.CharField(max_length=4, blank=True, null=True, default='')
     ab_Retest_MICValue = models.DecimalField(max_digits=7, decimal_places=3, blank=True, null=True)
+
     ab_Retest_MIC_RIS = models.CharField(max_length=4, blank=True)
     ab_Retest_MIC_enRIS = models.CharField(max_length=4, blank=True, default='')    
     
@@ -371,7 +447,7 @@ class Emerging_Table(models.Model):
     eme_Spec_Flag = models.BooleanField(default=True)
     eme_Site_Code = models.CharField(max_length=200, blank=True, null=True)
     eme_Accession = models.CharField(max_length=200, blank=True, null=True)
-    eme_ReferralData = models.CharField(max_length=200, blank=True, null=True)
+    eme_ReferralDate = models.CharField(max_length=200, blank=True, null=True)
     eme_DateAdmis = models.CharField(max_length=200, blank=True, null=True)
     eme_Diagnosis = models.CharField(max_length=200, blank=True, null=True)
     eme_Diag_ICD = models.CharField(max_length=200, blank=True, null=True)
@@ -428,11 +504,15 @@ class Classification_Table(models.Model):
     Class_idNumReferred = models.ForeignKey(Final_Data, on_delete=models.CASCADE, related_name='class_entry')
     Class_AccessionNo = models.CharField(max_length=200, blank=True, null=True)
     Class_Chk_Emerging = models.BooleanField(default=False)
+    Class_Chk_Structured = models.BooleanField(default=False)
     Class_Chk_Satscan = models.BooleanField(default=False)
     Class_Chk_Serotyping = models.BooleanField(default=False)
     Class_Chk_GHRU_all = models.BooleanField(default=False)
     Class_Chk_GHRU_Neo = models.BooleanField(default=False)
+    Class_Chk_EGASP = models.BooleanField(default=False)
     Class_Chk_Tricycle = models.BooleanField(default=False)
+    Class_Chk_Pulsenet = models.BooleanField(default=False)
+    Class_Chk_Tulip = models.BooleanField(default=False)
 
     
     class Meta:
@@ -443,6 +523,8 @@ class Classification_Table(models.Model):
                 name="unique_classification_per_isolate"
             )
         ]
+
+
 
 
 ### CONCORDANCE ANALYSIS TABLES
@@ -488,6 +570,9 @@ class ConcordanceReport(models.Model):
     species_rate = models.FloatField(default=0)
 
     class Meta:
+        indexes = [
+            models.Index(fields=["-created_at"], name="concordance_created_idx"),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["batch"],

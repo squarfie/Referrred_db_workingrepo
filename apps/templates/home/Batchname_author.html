@@ -20,13 +20,13 @@
   <div class="header-content">
     <h1 style="color: aliceblue;">
       <i class="fas fa-user-edit mr-3"></i>
-      Edit Batch Signatories
+      Edit Batch
     </h1>
 
     <div class="badge-group">
       <span class="badge">
         <i class="badge-icon fas fa-id-card"></i>
-        Edit Authors
+        Edit Batch
       </span>
     </div>
   </div>
@@ -43,7 +43,7 @@
                       border-bottom: 2px solid #d1e8ed;">
           <h4 class="mb-0">
             <i class="fas fa-user-check mr-2"></i>
-            Update Signatories 
+            Update Batch
           </h4>
           <h4 class="mb-0">
             RAW DATA
@@ -52,17 +52,51 @@
 
         <div class="card-body">
 
-          <!-- INFO (READ ONLY DISPLAY) -->
-          <div class="alert alert-info">
-            <strong>Batch:</strong>  {{ batch.bat_Batch_Name }} <br>
-            <strong>Site:</strong>   {{ batch.bat_Site_Name }}
-          </div>
-
           <form method="POST"
                 action="{% url 'batch_edit_view' batch.id %}"
                 novalidate>
 
             {% csrf_token %}
+
+            <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">Batch Details</h6>
+            <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+
+            <div class="form-row">
+              <div class="form-group col-md-3">
+                <label>Site Code</label>
+                {{ form.bat_SiteCode|add_class:"form-control" }}
+              </div>
+              <div class="form-group col-md-3">
+                <label>Referral Date</label>
+                {{ form.bat_Referral_Date|add_class:"form-control" }}
+              </div>
+              <div class="form-group col-md-3">
+                <label>Batch No</label>
+                {{ form.bat_BatchNo|add_class:"form-control" }}
+              </div>
+              <div class="form-group col-md-3">
+                <label>Total Batch</label>
+                {{ form.bat_Total_batch|add_class:"form-control" }}
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col-md-3">
+                <label>Reference No</label>
+                {{ form.bat_RefNo|add_class:"form-control" }}
+              </div>
+              <div class="form-group col-md-4">
+                <label>Site Name</label>
+                {{ form.bat_Site_NameGen|add_class:"form-control" }}
+              </div>
+              <div class="form-group col-md-5">
+                <label>Batch Name</label>
+                {{ form.bat_Batch_Name|add_class:"form-control" }}
+              </div>
+            </div>
+
+            <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">Signatories</h6>
+            <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
 
             <!-- Encoder -->
             <div class="form-row">
@@ -135,7 +169,7 @@
             <!-- ACTION BUTTONS -->
             <div class="d-flex justify-content-end mt-4 gap-3">
               <button type="submit" class="btn btn-warning btn-lg">
-                <i class="fas fa-save mr-2"></i>Update Signatories
+                <i class="fas fa-save mr-2"></i>Update Batch
               </button>
 
               <a href="{% url 'show_batches' %}" class="btn btn-secondary btn-lg">
@@ -156,6 +190,53 @@
 {% block javascripts %}
 <script>
 $(document).ready(function () {
+  const $siteCode    = $('#id_bat_SiteCode');
+  const $refDate     = $('#id_bat_Referral_Date');
+  const $batchNum    = $('#id_bat_BatchNo');
+  const $refNo       = $('#id_bat_RefNo');
+  const $totalBatch  = $('#id_bat_Total_batch');
+  const $siteNameGen = $('#id_bat_Site_NameGen');
+  const $batchName   = $('#id_bat_Batch_Name');
+
+  function generateBatchName() {
+    const site  = $siteCode.val();
+    const date  = $refDate.val();
+    const batch = $batchNum.val();
+    const ref   = $refNo.val();
+    const total = $totalBatch.val();
+    if (!site || !date || !batch || !total || !ref) {
+      $batchName.val('');
+      return;
+    }
+    const parts = date.split('-');
+    $batchName.val(`${site}_${parts[1]}${parts[2]}${parts[0]}_${batch}.${total}_${ref}`);
+  }
+
+  $siteCode.on('change', function () {
+    const site = this.value;
+    if (!site) {
+      $siteNameGen.val('');
+      $batchName.val('');
+      return;
+    }
+
+    $.ajax({
+      url: "{% url 'get_clinic_code' %}",
+      data: { site_code: site },
+      dataType: 'json',
+      success: function (data) {
+        if (data.site_name) {
+          $siteNameGen.val(data.site_name);
+        }
+        generateBatchName();
+      }
+    });
+  });
+
+  $refNo.on('input change', generateBatchName);
+  $refDate.on('input change', generateBatchName);
+  $batchNum.on('input change', generateBatchName);
+  $totalBatch.on('input change', generateBatchName);
 
   function bindStaffField(staffSelector, licenseSelector, licenseKey) {
     $(staffSelector).on('change', function () {
@@ -189,6 +270,7 @@ $(document).ready(function () {
   bindStaffField('#id_bat_LabManager', '#id_bat_Lab_Lic',  'bat_Lab_Lic');
   bindStaffField('#id_bat_Head',       '#id_bat_Head_Lic', 'bat_Head_Lic');
 
+  generateBatchName();
 });
 </script>
 {% endblock javascripts %}

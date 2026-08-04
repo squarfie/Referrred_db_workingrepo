@@ -103,11 +103,105 @@ input.form-control[readonly] {
     opacity: 1; /* Prevents some browsers from fading it out too much */
 }
 
+.tat-monitoring-page {
+    background: linear-gradient(135deg, #0f1423 0%, #1a1f3a 50%, #1a2a4a 100%);
+    min-height: 100vh;
+    padding-bottom: 2rem;
+}
+
+.tat-monitoring-page .antibiotics-header {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 3px solid #00bcd4;
+    min-height: 205px;
+    height: auto !important;
+    padding: 1.5rem 0;
+}
+
+.tat-monitoring-page .antibiotics-header::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(15, 20, 35, .72), rgba(26, 31, 58, .72));
+    pointer-events: none;
+}
+
+.tat-monitoring-page .antibiotics-header .container-fluid {
+    position: relative;
+    z-index: 2;
+}
+
+.tat-monitoring-page .antibiotics-header h2 {
+    color: #00cfe8 !important;
+    font-size: 1.8rem;
+    font-weight: 800;
+}
+
+.tat-monitoring-page .antibiotics-header .mt-3 {
+    text-align: left !important;
+    max-width: 980px;
+    margin-left: 1rem;
+}
+
+.tat-monitoring-page .antibiotics-header .d-flex.justify-content-between {
+    margin-top: 1.25rem;
+}
+
+.tat-monitoring-page .breadcrumb-item,
+.tat-monitoring-page .breadcrumb-item a,
+.tat-monitoring-page .breadcrumb-item.active {
+    color: rgba(210, 230, 255, .76) !important;
+    font-weight: 600;
+}
+
+.tat-monitoring-page .form-card {
+    border: 0;
+    border-radius: 10px;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, .16);
+    overflow: hidden;
+}
+
+.tat-monitoring-page .form-card > .card-header {
+    background: linear-gradient(135deg, #00bcd4, #0097a7) !important;
+    color: #fff;
+    border: 0;
+}
+
+.tat-monitoring-page .form-card > .card-header h3,
+.tat-monitoring-page .form-card > .card-header h5,
+.tat-monitoring-page .form-card > .card-header p,
+.tat-monitoring-page .form-card > .card-header i {
+    color: #fff !important;
+}
+
+.tat-monitoring-page .col-lg-3 .form-card > .card-header {
+    background: #123a63 !important;
+}
+
+.tat-monitoring-page .list-group-item {
+    color: #24466f;
+    font-weight: 600;
+}
+
+.tat-monitoring-page .list-group-item:hover {
+    background: rgba(0, 188, 212, .08);
+    color: #007c8a;
+}
+
+.tat-monitoring-page .formset-row {
+    background: rgba(0, 188, 212, .04);
+    border-color: rgba(0, 188, 212, .18);
+}
+
+.tat-monitoring-page .step-number {
+    background: linear-gradient(135deg, #00bcd4, #0097a7);
+}
+
 </style>
 {% endblock %}
 
 {% block content %}
 
+<div class="tat-monitoring-page">
 
 <!-- Header Section -->
 <div class="antibiotics-header" style="height: 180px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
@@ -320,12 +414,14 @@ input.form-control[readonly] {
     <div class="col-lg-9">
       <form method="POST" id="tat-form">
         {% csrf_token %}
+        {% include "includes/form_errors.html" with form=form %}
         <!-- Batch Information -->
         <div class="card form-card" id="batch-info">
           <div class="card-header">
             <h3 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Batch Information</h3>
           </div>
           <div class="card-body">
+            <div id="tat-date-warning" class="alert alert-warning py-2 mb-3" style="display:none;"></div>
             <div class="row">
               <div class="col-md-4 form-group">
                 <label class="form-control-label">Site Code</label>
@@ -691,6 +787,7 @@ input.form-control[readonly] {
 </div>
 
 
+</div>
 {% block javascript %}
 <script>
 console.log("TAT Script Loaded");
@@ -760,10 +857,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const finalTatInput = document.querySelector('input[name="tat_Final_TAT"]');
     const runningTatInput = document.querySelector('input[name="tat_Running_TAT"]');
     const statusInput = document.querySelector('select[name="tat_Status_Release"]');
+    const warningBox = document.getElementById('tat-date-warning');
+
+    function showTatWarning(message) {
+        if (!warningBox) return;
+        warningBox.textContent = message;
+        warningBox.style.display = message ? 'block' : 'none';
+    }
 
     function calculateTAT() {
         const refDateVal = referralDateInput.value;
         const relDateVal = dateReleasedInput.value;
+        showTatWarning('');
 
         if (refDateVal && relDateVal) {
             const refDate = new Date(refDateVal);
@@ -774,9 +879,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
             if (!isNaN(diffDays)) {
+                if (diffDays < 0) {
+                    showTatWarning('Date Released is earlier than the batch referral date. The record can still be saved, but please verify the dates.');
+                }
                 // Update the fields instantly
-                finalTatInput.value = diffDays;
-                runningTatInput.value = diffDays;
+                finalTatInput.value = diffDays < 0 ? 0 : diffDays;
+                runningTatInput.value = diffDays < 0 ? 0 : diffDays;
                 
                 // Update status to 'Released'
                 if (statusInput) statusInput.value = "Released";

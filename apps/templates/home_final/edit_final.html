@@ -27,7 +27,7 @@
   padding: 10px;
   border-radius: 4px;
   height: 50px;
-  
+
 }
 
 #myform{
@@ -87,7 +87,7 @@ label.form-control-label{
 
 
 
-<div class="header pb-6 d-flex align-items-center" 
+<div class="header pb-6 d-flex align-items-center"
      style="min-height: 200px; background-size: auto; background-image: url(/static/assets/img/theme/microbial.jpg); background-size: cover; background-position: center bottom;">
   <!-- Mask -->
   <span class="mask bg-gradient-default opacity-6"></span>
@@ -110,14 +110,14 @@ label.form-control-label{
 
 </div>
 <!-- Page content -->
-<div class="container-fluid mt--6">
+<div class="container-fluid mt--6 arsp-form-page">
   <div class="row">
- 
+
 <!-- DEMOGRAPHIC DATA -->
 
     <div class="col-xl-12 order-xl-1">
-      <form method="POST" 
-      action="{% if isolates %}{% url 'edit_final_data' isolates.id %}{% endif %}" 
+      <form method="POST"
+      action="{% if isolates %}{% url 'edit_final_data' isolates.id %}{% endif %}"
       autocomplete="on" id="myform">
 
       <datalist id="enris-options">
@@ -130,12 +130,13 @@ label.form-control-label{
 
 
         {% csrf_token %}
+        {% include "includes/form_errors.html" with form=form %}
 
       <div class="form-card" >
         <div class="card-header" id="mytop">
           <div class="row align-items-center">
             <!-- <div class="col-8">
-               <h3 class="mb-0">SURVEILLANCE SITE INFORMATION </h3> 
+               <h3 class="mb-0">SURVEILLANCE SITE INFORMATION </h3>
             </div> -->
             <div class="col-12">
               <br>
@@ -144,7 +145,7 @@ label.form-control-label{
                   <div class="form-group" >
                       <label class="form-control-label" for="f_SiteCode">SITE CODE</label>
                       <div class="d-flex align-items-center">
-                      {{ form.f_SiteCode| append_attr:"class: form-control "}} 
+                      {{ form.f_SiteCode| append_attr:"class: form-control "}}
                       <span><a href="{% url 'add_dropdown' %}" class="col-4 shortcut-item" style="padding: 0;">
                       <span class="ni ni-settings" style="margin-left: 10px; line-height: 0; vertical-align: text-bottom;"></span>
                       </a></span>
@@ -170,18 +171,52 @@ label.form-control-label{
                   </div>
                 </div>
               <div class="col-4 text-right">
-                <button class="btn btn-sm btn-success" onclick="history.back()">Back </button>
+                <button type="button" class="btn btn-sm btn-success" onclick="history.back()">Back </button>
                 <a href="{% url 'batch_create_view' %}" class="btn btn-sm btn-primary">New Batch</a>
                 <button type="submit" class="btn btn-sm btn-primary">Save</button>
-                <a href="{% url 'show_data' %}" class="btn btn-sm btn-primary">View Records</a>  
+                <a href="{% url 'show_data' %}" class="btn btn-sm btn-primary">View Records</a>
                 <a href="{% url 'add_breakpoints' %}" class="btn btn-warning btn-sm">Breakpoints</a>
-                
+                {% if batch_nav %}
+                <div class="mt-2 d-flex justify-content-end align-items-center flex-wrap" style="gap: 4px;">
+                  {% if batch_nav.batch_id %}
+                    <a href="{% url 'generate_final_batch_pdf' batch_nav.batch_id %}" target="_blank" class="btn btn-sm btn-outline-primary">Print Batch</a>
+                  {% else %}
+                    <button type="button" class="btn btn-sm btn-outline-primary" disabled>Print Batch</button>
+                  {% endif %}
+
+                  {% if batch_nav.first_id and batch_nav.first_id != isolates.id %}
+                    <button type="submit" name="next_after_save" value="{% url 'edit_final_data' batch_nav.first_id %}" class="btn btn-sm btn-light" title="Save and go to first isolate"><i class="fas fa-step-backward"></i></button>
+                  {% else %}
+                    <button type="button" class="btn btn-sm btn-light" title="First isolate" disabled><i class="fas fa-step-backward"></i></button>
+                  {% endif %}
+
+                  {% if batch_nav.previous_id %}
+                    <button type="submit" name="next_after_save" value="{% url 'edit_final_data' batch_nav.previous_id %}" class="btn btn-sm btn-light" title="Save and go to previous isolate"><i class="fas fa-caret-left"></i></button>
+                  {% else %}
+                    <button type="button" class="btn btn-sm btn-light" title="Previous isolate" disabled><i class="fas fa-caret-left"></i></button>
+                  {% endif %}
+
+                  <span class="badge badge-info">{{ batch_nav.position }} / {{ batch_nav.total }}</span>
+
+                  {% if batch_nav.next_id %}
+                    <button type="submit" name="next_after_save" value="{% url 'edit_final_data' batch_nav.next_id %}" class="btn btn-sm btn-light" title="Save and go to next isolate"><i class="fas fa-caret-right"></i></button>
+                  {% else %}
+                    <button type="button" class="btn btn-sm btn-light" title="Next isolate" disabled><i class="fas fa-caret-right"></i></button>
+                  {% endif %}
+
+                  {% if batch_nav.last_id and batch_nav.last_id != isolates.id %}
+                    <button type="submit" name="next_after_save" value="{% url 'edit_final_data' batch_nav.last_id %}" class="btn btn-sm btn-light" title="Save and go to last isolate"><i class="fas fa-step-forward"></i></button>
+                  {% else %}
+                    <button type="button" class="btn btn-sm btn-light" title="Last isolate" disabled><i class="fas fa-step-forward"></i></button>
+                  {% endif %}
+                </div>
+                {% endif %}
               </div>
               </div>
-             
-           
+
+
 <br>
-                   
+
             <div class="row">
                   <div class="col-lg-4">
                   <div class="form-group">
@@ -192,19 +227,19 @@ label.form-control-label{
                 <div class="col-lg-3">
                 <div class="form-group">
                   <label class="form-control-label" for="f_AccessionNo">Accession Number</label>
-                  {{form.f_AccessionNo| append_attr:"class: form-control fontsize"}} 
+                  {{form.f_AccessionNo| append_attr:"class: form-control fontsize"}}
               </div>
               </div>
               <div class="col-lg-3">
                 <div class="form-group">
                   <label class="form-control-label" for="f_Batch_Name">Batch Name</label>
-                  {{form.f_Batch_Code| append_attr:"class: form-control fontsize"}} 
+                  {{form.f_Batch_Code| append_attr:"class: form-control fontsize"}}
               </div>
               </div>
                 <div class="col-lg-1">
                 <div class="form-group">
                   <label class="form-control-label" for="f_bat_seq">Seq. No.</label>
-                  {{form.f_bat_seq| append_attr:"class: form-control fontsize"}} 
+                  {{form.f_bat_seq| append_attr:"class: form-control fontsize"}}
               </div>
               </div>
               <div class="col-lg-1">
@@ -214,127 +249,28 @@ label.form-control-label{
               </div>
               </div>
             </div>
-       
+
         </div>
-        <div class="col-lg-12">
-            <div class="mt-3 p-3 border rounded bg-light">
-    <h6 class="text-uppercase text-muted mb-3">
-     <span class="text-warning"> WGS Classification </span>
-    </h6>
-
-    <div class="row gy-3">
-
-<div class="col-md-4 col-lg-2">
-  <div class="form-check">
-
-    <!-- Hidden field ensures value is still POSTed -->
-    <input type="hidden" name="Class_Chk_Emerging"
-           value="{% if classification.Class_Chk_Emerging %}on{% endif %}">
-
-    <!-- Disabled checkbox (user cannot click) -->
-    <input class="form-check-input wgs-auto"
-           type="checkbox"
-           id="Class_Chk_Emerging"
-           {% if classification.Class_Chk_Emerging %}checked{% endif %}
-           tabindex="-1">
-
-      <label class="form-check-label fw-semibold wgs-auto-label"
-            for="Class_Chk_Emerging">
-        <span style="font-size: medium;">
-          <strong style="color: blue;">&nbsp;Emerging</strong>
-        </span>
-      </label>
-
-  </div>
-</div>
 
 
-      <div class="col-md-4 col-lg-2">
-        <div class="form-check">
-          <input class="form-check-input"
-                 type="checkbox"
-                 id="Class_Chk_Satscan"
-                 name="Class_Chk_Satscan"
-                 {% if classification.Class_Chk_Satscan %}checked{% endif %}>
-          <label class="form-check-label fw-semibold" for="Class_Chk_Satscan">
-            <span style="font-size: medium;">&nbsp; Satscan </span>
-          </label>
-        </div>
-      </div>
-
-      <div class="col-md-4 col-lg-2">
-        <div class="form-check">
-          <input class="form-check-input"
-                 type="checkbox"
-                 id="Class_Chk_Serotyping"
-                 name="Class_Chk_Serotyping"
-                 {% if classification.Class_Chk_Serotyping %}checked{% endif %}>
-          <label class="form-check-label fw-semibold" for="Class_Chk_Serotyping">
-            <span style="font-size: medium;">&nbsp; Serotyping</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="col-md-4 col-lg-2">
-        <div class="form-check">
-          <input class="form-check-input"
-                 type="checkbox"
-                 id="Class_Chk_GHRU_all"
-                 name="Class_Chk_GHRU_all"
-                 {% if classification.Class_Chk_GHRU_all %}checked{% endif %}>
-          <label class="form-check-label fw-semibold" for="Class_Chk_GHRU_all">
-            <span style="font-size: medium;">&nbsp; GHRU (All) </span>
-          </label>
-        </div>
-      </div>
-
-      <div class="col-md-4 col-lg-2">
-        <div class="form-check">
-          <input class="form-check-input"
-                 type="checkbox"
-                 id="Class_Chk_GHRU_Neo"
-                 name="Class_Chk_GHRU_Neo"
-                 {% if classification.Class_Chk_GHRU_Neo %}checked{% endif %}>
-          <label class="form-check-label fw-semibold" for="Class_Chk_GHRU_Neo">
-            <span style="font-size: medium;">&nbsp; GHRU (Neo)</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="col-md-4 col-lg-2">
-        <div class="form-check">
-          <input class="form-check-input"
-                 type="checkbox"
-                 id="Class_Chk_Tricycle"
-                 name="Class_Chk_Tricycle"
-                 {% if classification.Class_Chk_Tricycle %}checked{% endif %}>
-          <label class="form-check-label fw-semibold" for="Class_Chk_Tricycle">
-            <span style="font-size: medium;">&nbsp; Tricycle </span>
-          </label>
-        </div>
-      </div>
-
-    </div>
-  </div>
-  <!-- hidden value for tracing session -->
-<input type="hidden" id="current_isolate_id" value="{{ isolates.id }}">
-        </div>
-    
       </div> <!--mother tab content-->
-     <ul class="nav nav-tabs card-header-tabs" role="tablist" style="margin-top: 20px;"> 
+     <ul class="nav nav-tabs card-header-tabs record-section-tabs" role="tablist" style="margin-top: 20px;">
         <li class="nav-item">
-          <button class="nav-link active" href="#tabcontent1"  id="tab1" data-toggle="tab" role="tab">SENTINEL SITE DATA</button>
+          <button class="nav-link active" href="#tabcontent1"  id="tab1" data-toggle="tab" role="tab" style="background: linear-gradient(90deg,#8882f6,#a0b9ee); font-size: medium; font-weight: bold;">SENTINEL SITE DATA</button>
         </li>
         <li class="nav-item">
-          <button class="nav-link" href="#tabcontent2" id="tab2"  data-toggle="tab" role="tab" >ARSRL STY RESULTS</button>
+          <button class="nav-link" href="#tabcontent2" id="tab2"  data-toggle="tab" role="tab" style="background: linear-gradient(135deg, #00bcd4 0%, #66edff 100%); font-size: medium; font-weight: bold;" >ARSRL STY RESULTS</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" href="#tabcontent3" id="tab3"  data-toggle="tab" role="tab" style="background: linear-gradient(90deg,#16a34a,#22c55e); font-size: medium; font-weight: bold;"  >WGS CLASSIFICATION</button>
+        </li>
 
     </ul>
         <div class="card-body">
- 
+
           <div class="tab-content">
             <div class="tab-pane fade show active" id="tabcontent1" role="tabpanel" aria-labelledby="tab1">
            <br>
-           
            <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">PATIENT INFORMATION</h6>
            <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
 
@@ -343,7 +279,7 @@ label.form-control-label{
                   <div class="form-group">
                     <label class="form-control-label" for="f_Patient_ID">Patient No</label>
                     {{form.f_Patient_ID| append_attr:"class: form-control"}}
-                 
+
                   </div>
                 </div>
                 <div class="col-lg-3">
@@ -360,7 +296,7 @@ label.form-control-label{
                 </div>
                 <div class="col-lg-3">
                   <div class="form-group">
-                    <label class='form-control-label' for='f_Last_Name'>Last Name</label> 
+                    <label class='form-control-label' for='f_Last_Name'>Last Name</label>
                    {{form.f_Last_Name|append_attr:"class: form-control"}}
                   </div>
                 </div>
@@ -374,7 +310,9 @@ label.form-control-label{
               </div>
               <div class="col-lg-2">
                 <div class="form-group">
-                  <label class='form-control-label' for='f_Age'>Age</label> {{form.f_Age| append_attr:"class: form-control"}}
+                  <label class='form-control-label' for='id_f_Age_Display'>Age</label>
+                  {{ form.f_Age|append_attr:"type:hidden" }}
+                  {{ form.f_Age_Display }}
                 </div>
               </div>
                 <div class="col-lg-2">
@@ -415,12 +353,14 @@ label.form-control-label{
                 <label class='form-control-label' for='f_Service_Type'>Service Type</label> {{form.f_Service_Type| append_attr:"class: form-control" }}
               </div>
             </div>
-           
-          </div>
 
+          </div>
+                        <br>
           <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ISOLATE INFORMATION</h6>
            <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+
             <div class="row">
+
               <div class="col-lg-2">
                 <div class="form-group">
                   <label class='form-control-label' for='f_Spec_Num'>Specimen No</label> {{form.f_Spec_Num | append_attr:"class: form-control" }}
@@ -458,13 +398,12 @@ label.form-control-label{
 
             </div>
 
-            
-          
-  
+
 
 <!-- PHENOTYPIC RESULTS -->
-          
+
             <!-- Address -->
+            <br>
             <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">PHENOTYPIC RESULTS</h6>
             <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
 
@@ -525,16 +464,25 @@ label.form-control-label{
                 </div>
 
               </div>
-        
+            <br>
             <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ORGANISM RESULTS</h6>
             <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
 
                         <div class="pl-lg-12">
-  
+
                           <div class="row">
                              <div class="col-lg-3">
-                              <div class="form-group">
-                                <label class='form-control-label' for='f_Site_Pre'>Site Pre</label> {{form.f_Site_Pre| append_attr:"class: form-control" }}
+                              <div class="form-group phenotype-picker" data-select-id="id_f_Site_Pre" data-target-id="id_f_Site_Pre_ed">
+                                <label class='form-control-label' for='phenotype_search_f_site_pre'>Site Pre</label>
+                                <div style="display: none !important;">{{form.f_Site_Pre| append_attr:"class: form-control phenotype-select-source" }}</div>
+                                <div class="input-group">
+                                  <input type="text" id="phenotype_search_f_site_pre" name="phenotype_search_f_site_pre" class="form-control phenotype-search-input" placeholder="Search phenotype..." value="{{ isolates.f_Site_Pre_ed|prefer_text:isolates.f_Site_Pre }}">
+                                  <div class="input-group-append">
+                                    <button type="button" class="btn btn-sm btn-primary phenotype-apply-btn">Use</button>
+                                  </div>
+                                </div>
+                                <div class="phenotype-results"></div>
+                                <label class='form-control-label mt-2' for='f_Site_Pre_ed'>Site Pre Edit</label> {{form.f_Site_Pre_ed| append_attr:"class: form-control" }}
                               </div>
                             </div>
                                <div class="col-lg-3">
@@ -552,20 +500,29 @@ label.form-control-label{
                                 <label class='form-control-label' for='f_Site_OrgName'>Organism Name</label> {{form.f_Site_OrgName| append_attr:"class: form-control" }}
                               </div>
                             </div>
-                         
+
                             <div class="col-lg-3">
-                              <div class="form-group">
-                                <label class='form-control-label' for='f_Site_Pos'>Site Post</label> {{form.f_Site_Pos| append_attr:"class: form-control" }}
+                              <div class="form-group phenotype-picker" data-select-id="id_f_Site_Pos" data-target-id="id_f_Site_Pos_ed">
+                                <label class='form-control-label' for='phenotype_search_f_site_post'>Site Post</label>
+                                <div style="display: none !important;">{{form.f_Site_Pos| append_attr:"class: form-control phenotype-select-source" }}</div>
+                                <div class="input-group">
+                                  <input type="text" id="phenotype_search_f_site_post" name="phenotype_search_f_site_post" class="form-control phenotype-search-input" placeholder="Search phenotype..." value="{{ isolates.f_Site_Pos_ed|prefer_text:isolates.f_Site_Pos }}">
+                                  <div class="input-group-append">
+                                    <button type="button" class="btn btn-sm btn-primary phenotype-apply-btn">Use</button>
+                                  </div>
+                                </div>
+                                <div class="phenotype-results"></div>
+                                <label class='form-control-label mt-2' for='f_Site_Pos_ed'>Site Post Edit</label> {{form.f_Site_Pos_ed| append_attr:"class: form-control" }}
                               </div>
                             </div>
                           </div>
                           </div>
-           
 
-      
+
+
         <!--MEDICAL HISTORY-->
-        
-               <div class="pl-lg-12">
+        <br>
+        <div class="pl-lg-12">
               <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">ANTIMICROBIAL SUSCEPTIBILITY TEST RESULTS</h6>
               <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
               </div>
@@ -592,18 +549,18 @@ label.form-control-label{
     <div class="row">
 
       <!-- 🧫 DISK DIFFUSION -->
-      <div class="col-lg-6">
+      <div class="col-lg-5">
         <h6 class="heading-small text-muted mb-4">DISK DIFFUSION</h6>
         <div class="card border-info mb-3">
           <div class="card-body text-info">
             <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
             <table class="table align-items-center text-center table-sm compact-table" style="width: 100%;">
-                <thead class="thead-light">
+                <thead class="thead-light" tabindex="-1">
                   <tr style="line-height: 15px;">
-                    <th>ANTIBIOTIC</th>
-                    <th>WHONET CODE</th>
-                    <th>TEST RESULT</th>
-                    <th>RIS</th>
+                    <th tabindex="-1">ANTIBIOTIC</th>
+                    <th tabindex="-1">WHONET CODE</th>
+                    <th tabindex="-1">TEST RESULT</th>
+                    <th tabindex="-1">RIS</th>
                   </tr>
                 </thead>
                 <tbody id="disk-antibiotics">
@@ -614,17 +571,17 @@ label.form-control-label{
                           <td>{{ entry.Antibiotic }}</td>
                           <td>{{ entry.Whonet_Abx }}</td>
                           <td>
-                            <input name="disk_{{ entry.Whonet_Abx }}" 
-                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk' %}" 
-                                   type="number" min="0" style="width: 80px;" class="form-control form-control-sm text-center mx-auto">
+                            <input name="disk_{{ entry.Whonet_Abx }}"
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk' %}"
+                                   type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" data-autotab-length="2" data-min-disk-value="6" style="width: 80px;" class="form-control form-control-sm text-center mx-auto antibiotic-disk-autotab">
                           </td>
                           <td>
-                            <input name="disk_enris_{{ entry.Whonet_Abx }}" 
-                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk_enris' %}" 
+                            <input name="disk_enris_{{ entry.Whonet_Abx }}"
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'disk_enris' %}"
                                    oninput="this.value = this.value.toUpperCase();"
-                                   type="text" style="width: 70px; text-align: center; text-transform: uppercase;" list="enris-options" class="form-control form-control-sm text-center mx-auto">
+                                   type="text" maxlength="4" style="width: 70px; text-align: center; text-transform: uppercase;" list="enris-options" class="form-control form-control-sm text-center mx-auto">
                           </td>
-                        
+
                         </tr>
                       {% endif %}
                     {% endfor %}
@@ -639,19 +596,19 @@ label.form-control-label{
       </div>
 
       <!-- 💧 MIC RESULTS -->
-      <div class="col-lg-6">
+      <div class="col-lg-7">
         <h6 class="heading-small text-muted mb-4">MIC RESULTS</h6>
         <div class="card border-info mb-3">
           <div class="card-body text-info">
             <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
             <table class="table align-items-center text-center table-sm compact-table" style="width: 100%;">
-                <thead class="thead-light">
+                <thead class="thead-light" tabindex="-1">
                   <tr style="line-height: 15px;">
-                    <th>ANTIBIOTIC</th>
-                    <th>WHONET CODE</th>
-                    <th>OPERAND/TEST RESULT</th>
-                    <th>RIS</th>
-                    <th>ALERT MIC</th>
+                    <th tabindex="-1">ANTIBIOTIC</th>
+                    <th tabindex="-1">WHONET CODE</th>
+                    <th tabindex="-1">OPERAND/TEST RESULT</th>
+                    <th tabindex="-1">RIS</th>
+                    <th tabindex="-1">ALERT MIC</th>
                   </tr>
                 </thead>
                 <tbody id="mic-antibiotics">
@@ -666,21 +623,21 @@ label.form-control-label{
                             <input type="text" name="mic_operand_{{ entry.Whonet_Abx }}"
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_operand' %}"
                                    style="width: 70px;" class="form-control form-control-sm text-center mx-auto">
-                            <input name="mic_{{ entry.Whonet_Abx }}" 
-                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic' %}" 
-                                   type="number" min="0" step="0.001" style="width: 80px;" class="form-control form-control-sm text-center mx-auto">
+                            <input name="mic_{{ entry.Whonet_Abx }}"
+                                   value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic' %}"
+                                   type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" style="width: 80px;" class="form-control form-control-sm text-center mx-auto">
                                    </div>
                           </td>
                           <td>
                             <input name="mic_enris_{{ entry.Whonet_Abx }}"
                                    value="{% get_existing_value existing_entries entry.Whonet_Abx 'mic_enris' %}"
-                                  oninput="this.value = this.value.toUpperCase();" 
-                                   type="text" style="width: 70px; text-align: center; text-transform: uppercase;" list="enris-options" class="form-control form-control-sm text-center mx-auto">
+                                  oninput="this.value = this.value.toUpperCase();"
+                                   type="text" maxlength="4" style="width: 70px; text-align: center; text-transform: uppercase;" list="enris-options" class="form-control form-control-sm text-center mx-auto">
                           </td>
                           <td>
                             {% get_existing_value existing_entries entry.Whonet_Abx 'alert_mic' as alert_mic_checked %}
-                            <input type="checkbox" 
-                                   name="alert_mic_{{ entry.Whonet_Abx }}" 
+                            <input type="checkbox"
+                                   name="alert_mic_{{ entry.Whonet_Abx }}"
                                    style="transform: scale(1.5); margin: 4px;"
                                    {% if alert_mic_checked %}checked{% endif %}>
                           </td>
@@ -700,7 +657,7 @@ label.form-control-label{
     </div>
   </div>
 </div>
-          </div> 
+          </div>
         <!-- end of table for antibiotics -->
                 <div class="row">
                   <div class="col-lg-12">
@@ -711,7 +668,7 @@ label.form-control-label{
                 </div>
               </div>
       <!-- end of first tab -->
-   
+
                 <!--LABORATORY RESULTS-->
                 <div class="tab-pane fade" id="tabcontent2" role="tabpanel" aria-labelledby="tab2" >
                   <br>
@@ -719,7 +676,7 @@ label.form-control-label{
                   <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
                   <div class="pl-lg-12">
                           <div class="row">
-                            
+
                             <div class="col-lg-2">
                               <div class="form-group">
                                 <label class='form-control-label' for='f_ars_ampC'>ampC</label> {{form.f_ars_ampC| append_attr:"class: form-control" }}
@@ -779,8 +736,17 @@ label.form-control-label{
 
                           <div class="row">
                              <div class="col-lg-3">
-                              <div class="form-group">
-                                <label class='form-control-label' for='f_ars_Pre'>ARSRL Pre</label> {{form.f_ars_Pre| append_attr:"class: form-control" }}
+                              <div class="form-group phenotype-picker" data-select-id="id_f_ars_Pre" data-target-id="id_f_ars_Pre_ed">
+                                <label class='form-control-label' for='phenotype_search_f_ars_pre'>ARSRL Pre</label>
+                                <div style="display: none !important;">{{form.f_ars_Pre| append_attr:"class: form-control phenotype-select-source" }}</div>
+                                <div class="input-group">
+                                  <input type="text" id="phenotype_search_f_ars_pre" name="phenotype_search_f_ars_pre" class="form-control phenotype-search-input" placeholder="Search phenotype..." value="{{ isolates.f_ars_Pre_ed|prefer_text:isolates.f_ars_Pre }}">
+                                  <div class="input-group-append">
+                                    <button type="button" class="btn btn-sm btn-primary phenotype-apply-btn">Use</button>
+                                  </div>
+                                </div>
+                                <div class="phenotype-results"></div>
+                                <label class='form-control-label mt-2' for='f_ars_Pre_ed'>ARSRL Pre Edit</label> {{form.f_ars_Pre_ed| append_attr:"class: form-control" }}
                               </div>
                             </div>
                             <div class="col-lg-3">
@@ -798,8 +764,17 @@ label.form-control-label{
                               </div>
                             </div>
                             <div class="col-lg-3">
-                              <div class="form-group">
-                                <label class='form-control-label' for='f_ars_Post'>ARSRL Post</label> {{form.f_ars_Post| append_attr:"class: form-control" }}
+                              <div class="form-group phenotype-picker" data-select-id="id_f_ars_Post" data-target-id="id_f_ars_Post_ed">
+                                <label class='form-control-label' for='phenotype_search_f_ars_post'>ARSRL Post</label>
+                                <div style="display: none !important;">{{form.f_ars_Post| append_attr:"class: form-control phenotype-select-source" }}</div>
+                                <div class="input-group">
+                                  <input type="text" id="phenotype_search_f_ars_post" name="phenotype_search_f_ars_post" class="form-control phenotype-search-input" placeholder="Search phenotype..." value="{{ isolates.f_ars_Post_ed|prefer_text:isolates.f_ars_Post }}">
+                                  <div class="input-group-append">
+                                    <button type="button" class="btn btn-sm btn-primary phenotype-apply-btn">Use</button>
+                                  </div>
+                                </div>
+                                <div class="phenotype-results"></div>
+                                <label class='form-control-label mt-2' for='f_ars_Post_ed'>ARSRL Post Edit</label> {{form.f_ars_Post_ed| append_attr:"class: form-control" }}
                               </div>
                             </div>
                           </div>
@@ -831,18 +806,18 @@ label.form-control-label{
   <div class="row">
 
     <!-- 🧫 RETEST DISK DIFFUSION -->
-    <div class="col-lg-6">
+    <div class="col-lg-5">
       <h6 class="heading-small text-muted mb-4">RETEST - DISK DIFFUSION</h6>
       <div class="card border-info mb-3">
         <div class="card-body text-info">
           <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
             <table class="table align-items-center text-center table-sm compact-table" style="width: 100%;">
-              <thead class="thead-light">
+              <thead class="thead-light" tabindex="-1">
                 <tr style="line-height: 15px;">
-                  <th scope="col">ANTIBIOTIC</th>
-                  <th scope="col">WHONET CODE</th>
-                  <th scope="col">TEST RESULT</th>
-                  <th scope="col">RIS</th>
+                  <th scope="col" tabindex="-1">ANTIBIOTIC</th>
+                  <th scope="col" tabindex="-1">WHONET CODE</th>
+                  <th scope="col" tabindex="-1">TEST RESULT</th>
+                  <th scope="col" tabindex="-1">RIS</th>
                 </tr>
               </thead>
               <tbody id="retest-disk-antibiotics">
@@ -853,15 +828,15 @@ label.form-control-label{
                         <td>{{ retest.Antibiotic }}</td>
                         <td>{{ retest.Whonet_Abx }}</td>
                         <td>
-                          <input name="retest_disk_{{ retest.Whonet_Abx }}" 
+                          <input name="retest_disk_{{ retest.Whonet_Abx }}"
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk' %}"
-                                 type="number" min="0" style="width: 80px;" class="form-control form-control-sm text-center mx-auto">
+                                 type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" data-autotab-length="2" data-min-disk-value="6" style="width: 80px;" class="form-control form-control-sm text-center mx-auto antibiotic-disk-autotab">
                         </td>
                         <td>
-                          <input name="retest_disk_enris_{{ retest.Whonet_Abx }}" 
+                          <input name="retest_disk_enris_{{ retest.Whonet_Abx }}"
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk_enris' %}"
-                                  oninput="this.value = this.value.toUpperCase();" 
-                                 type="text" style="width: 70px; text-align: center; text-transform: uppercase; " list="enris-options" class="form-control form-control-sm text-center mx-auto">
+                                  oninput="this.value = this.value.toUpperCase();"
+                                 type="text" maxlength="4" style="width: 70px; text-align: center; text-transform: uppercase; " list="enris-options" class="form-control form-control-sm text-center mx-auto">
                         </td>
                       </tr>
                     {% endif %}
@@ -877,19 +852,19 @@ label.form-control-label{
     </div>
 
     <!-- 💧 RETEST MIC RESULTS -->
-    <div class="col-lg-6">
+    <div class="col-lg-7">
       <h6 class="heading-small text-muted mb-4">RETEST - MIC RESULTS</h6>
       <div class="card border-info mb-3">
         <div class="card-body text-info">
           <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
              <table class="table align-items-center text-center table-sm compact-table" style="width: 100%;">
-              <thead class="thead-light">
+              <thead class="thead-light"  tabindex="-1">
                 <tr style="line-height: 15px;">
-                  <th scope="col">ANTIBIOTIC</th>
-                  <th scope="col">WHONET CODE</th>
-                  <th scope="col">OPERAND/TEST RESULT</th>
-                  <th scope="col">RIS</th>
-                  <th scope="col" style="width: 98px;">ALERT MIC</th>
+                  <th scope="col" tabindex="-1">ANTIBIOTIC</th>
+                  <th scope="col" tabindex="-1">WHONET CODE</th>
+                  <th scope="col" tabindex="-1">OPERAND/TEST RESULT</th>
+                  <th scope="col" tabindex="-1">RIS</th>
+                  <th scope="col" style="width: 98px;" tabindex="-1">ALERT MIC</th>
                 </tr>
               </thead>
               <tbody id="retest-mic-antibiotics">
@@ -901,23 +876,23 @@ label.form-control-label{
                         <td>{{ retest.Whonet_Abx }}</td>
                         <td>
                           <div class="d-flex justify-content-center align-items-center gap-2">
-                          <input name="retest_mic_operand_{{ retest.Whonet_Abx }}" 
+                          <input name="retest_mic_operand_{{ retest.Whonet_Abx }}"
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_operand' %}"
                                  type="text" style="width: 70px;" class="form-control form-control-sm text-center mx-auto">
-                          <input name="retest_mic_{{ retest.Whonet_Abx }}" 
+                          <input name="retest_mic_{{ retest.Whonet_Abx }}"
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic' %}"
-                                 type="number" min="0" step="0.001" style="width: 80px;" class="form-control form-control-sm text-center mx-auto">
+                                 type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" style="width: 80px;" class="form-control form-control-sm text-center mx-auto">
                          </div>
                         </td>
                         <td>
-                          <input name="retest_mic_enris_{{ retest.Whonet_Abx }}" 
+                          <input name="retest_mic_enris_{{ retest.Whonet_Abx }}"
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_enris' %}"
                                   oninput="this.value = this.value.toUpperCase();"
-                                 type="text" style="width: 70px; text-align: center; text-transform: uppercase;" list="enris-options" class="form-control form-control-sm text-center mx-auto">
+                                 type="text" maxlength="4" style="width: 70px; text-align: center; text-transform: uppercase;" list="enris-options" class="form-control form-control-sm text-center mx-auto">
                         </td>
                         <td>
                           {% get_existing_value retest_entries retest.Whonet_Abx 'retest_alert_mic' as retest_alert_mic_checked %}
-                          <input type="checkbox" 
+                          <input type="checkbox"
                                  name="retest_alert_mic_{{ retest.Whonet_Abx }}"
                                  style="transform: scale(1.5); margin: 4px;"
                                  {% if retest_alert_mic_checked %}checked{% endif %}>
@@ -941,7 +916,7 @@ label.form-control-label{
 
 <!-- CONFIRMATORY TEST RESULTS -->
 <div class="section-header">
-  <h5 class="heading-small text-muted  mb-4"> <span><i class="fas fa-check-circle"></i></span> &nbsp;CONFIRMATORY TEST RESULTS </h5> 
+  <h5 class="heading-small text-muted  mb-4"> <span><i class="fas fa-check-circle"></i></span> &nbsp;CONFIRMATORY TEST RESULTS </h5>
 </div>
 
 <div class="row">
@@ -1001,23 +976,20 @@ label.form-control-label{
   </div>
 
 </div>
-
               <div class="pl-lg-12">
-              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">RECCOMENDATION</h6>
+              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">RECOMMENDATION</h6>
               <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
-          
-              <div class="row">
-            
-               
-                 
+
+
+
                     <div class="col-lg-12">
                       <div class="row">
-                      
+
                         <div class="col-lg-5">
                               <div class="row">
                                 <div class="col-lg-12">
                               <div class="form-group">
-                                    <label class='form-control-label' for='f_ars_reco_Code'>Recomendation No</label> {{form.f_ars_reco_Code| append_attr:"class: form-control"}}
+                                    <label class='form-control-label' for='f_ars_reco_Code'>Recommendation No</label> {{form.f_ars_reco_Code| append_attr:"class: form-control"}}
                               </div>
                               </div>
                               </div>
@@ -1030,23 +1002,194 @@ label.form-control-label{
                               </div>
                       </div>
                       <div class="col-lg-7">
-                          <div class="form-group">                    
+                          <div class="form-group">
                               <label class='form-control-label' for='f_ars_reco'>Recommendation</label> {{form.f_ars_reco| append_attr:"class: form-control"}}
                           </div>
                         </div>
                         </div>
                         </div>
-                       
-                       
-                    
-              </div> </div>
+
+
+
+</div>
                <!--tabcontent 2-->
             </div> <!--card body-->
         </div>
 
 
+              <!-- tab content 3 for additional info can be added here if needed -->
+                <div class="tab-pane fade" id="tabcontent3" role="tabpanel" aria-labelledby="tab3" >
+                  <br>
+                  <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">WGS CLASSIFICATION</h6>
+                  <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+                  <div class="pl-lg-12">
+                          <div class="row">
+
+                                <div class="col-lg-12">
+                                    <div class="mt-3 p-3 border rounded bg-light">
+                            <h6 class="text-uppercase text-muted mb-3">
+                            <span class="text-warning"> WGS Classification </span>
+                            </h6>
+
+                            <div class="row gy-3">
+
+                        <div class="col-md-4 col-lg-2">
+                          <div class="form-check">
+
+                            <input class="form-check-input wgs-auto"
+                                  type="checkbox"
+                                  id="Class_Chk_Emerging"
+                                  {% if classification.Class_Chk_Emerging %}checked{% endif %}
+                                  tabindex="-1"
+                                  disabled>
+
+                              <label class="form-check-label fw-semibold wgs-auto-label"
+                                    for="Class_Chk_Emerging">
+                                <span style="font-size: medium;">
+                                  <strong style="color: blue;">&nbsp;Emerging</strong>
+                                </span>
+                              </label>
 
                           </div>
+                        </div>
+
+
+                              <div class="col-md-4 col-lg-2">
+                                <div class="form-check">
+                                  <input class="form-check-input"
+                                        type="checkbox"
+                                        id="Class_Chk_Structured"
+                                        name="Class_Chk_Structured"
+                                        {% if classification.Class_Chk_Structured %}checked{% endif %}>
+                                  <label class="form-check-label fw-semibold" for="Class_Chk_Structured">
+                                    <span style="font-size: medium;">&nbsp; Structured </span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div class="col-md-4 col-lg-2">
+                                <div class="form-check">
+                                  <input class="form-check-input"
+                                        type="checkbox"
+                                        id="Class_Chk_Satscan"
+                                        name="Class_Chk_Satscan"
+                                        {% if classification.Class_Chk_Satscan %}checked{% endif %}>
+                                  <label class="form-check-label fw-semibold" for="Class_Chk_Satscan">
+                                    <span style="font-size: medium;">&nbsp; Satscan </span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div class="col-md-4 col-lg-2">
+                                <div class="form-check">
+                                  <input class="form-check-input"
+                                        type="checkbox"
+                                        id="Class_Chk_EGASP"
+                                        name="Class_Chk_EGASP"
+                                        {% if classification.Class_Chk_EGASP %}checked{% endif %}>
+                                  <label class="form-check-label fw-semibold" for="Class_Chk_EGASP">
+                                    <span style="font-size: medium;">&nbsp; EGASP </span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div class="col-md-4 col-lg-2">
+                                <div class="form-check">
+                                  <input class="form-check-input"
+                                        type="checkbox"
+                                        id="Class_Chk_Serotyping"
+                                        name="Class_Chk_Serotyping"
+                                        {% if classification.Class_Chk_Serotyping %}checked{% endif %}>
+                                  <label class="form-check-label fw-semibold" for="Class_Chk_Serotyping">
+                                    <span style="font-size: medium;">&nbsp; Serotyping</span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div class="col-md-4 col-lg-2">
+                                <div class="form-check">
+                                  <input class="form-check-input"
+                                        type="checkbox"
+                                        id="Class_Chk_GHRU_all"
+                                        name="Class_Chk_GHRU_all"
+                                        {% if classification.Class_Chk_GHRU_all %}checked{% endif %}>
+                                  <label class="form-check-label fw-semibold" for="Class_Chk_GHRU_all">
+                                    <span style="font-size: medium;">&nbsp; GHRU (All) </span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div class="col-md-4 col-lg-2">
+                                <div class="form-check">
+                                  <input class="form-check-input"
+                                        type="checkbox"
+                                        id="Class_Chk_GHRU_Neo"
+                                        name="Class_Chk_GHRU_Neo"
+                                        {% if classification.Class_Chk_GHRU_Neo %}checked{% endif %}>
+                                  <label class="form-check-label fw-semibold" for="Class_Chk_GHRU_Neo">
+                                    <span style="font-size: medium;">&nbsp; GHRU (Neo)</span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div class="col-md-4 col-lg-2">
+                                <div class="form-check">
+                                  <input class="form-check-input"
+                                        type="checkbox"
+                                        id="Class_Chk_Tricycle"
+                                        name="Class_Chk_Tricycle"
+                                        {% if classification.Class_Chk_Tricycle %}checked{% endif %}>
+                                  <label class="form-check-label fw-semibold" for="Class_Chk_Tricycle">
+                                    <span style="font-size: medium;">&nbsp; Tricycle </span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div class="col-md-4 col-lg-2">
+                                <div class="form-check">
+                                  <input class="form-check-input"
+                                        type="checkbox"
+                                        id="Class_Chk_Pulsenet"
+                                        name="Class_Chk_Pulsenet"
+                                        {% if classification.Class_Chk_Pulsenet %}checked{% endif %}>
+                                  <label class="form-check-label fw-semibold" for="Class_Chk_Pulsenet">
+                                    <span style="font-size: medium;">&nbsp; PulseNet </span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div class="col-md-4 col-lg-2">
+                                <div class="form-check">
+                                  <input class="form-check-input"
+                                        type="checkbox"
+                                        id="Class_Chk_Tulip"
+                                        name="Class_Chk_Tulip"
+                                        {% if classification.Class_Chk_Tulip %}checked{% endif %}>
+                                  <label class="form-check-label fw-semibold" for="Class_Chk_Tulip">
+                                    <span style="font-size: medium;">&nbsp; TULIP </span>
+                                  </label>
+                                </div>
+                              </div>
+
+                            </div>
+                          </div>
+                          <!-- hidden value for tracing session -->
+                        <input type="hidden" id="current_isolate_id" value="{{ isolates.id }}">
+                                </div>
+                          </div>
+
+                          <br>
+               <div class="pl-lg-12">
+              <h6 class="heading-small mb-0" style="padding-bottom: 0; margin-bottom: 0;">DESCRIPTION</h6>
+              <hr class="border border-primary border-3 opacity-75 " style="margin-top: 0; padding-top: 0%;">
+              </div>
+
+              </div>
+              </div>
+                <!--tabcontent 3-->
+
+
+              </div>
 
             </div> <!--card body-->
         </div>
@@ -1057,8 +1200,8 @@ label.form-control-label{
 
 
 
-            
-        </form> <!---end of form with post method-->  
+
+        </form> <!---end of form with post method-->
       </div> <!--card-->
         <div class="col-12 text-left">
           <div class="col-6">
@@ -1073,10 +1216,10 @@ label.form-control-label{
     </div>
 
   </div>
- 
+
 {% endblock content %}
 
-<!-- Specific JS goes HERE --> 
+<!-- Specific JS goes HERE -->
 {% block javascripts %}
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
@@ -1105,9 +1248,15 @@ function calculateAge() {
     const birthInput = document.getElementById('id_f_Date_Birth')?.value;
     const consultInput = document.getElementById('id_f_Spec_Date')?.value;
     const ageField = document.getElementById('id_f_Age');
+    const ageDisplay = document.getElementById('id_f_Age_Display');
+
+    function setAge(value, displayValue) {
+        if (ageField) ageField.value = value;
+        if (ageDisplay) ageDisplay.value = displayValue;
+    }
 
     if (!birthInput || !consultInput) {
-        ageField.value = '';
+        setAge('', '');
         return;
     }
 
@@ -1115,18 +1264,50 @@ function calculateAge() {
     const consultDate = new Date(consultInput);
 
     if (isNaN(birthdate) || isNaN(consultDate) || consultDate < birthdate) {
-        ageField.value = '';
+        setAge('', '');
         return;
     }
 
-    let age = consultDate.getFullYear() - birthdate.getFullYear();
-    const m = consultDate.getMonth() - birthdate.getMonth();
-    if (m < 0 || (m === 0 && consultDate.getDate() < birthdate.getDate())) {
-        age--;
+    let years = consultDate.getFullYear() - birthdate.getFullYear();
+    let months = consultDate.getMonth() - birthdate.getMonth();
+    let days = consultDate.getDate() - birthdate.getDate();
+
+    if (days < 0) {
+        const previousMonthLastDay = new Date(
+            consultDate.getFullYear(),
+            consultDate.getMonth(),
+            0
+        ).getDate();
+        days += previousMonthLastDay;
+        months--;
     }
 
-    ageField.value = age;
+    if (months < 0) {
+        months += 12;
+        years--;
+    }
+
+    if (years > 0) {
+        setAge(years, years);
+        return;
+    }
+
+    if (months > 0) {
+        setAge(years, `${months}m`);
+        return;
+    }
+
+    setAge(years, `${days}d`);
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const ageField = document.getElementById('id_f_Age');
+    const ageDisplay = document.getElementById('id_f_Age_Display');
+    if (ageField && ageDisplay && ageField.value && !ageDisplay.value) {
+        ageDisplay.value = ageField.value;
+    }
+    calculateAge();
+});
 
 document.getElementById('id_f_Date_Birth')?.addEventListener('change', calculateAge);
 document.getElementById('id_f_Spec_Date')?.addEventListener('change', calculateAge);
@@ -1135,6 +1316,27 @@ document.getElementById('id_f_Spec_Date')?.addEventListener('change', calculateA
 <!-- ================= ORGANISM AUTOFILL ================= -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const recoSelect = document.getElementById("id_f_ars_reco_Code");
+    const descField = document.getElementById("id_f_ars_description");
+
+    function loadRecommendation() {
+        if (!recoSelect || !descField) return;
+
+        const selectedValue = recoSelect.value;
+        if (!selectedValue) {
+            descField.value = "";
+            return;
+        }
+
+        fetch("{% url 'get_recommendation_f_description' %}?reco_code=" + encodeURIComponent(selectedValue))
+            .then(res => res.json())
+            .then(data => {
+                descField.value = data.description || "";
+            })
+            .catch(err => console.error("Recommendation lookup error:", err));
+    }
+
+    recoSelect?.addEventListener("change", loadRecommendation);
 
     function bindOrganismAutofill(codeSelectId, nameInputId) {
         const codeSelect = document.getElementById(codeSelectId);
@@ -1165,6 +1367,148 @@ document.addEventListener("DOMContentLoaded", function () {
 
     bindOrganismAutofill("id_f_Site_Org", "id_f_Site_OrgName");
     bindOrganismAutofill("id_f_ars_OrgCode", "id_f_ars_OrgName");
+
+    document.querySelectorAll(".phenotype-picker").forEach(function (picker) {
+        const select = document.getElementById(picker.dataset.selectId);
+        const target = document.getElementById(picker.dataset.targetId);
+        const search = picker.querySelector(".phenotype-search-input");
+        const applyButton = picker.querySelector(".phenotype-apply-btn");
+        const results = picker.querySelector(".phenotype-results");
+        if (!select || !target || !search || !applyButton || !results) return;
+
+        const options = [
+            { value: "", text: "n/a", clearsValue: true },
+            ...Array.from(select.options)
+            .filter(option => option.value)
+            .map(option => ({
+                value: option.value,
+                text: option.text.trim()
+            }))
+        ];
+
+        function selectedText() {
+            const option = select.options[select.selectedIndex];
+            return option && option.value ? (option.text.trim() || option.value) : "";
+        }
+
+        search.value = search.value.trim() || target.value.trim() || selectedText();
+
+        function matchingOptions() {
+            const typed = search.value.trim().toLowerCase();
+            if (!typed) return options.slice(0, 8);
+            return options
+                .filter(option => option.text.toLowerCase().includes(typed))
+                .slice(0, 8);
+        }
+
+        function closeResults() {
+            results.classList.remove("is-open");
+            results.innerHTML = "";
+        }
+
+        function positionResults() {
+            const inputGroup = search.closest(".input-group") || search;
+            results.style.left = `${inputGroup.offsetLeft}px`;
+            results.style.top = `${inputGroup.offsetTop + inputGroup.offsetHeight + 4}px`;
+            results.style.width = `${inputGroup.offsetWidth}px`;
+        }
+
+        function renderResults() {
+            const matches = matchingOptions();
+            results.innerHTML = "";
+
+            if (!matches.length) {
+                closeResults();
+                return;
+            }
+
+            matches.forEach((option, index) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "phenotype-result" + (index === 0 ? " is-active" : "");
+                item.textContent = option.text;
+                item.addEventListener("mousedown", function (event) {
+                    event.preventDefault();
+                    search.setCustomValidity("");
+                    search.value = option.text;
+                    closeResults();
+                });
+                results.appendChild(item);
+            });
+
+            positionResults();
+            results.classList.add("is-open");
+        }
+
+        function applyOption(option) {
+            search.setCustomValidity("");
+            search.value = option.text;
+            select.value = option.value || "";
+            target.value = option.clearsValue ? "" : option.text;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+            target.dispatchEvent(new Event("input", { bubbles: true }));
+            target.dispatchEvent(new Event("change", { bubbles: true }));
+            closeResults();
+        }
+
+        function applyCustomText(text) {
+            search.setCustomValidity("");
+            search.value = text;
+            select.value = "";
+            target.value = isClearText(text) ? "" : text;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+            target.dispatchEvent(new Event("input", { bubbles: true }));
+            target.dispatchEvent(new Event("change", { bubbles: true }));
+            closeResults();
+        }
+
+        function isClearText(text) {
+            return ["n/a", "na", "n.a.", "none", "null"].includes((text || "").trim().toLowerCase());
+        }
+
+        function applyPhenotype() {
+            const typedRaw = search.value.trim();
+            const typed = typedRaw.toLowerCase();
+            const match = options.find(option => option.text.toLowerCase() === typed)
+                || options.find(option => option.text.toLowerCase().includes(typed));
+
+            if (!typedRaw) {
+                applyCustomText("");
+                return;
+            }
+
+            if (match) {
+                applyOption(match);
+                return;
+            }
+
+            applyCustomText(typedRaw);
+        }
+
+        applyButton.addEventListener("click", applyPhenotype);
+        search.addEventListener("focus", renderResults);
+        search.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+            } else if (event.key === "Escape") {
+                closeResults();
+            }
+        });
+        search.addEventListener("input", function () {
+            search.setCustomValidity("");
+            if (!search.value.trim()) {
+                closeResults();
+                return;
+            }
+            renderResults();
+        });
+        search.addEventListener("blur", function () {
+            window.setTimeout(closeResults, 120);
+        });
+        window.addEventListener("resize", function () {
+            if (results.classList.contains("is-open")) positionResults();
+        });
+    });
 });
 </script>
 
@@ -1181,10 +1525,6 @@ let antibioticsLoaded = {
 function loadAntibiotics(org, retest = false) {
     if (!org) return;
 
-    // Prevent reload unless explicitly forced
-    if (!retest && antibioticsLoaded.site) return;
-    if (retest && antibioticsLoaded.ars) return;
-
     // Get the ID dynamically from the hidden input field
     const isolateIdField = document.getElementById("current_isolate_id");
     const isolateId = isolateIdField ? isolateIdField.value : "";
@@ -1195,9 +1535,9 @@ function loadAntibiotics(org, retest = false) {
     }
 
 
-    const url = `/final/ajax/filter-antibiotics/?isolate_id=${isolateId}&org=${encodeURIComponent(org)}&retest=${retest ? 1 : 0}`;
+    const url = `/final/ajax/filter-antibiotics/?isolate_id=${isolateId}&org=${encodeURIComponent(org)}&retest=${retest ? 1 : 0}&_=${Date.now()}`;
 
-    console.log("DEBUG: Fetching from URL:", url);  
+    console.log("DEBUG: Fetching from URL:", url);
 
     fetch(url)
         .then(res => res.json())
@@ -1227,15 +1567,21 @@ function loadAntibiotics(org, retest = false) {
                             <td>${abx.name}</td>
                             <td>${code}</td>
                             <td>
-                                <input type="number"
+                                <input type="text"
+                                       inputmode="numeric"
+                                       pattern="[0-9]*"
+                                       maxlength="2"
+                                       data-autotab-length="2"
+                                       data-min-disk-value="6"
                                        name="${prefix}disk_${code}"
-                                       class="form-control form-control-sm"
+                                       class="form-control form-control-sm antibiotic-disk-autotab"
                                        style="width:70px; height: 10px">
                             </td>
                             <td>
                                 <input type="text"
                                        name="${prefix}disk_enris_${code}"
                                        list="enris-options"
+                                       maxlength="4"
                                        class="form-control form-control-sm"
                                        style="width:70px; text-align:center; height: 10px">
                             </td>
@@ -1253,8 +1599,9 @@ function loadAntibiotics(org, retest = false) {
                                        style="width:60px; height: 10px">
                             </td>
                             <td>
-                                <input type="number"
-                                       step="0.001"
+                                <input type="text"
+                                       inputmode="decimal"
+                                       pattern="[0-9]*[.]?[0-9]*"
                                        name="${prefix}mic_${code}"
                                        class="form-control form-control-sm"
                                        style="width:70px; height: 10px">
@@ -1263,6 +1610,7 @@ function loadAntibiotics(org, retest = false) {
                                 <input type="text"
                                        name="${prefix}mic_enris_${code}"
                                        list="enris-options"
+                                       maxlength="4"
                                        class="form-control form-control-sm"
                                        style="width:70px; text-align:center; height: 10px">
                             </td>
@@ -1337,7 +1685,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const isolateId = document.getElementById("current_isolate_id")?.value;
         if (!isolateId) return;
 
-        fetch(`/final/ajax/filter-antibiotics/?isolate_id=${isolateId}&org=${encodeURIComponent(org)}&retest=${retest ? 1 : 0}`)
+        fetch(`/final/ajax/filter-antibiotics/?isolate_id=${isolateId}&org=${encodeURIComponent(org)}&retest=${retest ? 1 : 0}&_=${Date.now()}`)
             .then(res => res.json())
             .then(data => {
 
@@ -1364,15 +1712,21 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <td>${abx.name}</td>
                                 <td>${code}</td>
                                 <td>
-                                    <input type="number"
-                                           name="${prefix}disk_${code}"
-                                          class="form-control form-control-sm text-center mx-auto"
+                                <input type="text"
+                                       inputmode="numeric"
+                                       pattern="[0-9]*"
+                                       maxlength="2"
+                                       data-autotab-length="2"
+                                       data-min-disk-value="6"
+                                       name="${prefix}disk_${code}"
+                                          class="form-control form-control-sm text-center mx-auto antibiotic-disk-autotab"
                                            style="width:80px; text-align:center;">
                                 </td>
                                 <td>
                                     <input type="text"
                                            name="${prefix}disk_enris_${code}"
                                            list="enris-options"
+                                           maxlength="4"
                                             class="form-control form-control-sm text-center mx-auto"
                                            style="width:70px; text-align:center;"
                                            oninput="this.value=this.value.toUpperCase();">
@@ -1390,8 +1744,9 @@ document.addEventListener("DOMContentLoaded", function () {
                                            name="${prefix}mic_operand_${code}"
                                            class="form-control form-control-sm text-center mx-auto"
                                            style="width:60px; text-align:center;">
-                                    <input type="number"
-                                           step="0.001"
+                                    <input type="text"
+                                           inputmode="decimal"
+                                           pattern="[0-9]*[.]?[0-9]*"
                                            name="${prefix}mic_${code}"
                                             class="form-control form-control-sm text-center mx-auto"
                                            style="width:80px; text-align:center;">
@@ -1401,6 +1756,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     <input type="text"
                                            name="${prefix}mic_enris_${code}"
                                            list="enris-options"
+                                           maxlength="4"
                                             class="form-control form-control-sm text-center mx-auto"
                                            style="width:70px; text-align:center;"
                                            oninput="this.value=this.value.toUpperCase();">
@@ -1423,8 +1779,29 @@ document.addEventListener("DOMContentLoaded", function () {
             .catch(err => console.error("Antibiotic load error:", err));
     }
 
+    function isNoOrganism(value) {
+        return ["", "n/a", "na", "none"].includes((value || "").trim().toLowerCase());
+    }
+
+    function clearAntibioticInputs(retest) {
+        const prefixes = retest
+            ? ["retest_disk_", "retest_disk_enris_", "retest_mic_operand_", "retest_mic_", "retest_mic_enris_", "retest_alert_mic_"]
+            : ["disk_", "disk_enris_", "mic_operand_", "mic_", "mic_enris_", "alert_mic_"];
+
+        document.querySelectorAll("input[name]").forEach(function (input) {
+            if (!prefixes.some(prefix => input.name.startsWith(prefix))) return;
+            if (input.type === "checkbox") input.checked = false;
+            else input.value = "";
+        });
+    }
+
     // Change Handlers
     document.getElementById("id_f_Site_Org")?.addEventListener("change", function () {
+        if (isNoOrganism(this.value)) {
+            antibioticsLoaded.site = false;
+            clearAntibioticInputs(false);
+            return;
+        }
         if (!this.value) return;
 
         if (!confirm("Changing Organism will clear current entries. Continue?")) {
@@ -1436,6 +1813,11 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     document.getElementById("id_f_ars_OrgCode")?.addEventListener("change", function () {
+        if (isNoOrganism(this.value)) {
+            antibioticsLoaded.ars = false;
+            clearAntibioticInputs(true);
+            return;
+        }
         if (!this.value) return;
 
         if (!confirm("Changing ARS Organism will clear current retest entries. Continue?")) {
@@ -1493,11 +1875,11 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
     const siteOrg = $('#id_f_Site_Org').val();
     const arsOrg  = $('#id_f_ars_OrgCode').val();
 
-    if (targetId === '#tabcontent1' && siteOrg && !antibioticsLoaded.site) {
+    if (targetId === '#tabcontent1' && siteOrg) {
         loadAntibiotics(siteOrg, false);
     }
 
-    if (targetId === '#tabcontent2' && arsOrg && !antibioticsLoaded.ars) {
+    if (targetId === '#tabcontent2' && arsOrg) {
         loadAntibiotics(arsOrg, true);
     }
 });
@@ -1533,7 +1915,7 @@ setInterval(updateGreetingAndTime, 60000);
 </script>
 
 <!-- search antibiotic javascript -->
-<script>
+<!-- <script>
 function filterAntibiotics() {
     const input = document.getElementById("antibioticSearchMain");
     const filter = input.value.toUpperCase();
@@ -1559,10 +1941,39 @@ function filterAntibiotics() {
         }
     });
 }
-</script>
+</script> -->
 
 
 <script>
+function filterAntibiotics() {
+    const input = document.getElementById("antibioticSearchMain");
+    const filter = input.value.toUpperCase();
+
+    const tables = [
+        document.getElementById("disk-antibiotics"),
+        document.getElementById("mic-antibiotics")
+    ];
+
+    tables.forEach(tbody => {
+        if (!tbody) return;
+
+        const rows = tbody.getElementsByTagName("tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            const rowText = rows[i].textContent || rows[i].innerText;
+
+            rows[i].style.display =
+                rowText.toUpperCase().includes(filter) ? "" : "none";
+        }
+    });
+}
+</script>
+
+
+
+
+
+<!-- <script>
 function filterRetestAntibiotics() {
     const input = document.getElementById("antibioticSearchRetest");
     const filter = input.value.toUpperCase();
@@ -1585,6 +1996,32 @@ function filterRetestAntibiotics() {
 
             rows[i].style.display =
                 textValue.toUpperCase().includes(filter) ? "" : "none";
+        }
+    });
+}
+</script> -->
+
+
+<script>
+function filterRetestAntibiotics() {
+    const input = document.getElementById("antibioticSearchRetest");
+    const filter = input.value.toUpperCase();
+
+    const tables = [
+        document.getElementById("retest-disk-antibiotics"),
+        document.getElementById("retest-mic-antibiotics")
+    ];
+
+    tables.forEach(tbody => {
+        if (!tbody) return;
+
+        const rows = tbody.getElementsByTagName("tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            const rowText = rows[i].textContent || rows[i].innerText;
+
+            rows[i].style.display =
+                rowText.toUpperCase().includes(filter) ? "" : "none";
         }
     });
 }
@@ -1637,6 +2074,142 @@ window.resetOrganismSection = function (retest = false) {
         antibioticsLoaded.ars = true;
     }
 };
+</script>
+
+<script>
+(function () {
+    const DISK_SELECTOR = ".antibiotic-disk-autotab";
+
+    function visible(field) {
+        return Boolean(field.offsetParent || field.getClientRects().length);
+    }
+
+    function focusNextField(current) {
+        const row = current.closest("tr");
+        const rowFields = Array.from(
+            row?.querySelectorAll("input, select, textarea, button") || []
+        ).filter(field => (
+            !field.disabled &&
+            !field.readOnly &&
+            field.type !== "hidden" &&
+            visible(field) &&
+            field.getAttribute("tabindex") !== "-1"
+        ));
+
+        const index = rowFields.indexOf(current);
+        if (index < 0 || index >= rowFields.length - 1) return;
+
+        const next = rowFields[index + 1];
+        next.focus();
+        next.select?.();
+    }
+
+    function validateDiskMinimum(field, showMessage = false) {
+        const digits = String(field.value || "").replace(/\D/g, "");
+        const minValue = Number(field.dataset.minDiskValue || 6);
+        const value = digits === "" ? null : Number(digits);
+
+        if (value !== null && value < minValue) {
+            field.setCustomValidity(`Disk value must be ${minValue} or higher.`);
+            if (showMessage) {
+                field.reportValidity();
+            }
+            return false;
+        }
+
+        field.setCustomValidity("");
+        return true;
+    }
+
+    document.addEventListener("keydown", function (event) {
+        const current = event.target;
+        if (!current.matches?.(DISK_SELECTOR)) return;
+
+        if (event.key === "Backspace" || event.key === "Delete" || event.key.length > 1) {
+            current.dataset.autotabValue = "";
+        }
+    });
+
+    document.addEventListener("input", function (event) {
+        const current = event.target;
+        if (!current.matches?.(DISK_SELECTOR)) return;
+
+        const maxLength = Number(current.dataset.autotabLength || 2);
+        const digits = String(current.value || "").replace(/\D/g, "").slice(0, maxLength);
+        if (current.value !== digits) current.value = digits;
+
+        validateDiskMinimum(current);
+
+        if (digits.length < maxLength) {
+            current.dataset.autotabValue = "";
+            return;
+        }
+
+        if (!validateDiskMinimum(current, true)) {
+            current.dataset.autotabValue = "";
+            return;
+        }
+
+        if (current.dataset.autotabValue === digits) return;
+        current.dataset.autotabValue = digits;
+
+        window.setTimeout(function () {
+            if (document.activeElement === current) {
+                focusNextField(current);
+            }
+        }, 0);
+    });
+
+    document.addEventListener("blur", function (event) {
+        const current = event.target;
+        if (current.matches?.(DISK_SELECTOR)) {
+            validateDiskMinimum(current, true);
+        }
+    }, true);
+
+    document.addEventListener("submit", function (event) {
+        const invalid = Array.from(
+            event.target.querySelectorAll(DISK_SELECTOR)
+        ).find(field => !validateDiskMinimum(field));
+
+        if (invalid) {
+            event.preventDefault();
+            invalid.focus();
+            invalid.reportValidity();
+        }
+    }, true);
+})();
+</script>
+
+<script>
+(function () {
+    const form = document.getElementById("myform");
+    if (!form) return;
+
+    form.addEventListener("submit", function (event) {
+        if (event.defaultPrevented || form.dataset.submitting === "true") {
+            event.preventDefault();
+            return;
+        }
+
+        const submitter = event.submitter || document.activeElement;
+        if (submitter?.name && submitter?.value) {
+            const hidden = document.createElement("input");
+            hidden.type = "hidden";
+            hidden.name = submitter.name;
+            hidden.value = submitter.value;
+            form.appendChild(hidden);
+        }
+
+        form.dataset.submitting = "true";
+        form.querySelectorAll('button[type="submit"]').forEach(button => {
+            button.disabled = true;
+            if (button === submitter) {
+                button.innerHTML = "Saving...";
+            }
+        });
+    });
+})();
 </script>
 
 {% endblock javascripts %}

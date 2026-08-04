@@ -1,11 +1,43 @@
 {% extends "layouts/base.html" %}
 {% load static %}
 
-{% block title %}Emerging Accessions{% endblock %}
+{% block title %}Emerging Pathogens{% endblock %}
 
 {% block stylesheets %}
 <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
 <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+<style>
+  .emerging-list-header {
+    align-items: flex-start !important;
+    min-height: 52px;
+    padding-top: 1rem;
+  }
+
+  .emerging-list-header h3 {
+    line-height: 1;
+  }
+
+  .emerging-list-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    margin-left: auto;
+    padding-top: 0;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 768px) {
+    .emerging-list-header {
+      gap: 0.75rem;
+    }
+
+    .emerging-list-actions {
+      justify-content: flex-start;
+      width: 100%;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -22,7 +54,7 @@
     <div class="row align-items-center py-4">
       <div class="col-lg-6">
         <h6 class="h2 text-white mb-0">
-          <i class="fas fa-exclamation-triangle mr-2"></i>Emerging Accessions
+          <i class="fas fa-exclamation-triangle mr-2"></i>Emerging Pathogens
         </h6>
       </div>
     </div>
@@ -32,9 +64,9 @@
 <div class="container-fluid mt-4">
 
   <!-- SEARCH -->
-  <div class="row mb-3">
+  <form method="get" class="row mb-3 align-items-start">
     <div class="col-md-4">
-      <form method="get">
+        <label class="form-control-label">Accession</label>
         <div class="input-group">
           <input type="text"
                  name="q"
@@ -47,24 +79,42 @@
             </button>
           </div>
         </div>
-      </form>
+        <div style="line-height: 2px;"></div>
     </div>
-  </div>
+    <div class="col-md-3">
+      <label class="form-control-label" for="date_from">Referral Date From</label>
+      <input type="date" id="date_from" name="date_from"
+             value="{{ date_from }}" class="form-control">
+      <small class="form-text text-muted">Filtered by: Final Data Referral Date.</small>
+    </div>
+    <div class="col-md-3">
+      <label class="form-control-label" for="date_to">Referral Date To</label>
+      <input type="date" id="date_to" name="date_to"
+             value="{{ date_to }}" class="form-control">
+      <small class="form-text text-muted">Filtered by: Final Data Referral Date.</small>
+    </div>
+    <div class="col-md-2">
+      <label class="form-control-label d-block">&nbsp;</label>
+      <button type="submit" class="btn btn-primary btn-block">Apply</button>
+    </div>
+  </form>
 
   <!-- TABLE -->
   <div class="card shadow" style="border-top:3px solid #dc3545;">
-    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+    <div class="card-header bg-light d-flex justify-content-between emerging-list-header">
       <h3 class="mb-0 text-danger">
         <i class="fas fa-list mr-2"></i>Emerging List
       </h3>
-      <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-primary" href="{% url 'download_emerging_list' %}">Download Emerging</a>
+      <div class="emerging-list-actions">
+        <a class="btn btn-sm btn-primary"
+           href="{% url 'download_emerging_list' %}{% if download_querystring %}?{{ download_querystring }}{% endif %}">
+          Download Emerging
+        </a>
         <a class="btn btn-sm btn-primary" href="{% url 'view_wgs_overview' %}">WGS Review</a>
-            <button class="btn btn-sm btn-secondary" onclick="history.back()">
-            <i class="fas fa-arrow-left mr-1"></i>Back
-          </button>
-    </div>
-    </div>
+        <button class="btn btn-sm btn-secondary" onclick="history.back()">
+          <i class="fas fa-arrow-left mr-1"></i>Back
+        </button>
+      </div>
     </div>
 
     <div class="table-responsive" style="max-height:560px; overflow-y:auto;">
@@ -75,7 +125,8 @@
             <th>Organism</th>
             <th>Phenotype</th>
             <th>Specimen</th>
-            <th>Date</th>
+            <th>Referral Date</th>
+            <th>Specimen Date</th>
           </tr>
         </thead>
 
@@ -98,6 +149,7 @@
 
             </td>
             <td>{{ row.eme_spec_Type }}</td>
+            <td>{{ row.eme_primary_key.f_Referral_Date|date:"Y-m-d" }}</td>
             <td>{{ row.eme_spec_Date }}</td>
            
            <!-- changed this add this too !!!!!!!!!!! -->
@@ -136,7 +188,7 @@
             {% if page_obj.has_previous %}
             <li class="page-item">
               <a class="page-link"
-                 href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}">
+                 href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
                 ‹
               </a>
             </li>
@@ -144,7 +196,7 @@
             {% if page_obj.has_next %}
             <li class="page-item">
               <a class="page-link"
-                 href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}">
+                 href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
                 ›
               </a>
             </li>

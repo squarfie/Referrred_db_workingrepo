@@ -1,224 +1,261 @@
+{% load final_filters %}
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-<style>
-    body {
-        font-family: Helvetica, Arial, sans-serif;
-        font-size: 12px;
-        line-height: 1.6;   /* Controls line spacing */
+  <meta charset="utf-8">
+  <style>
+@page {
+  size: A4;
+  margin: 3.4cm 1.6cm 2.8cm 1.6cm;
+
+  @frame header_frame {
+    -pdf-frame-content: report_header;
+    left: 0cm;
+    top: 0cm;
+    width: 21cm;
+    height: 3.8cm;
+  }
+
+  @frame footer_frame {
+    -pdf-frame-content: report_footer;
+    left: 0cm;
+    bottom: 0cm;
+    width: 21cm;
+    height: 1.8cm;
+  }
 }
-
-p {
-    margin-top: 6px;
-    margin-bottom: 6px;
-}
-    @page {
-        size: A4;
-        margin: 2.5cm 2cm 2.5cm 2cm;
-    }
-
-    .page-break {
-        page-break-after: always;
-    }
-
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 10.5px; color: #111; line-height: 1.35; }
+    p { margin: 5px 0; }
+    .letter { font-size: 12px; }
+    .justify { text-align: justify; }
+    .page-break { page-break-after: always; }
+    .title { font-size: 15px; font-weight: bold; margin-bottom: 8px; }
     table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 15px;
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 14px;
+      table-layout: fixed;
     }
 
     th, td {
-        border: 1px solid #000;
-    padding: 1.8px;
-    line-height: 0.8;
-    }
+      border: 1px solid #222;
+      padding: 3px 5px;
+      vertical-align: top;
 
-    th {
-        background-color: #e6e6e6;
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+      word-break: break-all;
     }
-
-    .section-title {
-        background-color: #d9d9d9;
-        font-weight: bold;
-    }
-
-    .no-border td {
-        border: none;
-    }
-
-    .signature-space {
-        margin-top: 60px;
-    }
-
-    .justify {
-    text-align: justify;
+    .section { background: #d9d9d9; font-weight: bold; }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .no-border td { border: 0; padding: 2px 0; }
+    .formula {
+    font-size: 9px;
+    margin-top: 2px;
+    line-height: 1.0;
 }
 
-</style>
+.formula p {
+    margin: 0 0 2px 0;
+    padding: 0;
+}
+    .small { font-size: 9px; }
+    .meta-table td { line-height: 1.2; }
+    .summary-table th, .summary-table td { line-height: 1.15; }
+    .summary-label { text-align: left; }
+    .summary-target, .summary-number, .summary-percent { text-align: center; }
 
+.legend-table {
+  width: 70%;
+  margin: 6px 0 8px 0;
+  table-layout: fixed;
+}
+
+.legend-table th,
+.legend-table td {
+  border: 1px solid #222;
+  line-height: 1.1;
+  padding: 2px 4px;
+  font-size: 9px;
+}
+.address p {
+  margin: 0;
+  padding: 0;
+}
+
+  </style>
 </head>
 <body>
-<br>
-<br>
-<p class="small-space">
-  {{ now }}
-</p>
-<br>
-<br>
-<p>-- NAME OF RECIPIENT --</p>
-<p>-- DESIGNATION --</p>
-<p>{{ report.final_data.f_Site_Name }}</p>
-<p>-- ADDRESS --</p>
-<br>
-<br>
-<p> Dear (Name of Recipient),</p>
-<br>
-<p  class="justify">Please find attached confirmatory test results and summary of concordance report with legend 
-    sheet of your referred isolates that were sent to ARSRL dated {{ report.final_data.f_Referral_Date }} ({{ total_isolates }} isolates). 
-    As previously communicated to your good office, ARSP has set–up various parameters on your referred isolates by which you can objectively assess 
-    your results against that of ARSRL. We hope you will find these helpful for your laboratory.
-</p>
-<br>
-<p>Thank you for your continued support to the Antimicrobial Resistance Surveillance Program.</p>
-<br>
-<br>
-<p>Very truly yours,</p>
-<br>
-<p>SONIA B. SIA, MD</p>
-<p>Head, ARSRL </p>
+<div id="report_header">
+  <img src="{{ header_path }}" style="width:23cm; height:3.0cm; display:block;">
+</div>
+ 
+<div id="report_footer" style="font-size:8px; color:#555;">
+   <div style="text-align:right; padding-right:1.6cm;">Page <pdf:pagenumber /> of <pdf:pagecount /></div>
+  <img src="{{ footer_path }}" style="width:21cm; height:1.1cm; display:block;">
 
-
+</div>
+<br>
+<br>
+<br>
+<div class="letter">
+  <p>{{ now }}</p>
+  <br>
+  <br>
+  <br>
+  <div class="address">
+  <p><strong>{{ recipient_name|upper }}{% if credentials %}, {{ credentials|upper }}{% endif %}</strong></p>
+  <p>{{ recipient_designation }}</p>
+  <p>{{ site_name }}</p>
+  {% if recipient_address %}
+  <p>{{ recipient_address|title }}</p>
+  {% endif %}
+  </div>
+  <br>
+  <br>
+  <p>Dear {{ recipient_salutation }},</p>
+  <br>
+  <p class="justify">
+    Please find attached confirmatory test results and summary of concordance report with
+    legend sheet of your referred isolates that were sent to ARSRL dated {{ referral_date }}
+    ({{ total_isolates }} isolate/s; Accession Nos.: {{ accession_numbers }}). As previously
+    communicated to your good office, ARSP has set-up various parameters on your referred
+    isolates by which you can objectively assess your results against that of ARSRL. We hope
+    you will find these helpful for your laboratory.
+  </p>
+  <br>
+  <p>Thank you for your continued support to the Antimicrobial Resistance Surveillance Program.</p>
+  <br><br>
+  <p>Very truly yours,</p>
+  <br>
+  <p><strong>SONIA B. SIA, MD</strong></p>
+  <p>Head, ARSRL</p>
+</div>
 
 <div class="page-break"></div>
-
-<h2>Concordance Quality Report</h2>
 <br>
-<p><strong>Table 1:</strong> &nbsp;Summary Concordance Report</p>
-<table>
-    <tr>
-        <td style="width: 150%;"><strong>Sentinel Site</strong></td>
-        <td style="width: 100%;">{{ report.final_data.f_Site_Name }}</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td colspan="4"><strong>Date of Referral</strong></td>
-        <td colspan="8">{{ report.final_data.f_Referral_Date }}</td>
-        <td colspan="1"></td>
-    </tr>
-    <tr>
-        <td colspan="4"><strong>Accession Number</strong></td>
-        <td colspan="8">{{ refno }}</td>
-        <td colspan="1"></td>
-    </tr>
+<p class="title">Table 1: Summary Concordance Report</p>
+<table class="meta-table">
+  <tr>
+    <td style="width: 28%;"><strong>Sentinel Site</strong></td>
+    <td style="width: 72%;">{{ site_name }}</td>
+  </tr>
+  <tr>
+    <td style="width: 28%;"><strong>Date of Referral</strong></td>
+    <td style="width: 72%;">{{ referral_date }}</td>
+  </tr>
+  <tr>
+    <td style="width: 28%;"><strong>Accession Numbers</strong></td>
+    <td style="width: 72%;">{{ accession_numbers }}</td>
+  </tr>
 </table>
-
-<!-- ====================== -->
-<!-- QUALITY OF REFERRAL -->
-<!-- ====================== -->
-
-<table>
-    <tr>
-        <th colspan="2" class="section-title">1. QUALITY OF REFERRAL</th>
-    </tr>
-    <tr>
-        <td>1.1 Number of Isolates</td>
-        <td>{{ report.total_isolates }}</td>
-    </tr>
-    <tr>
-        <td>1.2 Number of Nonviable Isolates</td>
-        <td>0</td>
-    </tr>
-    <tr>
-        <td>1.3 Number of Mixed Cultures</td>
-        <td>0</td>
-    </tr>
-    <tr>
-        <td>1.4 Number of Viable and Pure Isolates</td>
-        <td>{{ report.total_isolates }}</td>
-    </tr>
+<table class="summary-table">
+  <tr>
+    <th class="section summary-label" style="width: 62%;">1. QUALITY OF REFERRAL</th>
+    <th class="summary-target" style="width: 13%;">TARGET</th>
+    <th class="summary-number" style="width: 12%;">Number</th>
+    <th class="summary-percent" style="width: 13%;">%</th>
+  </tr>
+  <tr><td class="summary-label" style="width: 62%;">1.1 Number of Isolates</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;">{{ total_isolates }}</td><td class="summary-percent" style="width: 13%;"></td></tr>
+  <tr><td class="summary-label" style="width: 62%;">1.2 Number of Nonviable Isolates</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;">{{ nonviable_count }}</td><td class="summary-percent" style="width: 13%;"></td></tr>
+  <tr><td class="summary-label" style="width: 62%;">1.3 Number of Mixed Cultures</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;">{{ mixed_count }}</td><td class="summary-percent" style="width: 13%;"></td></tr>
+  <tr><td class="summary-label" style="width: 62%;">1.4 Number of Viable and Pure Isolates</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;">{{ viable_pure }}</td><td class="summary-percent" style="width: 13%;"></td></tr>
+  <tr>
+    <th class="section summary-label" style="width: 62%;">2. ORGANISM IDENTIFICATION</th>
+    <th class="summary-target" style="width: 13%;">TARGET</th>
+    <th class="summary-number" style="width: 12%;">Number</th>
+    <th class="summary-percent" style="width: 13%;">%</th>
+  </tr>
+  <tr><td class="summary-label" style="width: 62%;">2.1 Concordant ID Genus Level</td><td class="summary-target" style="width: 13%;">&gt;= 96%</td><td class="summary-number" style="width: 12%;">{{ genus_match }}</td><td class="summary-percent" style="width: 13%;">{{ genus_rate }}%</td></tr>
+  <tr><td class="summary-label" style="width: 62%;">2.2 Concordant ID Species Level</td><td class="summary-target" style="width: 13%;">&gt;= 90%</td><td class="summary-number" style="width: 12%;">{{ species_match }}</td><td class="summary-percent" style="width: 13%;">{{ species_rate }}%</td></tr>
+  <tr><td class="summary-label" style="width: 62%;">2.3 Different Identification</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;">{{ different_org }}</td><td class="summary-percent" style="width: 13%;">{{ different_org_rate }}%</td></tr>
+  <tr>
+    <th class="section summary-label" style="width: 62%;">3. AST RESULTS</th>
+    <th class="summary-target" style="width: 13%;">TARGET</th>
+    <th class="summary-number" style="width: 12%;">Number</th>
+    <th class="summary-percent" style="width: 13%;">%</th>
+  </tr>
+  <tr><td class="summary-label" style="width: 62%;">3.1 Total Number of AST pairs analyzed</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;">{{ total_pairs }}</td><td class="summary-percent" style="width: 13%;"></td></tr>
+  <tr><td class="summary-label" style="width: 62%;">3.2 Concordant AST Results</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;">{{ concordant }}</td><td class="summary-percent" style="width: 13%;">{{ concordance_rate }}%</td></tr>
+  <tr><td class="summary-label" style="width: 62%;">3.3 Discordant AST Results</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;"></td><td class="summary-percent" style="width: 13%;"></td></tr>
+  <tr><td class="summary-label" style="width: 62%;"> A - Very Major Deviations</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;">{{ vmd }}</td><td class="summary-percent" style="width: 13%;"></td></tr>
+  <tr><td class="summary-label" style="width: 62%;">B - Major Deviations</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;">{{ md }}</td><td class="summary-percent" style="width: 13%;"></td></tr>
+  <tr><td class="summary-label" style="width: 62%;">C - Minor Deviations</td><td class="summary-target" style="width: 13%;"></td><td class="summary-number" style="width: 12%;">{{ minor }}</td><td class="summary-percent" style="width: 13%;"></td></tr>
+  <tr><td class="summary-label" style="width: 62%;">3.4 Critical Deviations</td><td class="summary-target" style="width: 13%;">&lt;= 5%</td><td class="summary-number" style="width: 12%;">{{ critical_deviation }}</td><td class="summary-percent" style="width: 13%;">{{ critical_deviation_rate }}%</td></tr>
+  <tr><td class="summary-label" style="width: 62%;">3.5 Total Deviations</td><td class="summary-target" style="width: 13%;">&lt;= 8%</td><td class="summary-number" style="width: 12%;">{{ total_deviation }}</td><td class="summary-percent" style="width: 13%;">{{ total_deviation_rate }}%</td></tr>
 </table>
-
-<!-- ====================== -->
-<!-- ORGANISM IDENTIFICATION -->
-<!-- ====================== -->
-
+<br>
+<div class="formula">
+  <p>% Referred Isolates = # of Isolates (Referred or Missed Referred) / Total # of Referable Isolates</p>
+  <p>Concordance on Organism ID = # of Concordant ID (Genus or Species Level) / # of viable and pure isolates</p>
+  <p>% Critical Deviations = (Very Major Deviations + Major Deviations) / Total # of AST pairs analyzed</p>
+  <p>% Total Deviations = (Very Major Deviations + Major Deviations + Minor Deviations) / Total # of AST pairs analyzed</p>
+  <p>AST pairs analyzed are those AST results interpretations derived by using identical methodology by both site and reference laboratory.</p>
+</div>
+<br>
+<br>
+<p class="title">Table 2. Discordant Identification</p>
 <table>
-    <tr>
-        <th colspan="1" class="section-title">2. ORGANISM IDENTIFICATION</th>
-        <th>TARGET</th>
-        <th>Number</th>
-    </tr>
-    <tr>
-        <td>2.1 Concordant ID Genus Level</td>
-        <td>>=95%</td>
-        <td>{{ genus_rate }}%</td>
-    </tr>
-    <tr>
-        <td>2.2 Concordant ID Species Level</td>
-        <td>>=87%</td>
-        <td>{{ species_rate }}%</td>
-    </tr>
-    <tr>
-        <td>2.3 Different Identification</td>
-        <td></td>
-        <td>{{ different_org }}</td>
-    </tr>
+  <tr>
+    <th style="width: 16%;">Ref No.</th>
+    <th style="width: 42%;">SITE IDENTIFICATION</th>
+    <th style="width: 42%;">ARSRL IDENTIFICATION</th>
+  </tr>
+  {% for row in discordant_rows %}
+  <tr>
+    <td class="center"> {{ row.bat_seq }}</td>
+    <td>{{ row.site_org|pdf_wrap_blank }}</td>
+    <td>{{ row.ars_org|pdf_wrap_blank  }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="3" class="center">No discordant identification records.</td></tr>
+  {% endfor %}
 </table>
-
-<!-- ====================== -->
-<!-- AST RESULTS -->
-<!-- ====================== -->
-
-<table>
-    <tr>
-        <th colspan="1" class="section-title">3. AST RESULTS</th>
-        <th>TARGET</th>
-        <th>Number</th>
-    </tr>
-    <tr>
-        <td>3.1 Total Number of AST pairs analyzed</td>
-        <td></td>
-        <td>{{ report.total_pairs }}</td>
-    </tr>
-    <tr>
-        <td>3.2 Concordant AST Results</td>
-        <td></td>
-        <td>{{ report.concordant_pairs }}</td>
-    </tr>
-    <tr>
-        <td>A – Very Major Deviations</td>
-        <td></td>
-        <td>{{ report.vmd }}</td>
-    </tr>
-    <tr>
-        <td>B – Major Deviations</td>
-        <td></td>
-        <td>{{ report.md }}</td>
-    </tr>
-    <tr>
-        <td>C – Minor Deviations</td>
-        <td></td>
-        <td>{{ report.minor }}</td>
-    </tr>
-    <tr>
-        <td>3.4 Critical Deviations</td>
-        <td><=5%</td>
-        <td>{{ vmd_rate }}%</td>
-    </tr>
-    <tr>
-        <td>3.5 Total Deviations</td>
-        <td><=10%</td>
-        <td>{{ total_deviation_rate }}%</td>
-    </tr>
-</table>
-
-<p class="small-space">
-    Date Now: {{ now }}
-</p>
-
 <div class="page-break"></div>
+<p class="title">Table 3. AST Results with Deviations</p>
+<table>
+  <tr>
+    <th style="width: 10%;">Ref No.</th>
+    <th style="width: 18%;">Accession No</th>
+    <th style="width: 24%;">Final ID</th>
+    <th style="width: 20%;">Antibiotic</th>
+    <th style="width: 9%;">Site RIS</th>
+    <th style="width: 10%;">ARSRL RIS</th>
+    <th style="width: 9%;">Deviation</th>
+  </tr>
+  {% for row in discordant_details %}
+    <tr>
+      <td class="center">{{ row.bat_seq }}</td>
+      <td>{{ row.accession_no }}</td>
+      <td>{{ row.organism|pdf_wrap_blank  }}</td>
+      <td>{{ row.antibiotic|pdf_wrap_blank  }}</td>
+      <td class="center">{{ row.site_ris}}</td>
+      <td class="center">{{ row.ars_ris }}</td>
+      <td class="center">{{ row.deviation_code }}</td>
+    </tr>
+  {% empty %}
+  <tr><td colspan="7" class="center">No AST comparison records.</td></tr>
+  {% endfor %}
+</table>
 
+<p class="title">Legend:</p>
+<table class="legend-table">
+  <tr>
+    <th style="width: 10%;">Code</th>
+    <th style="width: 10%;">Site</th>
+    <th style="width: 10%;">ARSRL</th>
+    <th style="width: 15%;">Description</th>
+  </tr>
+  <tr><td class="center">A</td><td class="center">S</td><td class="center">R</td><td>Very major deviation</td></tr>
+  <tr><td class="center">B</td><td class="center">R</td><td class="center">S</td><td>Major deviation</td></tr>
+  <tr><td class="center">C</td><td class="center">S/R</td><td class="center">I</td><td>Minor deviation</td></tr>
+  <tr><td class="center">C</td><td class="center">I</td><td class="center">S/R</td><td>Minor deviation</td></tr>
+</table>
+<div class="formula">
+<p >Total Deviation - total number of all deviations</p>
+<p >Critical Deviation - the number of major and very major deviations</p>
+</div>
 </body>
-
 </html>

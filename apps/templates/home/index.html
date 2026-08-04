@@ -9,20 +9,497 @@
 <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
 <link rel="stylesheet" href="{% static 'assets/css/header.css' %}"> 
 <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+<style>
+.tat-dashboard-card {
+  border: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(15, 39, 68, .16);
+  margin-bottom: 0 !important;
+}
+
+html,
+body {
+  background: #eef9fd !important;
+}
+
+#panel,
+.main-content {
+  background: #eef9fd !important;
+  min-height: 100vh !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.header-container {
+  min-height: 188px;
+}
+
+.header-index h1 {
+  font-size: 38px;
+}
+
+.header-index {
+  width: calc(100% - 360px);
+  max-width: 1120px;
+}
+
+.header-stats {
+  position: absolute;
+  top: 88px;
+  right: 34px;
+  margin-left: 0 !important;
+  margin-right: 0;
+  gap: 30px;
+  padding-top: 0;
+}
+
+.header-index .badge-group {
+  align-items: center;
+}
+
+.header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.header-title-copy {
+  min-width: 0;
+}
+
+.header-index .header-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.header-index .badge-group {
+  gap: 0.55rem;
+}
+
+.header-index .btn-new-crf {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  color: #0a0e1a;
+  text-decoration: none;
+  white-space: nowrap;
+  transform: none;
+  flex: 0 0 auto;
+  margin-left: 0.25rem;
+}
+
+.header-index .btn-new-crf:hover {
+  color: #0a0e1a;
+  transform: translateY(-2px);
+}
+
+@media (max-width: 1200px) {
+  .header-index {
+    width: 100%;
+    max-width: none;
+  }
+
+  .header-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+}
+
+.index-content-panel {
+  background: linear-gradient(180deg, rgba(224, 246, 251, 0.2) 0%, rgba(245, 251, 253, 0.92) 78%);
+  padding-bottom: .9rem !important;
+  margin-bottom: 0 !important;
+  position: relative;
+  overflow: hidden;
+  min-height: clamp(300px, 36vh, 430px);
+}
+
+.footer {
+  display: none !important;
+}
+
+.index-content-panel .dashboard-animation-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.index-content-panel .grid-bg,
+.index-content-panel .particles,
+.index-content-panel .scanner,
+.index-content-panel .glow-orb,
+.index-content-panel .overlay {
+  z-index: 0 !important;
+}
+
+.index-content-panel .grid-bg {
+  opacity: 0.28;
+}
+
+.index-content-panel .particles {
+  opacity: 0.2;
+}
+
+.index-content-panel .scanner {
+  border-color: rgba(0, 188, 212, 0.13);
+  opacity: 0.34;
+}
+
+.index-content-panel .glow-orb {
+  opacity: 0.18;
+}
+
+.index-content-panel .overlay {
+  background: linear-gradient(180deg, rgba(16, 26, 52, 0.2) 0%, rgba(224, 246, 251, 0.5) 45%, rgba(245, 251, 253, 0.88) 100%);
+}
+
+.index-content-panel > .row {
+  position: relative;
+  z-index: 2;
+}
+
+.tat-dashboard-header {
+  background: linear-gradient(135deg, #0f5568 0%, #07889a 100%);
+  color: #fff;
+  padding: .8rem 1rem;
+}
+
+.tat-dashboard-header h3 {
+  font-size: 1rem;
+}
+
+.tat-dashboard-header small {
+  font-size: .75rem;
+}
+
+.tat-filter-panel {
+  background: #fff;
+  border-bottom: 1px solid #dbe4f0;
+  padding: .8rem 1rem;
+}
+
+.tat-filter-panel label {
+  color: #24466f;
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.header-year-scope {
+  color: rgba(230, 245, 255, .78);
+  font-size: .64rem;
+  font-weight: 700;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+/* ── Status Strip ────────────────────────────────────────── */
+.tat-status-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: .65rem;
+  padding: .75rem 1rem;
+  background: linear-gradient(135deg, #f0f6ff 0%, #e8f4fb 100%);
+  border-bottom: 1px solid #dbe4f0;
+  align-items: stretch;
+}
+
+.tat-status-tile {
+  background: #fff;
+  border: 1px solid #dbe4f0;
+  border-radius: 8px;
+  padding: .65rem .82rem .58rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(15,39,68,.06);
+}
+
+.tat-status-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(15,39,68,.12);
+}
+
+/* Colored top accent bar per tile */
+.tat-status-tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--tile-accent, #00bcd4);
+  border-radius: 12px 12px 0 0;
+}
+
+/* Subtle background watermark icon */
+.tat-status-tile::after {
+  content: var(--tile-icon, '');
+  position: absolute;
+  bottom: -4px; right: 8px;
+  font-size: 2rem;
+  opacity: 0.06;
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  color: var(--tile-accent, #00bcd4);
+  pointer-events: none;
+}
+
+.tat-status-tile strong {
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--tile-accent, #123a63);
+  letter-spacing: -0.5px;
+}
+
+.tat-status-tile span {
+  color: #718096;
+  font-size: .62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+/* Per-tile accent colors */
+.tat-tile-total   { --tile-accent: #1e5a96; }
+.tat-tile-ongoing { --tile-accent: #f5a623; }
+.tat-tile-near    { --tile-accent: #11cdef; }
+.tat-tile-overdue { --tile-accent: #fb6340; }
+.tat-tile-released{ --tile-accent: #2dce89; }
+
+/* ── Table toggle bar ────────────────────────────────────── */
+.tat-table-toggle-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .55rem 1rem;
+  background: linear-gradient(90deg, rgba(232, 248, 252, 0.96) 0%, rgba(247, 253, 255, 0.98) 58%, rgba(226, 246, 251, 0.96) 100%);
+  border-top: 1px solid rgba(0, 188, 212, .18);
+  border-bottom: 1px solid rgba(0, 188, 212, .22);
+  box-shadow: inset 4px 0 0 #00bcd4;
+}
+
+.tat-table-toggle-bar span {
+  font-size: .68rem;
+  font-weight: 800;
+  color: #0f3a5f;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.tat-table-toggle-bar small {
+  color: #64819a !important;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.btn-toggle-table {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  background: linear-gradient(135deg, #0f5568 0%, #07889a 100%);
+  color: #fff;
+  border: 1px solid rgba(0, 188, 212, .45);
+  border-radius: 999px;
+  padding: .3rem .85rem;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 5px 14px rgba(15, 85, 104, .18);
+}
+
+.btn-toggle-table:hover {
+  background: linear-gradient(135deg, #0d4960 0%, #0697a8 100%);
+  border-color: rgba(0, 188, 212, .75);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 85, 104, .24);
+}
+
+.btn-toggle-table .toggle-icon {
+  transition: transform 0.3s ease;
+  display: inline-block;
+  font-size: .7rem;
+}
+
+.btn-toggle-table.collapsed .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+/* ── Main table wrap ─────────────────────────────────────── */
+.tat-main-table-wrap {
+  max-height: 44vh;
+  overflow: auto;
+  background: #f8fcfd;
+  border-top: 1px solid rgba(15, 58, 95, .12);
+  transition: max-height 0.4s ease, opacity 0.3s ease;
+}
+
+.tat-main-table-wrap.table-hidden {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  border: none;
+}
+
+.tat-main-table {
+  min-width: 1550px;
+  margin: 0;
+  font-size: .76rem;
+}
+
+.tat-main-table thead {
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+}
+
+.tat-main-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+  color: #ffffff;
+  border: 0;
+  white-space: nowrap;
+  text-align: center;
+  font-size: .66rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .55rem .5rem;
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.34);
+}
+
+.tat-main-table td {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.tat-main-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(9,184,198,.06), rgba(18,58,99,.04));
+}
+
+.tat-pill {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: .66rem;
+  font-weight: 800;
+  padding: .24rem .55rem;
+  text-transform: uppercase;
+}
+
+.tat-pill-running  { background: #bdf3d5; color: #075f43; border: 1px solid #27c78c; }
+.tat-pill-ongoing  { background: #fff0c7; color: #7d4e00; border: 1px solid #f5a623; }
+.tat-pill-released { background: #d4f4dd; color: #0f5132; border: 1px solid #2dce89; }
+.tat-pill-overdue  { background: #ffd7d7; color: #8a1f16; border: 1px solid #fb6340; }
+.tat-pill-near     { background: #d8f4fb; color: #035f70; border: 1px solid #11cdef; }
+
+@media (max-width: 992px) {
+  .tat-status-strip { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+}
+@media (max-width: 576px) {
+  .tat-status-strip { grid-template-columns: 1fr 1fr; }
+}
+
+#slideshow-header {
+  min-height: 0 !important;
+  padding-bottom: 1.35rem !important;
+  background:
+    linear-gradient(90deg, rgba(10, 18, 38, 0.72), rgba(10, 55, 82, 0.5)),
+    url("{% static 'assets/img/theme/microbial.jpg' %}") center 58% / cover no-repeat !important;
+}
+
+#slideshow-header::after {
+  opacity: 0.08 !important;
+}
+
+#slideshow-header .mask {
+  background: rgba(10, 18, 38, 0.18) !important;
+  opacity: 1 !important;
+}
+
+#slideshow-header .row.align-items-center.py-4 {
+  padding-top: 1.05rem !important;
+  padding-bottom: .7rem !important;
+}
+
+#slideshow-header .row.g-3.mb-6 {
+  margin-bottom: 1.05rem !important;
+}
+
+#slideshow-header .preview-card {
+  height: 170px;
+}
+
+#slideshow-header .card-content {
+  padding: 1.35rem 1.45rem;
+}
+
+#slideshow-header .card-icon {
+  font-size: 2.15rem;
+}
+
+#slideshow-header .card-title {
+  font-size: 1.12rem;
+}
+
+#slideshow-header .card-description {
+  font-size: .875rem;
+}
+
+.tat-filter-panel .form-control {
+  height: 34px;
+  padding: .45rem .7rem;
+  font-size: .82rem;
+}
+
+.tat-filter-panel .btn,
+.tat-dashboard-header .btn {
+  padding: .38rem .75rem;
+  font-size: .78rem;
+}
+.header-title-row {
+  display: flex;
+  align-items: center;      /* vertically centers button against the title block */
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+</style>
 
 {% endblock stylesheets %}
 
 {% block content %}
 
-<body>
-
-   <div class="header-container">
+<div class="header-container">
       <div class="background-animation-wrapper" aria-hidden="true">
-
-      <!-- Grid Background -->
       <div class="grid-bg"></div>
-
-      <!-- Rising Particles -->
       <div class="particles">
           <div class="particle"></div>
           <div class="particle"></div>
@@ -34,42 +511,49 @@
           <div class="particle"></div>
           <div class="particle"></div>
       </div>
-
-      <!-- Scanners -->
       <div class="scanner"></div>
       <div class="scanner"></div>
       <div class="scanner"></div>
-
-      <!-- Glow Orbs -->
-      <div class="glow-orb" ></div>
-      <div class="glow-orb" ></div>
-
-      <!-- Gradient Overlay -->
+      <div class="glow-orb"></div>
+      <div class="glow-orb"></div>
       <div class="overlay"></div>
-
   </div>
-  <!-- END ANIMATION WRAPPER -->
 
-    <div class="header-index">
-        <h1>Antimicrobial Resistance Surveillance Program</h1>
-        <p style="font-size: 20px; font-weight: 300;">AST Results Management System</p>
+<div class="header-index">
+      <div class="header-title-row">
+        <div class="header-title-copy">
+          <h1>Antimicrobial Resistance Surveillance Program</h1>
+          <p style="font-size: 17px; font-weight: 300;">AST Results Management System</p>
+        </div>
+      
+      </div>
 
-        <div class="badge-group">
-            <div class="badge"><span class="badge-icon">🔬</span>Emerging Pathogens</div>
+        <div class="header-action-row">
+          <div class="badge-group">
+            <a href="{% url 'emerging_list_view' %}" class="badge badge-pill badge-primary text-decoration-none"><span class="badge-icon">🔬</span>Emerging Pathogens  </a>
             <div class="badge"><span class="badge-icon">📊</span>Real-time Data</div>
             <a href="{% url 'tat_review_view' %}" class="badge badge-pill badge-primary text-decoration-none">
               <span class="badge-icon mr-1">⚡</span>
-              TAT Monitoring  </a>
-              <a href="{% url 'concordance_analysis' %}" 
-            class="badge badge-pill badge-success text-decoration-none">
+              TAT Monitoring
+            </a>
+            <a href="{% url 'concordance_analysis' %}"
+              class="badge badge-pill badge-success text-decoration-none">
               <span class="badge-icon mr-1">🔄</span>
               Concordance Dashboard
-          </a>
+            </a>
+             <a href="{% url 'batch_create_view' %}"
+              class="badge badge-pill badge-secondary">
+              <span class="badge-icon mr-1">+</span>
+             Add New
+            </a>
+          </div>
 
         </div>
     </div>
 
+
     <div class="header-stats index-font">
+  <!-- <a href="{% url 'batch_create_view' %}" class="btn-new-crf index-font">+ Add New</a> -->
         <div class="stat-item">
             <span class="stat-number">{{ record_count }}</span>
             <span class="stat-label">Total Records</span>
@@ -78,296 +562,363 @@
             <span class="stat-number">{{ site_count }}</span>
             <span class="stat-label">Active Sites</span>
         </div>
+
     </div>
 
-    <a href="{% url 'batch_create_view' %}" class="btn-new-crf index-font">+ Add New</a>
-</div>
+
+</div> 
 
     <!-- Header -->
-    <div id="slideshow-header" class="header bg-primary pb-6 g-gradient-default align-items-center index-font" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/resistance2.jpg); background-position: center center;">
-      <span class="mask bg-gradient-default opacity-4"></span>
+    <div id="slideshow-header" class="header bg-primary pb-6 g-gradient-default align-items-center index-font" style="min-height: 145px; background-size: cover; background-image: url(/static/assets/img/theme/arsp-hero.png); background-position: center center;">
+      <span class="mask bg-gradient-default opacity-3"></span>
       <div class="container-fluid">
         <div class="header-body">
+                                   <div class="header-year-scope">Referral year: {{ dashboard_year_label }}</div>
           <div class="row align-items-center py-4">
-                  <div class="col-lg-6 col-7">
-                    <h6 class="h2 text-white d-inline-block mb-0">Home</h6>
-                    <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
-                      <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
-                        <li class="breadcrumb-item"><a href="#"><i class="fas fa-home"></i></a></li>
-                        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
-                        
-                      </ol>
-                    </nav>
-                  </div>
-                    <div class="col-lg-6 col-12 text-right">
-                        <span style="color: rgba(255, 255, 255, 0.7); font-size: 1.0rem; font-weight: 500;">
-                            <i class="ni ni-calendar-grid-58 mr-2"></i>
-                            <span id="current-date"></span>
-                        </span>
-                    </div>
-               </div>
-                  <!-- Animated Preview Cards Section -->
 
-                  <div class="row g-3 mb-6">
-                    <!-- WGS Overview Card -->
-                    <div class="col-lg-3 col-md-6 col-sm-12">
-                      <a href="{% url 'view_wgs_overview' %}" class="preview-card-link">
-                        <div class="preview-card">
-                          <div class="card-background" style="--card-color: linear-gradient(135deg, #2dce89 0%, #11cdef 100%);"></div>
-                          <div class="card-content">
-                            <div class="card-icon">
-                              <i class="ni ni-atom"></i>
-                            </div>
-                            <h5 class="card-title">WGS Overview</h5>
-                            <p class="card-description">Whole Genome Sequencing Results</p>
-                            <div class="card-arrow">
-                              <i class="ni ni-curved-next"></i>
-                            </div>
-                          </div>
-                          <div class="card-shine"></div>
-                        </div>
-                      </a>
-                    </div>
-
-                    <!-- Antibiotics Management Card -->
-                    <div class="col-lg-3 col-md-6 col-sm-12">
-                      <a href="{% url 'antibiotics_view' %}" class="preview-card-link">
-                        <div class="preview-card">
-                          <div class="card-background" style="--card-color: linear-gradient(135deg, #11cdef 0%, #64c8ff 100%);"></div>
-                          <div class="card-content">
-                            <div class="card-icon">
-                              <i class="fas fa-medkit"></i>
-                            </div>
-                            <h5 class="card-title">Antibiotics</h5>
-                            <p class="card-description">View Antibiotics</p>
-                            <div class="card-arrow">
-                              <i class="ni ni-curved-next"></i>
-                            </div>
-                          </div>
-                          <div class="card-shine"></div>
-                        </div>
-                      </a>
-                    </div>
-
-                    <!-- Batch Management Card -->
-                    <div class="col-lg-3 col-md-6 col-sm-12">
-                      <a href="{% url 'review_batches' %}" class="preview-card-link">
-                        <div class="preview-card">
-                          <div class="card-background" style="--card-color: linear-gradient(135deg, #64c8ff 0%, #5e72e4 100%);"></div>
-                          <div class="card-content">
-                            <div class="card-icon">
-                              <i class="fa fa-cubes"></i>
-                            </div>
-                            <h5 class="card-title">Batches</h5>
-                            <p class="card-description">Batch Management System</p>
-                            <div class="card-arrow">
-                              <i class="ni ni-curved-next"></i>
-                            </div>
-                          </div>
-                          <div class="card-shine"></div>
-                        </div>
-                      </a>
-                    </div>
-
-                    <!-- Reports Card -->
-                    <div class="col-lg-3 col-md-6 col-sm-12">
-                      <a href="#" class="preview-card-link">
-                        <div class="preview-card">
-                          <div class="card-background" style="--card-color: linear-gradient(135deg, #fb6340 0%, #fbc658 100%);"></div>
-                          <div class="card-content">
-                            <div class="card-icon">
-                              <i class="ni ni-chart-pie-35"></i>
-                            </div>
-                            <h5 class="card-title">Reports</h5>
-                            <p class="card-description">Generate Reports</p>
-                            <div class="card-arrow">
-                              <i class="ni ni-curved-next"></i>
-                            </div>
-                          </div>
-                          <div class="card-shine"></div>
-                        </div>
-                      </a>
-                    </div>
-                  </div>
-          
-
+            <div class="col-lg-6 col-7">
+              <h6 class="h2 text-white d-inline-block mb-0">Home</h6>
+              <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+                <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+                  <li class="breadcrumb-item"><a href="#"><i class="fas fa-home"></i></a></li>
+                  <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                </ol>
+              </nav>
+            </div>
+            <div class="col-lg-6 col-12 text-right">
+              <span style="color: rgba(255,255,255,0.7); font-size: .85rem; font-weight: 500;">
+                <i class="ni ni-calendar-grid-58 mr-2"></i>
+                <span id="current-date"></span>
+              </span>
+            </div>
           </div>
+
+          <!-- Preview Cards -->
+          <div class="row g-3 mb-6">
+
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="{% url 'view_wgs_overview' %}" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #2dce89 0%, #11cdef 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="ni ni-atom"></i></div>
+                    <h5 class="card-title">WGS Overview</h5>
+                    <p class="card-description">Whole Genome Sequencing Results</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="{% url 'antibiotics_view' %}" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #11cdef 0%, #64c8ff 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="fas fa-medkit"></i></div>
+                    <h5 class="card-title">Antibiotics</h5>
+                    <p class="card-description">View Antibiotics</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="{% url 'review_batches' %}" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #64c8ff 0%, #5e72e4 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="fa fa-cubes"></i></div>
+                    <h5 class="card-title">Batches</h5>
+                    <p class="card-description">Batch Management System</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="#" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #fb6340 0%, #fbc658 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="ni ni-chart-pie-35"></i></div>
+                    <h5 class="card-title">Reports</h5>
+                    <p class="card-description">Generate Reports</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+          </div>
+
         </div>
       </div>
-  
+    </div>
 
     <!-- Page content -->
-    <div class="container-fluid mt--8 index-font">
-    <!-- <div class="row">
-        <div class="col-xl-8">
-          <div class="card bg-default">
-            <div class="card-header bg-transparent">
-              <div class="row align-items-center">
-                <div class="col">
-                  <h6 class="text-light text-uppercase ls-1 mb-1">Overview</h6>
-                  <h5 class="h3 text-white mb-0">Sales value</h5>
-                </div>
-                <div class="col">
-                  <ul class="nav nav-pills justify-content-end">
-                    <li class="nav-item mr-2 mr-md-0" data-toggle="chart" data-target="#chart-sales-dark" data-update='{"data":{"datasets":[{"data":[0, 20, 10, 30, 15, 40, 20, 60, 60]}]}}' data-prefix="$" data-suffix="k">
-                      <a href="#" class="nav-link py-2 px-3 active" data-toggle="tab">
-                        <span class="d-none d-md-block">Month</span>
-                        <span class="d-md-none">M</span>
-                      </a>
-                    </li>
-                    <li class="nav-item" data-toggle="chart" data-target="#chart-sales-dark" data-update='{"data":{"datasets":[{"data":[0, 20, 5, 25, 10, 30, 15, 40, 40]}]}}' data-prefix="$" data-suffix="k">
-                      <a href="#" class="nav-link py-2 px-3" data-toggle="tab">
-                        <span class="d-none d-md-block">Week</span>
-                        <span class="d-md-none">W</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-            <div class="card-body">
-              Chart
-              <div class="chart">
-                Chart wrapper
-                <canvas id="chart-sales-dark" class="chart-canvas"></canvas>
-              </div>
-            </div>
-          </div>
+    <div class="container-fluid mt--4 index-font index-content-panel">
+      <div class="dashboard-animation-wrapper" aria-hidden="true">
+        <div class="grid-bg"></div>
+        <div class="particles">
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
         </div>
-        <div class="col-xl-4">
-          <div class="card">
-            <div class="card-header bg-transparent">
-              <div class="row align-items-center">
-                <div class="col">
-                  <h6 class="text-uppercase text-muted ls-1 mb-1">Performance</h6>
-                  <h5 class="h3 mb-0">Total orders</h5>
-                </div>
-              </div>
-            </div>
-            <div class="card-body">
-              Chart
-              <div class="chart">
-                <canvas id="chart-bars" class="chart-canvas"></canvas>
-              </div>
-            </div>
-          </div>
-        </div>
+        <div class="scanner"></div>
+        <div class="scanner"></div>
+        <div class="scanner"></div>
+        <div class="glow-orb"></div>
+        <div class="glow-orb"></div>
+        <div class="overlay"></div>
       </div>
-    -->
-
       <div class="row">
-        <div class="col-xl-12 ">
-          <div class="card">
-            <div class="card-header border-0">
-              <div class="row align-items-center">
-                <div class="col">
-                  <h3 class="mb-0">TAT Monitoring</h3>
-                  
-                </div>
-                <div class="col md-6 d-flex justify-content-end">
-                  <form id="search-input" class="navbar-search navbar-search-light form-inline mr-sm-3 " id="navbar-search-main">
-                    <div class="form-group mb-0">
-                      <div class="input-group input-group-alternative input-group-merge">
-                        <div class="input-group-prepend">
-                          <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        </div>
-                        <input class="form-control" placeholder="Search Table" type="text" onkeyup="searchTable()">
-                      </div>
-                    </div>
-                    <button type="button" class="close" data-action="search-close" data-target="#navbar-search-main" aria-label="Close">
-                      <span aria-hidden="true">x</span>
-                    </button>
-                  </form>
-                </div> </div>
+        <div class="col-xl-12">
+          <div class="card tat-dashboard-card">
+
+            <!-- ── Card header ── -->
+            <div class="tat-dashboard-header d-flex justify-content-between align-items-center flex-wrap">
+              <div>
+                <h3 class="mb-0 text-white">
+                  <i class="ni ni-time-alarm mr-2"></i>RUNNING TAT
+                </h3>
+                <small style="color:#d7f7ff;">Running status view for batches currently monitored for TAT.</small>
               </div>
+              <div class="d-flex align-items-center mt-2 mt-md-0">
+                <a href="{% url 'tat_running_list' %}" class="btn btn-sm btn-light mr-2">
+                  <i class="fas fa-list mr-1"></i> Full List
+                </a>
+                <form method="get" action="{% url 'export_tat_excel' %}" class="d-flex align-items-center flex-wrap justify-content-end" style="gap:0.35rem;">
+                  <input type="hidden" name="tat_q" value="{{ tat_q }}">
+                  <input type="hidden" name="tat_status" value="{{ tat_status }}">
+                  <input type="hidden" name="tat_year" value="{{ tat_year }}">
+                  <input type="date" name="date_from" class="form-control form-control-sm" title="Referral date from" style="width:135px;">
+                  <input type="date" name="date_to" class="form-control form-control-sm" title="Referral date to" style="width:135px;">
+
+                  <button type="submit" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-download mr-1"></i> Export
+                  </button>
+                  <!-- <small class="w-100 text-right" style="font-size:0.7rem; color:#d7f7ff;">
+                    Filtered by: TAT Referral Date.
+                  </small> -->
+                </form>
+
+              </div>
+
             </div>
-            <div class="table-responsive" style="background: linear-gradient(135deg, #e3f0ff 0%, #f9f9f9 100%); box-shadow: 0 8px 24px rgba(0,0,0,0.08); max-height: 300px;  overflow-y: auto; overflow-x: auto;">
-              <!-- Projects table -->
-              <table class="table align-items-center table-flush table-hover">
-                <thead class="thead-dark" >
+
+            <!-- ── Filters ── -->
+            <form method="get" class="tat-filter-panel">
+              <div class="row align-items-end">
+                <div class="col-lg-5 col-md-12 mb-3 mb-lg-0">
+                  <label>Search</label>
+                  <input class="form-control" name="tat_q" value="{{ tat_q }}" placeholder="Batch, site, or accession range" type="text">
+                </div>
+                <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+                  <label>Status</label>
+                  <select class="form-control" name="tat_status">
+                    <option value="">All Status</option>
+                    {% for item in tat_status_choices %}
+                      <option value="{{ item }}" {% if tat_status == item %}selected{% endif %}>{{ item }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+                  <label>Year</label>
+                  <select class="form-control" name="tat_year">
+                    <option value="all" {% if tat_year == "all" %}selected{% endif %}>All Years</option>
+                    {% for item in tat_years %}
+                      <option value="{{ item }}" {% if tat_year == item|stringformat:"s" %}selected{% endif %}>{{ item }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-lg-3 col-md-4 d-flex">
+                  <button class="btn btn-primary flex-fill mr-2" type="submit">
+                    <i class="fas fa-search mr-1"></i> Filter
+                  </button>
+                  <a href="{% url 'home' %}" class="btn btn-secondary">Reset</a>
+                </div>
+              </div>
+            </form>
+
+            <!-- ── Status strip ── -->
+            <div class="tat-status-strip">
+
+              <div class="tat-status-tile tat-tile-total">
+                <span>Total</span>
+                <strong>{{ tat_status_counts.total }}</strong>
+                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">All batches</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-ongoing">
+                <span>Ongoing</span>
+                <strong>{{ tat_status_counts.ongoing }}</strong>
+                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">In progress</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-near">
+                <span>Near Due</span>
+                <strong>{{ tat_status_counts.near_due }}</strong>
+                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">Approaching deadline</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-overdue">
+                <span>Overdue</span>
+                <strong>{{ tat_status_counts.overdue }}</strong>
+                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">Past deadline</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-released">
+                <span>Released</span>
+                <strong>{{ tat_status_counts.released }}</strong>
+                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">Completed</small>
+              </div>
+
+            </div>
+
+            <!-- ── Toggle bar ── -->
+            <div class="tat-table-toggle-bar">
+              <span>
+                <i class="fas fa-table mr-1"></i> TAT Records Table
+                <small class="text-muted ml-2">
+                  Showing latest {{ tat_running_rows|length }}{% if tat_running_total %} of {{ tat_running_total }}{% endif %}
+                </small>
+              </span>
+              <button class="btn-toggle-table collapsed" id="tatTableToggle" type="button" onclick="toggleTatTable()">
+                <span class="toggle-icon">&#9654;</span>
+                <span class="toggle-label">View TAT Table</span>
+              </button>
+            </div>
+
+            <!-- ── Main table ── -->
+            <div class="tat-main-table-wrap table-hidden" id="tatTableWrap">
+              <table class="table table-hover tat-main-table">
+                <thead>
                   <tr>
-                    <th scope="col" class="sort" data-sort="Egasp_Id" style="color: white; text-align: center;">Accession No.</th>
-                    <th scope="col" class="sort" data-sort="Laboratory" style="color: white; text-align: center;">Site Code</th>
-                    <th scope="col" class="sort" data-sort="Clinic" style="color: white; text-align: center;">Referral Date</th>
-                    <th scope="col" style="color: white; text-align: center;">Specimen no.</th>
-                    <th scope="col" style="color: white; text-align: center;">Specimen Date</th>
-                    <th scope="col" style="color: white; text-align: center;">Specimen type</th>
-                    <th scope="col" style="color: white; text-align: center;">Organism</th>
-                    <th></th>
-                    <th></th>
+                    <th>Batch</th>
+                    <th>Site</th>
+                    <th>Accessions</th>
+                    <th>Referral Date</th>
+                    <th>No. Isolates</th>
+                    <th>Running TAT</th>
+                    <th>Status</th>
+                    <th>Action Taken</th>
+                    <th>Assigned To</th>
+                    <th>Location</th>
+                    <th>Date Released</th>
+                    <th>Final TAT</th>
+                    <th>Action</th>
+                    {% for config in tat_configs|slice:":4" %}
+                      <th>{{ config.step_type }} Days</th>
+                      <th>Within</th>
+                    {% endfor %}
                   </tr>
                 </thead>
-                <tbody class="list">
-                  {% for entries in tat_entries %}
-                 <tr>
-                  <td style="text-align: center;">{{entries.tat_Batch_Code}}</td>
-                  <td>{{entries.tat_Referral_Date}}</td>
-                  <td>{{entries.tat_BatchNumber}}</td>
-
-
-               
-              
-                      <td style="text-align: center;">
-                        <a href="{% url 'edit_final_data' entries.id %}" class="btn btn-sm btn-primary" style="color: #f9f9f9;">Edit Final</a>
+                <tbody>
+                  {% for row in tat_running_rows %}
+                  <tr>
+                    <td class="font-weight-bold text-primary">{{ row.batch_name|default:"-" }}</td>
+                    <td>{{ row.site_code|default:"-" }}</td>
+                    <td>{{ row.accessions|default:"-" }}</td>
+                    <td>{{ row.referral_date|date:"M d, Y"|default:"-" }}</td>
+                    <td class="text-center">{{ row.num_isolates|default:"-" }}</td>
+                    <td class="text-center">
+                      <span class="tat-pill tat-pill-running">{{ row.effective_days|default:"-" }} days</span>
                     </td>
-
-
-  
-  
-                </tr>
-                 {% endfor %}
+                    <td class="text-center">
+                      {% if row.is_overdue %}
+                        <span class="tat-pill tat-pill-overdue">Overdue</span>
+                      {% elif row.near_due %}
+                        <span class="tat-pill tat-pill-near">Near Due</span>
+                      {% elif row.tat.tat_Status_Release == "Released" %}
+                        <span class="tat-pill tat-pill-released">Released</span>
+                      {% else %}
+                        <span class="tat-pill tat-pill-ongoing">{{ row.tat.tat_Status_Release }}</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ row.action_taken|default:"-" }}</td>
+                    <td>{{ row.assigned_to|default:"-" }}</td>
+                    <td>{{ row.location|default:"-" }}</td>
+                    <td>{{ row.tat.tat_Date_Released|date:"M d, Y"|default:"-" }}</td>
+                    <td class="text-center">{{ row.tat.tat_Final_TAT|default:"-" }}</td>
+                    <td>
+                      {% if row.batch %}
+                        <a href="{% url 'tat_monitoring_view' row.batch.id %}" class="btn btn-sm btn-primary">
+                          <i class="fas fa-tasks mr-1 text-white"></i>  <span class="text-white">Update Process</span>
+                        </a>
+                      {% else %}
+                        <span class="text-muted">-</span>
+                      {% endif %}
+                    </td>
+                    {% for cell in row.step_cells|slice:":4" %}
+                      <td class="text-center">{{ cell.step.step_days_count|default:"-" }}</td>
+                      <td class="text-center">
+                        {% if cell.step.within_tat %}
+                          <span class="text-success font-weight-bold">Yes</span>
+                        {% elif cell.step.within_tat == False %}
+                          <span class="text-danger font-weight-bold">No</span>
+                        {% else %}
+                          <span class="text-muted">-</span>
+                        {% endif %}
+                      </td>
+                    {% endfor %}
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="19" class="text-center text-muted py-5">No TAT records found.</td>
+                  </tr>
+                  {% endfor %}
                 </tbody>
               </table>
-           
-           
             </div>
+            <!-- /table wrap -->
+
           </div>
         </div>
-
-        <!-- Preview window -->
-        <!-- <div class="col-xl-4">
-          <div class="card">
-            <div class="card-header border-0">
-              <div class="row align-items-center">
-                <div class="col">
-                  <h3 class="mb-0">Preview</h3>
-                </div>
-                <div class="col text-right">
-                  <a href="#!" class="btn btn-sm btn-primary">See all</a>
-                </div>
-              </div>
-            </div>
-            
-          </div>
-        </div> -->
       </div>
-
-   
-
     </div>
 
 {% endblock content %}
 
-<!-- Specific JS goes HERE --> 
 {% block javascripts %}
+<script src="/static/assets/vendor/chart.js/dist/Chart.min.js"></script>
+<script src="/static/assets/vendor/chart.js/dist/Chart.extension.js"></script>
 
-  <script src="/static/assets/vendor/chart.js/dist/Chart.min.js"></script>
-  <script src="/static/assets/vendor/chart.js/dist/Chart.extension.js"></script>
-  <script>
-    function searchTable() {
-      var input = document.querySelector("#search-input input");
-      var filter = input.value.toLowerCase();
-      var table = document.querySelector("table");
-      var rows = table.querySelectorAll("tbody tr");
-  
-      rows.forEach(row => {
-        var text = row.textContent.toLowerCase();
-        row.style.display = text.includes(filter) ? "" : "none";
-      });
-    }
-  </script>
-  <script>
-  // List of background images
+<script>
+  /* ── Table toggle ── */
+  function toggleTatTable() {
+    const wrap   = document.getElementById('tatTableWrap');
+    const btn    = document.getElementById('tatTableToggle');
+    const label  = btn.querySelector('.toggle-label');
+    const icon   = btn.querySelector('.toggle-icon');
+    const hidden = wrap.classList.toggle('table-hidden');
+
+    label.textContent = hidden ? 'View TAT Table' : 'Hide TAT Table';
+    icon.innerHTML    = hidden ? '&#9654;' : '&#9660;';
+    btn.classList.toggle('collapsed', hidden);
+  }
+</script>
+
+<script>
+  function searchTable() {
+    var input  = document.querySelector("#search-input input");
+    var filter = input.value.toLowerCase();
+    var rows   = document.querySelectorAll(".tat-main-table tbody tr");
+    rows.forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
+    });
+  }
+</script>
+
+<!-- <script>
   const images = [
     '/static/assets/img/theme/resistance1.jpg',
     '/static/assets/img/theme/resistance3.jpg',
@@ -376,31 +927,20 @@
     '/static/assets/img/theme/viruses.jpg',
     '/static/assets/img/theme/microbial.jpg'
   ];
-
   let index = 0;
   const header = document.getElementById('slideshow-header');
-
   function changeBackground() {
     header.style.backgroundImage = `url(${images[index]})`;
     index = (index + 1) % images.length;
   }
-
-  // Initialize immediately
   changeBackground();
-
-  // Change every 15 seconds
   setInterval(changeBackground, 15000);
-</script>
-
+</script> -->
 
 <script>
-      // Display current date in header
-    document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+  document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+  });
 </script>
 
 {% endblock javascripts %}

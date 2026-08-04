@@ -1,7 +1,7 @@
 {% load static %}
 
-<div class="card mb-4 shadow-sm">
-  <div class="card-header py-3" style="background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);">
+<div class="card mb-4 shadow-sm wgs-detail-drawer">
+  <div class="card-header py-3" style="background: linear-gradient(135deg, #172b4d 0%, #1e5a96 100%);">
     <h5 class="mb-0 text-white">
       <i class="ni ni-single-copy-04 mr-2"></i>Referred Isolate Information
     </h5>
@@ -41,6 +41,99 @@
               </div>
             </div>
           </div>
+
+        <div class="info-item mb-0 mt-3">
+          <h6 class="section-title mb-2" style="font-size: 0.9rem; border-bottom-color: #11cdef; color: #11cdef;">
+            <i class="ni ni-single-02 mr-2" style="color: #11cdef;"></i>Patient Information
+          </h6>
+          <div class="info-item mb-2">
+            <label>Name:</label>
+            <p class="info-value small">{{ entry.patient_name|title }}</p>
+          </div>
+          <div class="row">
+            <div class="col-4">
+              <div class="info-item mb-2">
+                <label>Sex:</label>
+                <p class="info-value">
+                  {% if entry.sex == 'M' %}
+                    <span class="badge badge-info badge-sm">Male</span>
+                  {% elif entry.sex == 'F' %}
+                    <span class="badge badge-pink badge-sm">Female</span>
+                  {% else %}
+                    <span class="badge badge-secondary badge-sm">{{ entry.sex|default:"N/A" }}</span>
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="info-item mb-2">
+                <label>Age:</label>
+                <p class="info-value">
+                  <span class="badge badge-sm badge-age">{{ entry.age|default:"N/A" }}</span>
+                </p>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="info-item mb-0">
+                <label>Ward:</label>
+                <p class="info-value small">{{ entry.ward|default:"N/A" }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-item mb-0 mt-3">
+          <h6 class="section-title mb-2" style="font-size: 0.9rem; border-bottom-color: #20c997; color: #20c997;">
+            <i class="ni ni-archive-2 mr-2" style="color: #20c997;"></i>Sample Information
+          </h6>
+          {% if entry.sample_information %}
+            <div class="row">
+              <div class="col-4">
+                <div class="info-item mb-2">
+                  <label>Batch Code:</label>
+                  <p class="info-value small">{{ entry.sample_information.batch_code|default:"N/A" }}</p>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="info-item mb-2">
+                  <label>Sample Name:</label>
+                  <p class="info-value small">{{ entry.sample_information.sample_name|default:"N/A" }}</p>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="info-item mb-2">
+                  <label>Status:</label>
+                  <p class="info-value small">
+                    <span class="sample-status-badge">{{ entry.sample_information.status|default:"N/A" }}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <div class="alert-secondary medium mb-0">
+              &nbsp;&nbsp;<i class="ni ni-notification-70 mr-1"></i> No uploaded sample information matched.
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="info-item mb-0 mt-3">
+          <h6 class="section-title mb-2" style="font-size: 0.9rem; border-bottom-color: #2dcecc; color: #2dcecc;">
+            <i class="ni ni-tag mr-2" style="color: #2dcecc;"></i>Classification Summary
+          </h6>
+          {% if entry.classification_items %}
+            <div class="classification-badges">
+              {% for item in entry.classification_items %}
+                <span class="classification-badge active">{{ item.label }}</span>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="alert-secondary medium mb-0">
+             &nbsp;&nbsp;  <i class="ni ni-notification-70 mr-1"></i> No active classification flags.
+            </div>
+          {% endif %}
+        </div>
+
+
         </div>
       </div>
 
@@ -85,65 +178,16 @@
               </div>
             </div>
               </div>
-        </div>
-      </div>
-    </div>
-   
-    <!-- Patient & Clinical -->
-    <div class="row mb-2">
-      <div class="col-lg-6">
-        <div class="info-section" style="border-left-color: #11cdef;">
-          <h6 class="section-title mb-2">
-            <i class="ni ni-single-02 mr-2" style="color: #11cdef;"></i>Patient Information
-          </h6>
-          <div class="info-item mb-2">
-            <label>Name:</label>
-            <p class="info-value small">{{ entry.patient_name }}</p>
-          </div>
-          <div class="row">
-            <div class="col-4">
-              <div class="info-item mb-2">
-                <label>Sex:</label>
-                <p class="info-value">
-                  {% if entry.sex == 'M' %}
-                    <span class="badge badge-info badge-sm">Male</span>
-                  {% elif entry.sex == 'F' %}
-                    <span class="badge badge-pink badge-sm">Female</span>
-                  {% else %}
-                    <span class="badge badge-secondary badge-sm">{{ entry.sex|default:"N/A" }}</span>
-                  {% endif %}
-                </p>
-              </div>
-            </div>
-            <div class="col-4">
-              <div class="info-item mb-2">
-                <label>Age:</label>
-                <p class="info-value">
-                  <span class="badge badge-sm badge-age">{{ entry.age|default:"N/A" }}</span>
-                </p>
-              </div>
-            </div>
-            <div class="col-4">
-              <div class="info-item mb-0">
-                <label>Ward:</label>
-                <p class="info-value small">{{ entry.ward|default:"N/A" }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div class="col-lg-6">
-        <div class="info-section" style="border-left-color: #fb6340;">
-          <h6 class="section-title mb-2">
-            <i class="ni ni-chart-pie-35 mr-2" style="color: #fb6340;"></i>Antibiotic Results
-          </h6>
-
-          <div class="info-item mb-0" >
+          <div class="info-item mb-0 mt-3">
+            <h6 class="section-title mb-2" style="font-size: 0.9rem; border-bottom-color: #fb6340; color: #fb6340;">
+              <i class="ni ni-chart-pie-35 mr-2" style="color: #fb6340;"></i>Antibiotic Results
+            </h6>
             {% if entry.antibiotics %}
               <label style="margin-bottom: 0.75rem;">Antibiotics:</label>
               <div class="antibiotic-grid">
                 {% for abx in entry.antibiotics %}
+                  {% if abx.disk or abx.mic %}
                     <div class="antibiotic-item">
                       <span class="abx-code">{{ abx.code }}</span>
 
@@ -157,20 +201,19 @@
                         {% elif ris == 'SDD' %}badge-info
                         {% else %}badge-secondary{% endif %}
                       ">
-                          {# Show operand if exists and valid #}
                           {% if abx.m_op and abx.m_op|lower != 'nan' %}
                             {{ abx.m_op }}{{ value }}
                           {% else %}
                             {{ value }}
                           {% endif %}
 
-                          {# ADD RIS LETTER NEXT TO VALUE #}
                           {% if ris %}&nbsp;<strong>{{ ris }}</strong>{% endif %}
                       </span>
 
                       {% endwith %}
                       {% endwith %}
                     </div>
+                  {% endif %}
 
                 {% endfor %}
               </div>
@@ -183,14 +226,15 @@
         </div>
       </div>
     </div>
+
     {% endif %}
     <!-- WGS Data Sections -->
-    {% if entry.related_data.fastq %}
+    {% if entry.related_data.bactscout %}
       <div class="mt-4">
         <div class="card mb-0">
           <div class="card-header bg-gradient-success py-2">
             <h5 class="mb-0 text-white">
-              <i class="ni ni-cloud-upload-96 mr-2"></i>FastQ Summary
+              <i class="fas fa-bacteria mr-2"></i>BactScout QC Summary
             </h5>
           </div>
           <div class="card-body p-3">
@@ -198,23 +242,25 @@
               <table class="table table-sm table-bordered mb-0">
                 <thead class="thead-light">
                   <tr>
-                    <th>Sample</th>
-                    <th>Sequencing</th>
-                    <th>Before Reads</th>
-                    <th>After Reads</th>
-                    <th>Q30 Rate</th>
+                    <th>Name</th>
+                    <th>Final Status</th>
+                    <th>Species</th>
+                    <th>Read Q30 Rate</th>
                     <th>GC Content</th>
+                    <th>Duplication Rate</th>
+                    <th>Total Reads</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {% for f in entry.related_data.fastq %}
+                  {% for b in entry.related_data.bactscout %}
                   <tr>
-                    <td>{{ f.sample|default:"N/A" }}</td>
-                    <td>{{ f.sequencing|default:"N/A" }}</td>
-                    <td>{{ f.before_total_reads|default:"N/A" }}</td>
-                    <td>{{ f.after_total_reads|default:"N/A" }}</td>
-                    <td>{{ f.post_trim_q30_rate|default:"N/A" }}</td>
-                    <td>{{ f.after_gc_content|default:"N/A" }}</td>
+                    <td>{{ b.name|default:"N/A" }}</td>
+                    <td>{{ b.a_final_status|default:b.status|default:"N/A" }}</td>
+                    <td>{{ b.species|default:"N/A" }}</td>
+                    <td>{{ b.read_q30_rate|default:"N/A" }}</td>
+                    <td>{{ b.gc_content|default:"N/A" }}</td>
+                    <td>{{ b.duplication_rate|default:"N/A" }}</td>
+                    <td>{{ b.read_total_reads|default:"N/A" }}</td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -405,7 +451,7 @@
       </div>
     {% endif %}
 
-    {% if not entry.related_data.fastq and not entry.related_data.mlst and not entry.related_data.gambit and not entry.related_data.checkm2 and not entry.related_data.assembly and not entry.related_data.amrfinder %}
+    {% if not entry.related_data.bactscout and not entry.related_data.mlst and not entry.related_data.gambit and not entry.related_data.checkm2 and not entry.related_data.assembly and not entry.related_data.amrfinder %}
       <div class="alert alert-info mt-3">
         <i class="ni ni-notification-70 mr-2"></i> No WGS data found for this accession.
       </div>
@@ -415,65 +461,100 @@
 </div>
 
 <style>
+.wgs-detail-row > td,
+.wgs-detail-cell {
+  padding: 0 !important;
+  background: #ffffff !important;
+}
+
+.wgs-detail-drawer {
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 0 8px 8px !important;
+  background: #ffffff !important;
+  box-shadow: inset 4px 0 0 #00cfe8, inset -1px 0 0 rgba(0, 188, 212, 0.16) !important;
+}
+
+.wgs-detail-drawer > .card-header {
+  display: none;
+}
+
+.wgs-detail-drawer > .card-body {
+  padding: 1rem 1.15rem !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fcfd 100%) !important;
+}
+
 /* Color utilities */
-.text-purple { color: #8965e0; }
-.text-success { color: #2dce89; }
+.text-purple { color: #08798a; }
+.text-success { color: #0097a7; }
 .text-warning { color: #fbc658; }
-.text-primary { color: #5e72e4; }
-.text-info { color: #11cdef; }
+.text-primary { color: #0f3a5f; }
+.text-info { color: #00a9b9; }
 .text-danger { color: #f5365c; }
 
 /* Badge styles */
 .badge-light { background-color: #e9ecef; color: #6c757d; }
-.badge-pink { background-color: #f3a4b5; color: white; }
-.badge-age { background-color: #5e72e4; color: white; }
+.badge-pink { background-color: #00a9b9; color: white; }
+.badge-age { background-color: #0f3a5f; color: white; }
 .badge-sm { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
 
 /* Gradient backgrounds */
-.bg-gradient-success { background: linear-gradient(135deg, #2dce89 0%, #1fa876 100%); }
-.bg-gradient-primary { background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%); }
-.bg-gradient-warning { background: linear-gradient(135deg, #fbc658 0%, #f9b44d 100%); }
-.bg-gradient-info { background: linear-gradient(135deg, #11cdef 0%, #0fa5c2 100%); }
-.bg-gradient-danger { background: linear-gradient(135deg, #f5365c 0%, #d93450 100%); }
-.bg-gradient-purple { background: linear-gradient(135deg, #8965e0 0%, #6c4ec9 100%); }
+.bg-gradient-success { background: linear-gradient(135deg, #172b4d 0%, #1e5a96 100%); }
+.bg-gradient-primary { background: linear-gradient(135deg, #172b4d 0%, #1e5a96 100%); }
+.bg-gradient-warning { background: linear-gradient(135deg, #172b4d 0%, #1e5a96 100%); }
+.bg-gradient-info { background: linear-gradient(135deg, #172b4d 0%, #1e5a96 100%); }
+.bg-gradient-danger { background: linear-gradient(135deg, #172b4d 0%, #1e5a96 100%); }
+.bg-gradient-purple { background: linear-gradient(135deg, #172b4d 0%, #1e5a96 100%); }
 
 /* Info section styles */
 .info-section {
-  background-color: #f8f9fa;
-  padding: 1.5rem;
+  background: #f8fcfd;
+  padding: 1.1rem 1.2rem;
   border-radius: 8px;
-  border-left: 4px solid #5e72e4;
+  border: 1px solid rgba(0, 188, 212, 0.16);
+  border-left: 4px solid #00a9b9 !important;
+  box-shadow: 0 8px 18px rgba(15, 58, 95, 0.06);
 }
 
 .section-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #32325d;
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #0f3a5f !important;
   margin-bottom: 1rem;
   display: flex;
   align-items: center;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid #dee2e6;
+  padding-bottom: 0.6rem;
+  border-bottom: 2px solid rgba(0, 188, 212, 0.34) !important;
+  letter-spacing: 0;
+}
+
+.section-title i {
+  color: #00a9b9 !important;
 }
 
 .info-section[style*="border-left-color: #5e72e4"] .section-title {
-  border-bottom-color: #5e72e4;
-  color: #5e72e4;
+  border-bottom-color: rgba(0, 188, 212, 0.34);
+  color: #0f3a5f;
 }
 
 .info-section[style*="border-left-color: #2dce89"] .section-title {
-  border-bottom-color: #2dce89;
-  color: #2dce89;
+  border-bottom-color: rgba(0, 188, 212, 0.34);
+  color: #0f3a5f;
 }
 
 .info-section[style*="border-left-color: #11cdef"] .section-title {
-  border-bottom-color: #11cdef;
-  color: #11cdef;
+  border-bottom-color: rgba(0, 188, 212, 0.34);
+  color: #0f3a5f;
 }
 
 .info-section[style*="border-left-color: #fb6340"] .section-title {
-  border-bottom-color: #fb6340;
-  color: #fb6340;
+  border-bottom-color: rgba(0, 188, 212, 0.34);
+  color: #0f3a5f;
+}
+
+.info-section[style*="border-left-color: #2dcecc"] .section-title {
+  border-bottom-color: rgba(0, 188, 212, 0.34);
+  color: #0f3a5f;
 }
 
 .info-item {
@@ -481,20 +562,25 @@
 }
 
 .info-item label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #8898aa;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #6d8398;
   margin-bottom: 0.25rem;
   display: block;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.35px;
 }
 
 .info-value {
-  font-size: 1rem;
-  color: #32325d;
+  font-size: 0.9rem;
+  color: #143852;
   margin-bottom: 0;
-  font-weight: 500;
+  font-weight: 650;
+}
+
+.info-value[style*="color: #5e72e4"],
+.info-value[style*="color: #fb6340"] {
+  color: #064f76 !important;
 }
 
 /* Antibiotic grid - FIXED */
@@ -510,16 +596,17 @@
   align-items: center;
   gap: 0.5rem;
   background-color: #ffffff;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  border: 1px solid #dee2e6;
+  padding: 0.42rem 0.62rem;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 58, 95, 0.12);
   font-size: 7px;
+  box-shadow: 0 2px 6px rgba(15, 58, 95, 0.06);
 }
 
 .abx-code {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #32325d;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #143852;
   white-space: nowrap;
 }
 
@@ -527,6 +614,149 @@
   font-size: 0.75rem;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.classification-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.classification-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(0, 169, 185, 0.38);
+  background: #e9fbfd;
+  color: #075f78;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.sample-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(0, 169, 185, 0.38);
+  background: #e9fbfd;
+  color: #075f78;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.wgs-detail-drawer .card:not(.wgs-detail-drawer) {
+  border: 1px solid rgba(0, 188, 212, 0.18);
+  border-radius: 7px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.wgs-detail-drawer .card:not(.wgs-detail-drawer) .card-header {
+  background: var(--wgs-section-header, linear-gradient(135deg, #0f3a5f 0%, #08798a 100%)) !important;
+  border-bottom: 2px solid var(--wgs-section-accent, #00cfe8);
+  padding: 0.65rem 0.9rem !important;
+}
+
+.wgs-detail-drawer .card:not(.wgs-detail-drawer) .card-header h5 {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.wgs-detail-drawer .card:not(.wgs-detail-drawer) .card-header h5 i {
+  color: var(--wgs-section-accent, #00cfe8) !important;
+}
+
+.wgs-detail-drawer .bg-gradient-success {
+  --wgs-section-accent: #2dd4bf;
+  --wgs-section-header: linear-gradient(135deg, #056756 0%, #12a68f 100%);
+}
+
+.wgs-detail-drawer .bg-gradient-primary {
+  --wgs-section-accent: #7c8cff;
+  --wgs-section-header: linear-gradient(135deg, #263b8f 0%, #6b72e8 100%);
+}
+
+.wgs-detail-drawer .bg-gradient-warning {
+  --wgs-section-accent: #ffb454;
+  --wgs-section-header: linear-gradient(135deg, #9a4d05 0%, #f59e0b 100%);
+}
+
+.wgs-detail-drawer .bg-gradient-info {
+  --wgs-section-accent: #00cfe8;
+  --wgs-section-header: linear-gradient(135deg, #06677a 0%, #06b6d4 100%);
+}
+
+.wgs-detail-drawer .bg-gradient-danger {
+  --wgs-section-accent: #ff5c7a;
+  --wgs-section-header: linear-gradient(135deg, #8f1d36 0%, #ef476f 100%);
+}
+
+.wgs-detail-drawer .bg-gradient-purple {
+  --wgs-section-accent: #a78bfa;
+  --wgs-section-header: linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%);
+}
+
+.wgs-detail-drawer .card:has(.bg-gradient-success) {
+  border-left: 4px solid #2dd4bf;
+}
+
+.wgs-detail-drawer .card:has(.bg-gradient-primary) {
+  border-left: 4px solid #7c8cff;
+}
+
+.wgs-detail-drawer .card:has(.bg-gradient-warning) {
+  border-left: 4px solid #ffb454;
+}
+
+.wgs-detail-drawer .card:has(.bg-gradient-info) {
+  border-left: 4px solid #00cfe8;
+}
+
+.wgs-detail-drawer .card:has(.bg-gradient-danger) {
+  border-left: 4px solid #ff5c7a;
+}
+
+.wgs-detail-drawer .card:has(.bg-gradient-purple) {
+  border-left: 4px solid #a78bfa;
+}
+
+.wgs-detail-drawer .card:not(.wgs-detail-drawer) .card-body {
+  background: #ffffff;
+  padding: 0.85rem !important;
+}
+
+.wgs-detail-drawer table {
+  color: #143852;
+}
+
+.wgs-detail-drawer table thead th {
+  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.25px;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+}
+
+.wgs-detail-drawer table thead {
+  background: linear-gradient(90deg, rgba(20, 40, 62, 0.56) 0%, rgba(16, 72, 88, 0.46) 52%, rgba(0, 188, 212, 0.36) 100%) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.wgs-detail-drawer table tbody td {
+  background: #fbfdfe;
+  border-color: rgba(15, 58, 95, 0.09) !important;
+  color: #143852;
+  font-size: 0.78rem;
+  font-weight: 650;
 }
 
 /* Responsive */

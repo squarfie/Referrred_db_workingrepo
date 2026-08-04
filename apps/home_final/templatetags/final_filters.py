@@ -1,9 +1,43 @@
 import math
+import builtins
 import re
+from datetime import timedelta
 from django import template
+from django.db.models import Q
 from operator import attrgetter
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
+from apps.home.models import Organism_List
 
 register = template.Library()
+
+FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS = {
+    "ABI", "GCT", "AGT", "BD-", "BR-", "CAM", "CAR", "EIK", "FRA",
+    "HA-", "HEL", "KIN", "LEG", "MOR", "NE-",
+}
+
+
+def _uses_fastidious_plus_layout(organism):
+    if not organism:
+        return False
+
+    organism_type = str(organism.get("Organism_Type") or "").strip()
+    if organism_type == "+":
+        return True
+
+    codes = {
+        str(organism.get(field) or "").strip().upper()
+        for field in ("Whonet_Org_Code", "Replaced_by", "Species_Group", "Genus_Group", "Genus_Code")
+    }
+    codes.discard("")
+    if codes & FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS:
+        return True
+
+    organism_name = str(organism.get("Organism") or "").strip().lower()
+    return "HA-" in FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS and (
+        "HIN" in codes or organism_name.startswith("haemophilus ")
+    )
+
 
 @register.filter
 def dict_lookup(dictionary, key):
@@ -21,6 +55,46 @@ def get_item(dictionary, key):
 def make_tuple(value1, value2):
     """Creates a tuple with two values."""
     return (value1, value2)
+
+@register.filter
+def age_result_display(age, isolate):
+    """
+    Display infant age as months/days for lab results while keeping f_Age numeric.
+    Patients 1 year old and above stay as the stored integer age.
+    """
+    if age in (None, ""):
+        return ""
+
+    stored_display = builtins.getattr(isolate, "f_Age_Display", "")
+    if stored_display:
+        return stored_display
+
+    birth_date = builtins.getattr(isolate, "f_Date_Birth", None)
+    specimen_date = builtins.getattr(isolate, "f_Spec_Date", None)
+    if not birth_date or not specimen_date or specimen_date < birth_date:
+        return age
+
+    years = specimen_date.year - birth_date.year
+    months = specimen_date.month - birth_date.month
+    days = specimen_date.day - birth_date.day
+
+    if days < 0:
+        previous_month_last_day = (
+            specimen_date.replace(day=1) - timedelta(days=1)
+        ).day
+        days += previous_month_last_day
+        months -= 1
+
+    if months < 0:
+        months += 12
+        years -= 1
+
+    if years > 0:
+        return age
+
+    if months > 0:
+        return f"{months}m"
+    return f"{days}d"
 
 # @register.simple_tag
 # def get_existing_value(existing_entries, entry_id, value_type):
@@ -110,6 +184,57 @@ def get_existing_value(existing_entries, identifier, value_type):
     Also supports both main and retest antibiotic fields.
     """
 
+    def code_variants(value):
+        code = str(value or "").strip().upper()
+        variants = [code]
+        if not code.endswith("_VAL"):
+            variants.append(f"{code}_VAL")
+        return variants
+
+    def antibiotic_family(value):
+        return str(value or "").strip().upper().split("_", 1)[0]
+
+    def entry_has_requested_value(entry_obj, requested_type):
+        if requested_type in {"disk", "disk_enris"}:
+            return entry_obj.ab_Disk_value is not None or bool((entry_obj.ab_Disk_enRIS or "").strip())
+        if requested_type in {"mic", "mic_operand", "mic_enris", "alert_mic"}:
+            return any([
+                entry_obj.ab_MIC_value is not None,
+                bool((entry_obj.ab_MIC_operand or "").strip()),
+                bool((entry_obj.ab_MIC_enRIS or "").strip()),
+                bool(entry_obj.ab_AlertMIC),
+            ])
+        if requested_type in {"retest_disk", "retest_disk_enris"}:
+            return entry_obj.ab_Retest_DiskValue is not None or bool((entry_obj.ab_Retest_Disk_enRIS or "").strip())
+        if requested_type in {"retest_mic", "retest_mic_operand", "retest_mic_enris", "retest_alert_mic"}:
+            return any([
+                entry_obj.ab_Retest_MICValue is not None,
+                bool((entry_obj.ab_Retest_MIC_operand or "").strip()),
+                bool((entry_obj.ab_Retest_MIC_enRIS or "").strip()),
+                bool(entry_obj.ab_Retest_AlertMIC),
+            ])
+        return False
+
+    def find_code_entry(queryset, variants, requested_type):
+        retest = requested_type.startswith("retest_")
+        code_field = "ab_Retest_Abx_code" if retest else "ab_Abx_code"
+        exact_entry = None
+
+        for variant in variants:
+            filter_kwargs = {f"{code_field}__iexact": variant}
+            exact_entry = queryset.filter(**filter_kwargs).first()
+            if exact_entry and entry_has_requested_value(exact_entry, requested_type):
+                return exact_entry
+
+        family = antibiotic_family(variants[0])
+        if family:
+            for candidate in queryset:
+                candidate_code = builtins.getattr(candidate, code_field, "")
+                if antibiotic_family(candidate_code) == family and entry_has_requested_value(candidate, requested_type):
+                    return candidate
+
+        return exact_entry
+
     # --- Try to detect identifier type ---
     entry = None
     if str(identifier).isdigit():
@@ -117,9 +242,11 @@ def get_existing_value(existing_entries, identifier, value_type):
         entry = existing_entries.filter(ab_breakpoints_id=identifier).first()
     else:
         # String = Whonet_Abx code (e.g., "AMC_ND20")
-        entry = existing_entries.filter(ab_Abx_code=identifier).first()
-        if not entry:
-            entry = existing_entries.filter(ab_Retest_Abx_code=identifier).first()
+        variants = code_variants(identifier)
+        if value_type.startswith("retest_"):
+            entry = find_code_entry(existing_entries, variants, value_type)
+        else:
+            entry = find_code_entry(existing_entries, variants, value_type)
 
     # --- If found, return appropriate field ---
     if entry:
@@ -162,7 +289,73 @@ def multi_sort(queryset, fields):
 @register.filter 
 def getattr(obj, attr_name):
     """Template filter to dynamically get object attribute."""
-    return getattr(obj, attr_name, "")
+    return builtins.getattr(obj, attr_name, "")
+
+
+# auto scientific format only
+
+# @register.filter
+# def scientific_name(value):
+#     """
+#     Format organism names for result printouts:
+#     Genus capitalized, species/subsequent words lowercase.
+
+#     Example: "Staphylococcus Aureus" -> "Staphylococcus aureus"
+#     """
+#     text = re.sub(r"\s+", " ", str(value or "").strip())
+#     if not text:
+#         return ""
+
+#     words = text.split(" ")
+#     formatted = [words[0][:1].upper() + words[0][1:].lower()]
+#     formatted.extend(word.lower() for word in words[1:])
+#     return " ".join(formatted)
+
+
+
+
+# updated auto scientific format but when n/a value put an empty string
+@register.filter
+def scientific_name(value):
+    """
+    Format organism names for result printouts:
+    Genus capitalized, species/subsequent words lowercase.
+
+    If value is N/A, NA, None, null, or nan, return blank.
+    """
+
+    text = re.sub(r"\s+", " ", str(value or "").strip())
+
+    if not text:
+        return ""
+
+    if text.lower() in ["n/a", "na", "n.a.", "none", "null", "nan"]:
+        return ""
+
+    words = text.split(" ")
+    formatted = [words[0][:1].upper() + words[0][1:].lower()]
+    formatted.extend(word.lower() for word in words[1:])
+
+    return " ".join(formatted)
+
+
+@register.filter
+def professional_caps(value):
+    """
+    Keep professional credentials/designations uppercase in printouts.
+
+    Example: "Sonia B. Sia, Md" -> "Sonia B. Sia, MD"
+    """
+    text = str(value or "").strip()
+    if not text:
+        return ""
+
+    credential_tokens = [
+        "md", "rmt", "rn", "mt", "mls", "phd", "mph", "msc", "ms", "ma",
+        "drph", "fpsp", "fpcp", "oic", "prc", "cmo", "rpmt",
+    ]
+    pattern = r"\b(" + "|".join(re.escape(token) for token in credential_tokens) + r")\b"
+    return re.sub(pattern, lambda match: match.group(0).upper(), text, flags=re.IGNORECASE)
 
 
 @register.filter
@@ -170,6 +363,27 @@ def break_long_words(value, width=20):
     if not value:
         return value
     return re.sub(r'(\S{%d})' % width, r'\1 ', value)
+
+
+@register.filter
+def accession_ref_no(accession):
+    """
+    Extract the numeric reference suffix from accession numbers.
+
+    Examples:
+    - 25ARS_APM0278 -> 278
+    - CMC_04212025_1.1_0029-0037 -> 29
+    """
+    text = str(accession or "").strip()
+    if not text:
+        return ""
+
+    match = re.search(r"(\d+)(?!.*\d)", text)
+    if not match:
+        return text
+
+    number = match.group(1).lstrip("0")
+    return number or "0"
 
 
 @register.filter
@@ -190,3 +404,318 @@ def clean_nan(value):
         return "-"
 
     return value
+
+@register.filter
+def blank_none(value):
+    if value is None:
+        return ""
+
+    value_str = str(value).strip()
+
+    if value_str.lower() in ["none", "null", "nan", "nat", "n/a", "na", "n.a."]:
+        return ""
+
+    return value
+
+
+
+@register.simple_tag
+def clean_firstof(*values):
+    """
+    Returns the first usable value.
+    Treats None, 'None', 'null', 'nan', and blank strings as empty.
+    """
+    for value in values:
+        if value is None:
+            continue
+
+        value_str = str(value).strip()
+
+        if value_str == "":
+            continue
+
+        if value_str.lower() in ["none", "null", "nan", "nat", "n/a", "na", "n.a."]:
+            continue
+
+        return value_str
+
+    return ""
+
+
+
+
+@register.filter
+def blank_nbsp(value):
+    if value is None:
+        return "\u00A0"
+
+    value = str(value).strip()
+
+    if value == "" or value.lower() in ["none", "null", "nan"]:
+        return "\u00A0"
+
+    return value
+
+
+@register.filter
+def prefer_text(value, fallback=""):
+    value_str = "" if value is None else str(value).strip()
+    if value_str.lower() in ["n/a", "na", "n.a.", "none", "null", "nan"]:
+        return ""
+    if value_str:
+        return value
+
+    fallback_str = "" if fallback is None else str(fallback).strip()
+    if fallback_str.lower() in ["n/a", "na", "n.a.", "none", "null", "nan"]:
+        return ""
+
+    return "" if fallback is None else fallback
+
+
+@register.filter
+def organism_type_is_plus(org_code):
+    code = str(org_code or "").strip()
+    if not code:
+        return False
+
+    organism = (
+        Organism_List.objects
+        .filter(Q(Whonet_Org_Code__iexact=code) | Q(Replaced_by__iexact=code))
+        .values("Whonet_Org_Code", "Replaced_by", "Organism_Type", "Species_Group", "Genus_Group", "Organism")
+        .first()
+    )
+    return _uses_fastidious_plus_layout(organism)
+
+
+@register.filter
+def blank_empty(value):
+    if value is None:
+        return ""
+
+    value = str(value).strip()
+
+    if value == "" or value.lower() in ["none", "null", "nan", "n/a"]:
+        return ""
+
+    return value
+
+
+# if 32.0000 make it 32.0
+# @register.filter
+# def mic_format(value):
+#     try:
+#         val = float(value)
+
+#         if val > 0.25:
+#             return f"{val:.1f}"   # 1 decimal place
+#         else:
+#             return f"{val:.3f}".rstrip('0').rstrip('.')  # clean trailing zeros
+
+#     except (TypeError, ValueError):
+#         return value
+
+# if 32.0000 make it 32
+@register.filter
+def mic_format(value):
+    try:
+        val = float(value)
+
+        if val > 0.25:
+            return f"{val:.1f}".rstrip('0').rstrip('.')
+        else:
+            return f"{val:.3f}".rstrip('0').rstrip('.')
+
+    except (TypeError, ValueError):
+        return value
+
+
+def _recommendation_items(value):
+    if value is None or str(value).strip() == "":
+        return []
+
+    text = str(value).strip()
+
+    # Convert HTML line breaks to normal newlines
+    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+
+    # Split text when it sees existing numbering like:
+    # 1. text
+    # 2. text
+    # 1) text
+    # 2) text
+    parts = re.split(r'(?=\b\d+[\.\)]\s*)', text)
+
+    cleaned_items = []
+
+    for part in parts:
+        part = part.strip()
+
+        if not part:
+            continue
+
+        # Remove old numbering
+        part = re.sub(r'^\d+[\.\)]\s*', '', part).strip()
+
+        if part:
+            cleaned_items.append(part)
+
+    return cleaned_items
+
+
+# to format numbering list in recommnedation field
+
+@register.filter
+def number_recommendations(value):
+    """
+    Forces recommendation text into a numbered list.
+
+    Example output:
+    1. First recommendation
+    2. Second recommendation
+    """
+
+    cleaned_items = _recommendation_items(value)
+
+    if not cleaned_items:
+        return mark_safe("&nbsp;")
+
+    numbered_lines = []
+
+    for index, item in enumerate(cleaned_items, start=1):
+        numbered_lines.append(
+            f'<strong>{index}.</strong> {escape(item)}'
+        )
+
+    return mark_safe("<br/>".join(numbered_lines))
+
+
+# do not put number list if only one recommendation is encoded
+# @register.filter
+# def number_recommendations(value):
+#     """
+#     Formats recommendation text:
+#     - If only one recommendation, display without numbering.
+#     - If multiple recommendations, display as numbered list.
+#     """
+
+#     if value is None or str(value).strip() == "":
+#         return mark_safe("&nbsp;")
+
+#     text = str(value).strip()
+
+#     # Convert HTML line breaks to normal newlines
+#     text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+
+#     # Split text when it sees existing numbering like:
+#     # 1. text
+#     # 2. text
+#     # 1) text
+#     # 2) text
+#     parts = re.split(r'(?=\b\d+[\.\)]\s*)', text)
+
+#     cleaned_items = []
+
+#     for part in parts:
+#         part = part.strip()
+
+#         if not part:
+#             continue
+
+#         # Remove old numbering
+#         part = re.sub(r'^\d+[\.\)]\s*', '', part).strip()
+
+#         if part:
+#             cleaned_items.append(part)
+
+#     if not cleaned_items:
+#         return mark_safe("&nbsp;")
+
+#     # If only one recommendation, do not show "1."
+#     if len(cleaned_items) == 1:
+#         return mark_safe(escape(cleaned_items[0]))
+
+#     numbered_lines = []
+
+#     for index, item in enumerate(cleaned_items, start=1):
+#         numbered_lines.append(
+#             f'<strong>{index}.</strong> {escape(item)}'
+#         )
+
+#     return mark_safe("<br/>".join(numbered_lines))
+
+
+
+
+@register.filter
+def auto_font_size(value):
+    if value is None:
+        return 7
+
+    value = str(value).strip()
+    length = len(value)
+
+    if length <= 8:
+        return 7
+    elif length <= 12:
+        return 6.5
+    elif length <= 16:
+        return 6
+    elif length <= 20:
+        return 5.5
+    elif length <= 25:
+        return 5
+    else:
+        return 4.5
+
+
+# to force data wrap inside table
+@register.filter
+def pdf_wrap(value):
+    if value is None:
+        return ""
+
+    text = escape(str(value))
+
+    text = text.replace("/", "/<br>")
+    text = text.replace("_", "_<br>")
+    text = text.replace("-", "-<br>")
+
+    return mark_safe(text)
+
+# wrap words and put &nbsp in an empty/null
+@register.filter
+def pdf_wrap_blank(value):
+    if value is None:
+        return mark_safe("&nbsp;")
+
+    value = str(value).strip()
+
+    if value == "" or value.lower() in ["none", "null", "nan"]:
+        return mark_safe("&nbsp;")
+
+    text = escape(value)
+    text = text.replace("/", "/<br>")
+    text = text.replace("_", "_<br>")
+    text = text.replace("-", "-<br>")
+
+    return mark_safe(text)
+
+
+### auto adjust font size for long accession/seq values in patient-seq cell
+@register.filter
+def seq_font_size(value):
+    if value is None:
+        return "10px"
+
+    length = len(str(value).strip())
+
+    if length <= 3:
+        return "10px"
+    elif length == 4:
+        return "9px"
+    elif length == 5:
+        return "8px"
+    elif length == 6:
+        return "7px"
+    else:
+        return "6px"

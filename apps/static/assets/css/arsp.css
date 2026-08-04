@@ -39,6 +39,514 @@
   box-sizing: border-box;
 }
 
+html {
+  font-size: 14px;
+}
+
+#sidenav-main {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(238, 249, 253, 0.98) 48%, rgba(218, 243, 250, 1) 100%) !important;
+  border-right: 1px solid rgba(0, 188, 212, 0.18) !important;
+  box-shadow: 10px 0 28px rgba(15, 35, 59, 0.08);
+}
+
+#sidenav-main .sidenav-header {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(218, 243, 250, 0.52));
+  border-bottom: 1px solid rgba(0, 188, 212, 0.14);
+}
+
+#sidenav-main .nav-link {
+  color: #294965 !important;
+  border-radius: 8px;
+  margin: 3px 10px;
+  position: relative;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+#sidenav-main .nav-link i {
+  color: #5872f0 !important;
+  opacity: 0.9;
+}
+
+#sidenav-main .nav-link:hover,
+#sidenav-main .nav-link.active {
+  background: linear-gradient(90deg, rgba(0, 188, 212, 0.18), rgba(30, 90, 150, 0.08));
+  color: #0f3a5f !important;
+  transform: translateX(2px);
+  box-shadow: inset 3px 0 0 #00bcd4;
+}
+
+#sidenav-main .nav-link:hover i,
+#sidenav-main .nav-link.active i {
+  color: #00bcd4 !important;
+  opacity: 1;
+}
+
+#sidenav-main .navbar-heading {
+  color: rgba(30, 90, 150, 0.72) !important;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+}
+
+#sidenav-main hr {
+  border-color: rgba(0, 188, 212, 0.18);
+}
+
+/* Keep account dropdown actions clickable above page heroes and overlays. */
+.navbar-top,
+.arsp-navbar-top {
+  position: relative;
+  z-index: 110000 !important;
+  background:
+    linear-gradient(135deg, rgba(15, 20, 35, 0.98) 0%, rgba(24, 48, 78, 0.98) 58%, rgba(0, 137, 150, 0.92) 100%) !important;
+  border-bottom: 1px solid rgba(0, 188, 212, 0.34) !important;
+  box-shadow: 0 8px 28px rgba(15, 35, 59, 0.22);
+}
+
+.navbar-top.bg-primary,
+.arsp-navbar-top.bg-primary,
+.navbar-top[class*="bg-gradient"] {
+  background:
+    linear-gradient(135deg, rgba(15, 20, 35, 0.98) 0%, rgba(24, 48, 78, 0.98) 58%, rgba(0, 137, 150, 0.92) 100%) !important;
+}
+
+.navbar-top::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00cfe8, transparent);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.navbar-top .navbar-search .input-group {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 188, 212, 0.22);
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+}
+
+.navbar-top .navbar-search .input-group-text,
+.navbar-top .navbar-search .form-control {
+  background: transparent !important;
+  border: 0 !important;
+  color: #24466f !important;
+}
+
+.navbar-top .navbar-search .form-control::placeholder {
+  color: #536b86 !important;
+}
+
+.navbar-top .navbar-search .input-group-text i {
+  color: #0b7285;
+}
+
+.navbar-top .avatar {
+  border: 2px solid rgba(0, 207, 232, 0.38);
+  box-shadow: 0 0 0 4px rgba(0, 188, 212, 0.10);
+}
+
+.navbar-top .media-body span {
+  color: #f4fbff !important;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.24);
+}
+
+.navbar-top .navbar-collapse,
+.navbar-top .navbar-nav,
+.navbar-top .nav-item.dropdown {
+  position: relative;
+  z-index: 110001 !important;
+}
+
+.navbar-top .dropdown-menu {
+  z-index: 110002 !important;
+  pointer-events: auto !important;
+}
+
+.navbar-top .dropdown-item {
+  position: relative;
+  z-index: 110003 !important;
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
+/* Shared translucent ARSP page background for form/list pages. */
+.page-wrapper,
+.arsp-translucent-page,
+.arsp-form-page,
+.upload-page,
+.mapper-page,
+.tat-page {
+  position: relative;
+  overflow: hidden;
+  min-height: calc(100vh - 80px);
+  background:
+    linear-gradient(180deg, rgba(236, 249, 253, 0.92) 0%, rgba(248, 252, 254, 0.97) 52%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.page-wrapper::before,
+.arsp-translucent-page::before,
+.arsp-form-page::before,
+.upload-page::before,
+.mapper-page::before,
+.tat-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(232, 248, 252, 0.9) 0%, rgba(255, 255, 255, 0.76) 46%, rgba(232, 248, 252, 0.84) 100%),
+    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+  opacity: 0.20;
+  pointer-events: none;
+}
+
+.page-wrapper::after,
+.arsp-translucent-page::after,
+.arsp-form-page::after,
+.upload-page::after,
+.mapper-page::after,
+.tat-page::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 42%;
+  background: radial-gradient(circle at 50% 100%, rgba(0, 188, 212, 0.16), transparent 48%);
+  pointer-events: none;
+}
+
+.page-wrapper > *,
+.arsp-translucent-page > *,
+.arsp-form-page > *,
+.upload-page > *,
+.mapper-page > *,
+.tat-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+.arsp-form-page {
+  padding-top: 1.25rem;
+  padding-bottom: 2rem;
+}
+
+.arsp-form-page .form-card,
+.arsp-form-page > .row > [class*="col-"] > form > .card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(0, 188, 212, 0.2);
+  border-top: 4px solid #0f3a5f;
+  box-shadow: 0 16px 36px rgba(15, 58, 95, 0.16);
+  backdrop-filter: blur(3px);
+}
+
+.arsp-form-page .form-card > .card-header,
+.arsp-form-page > .row > [class*="col-"] > form > .card > .card-header {
+  background: rgba(248, 252, 254, 0.9);
+  border-bottom: 1px solid rgba(0, 188, 212, 0.18);
+}
+
+/* Compact headers for settings edit utility pages. */
+.settings-edit-header,
+.header.pb-6.settings-edit-header,
+.header-container.settings-edit-header {
+  min-height: 108px !important;
+  height: auto !important;
+  padding: 1.25rem 1.75rem !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  overflow: hidden !important;
+  background:
+    linear-gradient(135deg, rgba(15, 20, 35, 0.98) 0%, rgba(24, 48, 78, 0.96) 58%, rgba(0, 137, 150, 0.9) 100%) !important;
+  border-bottom: 3px solid #00cfe8 !important;
+  box-shadow: 0 12px 28px rgba(15, 58, 95, 0.14);
+}
+
+.settings-edit-header.pb-6,
+.header.pb-6.settings-edit-header {
+  padding-bottom: 1.25rem !important;
+}
+
+.settings-edit-header::after {
+  opacity: 0.14 !important;
+}
+
+.settings-edit-header .grid-bg,
+.settings-edit-header .particles,
+.settings-edit-header .particle,
+.settings-edit-header .scanner,
+.settings-edit-header .glow-orb,
+.settings-edit-header .overlay {
+  display: none !important;
+}
+
+.settings-edit-header > .container-fluid,
+.settings-edit-header .header-body {
+  width: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.settings-edit-header .row.py-4 {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.settings-edit-header .h2 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.settings-edit-header p {
+  margin-bottom: 0 !important;
+  font-size: 0.78rem;
+}
+
+.settings-edit-header .breadcrumb {
+  margin-bottom: 0 !important;
+}
+
+.settings-edit-content,
+.container-fluid.settings-edit-content {
+  margin-top: 1rem !important;
+  position: relative;
+  z-index: 3;
+}
+
+/* Shared form/list headers */
+.header.pb-6 {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(15, 20, 35, 0.99) 0%, rgba(21, 50, 82, 0.98) 58%, rgba(0, 137, 150, 0.92) 100%) !important;
+  border-bottom: 4px solid var(--secondary-color);
+}
+
+.header.pb-6 .mask {
+  background: transparent !important;
+  opacity: 1 !important;
+}
+
+.header.pb-6::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, rgba(0, 188, 212, 0.1) 1px, transparent 1px),
+    linear-gradient(rgba(0, 188, 212, 0.08) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.header.pb-6 > * {
+  position: relative;
+  z-index: 1;
+}
+
+.header.pb-6 > .container-fluid.d-flex.justify-content-start {
+  position: absolute;
+  left: 0;
+  top: 48%;
+  width: 100%;
+  max-width: none;
+  justify-content: flex-start !important;
+  padding-left: 30px;
+  padding-right: 30px;
+  transform: translateY(-50%);
+}
+
+.header.pb-6 > .container-fluid.d-flex.justify-content-start > .row {
+  width: auto;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* WGS data pages: clean overview-style treatment. */
+.wgs-page-header {
+  min-height: 128px !important;
+  background:
+    linear-gradient(90deg, rgba(15, 20, 35, 0.18), rgba(15, 58, 95, 0.12)),
+    url("/static/assets/img/theme/microbial.jpg") center center / cover no-repeat !important;
+  border-bottom: 3px solid #00cfe8 !important;
+}
+
+.wgs-page-header .mask {
+  background: rgba(10, 18, 38, 0.12) !important;
+  opacity: 1 !important;
+}
+
+.wgs-page-header .header-body {
+  min-height: 128px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.wgs-page-header .header-body > .row {
+  width: 100%;
+}
+
+.wgs-page-header .h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+.wgs-page-header .breadcrumb {
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 8px 18px rgba(15, 58, 95, 0.12);
+}
+
+.wgs-page-header .btn-neutral,
+.wgs-page-header .btn-warning {
+  border-radius: 4px;
+  border: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  box-shadow: 0 6px 14px rgba(15, 58, 95, 0.14);
+}
+
+.wgs-list-page {
+  min-height: calc(100vh - 220px);
+  margin-top: 0 !important;
+  padding-top: 1.15rem;
+  padding-bottom: 2rem;
+  background: linear-gradient(180deg, #effaff 0%, #f8fcfe 48%, #ffffff 100%);
+}
+
+.wgs-list-card {
+  border: 1px solid rgba(0, 188, 212, 0.18) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+  background: #ffffff !important;
+  box-shadow: 0 14px 32px rgba(15, 58, 95, 0.14) !important;
+}
+
+.wgs-list-card > .card-header,
+.wgs-list-card-header {
+  background: linear-gradient(135deg, #0f3a5f 0%, #08798a 58%, #00a9b9 100%) !important;
+  border: 0 !important;
+  border-bottom: 3px solid #00cfe8 !important;
+  color: #ffffff !important;
+}
+
+.wgs-list-card > .card-header h3,
+.wgs-list-card > .card-header h6,
+.wgs-list-card > .card-header .mb-0 {
+  color: #ffffff !important;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.wgs-list-card .card-body,
+.wgs-list-card .card-footer {
+  background: #ffffff !important;
+}
+
+.wgs-list-card .input-group {
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.wgs-list-table-shell,
+.wgs-list-card .table-responsive {
+  border-top: 1px solid rgba(0, 188, 212, 0.18);
+  background: #f8fcfd;
+}
+
+.wgs-list-card table {
+  margin: 0 !important;
+  color: #173a55;
+}
+
+.wgs-list-card table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  background: var(--arsp-table-head-cell-bg) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  padding: 0.85rem 0.9rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.35px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.24);
+  white-space: nowrap;
+}
+
+.wgs-list-card table tbody tr {
+  background: #f8fcfd;
+  border-bottom: 1px solid rgba(15, 58, 95, 0.12);
+}
+
+.wgs-list-card table tbody tr:hover {
+  background: #eaf9fc;
+}
+
+.wgs-list-card table tbody td {
+  background: transparent;
+  color: #173a55;
+  font-size: 0.82rem;
+  font-weight: 650;
+  vertical-align: middle;
+}
+
+.wgs-list-card .text-primary {
+  color: #064f76 !important;
+}
+
+.wgs-list-card input[type="checkbox"][disabled] {
+  width: 18px !important;
+  height: 18px !important;
+  accent-color: #0097a7 !important;
+}
+
+@media (max-width: 991.98px) {
+  .wgs-page-header,
+  .wgs-page-header .header-body {
+    min-height: 150px !important;
+  }
+}
+
+/* Clean system header treatment for non-dashboard page headers. */
+.batch-header,
+.antibiotics-header,
+.header-container:not(:has(.header-index)) {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(15, 20, 35, 0.99) 0%, rgba(21, 50, 82, 0.98) 58%, rgba(0, 137, 150, 0.92) 100%) !important;
+  border-bottom: 4px solid var(--secondary-color) !important;
+}
+
+.batch-header::after,
+.antibiotics-header::after,
+.header-container:not(:has(.header-index))::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, rgba(0, 188, 212, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(0, 188, 212, 0.06) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.batch-header > *,
+.antibiotics-header > *,
+.header-container:not(:has(.header-index)) > * {
+  position: relative;
+  z-index: 1;
+}
+
 
 
 /* =========================================================
@@ -463,7 +971,7 @@
 .modal {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 5000 !important;
+  z-index: 1060 !important;
   pointer-events: auto !important;
 }
 
@@ -471,17 +979,22 @@
   position: fixed !important;
   inset: 0 !important;
   pointer-events: auto !important;
-  z-index: 4999 !important;
+  z-index: 1050 !important;
 }
 
 .modal.show {
   display: block !important;
-  z-index: 5000 !important;
+  z-index: 1060 !important;
 }
 
 .modal-backdrop.show {
   opacity: 0.5 !important;
-  z-index: 4999 !important;
+  z-index: 1050 !important;
+}
+
+.modal-dialog,
+.modal-content {
+  pointer-events: auto !important;
 }
 
 /* =========================================================
@@ -747,7 +1260,7 @@
 
 .preview-card {
   position: relative;
-  height: 220px;
+  height: 180px;
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
@@ -996,27 +1509,29 @@
 }
 
 .table thead {
-  background: linear-gradient(135deg, #1e5a96 0%, #0f3a5f 100%);
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92));
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
 }
 
 .table thead th {
   color: white;
   font-weight: 600;
   border: none;
-  padding: 1.25rem 1rem;
+  padding: 0.85rem 0.75rem;
   text-transform: uppercase;
   font-size: 0.85rem;
   letter-spacing: 0.5px;
 }
 
 .table-dark th {
-  background: linear-gradient(135deg, #1e5a96 0%, #0f3a5f 100%);
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92));
   color: white;
   border: none;
 }
 
 .table tbody td {
-  padding: 1.25rem 1rem;
+  padding: 0.75rem 0.75rem;
   vertical-align: middle;
   border-color: #e3e6f0;
   color: #53545c;
@@ -1186,15 +1701,13 @@
 
 /* Responsive Table */
 @media (max-width: 768px) {
-  .table thead th {
-    font-size: 0.75rem;
-    padding: 0.75rem 0.5rem;
-  }
+.table thead th {
+  padding: 0.75rem 0.85rem;
+}
 
-  .table tbody td {
-    padding: 0.75rem 0.5rem;
-    font-size: 0.9rem;
-  }
+.table tbody td {
+  padding: 0.65rem 0.85rem;
+}
 
   .record-info div {
     font-size: 0.85rem;
@@ -1329,8 +1842,838 @@ select.form-control {
   .header-actions {
     text-align: left;
   }
-  .header-actions .btn { margin-left: 0; margin-right: 8px; margin-bottom: 6px; }
+.header-actions .btn { margin-left: 0; margin-right: 8px; margin-bottom: 6px; }
+}
+
+
+/* Required field highlighting */
+.required-field-missing,
+.form-control.required-field-missing,
+.custom-select.required-field-missing {
+  border-color: #f5365c !important;
+  background-color: #fff5f7 !important;
+  box-shadow: 0 0 0 0.16rem rgba(245, 54, 92, 0.18) !important;
+}
+
+.required-field-group-missing .custom-file-label,
+.required-field-group-missing .drop-zone,
+.required-field-group-missing .select2-selection {
+  border-color: #f5365c !important;
+  background-color: #fff5f7 !important;
+  box-shadow: 0 0 0 0.16rem rgba(245, 54, 92, 0.18) !important;
+}
+
+.required-field-group-missing > label,
+.required-field-group-missing .field-label,
+.required-field-group-missing .form-control-label {
+  color: #b4233f !important;
+  font-weight: 700;
+}
+
+.required-field-feedback {
+  display: block;
+  margin-top: 0.32rem;
+  color: #b4233f;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.required-field-feedback[hidden] {
+  display: none !important;
 }
 
 
 
+/* Record form section tabs */
+.record-section-tabs {
+  align-items: flex-end;
+  gap: 2px;
+  border-bottom: 2px solid #1e5a96;
+}
+
+.record-section-tabs .nav-link {
+  border: 1px solid rgba(30, 90, 150, 0.18) !important;
+  border-bottom: 0 !important;
+  border-radius: 8px 8px 0 0 !important;
+  color: #17415f !important;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  opacity: 0.68;
+  filter: saturate(0.72);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease, filter 0.16s ease;
+}
+
+.record-section-tabs .nav-link:not(.active):not([aria-selected="true"]) {
+  background: linear-gradient(180deg, #e5e7eb 0%, #cbd5e1 100%) !important;
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+  opacity: 1;
+  filter: grayscale(1) saturate(0);
+  box-shadow: none;
+}
+
+.record-section-tabs .nav-item:nth-child(1) .nav-link:not([style]) {
+  background: linear-gradient(90deg, #8882f6, #a0b9ee);
+}
+
+.record-section-tabs .nav-item:nth-child(2) .nav-link:not([style]) {
+  background: linear-gradient(135deg, #00bcd4 0%, #66edff 100%);
+}
+
+.record-section-tabs .nav-item:nth-child(3) .nav-link:not([style]) {
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+.record-section-tabs .nav-link:hover {
+  opacity: 0.9;
+  filter: saturate(0.95);
+}
+
+.record-section-tabs .nav-link:not(.active):not([aria-selected="true"]):hover {
+  background: linear-gradient(180deg, #eef2f7 0%, #d7dee8 100%) !important;
+  color: #334155 !important;
+  filter: grayscale(0.65) saturate(0.2);
+}
+
+.record-section-tabs .nav-link.active,
+.record-section-tabs .nav-link[aria-selected="true"] {
+  position: relative;
+  z-index: 2;
+  color: #ffffff !important;
+  opacity: 1;
+  filter: saturate(1.1);
+  transform: translateY(-4px);
+  border-color: #10233b !important;
+  box-shadow: 0 10px 22px rgba(16, 35, 59, 0.22), inset 0 -4px 0 #ffffff;
+}
+
+.record-section-tabs .nav-link.active::after,
+.record-section-tabs .nav-link[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 4px;
+  height: 3px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+/* Searchable phenotype picker */
+.phenotype-select-source {
+  display: none !important;
+}
+
+.phenotype-picker {
+  position: relative;
+}
+
+.phenotype-picker .input-group {
+  align-items: stretch;
+}
+
+.phenotype-picker .phenotype-search-input {
+  min-width: 0;
+}
+
+.phenotype-picker .phenotype-apply-btn {
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.phenotype-picker .phenotype-results {
+  display: none;
+  position: absolute;
+  z-index: 1060;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #d8e0ec;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 10px 20px rgba(16, 35, 59, 0.12);
+}
+
+.phenotype-picker .phenotype-results.is-open {
+  display: block;
+}
+
+.phenotype-picker .phenotype-result {
+  width: 100%;
+  display: block;
+  border: 0 !important;
+  border-bottom: 1px solid #edf1f7 !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  padding: 8px 10px;
+  text-align: left !important;
+  color: #26384d !important;
+  font-size: 0.82rem;
+  line-height: 1.25;
+  cursor: pointer;
+  white-space: normal;
+  box-shadow: none !important;
+}
+
+.phenotype-picker .phenotype-result:hover,
+.phenotype-picker .phenotype-result.is-active {
+  background: #eaf6fb !important;
+  color: #0f4f78 !important;
+}
+
+.phenotype-picker .phenotype-result:last-child {
+  border-bottom: 0 !important;
+}
+
+/* Cohesive translucent table headers */
+:root {
+  --arsp-dashboard-bg: linear-gradient(135deg, #0f1423 0%, #172740 48%, #0d747f 100%);
+  --arsp-dashboard-image-bg:
+    linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
+    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+  --arsp-dashboard-panel-bg: rgba(255, 255, 255, 0.055);
+  --arsp-dashboard-panel-border: rgba(0, 188, 212, 0.24);
+  --arsp-table-head-bg: rgba(18, 63, 78, 0.94);
+  --arsp-table-head-cell-bg: rgba(18, 63, 78, 0.94);
+  --arsp-table-head-border: rgba(0, 207, 232, 0.34);
+  --arsp-table-head-text: #ffffff;
+}
+
+.table > thead,
+.data-table > thead,
+.records-table > thead,
+.process-table > thead,
+.concordance-table > thead,
+.detail-table > thead,
+.tat-main-table > thead,
+.tat-running-table > thead,
+.snapshot-table-scroll table > thead,
+.wgs-list-card table > thead,
+.wgs-detail-drawer table > thead {
+  background: var(--arsp-table-head-bg) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border-bottom: 1px solid var(--arsp-table-head-border) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.table > thead > tr > th,
+.data-table > thead > tr > th,
+.records-table > thead > tr > th,
+.process-table > thead > tr > th,
+.concordance-table > thead > tr > th,
+.detail-table > thead > tr > th,
+.tat-main-table > thead > tr > th,
+.tat-running-table > thead > tr > th,
+.snapshot-table-scroll table > thead > tr > th,
+.wgs-list-card table > thead > tr > th,
+.wgs-detail-drawer table > thead > tr > th {
+  background: var(--arsp-table-head-cell-bg) !important;
+  color: var(--arsp-table-head-text) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+}
+
+.table > thead > tr > th a,
+.data-table > thead > tr > th a,
+.records-table > thead > tr > th a,
+.process-table > thead > tr > th a,
+.concordance-table > thead > tr > th a,
+.detail-table > thead > tr > th a,
+.tat-main-table > thead > tr > th a,
+.tat-running-table > thead > tr > th a,
+.snapshot-table-scroll table > thead > tr > th a,
+.wgs-list-card table > thead > tr > th a,
+.wgs-detail-drawer table > thead > tr > th a {
+  color: inherit !important;
+}
+
+/* Dashboard-matched surfaces for TAT and Concordance companion pages */
+.tat-analysis-page,
+.tat-monitoring-page,
+.tat-page,
+.concordance-dashboard-wrapper,
+.concordance-history-wrapper,
+.concordance-report-wrapper,
+.concordance-detail-shell,
+.concordance-batch-shell,
+.concordance-accession-shell {
+  position: relative !important;
+  min-height: 100vh !important;
+  overflow: hidden !important;
+  background: var(--arsp-dashboard-bg) !important;
+}
+
+.tat-analysis-page::before,
+.tat-monitoring-page::before,
+.tat-page::before,
+.concordance-dashboard-wrapper::before,
+.concordance-history-wrapper::before,
+.concordance-report-wrapper::before,
+.concordance-detail-shell::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  background: var(--arsp-dashboard-image-bg) !important;
+  opacity: .42 !important;
+}
+
+.tat-analysis-page::after,
+.tat-monitoring-page::after,
+.tat-page::after,
+.concordance-dashboard-wrapper::after,
+.concordance-history-wrapper::after,
+.concordance-report-wrapper::after,
+.concordance-detail-shell::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: auto -10% -20% 32% !important;
+  height: 42vh !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  background: radial-gradient(circle, rgba(0, 207, 232, 0.18), rgba(0, 207, 232, 0) 62%) !important;
+}
+
+.tat-analysis-page > *,
+.tat-monitoring-page > *,
+.tat-page > *,
+.concordance-dashboard-wrapper > *,
+.concordance-history-wrapper > *,
+.concordance-report-wrapper > *,
+.concordance-detail-shell > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.tat-analysis-page > .header-container,
+.tat-monitoring-page .antibiotics-header,
+.concordance-dashboard-wrapper .page-header,
+.concordance-history-wrapper .page-header,
+.concordance-report-wrapper .page-header,
+.concordance-detail-shell .header-container,
+.concordance-batch-shell .concordance-batch-header,
+.concordance-accession-shell .concordance-accession-header {
+  background: rgba(255, 255, 255, 0.075) !important;
+  border: 1px solid var(--arsp-dashboard-panel-border) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24) !important;
+  backdrop-filter: blur(14px) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(125%) !important;
+}
+
+.tat-running-list,
+.tat-analysis-page .card,
+.tat-monitoring-page .form-card,
+.concordance-dashboard-wrapper .content-card,
+.concordance-dashboard-wrapper .chart-card,
+.concordance-history-wrapper .report-card,
+.concordance-report-wrapper .meta-card,
+.concordance-report-wrapper .detail-card,
+.concordance-detail-shell .card {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(0, 188, 212, 0.16) !important;
+  box-shadow: 0 16px 36px rgba(7, 18, 32, 0.18) !important;
+}
+
+.tat-analysis-page .card-header,
+.tat-monitoring-page .form-card > .card-header,
+.concordance-dashboard-wrapper .content-card-header,
+.concordance-dashboard-wrapper .chart-card-header,
+.concordance-history-wrapper .report-card-header,
+.concordance-report-wrapper .meta-card-header,
+.concordance-report-wrapper .detail-card-header,
+.concordance-detail-shell .card-header,
+.concordance-accession-shell .card-header {
+  background: rgba(0, 158, 172, 0.84) !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(0, 207, 232, 0.32) !important;
+  backdrop-filter: blur(12px) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(125%) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28) !important;
+}
+
+.tat-analysis-page .card-header *,
+.tat-monitoring-page .form-card > .card-header *,
+.concordance-dashboard-wrapper .content-card-header *,
+.concordance-dashboard-wrapper .chart-card-header *,
+.concordance-history-wrapper .report-card-header *,
+.concordance-report-wrapper .meta-card-header *,
+.concordance-report-wrapper .detail-card-header *,
+.concordance-detail-shell .card-header *,
+.concordance-accession-shell .card-header * {
+  color: inherit !important;
+}
+
+/* Uniform table header color: no per-column gradients */
+.table > thead,
+.data-table > thead,
+.records-table > thead,
+.process-table > thead,
+.concordance-table > thead,
+.detail-table > thead,
+.tat-main-table > thead,
+.tat-running-table > thead,
+.snapshot-table-scroll table > thead,
+.wgs-list-card table > thead,
+.wgs-detail-drawer table > thead {
+  background: var(--arsp-table-head-bg) !important;
+  background-image: none !important;
+}
+
+.table > thead > tr > th,
+.data-table > thead > tr > th,
+.records-table > thead > tr > th,
+.process-table > thead > tr > th,
+.concordance-table > thead > tr > th,
+.detail-table > thead > tr > th,
+.tat-main-table > thead > tr > th,
+.tat-running-table > thead > tr > th,
+.snapshot-table-scroll table > thead > tr > th,
+.wgs-list-card table > thead > tr > th,
+.wgs-detail-drawer table > thead > tr > th {
+  background: var(--arsp-table-head-cell-bg) !important;
+  background-image: none !important;
+  color: var(--arsp-table-head-text) !important;
+}
+
+/* Keep decorative header/background layers from blocking buttons, modals, and dropdowns. */
+.header::before,
+.header::after,
+.page-header::before,
+.page-header::after,
+.header .mask,
+.page-header .mask,
+.header .overlay,
+.page-header .overlay,
+.header [class*="overlay"],
+.page-header [class*="overlay"],
+.card-header::before,
+.card-header::after,
+.header-container::before,
+.header-container::after,
+.settings-edit-header::before,
+.settings-edit-header::after,
+.batch-header::before,
+.batch-header::after,
+.antibiotics-header::before,
+.antibiotics-header::after,
+.header > div[style*="position: absolute"],
+.page-header > div[style*="position: absolute"],
+.header-container > div[style*="position: absolute"] {
+  pointer-events: none !important;
+}
+
+.header .btn,
+.page-header .btn,
+.card-header .btn,
+.settings-edit-header .btn,
+.content-toolbar .btn,
+.action-toolbar .btn,
+.page-actions .btn,
+.header-actions .btn,
+.settings-toolbar .btn,
+.text-right .btn,
+.float-right .btn,
+.pull-right .btn,
+.btn-hdr,
+.btn-back,
+.back-btn,
+.header a,
+.page-header a,
+.card-header a,
+.settings-edit-header a,
+.content-toolbar a,
+.action-toolbar a,
+.page-actions a,
+.header-actions a,
+.header button,
+.page-header button,
+.card-header button,
+.settings-edit-header button,
+.content-toolbar button,
+.action-toolbar button,
+.page-actions button,
+.header-actions button,
+.header-actions,
+.page-actions,
+.card-header .text-right,
+.card-header .btn-group,
+.settings-actions,
+.settings-toolbar,
+.breakpoint-select-label,
+.breakpoint-clear-select {
+  position: relative !important;
+  z-index: 120 !important;
+  pointer-events: auto !important;
+}
+
+.arsp-multi-select-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 0.4rem;
+}
+
+.arsp-multi-select-clear {
+  border-color: rgba(0, 188, 212, 0.45) !important;
+  color: #07566b !important;
+  background: rgba(232, 252, 255, 0.84) !important;
+  box-shadow: none !important;
+}
+
+.arsp-multi-select-clear:hover,
+.arsp-multi-select-clear:focus {
+  border-color: #0893a4 !important;
+  background: #0893a4 !important;
+  color: #ffffff !important;
+}
+
+.modal,
+.modal.show {
+  z-index: 120060 !important;
+  pointer-events: auto !important;
+}
+
+.modal-backdrop,
+.modal-backdrop.show {
+  z-index: 120050 !important;
+}
+
+.modal-dialog,
+.modal-content {
+  position: relative !important;
+  z-index: 120061 !important;
+  pointer-events: auto !important;
+}
+
+.modal .btn,
+.modal button,
+.modal a,
+.modal input,
+.modal select,
+.modal textarea,
+.modal label {
+  pointer-events: auto !important;
+}
+
+/* Final click-through layer: keep actual controls above decorative shells. */
+.main-content,
+.main-content > .container-fluid,
+.content,
+.content-wrapper,
+.page-wrapper,
+.container-fluid.mt--6,
+.container-fluid.mt--7,
+.container-fluid.mt--8,
+.header + .container-fluid,
+.header ~ .container-fluid,
+.card,
+.card-body,
+.card-header,
+.table-responsive,
+.settings-page-shell,
+.settings-container,
+.settings-tab-content,
+.settings-action-bar,
+.form-actions,
+.action-toolbar,
+.content-toolbar,
+.page-actions,
+.header-actions,
+.settings-toolbar,
+.btn-toolbar,
+.text-right,
+.float-right,
+.pull-right {
+  position: relative;
+}
+
+.main-content > .container-fluid,
+.content,
+.content-wrapper,
+.page-wrapper,
+.container-fluid.mt--6,
+.container-fluid.mt--7,
+.container-fluid.mt--8,
+.header + .container-fluid,
+.header ~ .container-fluid,
+.settings-page-shell,
+.settings-container,
+.settings-tab-content,
+.table-responsive,
+.card {
+  z-index: 30;
+}
+
+.main-content::before,
+.main-content::after,
+.content::before,
+.content::after,
+.content-wrapper::before,
+.content-wrapper::after,
+.wrapper::before,
+.wrapper::after,
+.page-wrapper::before,
+.page-wrapper::after,
+.arsp-translucent-page::before,
+.arsp-translucent-page::after,
+.arsp-form-page::before,
+.arsp-form-page::after,
+.tat-analysis-page::before,
+.tat-analysis-page::after,
+.concordance-dashboard-wrapper::before,
+.concordance-dashboard-wrapper::after,
+.concordance-history-wrapper::before,
+.concordance-history-wrapper::after,
+.concordance-report-wrapper::before,
+.concordance-report-wrapper::after,
+.concordance-detail-shell::before,
+.concordance-detail-shell::after,
+.concordance-accession-shell::before,
+.concordance-accession-shell::after {
+  pointer-events: none !important;
+}
+
+.card .btn,
+.card a.btn,
+.card button,
+.card input,
+.card select,
+.card textarea,
+.card label,
+.table-responsive .btn,
+.table-responsive button,
+.table-responsive a,
+.settings-page-shell .btn,
+.settings-page-shell button,
+.settings-page-shell a,
+.settings-container .btn,
+.settings-container button,
+.settings-container a,
+.form-actions .btn,
+.settings-action-bar .btn,
+.btn-toolbar .btn,
+.text-right .btn,
+.float-right .btn,
+.pull-right .btn {
+  position: relative !important;
+  z-index: 300 !important;
+  pointer-events: auto !important;
+}
+
+/* Custom modal overlays used by older settings/forms. */
+.modal-bg.open,
+.custom-modal,
+.custom-modal.show,
+.popup-modal,
+.popup-modal.show {
+  z-index: 120060 !important;
+  pointer-events: auto !important;
+}
+
+.modal-bg:not(.open),
+.modal-bg:not(.open) * {
+  pointer-events: none !important;
+}
+
+.modal-bg .modal-content,
+.modal-bg .mbox,
+.custom-modal .modal-content,
+.popup-modal .modal-content,
+.modal-bg .btn,
+.modal-bg button,
+.modal-bg a,
+.modal-bg input,
+.modal-bg select,
+.modal-bg textarea,
+.modal-bg label,
+.custom-modal .btn,
+.custom-modal button,
+.custom-modal a,
+.custom-modal input,
+.custom-modal select,
+.custom-modal textarea,
+.custom-modal label,
+.popup-modal .btn,
+.popup-modal button,
+.popup-modal a,
+.popup-modal input,
+.popup-modal select,
+.popup-modal textarea,
+.popup-modal label {
+  position: relative !important;
+  z-index: 120061 !important;
+  pointer-events: auto !important;
+}
+
+/* Global clickability repair: decorative layers should never cover controls. */
+.header > div[style*="position:absolute"],
+.header > div[style*="position: absolute"],
+.page-header > div[style*="position:absolute"],
+.page-header > div[style*="position: absolute"],
+.header-container > div[style*="position:absolute"],
+.header-container > div[style*="position: absolute"],
+.header > div[style*="radial-gradient"],
+.page-header > div[style*="radial-gradient"],
+.header-container > div[style*="radial-gradient"],
+.header > div[style*="background-image"],
+.page-header > div[style*="background-image"],
+.header-container > div[style*="background-image"] {
+  pointer-events: none !important;
+}
+
+.main-content a[href],
+.main-content button,
+.main-content input[type="button"],
+.main-content input[type="submit"],
+.main-content .btn,
+.main-content [role="button"],
+.card-header a[href],
+.card-header button,
+.card-header .btn,
+.card-header .text-right,
+.card-header .float-right,
+.card-header .pull-right,
+.header a[href],
+.header button,
+.header .btn,
+.page-header a[href],
+.page-header button,
+.page-header .btn,
+.header-container a[href],
+.header-container button,
+.header-container .btn,
+.settings-page-shell a[href],
+.settings-page-shell button,
+.settings-page-shell .btn,
+.settings-container a[href],
+.settings-container button,
+.settings-container .btn,
+.settings-edit-content a[href],
+.settings-edit-content button,
+.settings-edit-content .btn,
+.settings-action-bar,
+.settings-action-bar *,
+.arsp-multi-select-actions,
+.arsp-multi-select-clear,
+[data-back-target],
+[data-stable-back-button] {
+  position: relative !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+}
+
+.main-content .btn,
+[data-back-target],
+[data-stable-back-button] {
+  cursor: pointer !important;
+}
+
+.modal,
+.modal.show,
+.modal-open .modal,
+.modal-open .modal.show,
+.modal-bg.open,
+.custom-modal,
+.custom-modal.show,
+.popup-modal,
+.popup-modal.show {
+  z-index: 120060 !important;
+  pointer-events: auto !important;
+}
+
+.modal-bg:not(.open),
+.modal-bg:not(.open) * {
+  pointer-events: none !important;
+}
+
+.modal-dialog,
+.modal-content,
+.modal .modal-dialog,
+.modal .modal-content,
+.modal-bg .modal-content,
+.modal-bg .mbox,
+.custom-modal .modal-content,
+.popup-modal .modal-content {
+  position: relative !important;
+  z-index: 120061 !important;
+  pointer-events: auto !important;
+}
+
+.modal *,
+.modal-bg *,
+.custom-modal *,
+.popup-modal * {
+  pointer-events: auto !important;
+}
+
+.modal-backdrop,
+.modal-backdrop.show,
+.modal-open .modal-backdrop,
+.modal-open .modal-backdrop.show {
+  z-index: 120050 !important;
+}
+
+.dropdown-menu,
+.select2-container,
+.select2-dropdown,
+.phenotype-results,
+.autocomplete-results,
+.ui-autocomplete {
+  z-index: 120070 !important;
+  pointer-events: auto !important;
+}
+
+.arsp-multi-select-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  margin-top: .35rem !important;
+  min-height: 31px !important;
+}
+
+.arsp-multi-select-clear {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .25rem !important;
+  border-color: #00bcd4 !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #075669 !important;
+  font-weight: 700 !important;
+}
+
+/* Final table stacking guard: sticky headers must cover scrolling row actions. */
+.table-responsive {
+  isolation: isolate;
+}
+
+.table-responsive table > thead,
+.table-responsive table > thead.thead-light,
+.table-responsive table > thead.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 5000 !important;
+}
+
+.table-responsive table > thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 5001 !important;
+}
+
+.table-responsive table > thead a,
+.table-responsive table > thead button,
+.table-responsive table > thead .btn {
+  z-index: 5002 !important;
+}
+
+.table-responsive table > tbody .btn,
+.table-responsive table > tbody button,
+.table-responsive table > tbody a.btn,
+.table-responsive table > tbody .btn-group,
+.table-responsive table > tbody [role="button"] {
+  z-index: 1 !important;
+}

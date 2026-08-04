@@ -1,4 +1,13 @@
-from django.db.models.signals import post_save, pre_save, post_delete
+from contextlib import contextmanager
+from contextvars import ContextVar
+
+from django.db.models.signals import (
+    m2m_changed,
+    post_delete,
+    post_save,
+    pre_delete,
+    pre_save,
+)
 from django.dispatch import receiver
 
 from apps.home_final.views import regenerate_concordance_snapshot
@@ -6,6 +15,74 @@ from apps.home_final.models import Final_AntibioticEntry, Final_Data, Classifica
 from .models import *
 import re
 from django.db.models import Q, F
+
+
+_deleting_final_ids = ContextVar(
+    "deleting_final_ids",
+    default=frozenset(),
+)
+_bulk_import_depth = ContextVar("bulk_import_depth", default=0)
+
+
+def signals_suspended_for_import():
+    return _bulk_import_depth.get() > 0
+
+
+@contextmanager
+def suspend_import_signals():
+    token = _bulk_import_depth.set(_bulk_import_depth.get() + 1)
+    try:
+        yield
+    finally:
+        _bulk_import_depth.reset(token)
+
+
+def _is_final_being_deleted(final_id):
+    return final_id in _deleting_final_ids.get()
+
+
+def specimen_expression_matches(specimen, expression):
+    if not specimen or not expression:
+        return False
+
+    specimen_group = specimen.Specimen_Code_Grp or specimen
+    isolate_codes = {
+        (specimen.Specimen_code or "").strip().lower(),
+        (specimen_group.Specimen_code or "").strip().lower(),
+    }
+    isolate_codes.discard("")
+
+    expression_codes = {
+        code.strip().lower()
+        for code in re.split(r"\s*\|\s*", str(expression))
+        if code.strip()
+    }
+    return bool(isolate_codes & expression_codes)
+
+
+def interpretation_expression_values(*expressions):
+    values = set()
+    for expression in expressions:
+        values.update(
+            value.strip().upper()
+            for value in re.split(r"\s*\|\s*", str(expression or ""))
+            if value.strip()
+        )
+    return values
+
+
+@receiver(pre_delete, sender=Final_Data)
+def mark_final_as_deleting(sender, instance, **kwargs):
+    deleting_ids = set(_deleting_final_ids.get())
+    deleting_ids.add(instance.pk)
+    _deleting_final_ids.set(frozenset(deleting_ids))
+
+
+@receiver(post_delete, sender=Final_Data)
+def clear_final_deleting_marker(sender, instance, **kwargs):
+    deleting_ids = set(_deleting_final_ids.get())
+    deleting_ids.discard(instance.pk)
+    _deleting_final_ids.set(frozenset(deleting_ids))
 
 
 
@@ -118,7 +195,9 @@ def determine_ris(value, r_breakpoint, i_breakpoint, s_breakpoint, sdd_breakpoin
 
 @receiver(post_save, sender=Final_AntibioticEntry)
 def update_ris_interpretation(sender, instance, **kwargs):
-    print("\n[DEBUG] update_ris_interpretation fired...")
+    if signals_suspended_for_import():
+        return
+
     updated_fields = []
 
     # Retrieve the BreakpointsTable entry associated with the AntibioticEntry
@@ -126,9 +205,6 @@ def update_ris_interpretation(sender, instance, **kwargs):
     is_disk = breakpoint_entry.Disk_Abx if breakpoint_entry else False
 
     # Update ab_Disk_RIS
-    print(f"{instance.ab_Antibiotic} : MIC={instance.ab_MIC_value}, Disk={instance.ab_Disk_value}, Retest-{instance.ab_Retest_Antibiotic} : Retest-DISK={instance.ab_Retest_DiskValue}, Retest-MIC={instance.ab_Retest_MICValue},"
-      f"R={instance.ab_R_breakpoint}, I={instance.ab_I_breakpoint}, S={instance.ab_S_breakpoint}, SDD={instance.ab_SDD_breakpoint}")
-    
     disk_ris = determine_ris(instance.ab_Disk_value, instance.ab_R_breakpoint, instance.ab_I_breakpoint, instance.ab_S_breakpoint, instance.ab_SDD_breakpoint, is_disk=is_disk)
     if disk_ris and disk_ris != instance.ab_Disk_RIS:
         instance.ab_Disk_RIS = disk_ris
@@ -331,74 +407,174 @@ def update_ris_interpretation(sender, instance, **kwargs):
 #     )
 
 
-@receiver(post_save, sender=Final_AntibioticEntry)
-def update_emerging_abx_flags(sender, instance, **kwargs):
-
-    if not instance.ab_Retest_Abx_code:
+def recalculate_emerging_for_final(final):
+    if (
+        not final
+        or _is_final_being_deleted(final.pk)
+        or not Final_Data.objects.filter(pk=final.pk).exists()
+    ):
         return
 
-    final = instance.ab_idNum_f_referred
+    specimen = final.f_Spec_Type
+    spec_code = specimen.Specimen_code if specimen else ""
+    specimen_is_eligible = bool(specimen)
+    spec_flag = False
 
-    retest_entries = Final_AntibioticEntry.objects.filter(
-        ab_idNum_f_referred=final,
-        ab_Retest_Abx_code__isnull=False
-    )
-
-    emerging_abx_triggered = False
     organism_triggered = False
-
+    emerging_abx_triggered = False
     triggered_codes = []
     triggered_phenotypes = []
+    final_org_code = (
+        (final.f_ars_OrgCode or "").strip()
+        or (final.f_Site_Org or "").strip()
+    ).lower()
+
+    def has_retest_result(entry):
+        return any(value not in ("", None) for value in (
+            entry.ab_Retest_DiskValue,
+            entry.ab_Retest_MICValue,
+            entry.ab_Retest_Disk_RIS,
+            entry.ab_Retest_MIC_RIS,
+            entry.ab_Retest_Disk_enRIS,
+            entry.ab_Retest_MIC_enRIS,
+        ))
+
+    def breakpoint_matches_retest_code(bp, retest_code):
+        code = (retest_code or "").strip().upper()
+        if not code:
+            return False
+        return code in {
+            (bp.Whonet_Abx or "").strip().upper(),
+            str(bp.Antibiotic_list_id or "").strip().upper(),
+        }
+
+    retest_entries = (
+        Final_AntibioticEntry.objects
+        .filter(
+            ab_idNum_f_referred=final,
+            ab_Retest_Abx_code__isnull=False,
+        )
+        .exclude(ab_Retest_Abx_code="")
+        .prefetch_related("ab_breakpoints_id")
+    )
 
     for entry in retest_entries:
-
-        bp = entry.ab_breakpoints_id.first()
-        if not bp:
+        if not has_retest_result(entry):
             continue
 
-        ris = entry.ab_Retest_MIC_enRIS or entry.ab_Retest_Disk_enRIS
+        retest_code = (entry.ab_Retest_Abx_code or "").strip().upper()
+        breakpoints = [
+            bp for bp in entry.ab_breakpoints_id.all()
+            if breakpoint_matches_retest_code(bp, retest_code)
+        ]
+
+        for bp in breakpoints:
+            breakpoint_spec_code = (bp.Spec_code or "").strip()
+            if (
+                breakpoint_spec_code
+                and specimen_is_eligible
+                and (
+                    bp.Emerging_specimen
+                    or bp.Emerging_Org_Flag
+                    or bp.Emerging_Abx_Flag
+                )
+            ):
+                if specimen_expression_matches(
+                    specimen,
+                    breakpoint_spec_code,
+                ):
+                    spec_flag = True
+
+        ris = (
+            entry.ab_Retest_MIC_RIS
+            or entry.ab_Retest_Disk_RIS
+            or entry.ab_Retest_MIC_enRIS
+            or entry.ab_Retest_Disk_enRIS
+            or ""
+        ).strip().upper()
         if not ris:
             continue
 
-        # Organism-level emerging
-        if bp.Emerging_Org_Flag:
-            organism_triggered = True
+        for bp in breakpoints:
+            breakpoint_org = (bp.Org or "").strip().lower()
+            if breakpoint_org and breakpoint_org != final_org_code:
+                continue
 
-        # Phenotype match
-        pheno_match = (
-            ris == bp.Emerging_Pheno_Flag
-            or ris == bp.Emerging_Pheno_Flag_Other
-        )
+            if bp.Emerging_Org_Flag:
+                organism_triggered = True
 
-        if bp.Emerging_Abx_Flag and pheno_match:
-            emerging_abx_triggered = True
-            triggered_codes.append(entry.ab_Retest_Abx_code)
-            triggered_phenotypes.append(ris)
+            phenotype_flags = interpretation_expression_values(
+                bp.Emerging_Pheno_Flag,
+                bp.Emerging_Pheno_Flag_Other,
+            )
 
-    if not Final_Data.objects.filter(pk=final.pk).exists():
-        return
+            if bp.Emerging_Abx_Flag and ris in phenotype_flags:
+                emerging_abx_triggered = True
+                if entry.ab_Retest_Abx_code:
+                    triggered_codes.append(entry.ab_Retest_Abx_code)
+                triggered_phenotypes.append(ris)
 
     emerging_obj, _ = Emerging_Table.objects.get_or_create(
         eme_primary_key=final
     )
 
+    emerging_obj.eme_Spec_Flag = spec_flag
+    emerging_obj.eme_spec_Type = spec_code
+    emerging_obj.eme_spec_Num = final.f_Spec_Num or ""
+    emerging_obj.eme_spec_Date = (
+        final.f_Spec_Date.strftime("%Y-%m-%d")
+        if final.f_Spec_Date else ""
+    )
+    emerging_obj.eme_Site_Code = final.f_SiteCode or ""
+    emerging_obj.eme_Accession = final.f_AccessionNo or ""
+    emerging_obj.eme_ReferralDate = final.f_Referral_Date.strftime("%Y-%m-%d") if final.f_Referral_Date else ""
+    emerging_obj.eme_DateAdmis = final.f_Date_Admis.strftime("%Y-%m-%d") if final.f_Date_Admis else ""
+    emerging_obj.eme_Diagnosis = final.f_Diagnosis or ""
+    emerging_obj.eme_Diag_ICD = final.f_Diagnosis_ICD10 or ""
+    emerging_obj.eme_ars_Org = final.f_ars_OrgCode or ""
+    emerging_obj.eme_ars_Pre = final.f_ars_Pre or ""
+    emerging_obj.eme_ars_Post = final.f_ars_Post or ""
     emerging_obj.eme_org_Flag = organism_triggered
     emerging_obj.eme_abx_Flag = emerging_abx_triggered
-
-    emerging_obj.eme_abx_code_pheno = (
-        ", ".join(triggered_codes) if triggered_codes else ""
-    )
-
-    emerging_obj.eme_abx_Phenotype = (
-        ", ".join(triggered_phenotypes) if triggered_phenotypes else ""
-    )
-
+    emerging_obj.eme_abx_code_pheno = ", ".join(dict.fromkeys(triggered_codes))
+    emerging_obj.eme_abx_Phenotype = ", ".join(dict.fromkeys(triggered_phenotypes))
     emerging_obj.save()
+
+
+@receiver(post_save, sender=Final_AntibioticEntry)
+def update_emerging_abx_flags(sender, instance, **kwargs):
+    if signals_suspended_for_import():
+        return
+    recalculate_emerging_for_final(instance.ab_idNum_f_referred)
+
+
+@receiver(post_delete, sender=Final_AntibioticEntry)
+def update_emerging_after_antibiotic_delete(sender, instance, **kwargs):
+    if (
+        signals_suspended_for_import()
+        or _is_final_being_deleted(instance.ab_idNum_f_referred_id)
+    ):
+        return
+    recalculate_emerging_for_final(instance.ab_idNum_f_referred)
+
+
+@receiver(m2m_changed, sender=Final_AntibioticEntry.ab_breakpoints_id.through)
+def update_emerging_after_breakpoint_change(sender, instance, action, **kwargs):
+    if (
+        not signals_suspended_for_import()
+        and action in {"post_add", "post_remove", "post_clear"}
+    ):
+        recalculate_emerging_for_final(instance.ab_idNum_f_referred)
 
 
 
 @receiver(post_save, sender=Emerging_Table)
 def sync_classification_from_emerging(sender, instance, **kwargs):
+    if signals_suspended_for_import():
+        return
+
+    if not instance.eme_primary_key:
+        return
 
     is_fully = Emerging_Table.fully_emerging().filter(
         pk=instance.pk
@@ -415,45 +591,23 @@ def sync_classification_from_emerging(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Final_Data)
 def update_emerging_spec_flag(sender, instance, **kwargs):
-
-    specimen = instance.f_Spec_Type
-
-    spec_flag = False
-    spec_code = ""
-
-    if specimen:
-        spec_flag = bool(specimen.Emerging_Spec_Flag)
-        spec_code = specimen.Specimen_code
-
-    
-
-    emerging_obj, _ = Emerging_Table.objects.get_or_create(
-        eme_primary_key=instance
-    )
-
-    emerging_obj.eme_Spec_Flag = spec_flag
-    emerging_obj.eme_spec_Type = spec_code
-    emerging_obj.eme_spec_Num = instance.f_Spec_Num or ""
-    emerging_obj.eme_spec_Date = (
-        instance.f_Spec_Date.strftime("%Y-%m-%d")
-        if instance.f_Spec_Date else ""
-    )
-
-    emerging_obj.eme_Accession = instance.f_AccessionNo
-    emerging_obj.eme_Site_Code = instance.f_SiteCode
-    emerging_obj.eme_ars_Org = instance.f_ars_OrgCode or ""
-
-    emerging_obj.save()
+    if signals_suspended_for_import():
+        return
+    recalculate_emerging_for_final(instance)
 
 
 
 @receiver(post_save, sender=Final_Data)
 def auto_update_snapshot_on_final_data_save(sender, instance, **kwargs):
+    if signals_suspended_for_import():
+        return
     regenerate_concordance_snapshot(instance)
 
 
 @receiver(post_save, sender=Final_AntibioticEntry)
 def auto_update_snapshot_on_antibiotic_save(sender, instance, **kwargs):
+    if signals_suspended_for_import():
+        return
     regenerate_concordance_snapshot(instance.ab_idNum_f_referred)
 
 

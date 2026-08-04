@@ -3,32 +3,92 @@
 {% block title %} Login {% endblock title %}
 
 <!-- Specific CSS goes HERE -->
-{% block stylesheets %}{% endblock stylesheets %}
+{% block stylesheets %}
+<style>
+  #navbar-main .navbar-brand {
+    visibility: hidden;
+  }
+
+  .login-brand-logo {
+    display: block;
+    width: 128px;
+    max-width: 38vw;
+    height: auto;
+    margin: 0 auto 0.95rem;
+    object-fit: contain;
+    cursor: pointer;
+  }
+
+  .login-card-wrap {
+    margin-top: -1rem;
+  }
+
+  .login-card-header {
+    padding-top: 1.75rem !important;
+  }
+  .welcome-eyebrow {
+  font-size: 0.89rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7a99;
+  margin-bottom: 0.4rem;
+}
+.welcome-subtext {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 0;
+}
+
+  .logo-explanation-modal .modal-content {
+    border: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 20px 55px rgba(15, 35, 59, 0.25);
+  }
+
+  .logo-explanation-modal .modal-header {
+    background: linear-gradient(135deg, #0f3a5f 0%, #08798a 100%);
+    border: 0;
+  }
+
+  .logo-explanation-modal .modal-title,
+  .logo-explanation-modal .close {
+    color: #fff;
+  }
+
+  .logo-explanation-modal .modal-body {
+    color: #294965;
+    font-size: 0.92rem;
+    line-height: 1.75;
+  }
+</style>
+{% endblock stylesheets %}
 
 {% block content %}
 
     <!-- Page content -->
     <div class="container mt--8 pb-5">
       <div class="row justify-content-center">
-        <div class="col-lg-5 col-md-7">
+        <div class="col-lg-5 col-md-7 login-card-wrap">
           <div class="card bg-secondary shadow border-0">
-            <div class="card-header bg-transparent pb-5">
+            <div class="card-header bg-transparent pb-4 login-card-header">
+              <img src="/static/assets/img/theme/arsp_logo_v2026.1.png" class="login-brand-logo" alt="ARSP" role="button" tabindex="0" data-toggle="modal" data-target="#logoExplanationModal">
               <div class="text-muted text-center mt-2 mb-3">
                 Sign IN
               </div>
             </div>
             <div class="card-body px-lg-5 py-lg-5">
-              <div class="text-center text-muted mb-4">
+                          <div class="text-center mb-4">
 
-                {% if msg %}
-                  <p>{{ msg }}</p>
-                {% else %}
-                  <p>
-                    Add your credentials
-                  </p>
-                {% endif %}  
+                            {% if msg %}
+                              <p class="text-danger font-weight-bold mb-0">{{ msg }}</p>
+                            {% else %}
+                              <h6 class="welcome-eyebrow">Welcome Back!</h6>
+                              <p class="welcome-subtext">Already a member? Sign in to continue.</p>
+                            {% endif %}  
 
-              </div>
+                          </div>
 
               <form method="POST">
 
@@ -81,6 +141,22 @@
       </div>
     </div>
 
+    <div class="modal fade logo-explanation-modal" id="logoExplanationModal" tabindex="-1" role="dialog" aria-labelledby="logoExplanationModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="logoExplanationModalLabel" > <span style="color: #fff;"> About the ARSP Logo:</span> </h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body" style="text-align: center;">
+            The ARSP logo represents the intersection of scientific expertise, technological innovation, and collaborative action in the fight against antimicrobial resistance. Each element - the microscope for research, the computer for surveillance, and the pills and flasks for intervention - symbolizes a core objective of the program. Together, they reflect ARSP's commitment to protecting public health through a multi-faceted approach to monitoring, understanding, and addressing the spread of resistant pathogens.
+          </div>
+        </div>
+      </div>
+    </div>
+
 {% endblock content %}
 
 <!-- Specific JS goes HERE --> 
@@ -97,5 +173,15 @@
     toggleIcon.classList.toggle("fa-eye");
     toggleIcon.classList.toggle("fa-eye-slash");
   });
+
+  const logo = document.querySelector(".login-brand-logo");
+  if (logo) {
+    logo.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        $("#logoExplanationModal").modal("show");
+      }
+    });
+  }
 </script>
 {% endblock javascripts %}

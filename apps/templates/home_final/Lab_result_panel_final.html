@@ -7,9 +7,16 @@
 <title>ARSRL Report</title>
 <style>
 
-@page {
+/* @page {
     size: Legal portrait;
-    margin: 0.7cm;
+    margin: 0.50cm;
+} */
+
+
+@page {
+    size: Legal landscape;
+    margin: 0.50cm;
+    margin-bottom: 1.6cm;
 }
 
 body {
@@ -61,6 +68,7 @@ th, td {
     font-size: 9px;
     vertical-align: middle;
     height: auto !important;
+    padding: 0 !important;
 }
 
 .abx-inner {
@@ -71,6 +79,17 @@ th, td {
     font-size: 9px;
     font-weight: bold;
     line-height: auto !important;
+}
+
+.enris-cell {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    font-size: 7px !important;
+    font-weight: bold !important;
+    line-height: 1 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 
 
@@ -97,6 +116,21 @@ tr {
 
 }
 
+
+.recommendation-label-row {
+    height: 8px !important;
+}
+
+.recommendation-text-row {
+    height: 36px !important;
+}
+
+.recommendation-text-row td {
+    font-size: 6.2px !important;
+    line-height: 1.05 !important;
+    vertical-align: top !important;
+    padding: 1px 2px !important;
+}
 
 </style>
 </head>
@@ -154,14 +188,14 @@ tr {
 </tr>
 
 <tr>
-    <td colspan="1">{{ isolate.f_bat_seq }}</td>
+    <td colspan="1" style="font-size: 8px;">{{ isolate.f_AccessionNo|accession_ref_no|default:isolate.f_bat_seq }}</td>
     <td colspan="9" style="text-align:left; font-size: 10px;">
         <strong>{{ isolate.f_Last_Name }}, {{ isolate.f_First_Name }}</strong>
     </td>
     <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 9px;">Referral Date: <strong>{{isolate.f_Referral_Date|date:"d-M-Y" }}</strong></td>
     <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 9px;">Patient ID: <strong>{{isolate.f_Patient_ID|default:""}}</strong></td>
     <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 9px;">Date of Birth: <strong>{{isolate.f_Date_Birth|default:""}}</strong></td>
-    <td colspan="5" style="border-left: 0; text-align: left; font-size: 9px;">Age / Sex: <strong>{{isolate.f_Age|default:""}} {% if isolate.f_Sex %} / {{isolate.f_Sex|default:""}} {% else %} &nbsp; {% endif %}</strong></td>
+    <td colspan="5" style="border-left: 0; text-align: left; font-size: 9px;">Age / Sex: <strong>{{isolate.f_Age|age_result_display:isolate|default:""}} {% if isolate.f_Sex %} / {{isolate.f_Sex|default:""}} {% else %} &nbsp; {% endif %}</strong></td>
 </tr>
 
 <tr>
@@ -181,13 +215,13 @@ tr {
 <tr>
     <td colspan="8" style="font-size: 10px;">
         Identification <br>{% if isolate.f_Site_OrgName %}
-            <strong><i>{{ isolate.f_Site_OrgName }}</i></strong>
+            <strong><i>{{ isolate.f_Site_OrgName|scientific_name }}</i></strong>
         {% else %}
             <strong><i>No Organism Identified</i></strong>
         {% endif %}
     </td>
-    <td colspan="6">{%if isolate.f_Site_Pre %}{{ isolate.f_Site_Pre|default:"" }} {% else %} &nbsp; {% endif %}</td>
-    <td colspan="6">{% if isolate.f_Site_Pos%}{{ isolate.f_Site_Pos|default:"" }} {% else%} &nbsp; {% endif %}</td>
+    <td colspan="6">{{ isolate.f_Site_Pre_ed|prefer_text:isolate.f_Site_Pre }}</td>
+    <td colspan="6">{{ isolate.f_Site_Pos_ed|prefer_text:isolate.f_Site_Pos }}</td>
     <td colspan="10" style="border-top: 0;">{{isolate.f_Comments|default:""}}</td>
 </tr>
 
@@ -232,7 +266,7 @@ tr {
 </tr>
 <tr>
 {% for abx, data in row %}
-    <td class="abx-col" style="font-size: 9px; font-weight: bold;">{% if data.disk.ab_Disk_enRIS %}{{ data.disk.ab_Disk_enRIS}} {% else%} <span>&nbsp;</span>{% endif %}</td>
+    <td class="abx-col enris-cell">{% if data.disk.ab_Disk_enRIS %}{{ data.disk.ab_Disk_enRIS}}{% else%}<span>&nbsp;</span>{% endif %}</td>
 {% endfor %}
 {% with abx_count=row|length %}
 {% for i in "x"|rjust:29 %}
@@ -269,7 +303,7 @@ tr {
 
 <tr>
 {% for abx, data in row %}
-    <td class="abx-col mic" style="font-size: 9px; font-weight: bold;">
+    <td class="abx-col mic enris-cell">
       {% if data.mic.ab_MIC_enRIS %}  {{ data.mic.ab_MIC_enRIS}} {% else %} <span>&nbsp;</span> {% endif %}
     </td>
 {% endfor %}
@@ -291,7 +325,7 @@ tr {
 </tr>
 
 <tr>
-    <td>{{ isolate.bat_seq }}</td>
+    <td>{{ isolate.f_AccessionNo|accession_ref_no|default:isolate.f_bat_seq }}</td>
     <td colspan="29" style="text-align:left; font-size: 10px;">
         <strong>{{ isolate.f_Last_Name|default:"" }}, {{ isolate.f_First_Name|default:"" }}</strong>
     </td>
@@ -312,13 +346,13 @@ tr {
     <td colspan="8" style="font-size: 10px;">
         Identification <br>
         {% if isolate.f_Site_OrgName %}
-            <strong><i>{{ isolate.f_Site_OrgName }}</i></strong>
+            <strong><i>{{ isolate.f_Site_OrgName|scientific_name }}</i></strong>
         {% else %}
             <strong><i>No Organism Identified</i></strong>
         {% endif %}
     </td>
-    <td colspan="6">{{ isolate.f_Site_Pre }}</td>
-    <td colspan="6">{{ isolate.f_Site_Pos }}</td>
+    <td colspan="6">{{ isolate.f_Site_Pre_ed|prefer_text:isolate.f_Site_Pre }}</td>
+    <td colspan="6">{{ isolate.f_Site_Pos_ed|prefer_text:isolate.f_Site_Pos }}</td>
     <td colspan="10" style="border-top: 0;">&nbsp;</td>
 </tr>
 
@@ -365,13 +399,13 @@ tr {
         Identification 
         <br>
         {% if isolate.f_ars_OrgName %}
-            <strong><i>{{ isolate.f_ars_OrgName }}</i></strong>
+            <strong><i>{{ isolate.f_ars_OrgName|scientific_name }}</i></strong>
         {% else %}
             <strong><i>No Organism Identified</i></strong>
         {% endif %}
     </td>
-    <td colspan="6">{% if isolate.f_ars_Pre %}{{ isolate.f_ars_Pre }} {% else %}&nbsp; {% endif %}</td>
-    <td colspan="6">{% if isolate.f_ars_Post %}{{ isolate.f_ars_Post }}{% else %}&nbsp; {% endif %}</td>
+    <td colspan="6">{{ isolate.f_ars_Pre_ed|prefer_text:isolate.f_ars_Pre }}</td>
+    <td colspan="6">{{ isolate.f_ars_Post_ed|prefer_text:isolate.f_ars_Post }}</td>
     <td colspan="4" style="text-align: left; font-size: 8px;"><span style="font-weight: bold; padding-inline: 1px;">ESBL</span> <br>
         CT/CTL: {{isolate.f_ars_ct_ctl|default:""}} <br>
         TZ/TZL: {{isolate.f_ars_tz_tzl|default:""}}
@@ -431,7 +465,7 @@ tr {
     <tr>
 
     {% for abx, data in row %}
-        <td class="abx-col" style="font-size: 9px; font-weight: bold;">
+        <td class="abx-col enris-cell">
            {% if data.disk.ab_Retest_Disk_enRIS%} {{ data.disk.ab_Retest_Disk_enRIS}} {% else %} <span>&nbsp;</span> {% endif %}
         </td>
     {% endfor %}
@@ -468,7 +502,7 @@ tr {
     </tr>
         <tr>
     {% for abx, data in row %}
-        <td class="abx-col mic" style="font-size: 9px; font-weight: bold;">
+        <td class="abx-col mic enris-cell">
          {% if data.mic.ab_Retest_MIC_enRIS %} {{ data.mic.ab_Retest_MIC_enRIS }} {% else %} <span>&nbsp;</span> {% endif %}
         </td>
     {% endfor %}
@@ -508,14 +542,36 @@ tr {
 
 {% endif %}
 
-<tr>
+<!-- <tr>
     <th colspan="30" style="text-align:left; border-bottom: 0;">Recommendation</th>
 </tr>
 <tr>
     <td colspan="30" style="font-size:6.9pt; line-height:0.9; text-align: left; border-top: 0;">
         {{ isolate.f_ars_reco|default:""|break_long_words:30}}
     </td>
+</tr> -->
+
+<tr class="recommendation-label-row">
+    <th colspan="30" style="text-align:left; border-bottom:0; font-size:7px; line-height:1; padding:1px 2px;">
+        Recommendation
+    </th>
 </tr>
+
+<tr class="recommendation-text-row">
+    <td colspan="30"
+        style="
+            font-size:6.2px !important;
+            line-height:1.05 !important;
+            text-align:left;
+            vertical-align:top;
+            border-top:0;
+            padding:1px 2px 1px 2px;
+            height:36px;
+        ">
+        {{ isolate.f_ars_reco|number_recommendations|safe }}
+    </td>
+</tr>
+
 
 {% endwith %}
 {% endwith %}
@@ -550,13 +606,13 @@ tr {
       <td colspan="1"></td>
       <td colspan="2" style="font-size: 9px;"></td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 9px;">{{page.0.isolate.f_arsp_Encoder}}<br>{% if page.0.isolate.f_arsp_Enc_Lic|lower != "none" %}Lic No: {{page.0.isolate.f_arsp_Enc_Lic}}{% else %}&nbsp;{% endif %}</td>
+      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Encoder|professional_caps }}<br>{% if page.0.isolate.f_arsp_Enc_Lic|lower != "none" %}Lic No: {{page.0.isolate.f_arsp_Enc_Lic}}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 9px;">{{page.0.isolate.f_arsp_Checker}}<br>{% if page.0.isolate.f_arsp_Chec_Lic%}Lic No: {{page.0.isolate.f_arsp_Chec_Lic|default:""}}{% else %}&nbsp;{% endif %}</td>
+      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Checker|professional_caps }}<br>{% if page.0.isolate.f_arsp_Chec_Lic%}Lic No: {{page.0.isolate.f_arsp_Chec_Lic|default:""}}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="7" style="font-size: 9px;">{{page.0.isolate.f_arsp_Verifier}} / {{page.0.isolate.f_arsp_LabManager}}<br>{% if page.0.isolate.f_arsp_Ver_Lic %}Lic No: {{ page.0.isolate.f_arsp_Ver_Lic|default:"" }}{% endif %}{% if page.0.isolate.arsp_Lab_Lic %}&nbsp;/ {{ page.0.isolate.f_arsp_Lab_Lic|default:"" }}{% endif %}{% if not page.0.isolate.f_arsp_Ver_Lic and not page.0.isolate.f_arsp_Lab_Lic %}&nbsp;{% endif %}</td>
+      <td colspan="7" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Verifier|professional_caps }} / {{ page.0.isolate.f_arsp_LabManager|professional_caps }}<br>{% if page.0.isolate.f_arsp_Ver_Lic or page.0.isolate.f_arsp_Lab_Lic %}License No.:{% if page.0.isolate.f_arsp_Ver_Lic %} {{ page.0.isolate.f_arsp_Ver_Lic|default:"" }}{% endif %}{% if page.0.isolate.f_arsp_Ver_Lic and page.0.isolate.f_arsp_Lab_Lic %} / {% endif %}{% if page.0.isolate.f_arsp_Lab_Lic %}{{ page.0.isolate.f_arsp_Lab_Lic|default:"" }}{% endif %}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 9px;">{{page.0.isolate.f_arsp_Head}}<br>{% if page.0.isolate.f_arsp_Head_Lic%}Lic No: {{page.0.isolate.f_arsp_Head_Lic|default:""}}{% else %}&nbsp;{% endif%}</td>
+      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Head|professional_caps }}<br>{% if page.0.isolate.f_arsp_Head_Lic%}Lic No: {{page.0.isolate.f_arsp_Head_Lic|default:""}}{% else %}&nbsp;{% endif%}</td>
     </tr>
     <tr>
       <td colspan="30" style="font-size:10px; border: 1px solid black; padding: 2px;">

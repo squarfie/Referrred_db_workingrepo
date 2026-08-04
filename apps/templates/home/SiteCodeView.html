@@ -40,15 +40,16 @@
             <div class="row">
              
               <div class="col md-6 d-flex justify-content-end">
-                <form class="navbar-search navbar-search-light form-inline mr-sm-3 " id="navbar-search-main">
+                <form class="navbar-search navbar-search-light form-inline mr-sm-3 " id="navbar-search-main" method="GET" action="{% url 'site_view' %}">
                   <div class="form-group mb-0">
                     <div class="input-group input-group-alternative input-group-merge">
                       <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                       </div>
-                      <input class="form-control" placeholder="Search" type="text" id="searchInput">
+                      <input class="form-control" placeholder="Search" type="text" id="searchInput" name="q" value="{{ q|default:'' }}">
                     </div>
                   </div>
+                  <button type="submit" class="btn btn-sm btn-primary ml-2">Search</button>
                   <button type="button" class="close" data-action="search-close" data-target="#navbar-search-main" aria-label="Close">
                     <span aria-hidden="true">x</span>
                   </button>
@@ -65,6 +66,11 @@
                   <th scope="col" ></th>
                   <th scope="col" class="sort" data-sort="SiteCode">Site Code</th>
                   <th scope="col" class="sort" data-sort="SiteName">Hospital Name</th>
+                  <th scope="col">Address</th>
+                  <th scope="col">Lab Manager</th>
+                  <th scope="col">Credentials</th>
+                  <th scope="col">Designation</th>
+                  <th scope="col">Email</th>
                  
                 </tr>
               </thead>
@@ -81,6 +87,11 @@
           
                 <td class="site-code">{{site_item.SiteCode}}</td>
                 <td class="site-name">{{site_item.SiteName}}</td>
+                <td>{{site_item.Site_Address|default:"-"}}</td>
+                <td>{{site_item.Site_Lab_Head|default:"-"}}</td>
+                <td>{{site_item.Site_Lab_Head_Credentials|default:"-"}}</td>
+                <td>{{site_item.Site_Lab_Head_Designation|default:"-"}}</td>
+                <td>{{site_item.Site_Lab_Head_Email|default:"-"}}</td>
                 
         
               </tr>
@@ -126,7 +137,7 @@
                         <!-- Previous Button -->
                         {% if page_obj.has_previous %}
                           <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                            <a class="page-link" href="?{% if preserved_params %}{{ preserved_params }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Previous">
                               <i class="fas fa-angle-left"></i>
                             </a>
                           </li>
@@ -144,7 +155,7 @@
                             </li>
                           {% else %}
                             <li class="page-item">
-                              <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                              <a class="page-link" href="?{% if preserved_params %}{{ preserved_params }}&{% endif %}page={{ num }}">{{ num }}</a>
                             </li>
                           {% endif %}
                         {% endfor %}
@@ -152,7 +163,7 @@
                         <!-- Next Button -->
                         {% if page_obj.has_next %}
                           <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                            <a class="page-link" href="?{% if preserved_params %}{{ preserved_params }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Next">
                               <i class="fas fa-angle-right"></i>
                             </a>
                           </li>
@@ -191,24 +202,9 @@
           window.location.href = deleteUrl;
       });
 
-      // Search functionality
-      $('#searchInput').on('keyup', function(){
-          var searchValue = $(this).val().toLowerCase();
-          
-          $('#tableBody tr').filter(function(){
-              var siteCode = $(this).find('.site-code').text().toLowerCase();
-              var siteName = $(this).find('.site-name').text().toLowerCase();
-              
-              // Show row if search value is found in either site code or site name
-              var match = siteCode.indexOf(searchValue) > -1 || siteName.indexOf(searchValue) > -1;
-              $(this).toggle(match);
-          });
-      });
-
       // Clear search on close button click
       $('[data-action="search-close"]').on('click', function(){
-          $('#searchInput').val('');
-          $('#tableBody tr').show();
+          window.location.href = "{% url 'site_view' %}";
       });
   });
 </script>

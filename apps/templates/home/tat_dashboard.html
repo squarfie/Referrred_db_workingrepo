@@ -8,17 +8,44 @@
    ======================================== */
 
 .dashboard-wrapper {
-  background: linear-gradient(135deg, #0f1423 0%, #1a1f3a 50%, #1a2a4a 100%);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0f1423 0%, #172740 48%, #0d747f 100%);
   min-height: 100vh;
-  padding: 2rem 0;
+  padding: 1.25rem 0;
+}
+
+.dashboard-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
+    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+  opacity: .42;
+  pointer-events: none;
+}
+
+.dashboard-wrapper::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 38%;
+  background: radial-gradient(circle at 50% 100%, rgba(0, 188, 212, .24), transparent 58%);
+  pointer-events: none;
+}
+
+.dashboard-wrapper > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Dashboard Header */
 .dashboard-header {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 2rem 2.5rem;
+  border-radius: 14px;
+  padding: 1.5rem 2rem;
   border: 1px solid rgba(0, 188, 212, 0.2);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   margin-top: 1rem;
@@ -26,7 +53,7 @@
 
 .dashboard-title {
   color: white;
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 800;
   margin: 0;
   background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
@@ -47,7 +74,7 @@
 
 .dashboard-subtitle {
   color: rgba(255, 255, 255, 0.7);
-  font-size: 1.1rem;
+  font-size: 1rem;
   margin: 0.5rem 0 0 0;
   font-weight: 400;
   letter-spacing: 0.5px;
@@ -97,8 +124,8 @@
 /* KPI Cards - Matching Main Page Color Scheme */
 .kpi-card {
   background: white;
-  border-radius: 20px;
-  padding: 2rem 1.5rem;
+  border-radius: 12px;
+  padding: 1.35rem 1.25rem;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   position: relative;
@@ -123,8 +150,8 @@
 }
 
 .kpi-icon-wrapper {
-  width: 70px;
-  height: 70px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   background: var(--card-gradient);
   display: flex;
@@ -140,12 +167,12 @@
 }
 
 .kpi-icon-wrapper i {
-  font-size: 2rem;
+  font-size: 1.45rem;
   color: white;
 }
 
 .kpi-number {
-  font-size: 3rem;
+  font-size: 2.35rem;
   font-weight: 800;
   background: var(--card-gradient);
   -webkit-background-clip: text;
@@ -184,11 +211,51 @@
 /* Main Content Cards */
 .content-card {
   background: white;
-  border-radius: 24px;
+  border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   border: none;
   transition: all 0.3s ease;
+}
+
+.tat-panel-card {
+  height: 520px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tat-balanced-row {
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) minmax(0, 2fr);
+  gap: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.tat-panel-card .content-card-header {
+  flex: 0 0 auto;
+}
+
+.tat-compliance-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.process-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.process-table-wrap .process-table {
+  min-width: 920px;
+}
+
+.process-table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .content-card:hover {
@@ -197,7 +264,7 @@
 
 .content-card-header {
   background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
-  padding: 1.5rem 2rem;
+  padding: 1rem 1.25rem;
   border: none;
   position: relative;
 }
@@ -205,7 +272,7 @@
 .content-card-header h5 {
   color: white;
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   margin: 0;
   display: flex;
   align-items: center;
@@ -228,18 +295,27 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 1.75rem 1.25rem;
+}
+
+.compliance-circle-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 3rem 2rem;
+  width: 100%;
+  min-height: 0;
+  padding-bottom: 1rem;
 }
 
 .compliance-circle-outer {
-  width: 220px;
-  height: 220px;
+  width: 170px;
+  height: 170px;
   border-radius: 50%;
   background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
   padding: 8px;
   box-shadow: 0 20px 60px rgba(0, 188, 212, 0.4);
-  margin-bottom: 2rem;
+  margin: 0;
   position: relative;
   animation: float 6s ease-in-out infinite;
 }
@@ -261,7 +337,7 @@
 }
 
 .compliance-percentage {
-  font-size: 4rem;
+  font-size: 2.5rem;
   font-weight: 900;
   background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
   -webkit-background-clip: text;
@@ -283,15 +359,15 @@
 .compliance-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
+  gap: 1rem;
   width: 100%;
-  padding: 0 2rem;
+  padding: 0 1rem;
 }
 
 .stat-box {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  padding: 1.5rem;
-  border-radius: 16px;
+  padding: 1rem;
+  border-radius: 10px;
   text-align: center;
   transition: all 0.3s ease;
   border: 1px solid #e3e6f0;
@@ -304,7 +380,7 @@
 }
 
 .stat-number {
-  font-size: 2rem;
+  font-size: 1.6rem;
   font-weight: 800;
   color: #343a40;
   margin: 0;
@@ -325,25 +401,36 @@
 }
 
 .process-table thead {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
 }
 
 .process-table thead th {
-  padding: 1.25rem 1.5rem;
+  padding: .9rem 1rem;
   font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #495057;
+  color: #fff;
   border: none;
+  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .28);
 }
 
 .process-table tbody td {
-  padding: 1.25rem 1.5rem;
+  padding: .9rem 1rem;
   vertical-align: middle;
   border-bottom: 1px solid #f1f3f5;
   color: #495057;
   font-weight: 500;
+}
+
+.process-table tbody tr {
+  height: 58px;
 }
 
 .process-table tbody tr {
@@ -501,7 +588,10 @@
 }
 
 .records-table thead {
-  background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%);
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -509,18 +599,145 @@
 
 .records-table thead th {
   color: white;
-  padding: 1.25rem 1rem;
+  padding: .9rem .85rem;
   font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border: none;
+  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .28);
 }
 
 .records-table tbody td {
-  padding: 1.25rem 1rem;
+  padding: .9rem .85rem;
   vertical-align: middle;
   border-bottom: 1px solid #f1f3f5;
+}
+
+.tat-filter-panel {
+  background: #ffffff;
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(15, 39, 68, .08);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.tat-filter-panel label {
+  color: #24466f;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.tat-filter-panel .form-control {
+  border-radius: 8px;
+  height: 42px;
+}
+
+.tat-filter-panel select.form-control {
+  color: #24466f !important;
+  -webkit-text-fill-color: #24466f !important;
+  background: #ffffff !important;
+  font-weight: 600;
+  line-height: 42px;
+  padding: 0 2rem 0 .75rem;
+  opacity: 1;
+  text-shadow: none;
+  appearance: auto;
+  -webkit-appearance: menulist;
+}
+
+.tat-filter-panel select.form-control option,
+.tat-filter-panel select.form-control option:checked {
+  color: #24466f;
+  -webkit-text-fill-color: #24466f;
+  background-color: #ffffff;
+}
+
+.tat-year-filter-form {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+}
+
+.tat-year-select {
+  display: block;
+  box-sizing: border-box;
+  width: 135px;
+  min-width: 135px;
+  height: 34px;
+  min-height: 34px;
+  color: #24466f !important;
+  -webkit-text-fill-color: #24466f !important;
+  background: #ffffff !important;
+  border: 1px solid #dbe4f0;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 34px;
+  padding: 0 2rem 0 .75rem;
+  opacity: 1;
+  text-shadow: none;
+  appearance: auto;
+  -webkit-appearance: menulist;
+}
+
+.tat-year-select option,
+.tat-year-select option:checked {
+  color: #24466f;
+  -webkit-text-fill-color: #24466f;
+  background-color: #ffffff;
+}
+
+.tat-status-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: .75rem;
+  margin-bottom: 1rem;
+}
+
+.tat-status-summary .summary-tile {
+  background: #fff;
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  padding: .85rem 1rem;
+  box-shadow: 0 8px 24px rgba(15, 39, 68, .06);
+}
+
+.tat-status-summary strong {
+  color: #123a63;
+  display: block;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.tat-status-summary span {
+  color: #718096;
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.records-scroll {
+  max-height: 560px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.records-table {
+  min-width: 1650px;
+}
+
+@media (max-width: 992px) {
+  .tat-status-summary {
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+  }
 }
 
 .records-table tbody tr {
@@ -599,6 +816,18 @@ tr:hover .cross-icon {
 
 /* Responsive */
 @media (max-width: 992px) {
+  .tat-balanced-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tat-panel-card {
+    height: auto;
+  }
+
+  .process-table-wrap {
+    max-height: 520px;
+  }
+
   .compliance-circle-outer {
     width: 180px;
     height: 180px;
@@ -630,6 +859,13 @@ tr:hover .cross-icon {
   .compliance-percentage {
     font-size: 2.5rem;
   }
+
+.wrap-cell {
+  white-space: normal !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
 }
 </style>
 
@@ -637,15 +873,41 @@ tr:hover .cross-icon {
   <div class="container-fluid px-4">
 
     <!-- ================= DASHBOARD HEADER ================= -->
-        <div class="d-flex justify-content-between align-items-center">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb bg-transparent mb-0">
-          <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i> Home</a></li>
-          <li class="breadcrumb-item"><a href="{% url 'tat_analysis' %}"><i class="fas fa-chart-line"></i> TAT Analysis</a></li>
-        </ol>
-        </ol>
-      </nav>
-    </div>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb bg-transparent mb-0">
+            <li class="breadcrumb-item">
+              <a href="{% url 'home' %}">
+                <i class="fas fa-home"></i> Home
+              </a>
+            </li>
+            <li class="breadcrumb-item">
+              <i class="fas fa-chart-line"></i> TAT Dashboard
+            </li>
+          </ol>
+        </nav>
+
+
+          <div class="mt-2">
+            <form method="get" class="tat-year-filter-form">
+              <input type="hidden" name="tat_q" value="{{ tat_q }}">
+              <input type="hidden" name="tat_site" value="{{ tat_site }}">
+              <input type="hidden" name="tat_status" value="{{ tat_status }}">
+              <select name="tat_year" class="tat-year-select">
+                <option value="all" {% if tat_year == "all" %}selected{% endif %}>All Years</option>
+                {% for item in tat_years %}
+                  <option value="{{ item }}" {% if tat_year == item|stringformat:"s" %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-sm btn-info">
+                <i class="fas fa-filter mr-1"></i> Year
+              </button>
+            </form>
+            <div style="font-size:.75rem; font-weight:800; color:#00cfe8; text-transform:uppercase; margin-top:.35rem;">
+              Referral year: {{ tat_year_label }}
+            </div>
+          </div>
+      </div>
     <div class="dashboard-header mb-4">
       <div class="d-flex justify-content-between align-items-center">
         <div>
@@ -657,118 +919,88 @@ tr:hover .cross-icon {
         <div class="header-date">
           <i class="far fa-calendar-alt me-2"></i> &nbsp;
           <span id="current-date"></span>
+
         </div>
       </div>
     </div>
 
     <!-- ================= KPI CARDS ================= -->
-    <div class="row g-4 mb-4">
-
-      <div class="col-md-6 col-lg-3">
+    <!-- ── KPI Row 1: 4 cards (Batches, Released, Ongoing, Overdue) ── -->
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-lg-3">
         <div class="kpi-card card-teal">
-          <div class="kpi-icon-wrapper">
-            <i class="fas fa-box"></i>
-          </div>
-          <div class="text-center">
-            <div class="kpi-number">{{ total_batches }}</div>
-            <p class="kpi-label">Total Batches</p>
-          </div>
+          <div class="kpi-icon-wrapper"><i class="fas fa-box"></i></div>
+          <div class="kpi-number">{{ total_batches }}</div>
+          <p class="kpi-label">Total Batches</p>
         </div>
       </div>
-
-      <div class="col-md-6 col-lg-3">
+      <div class="col-6 col-lg-3">
         <div class="kpi-card card-cyan">
-          <div class="kpi-icon-wrapper">
-            <i class="fas fa-check-circle"></i>
-          </div>
-          <div class="text-center">
-            <div class="kpi-number">{{ released_batches }}</div>
-            <p class="kpi-label">Released</p>
-          </div>
+          <div class="kpi-icon-wrapper"><i class="fas fa-check-circle"></i></div>
+          <div class="kpi-number">{{ released_batches }}</div>
+          <p class="kpi-label">Released</p>
         </div>
       </div>
-
-      <div class="col-md-6 col-lg-3">
+      <div class="col-6 col-lg-3">
         <div class="kpi-card card-blue">
-          <div class="kpi-icon-wrapper">
-            <i class="fas fa-clock"></i>
-          </div>
-          <div class="text-center">
-            <div class="kpi-number">{{ ongoing_batches }}</div>
-            <p class="kpi-label">Ongoing</p>
-          </div>
+          <div class="kpi-icon-wrapper"><i class="fas fa-clock"></i></div>
+          <div class="kpi-number">{{ ongoing_batches }}</div>
+          <p class="kpi-label">Ongoing</p>
         </div>
       </div>
-
-      <div class="col-md-6 col-lg-3">
+      <div class="col-6 col-lg-3">
         <div class="kpi-card card-orange">
-          <div class="kpi-icon-wrapper">
-            <i class="fas fa-exclamation-triangle"></i>
-          </div>
-          <div class="text-center">
-            <div class="kpi-number">{{ overdue_batches }}</div>
-            <p class="kpi-label">Overdue</p>
-          </div>
+          <div class="kpi-icon-wrapper"><i class="fas fa-exclamation-triangle"></i></div>
+          <div class="kpi-number">{{ overdue_batches }}</div>
+          <p class="kpi-label">Overdue</p>
         </div>
       </div>
-
     </div>
-
-        <div class="row g-4 mb-4">
-
-      <div class="col-md-6 col-lg-3">
+ 
+    <!-- ── KPI Row 2: 3 cards centered (Isolates, Within TAT, Avg TAT) ── -->
+    <div class="row g-3 mb-4 justify-content-center">
+      <div class="col-6 col-lg-4">
         <div class="kpi-card card-blue">
-          <div class="kpi-icon-wrapper">
-            <i class="fas fa-clock"></i>
-          </div>
-          <div class="text-center">
-            <div class="kpi-number">{{ total_isolates }}</div>
-            <p class="kpi-label">TOTAL ISOLATES</p>
-          </div>
+          <div class="kpi-icon-wrapper"><i class="fas fa-vials"></i></div>
+          <div class="kpi-number">{{ total_isolates }}</div>
+          <p class="kpi-label">Total Isolates</p>
         </div>
       </div>
-
-      <div class="col-md-6 col-lg-3">
+      <div class="col-6 col-lg-4">
         <div class="kpi-card card-teal">
-          <div class="kpi-icon-wrapper">
-            <i class="fas fa-box"></i>
-          </div>
-          <div class="text-center">
-            <div class="kpi-number">{{ within_tat_pct }}%</div>
-            <p class="kpi-label">WITHIN TAT</p>
-          </div>
+          <div class="kpi-icon-wrapper"><i class="fas fa-check-double"></i></div>
+          <div class="kpi-number">{{ within_tat_pct }}%</div>
+          <p class="kpi-label">Within TAT</p>
         </div>
       </div>
-
-      <div class="col-md-6 col-lg-3">
+      <div class="col-6 col-lg-4">
         <div class="kpi-card card-cyan">
-          <div class="kpi-icon-wrapper">
-            <i class="fas fa-check-circle"></i>
-          </div>
-          <div class="text-center">
-            <div class="kpi-number">{{avg_running_tat }}%</div>
-            <p class="kpi-label">AVERAGE TAT</p>
-          </div>
+          <div class="kpi-icon-wrapper"><i class="fas fa-stopwatch"></i></div>
+          <div class="kpi-number">{{ avg_running_tat }}</div>
+          <p class="kpi-label">Average TAT (days)</p>
         </div>
       </div>
-
-
     </div>
+
+
+
 
     <!-- ================= COMPLIANCE AND PERFORMANCE ================= -->
-    <div class="row g-4 mb-4">
+    <div class="tat-balanced-row mb-4">
 
       <!-- Compliance -->
-      <div class="col-lg-4">
-        <div class="content-card">
+      <div>
+        <div class="content-card tat-panel-card">
           <div class="content-card-header">
             <h5><i class="fas fa-chart-pie"></i> Overall Compliance</h5>
           </div>
-          <div class="compliance-container">
-            <div class="compliance-circle-outer">
-              <div class="compliance-circle-inner">
-                <h1 class="compliance-percentage">{{ compliance_rate }}%</h1>
-                <p class="compliance-label">Compliant</p>
+          <div class="compliance-container tat-compliance-body">
+            <div class="compliance-circle-stage">
+              <div class="compliance-circle-outer">
+                <div class="compliance-circle-inner">
+                  <h1 class="compliance-percentage">{{ compliance_rate }}%</h1>
+                  <p class="compliance-label">Compliant</p>
+                </div>
               </div>
             </div>
 
@@ -791,19 +1023,19 @@ tr:hover .cross-icon {
       </div>
 
       <!-- Process Performance -->
-      <div class="col-lg-8">
-        <div class="content-card">
+      <div>
+        <div class="content-card tat-panel-card">
           <div class="content-card-header">
             <h5>
               <i class="fas fa-tasks"></i> Process Performance
               <span class="badge ms-auto">{{ process_summary|length }} Processes</span>
             </h5>
           </div>
-          <div class="table-responsive" style="max-height: 900px;">
+          <div class="table-responsive process-table-wrap">
             <table class="table process-table">
-              <thead>
+              <thead class="thead-light">
                 <tr>
-                  <th>PROCESS</th>
+                  <th class="text-center wrap-cell" style="width: 80px;">PROCESS</th>
                   <th class="text-center">TOTAL</th>
                   <th class="text-center">WITHIN</th>
                   <th class="text-center">OUTSIDE</th>
@@ -854,27 +1086,123 @@ tr:hover .cross-icon {
     </div>
 
     <!-- ================= EXPORT BUTTON ================= -->
-    <div class="text-end mb-4">
-      <a href="{% url 'export_tat_excel' %}" class="btn-export">
-        <i class="fas fa-file-excel"></i>
-        <span>Export Full Report</span>
-      </a>
-    </div>
+<div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
 
+  <!-- Left side buttons -->
+  <div class="d-flex align-items-center flex-wrap" style="gap:0.4rem;">
+    <a href="{% url 'tat_running_list' %}" class="btn-export">
+      <i class="fas fa-list"></i>
+      <span>Running TAT List</span>
+    </a>
+
+    <a href="{% url 'tat_analysis' %}" class="btn-export btn-md">
+      <i class="fas fa-chart-line mr-2"></i>
+      TAT Analysis
+    </a>
   </div>
 
+  <!-- Right side export form -->
+  <!-- <form method="get" action="{% url 'export_tat_excel' %}" class="d-flex align-items-center flex-wrap ml-auto" style="gap:0.4rem;">
+    <input type="hidden" name="tat_q" value="{{ tat_q }}">
+    <input type="hidden" name="tat_site" value="{{ tat_site }}">
+    <input type="hidden" name="tat_status" value="{{ tat_status }}">
+    <input type="hidden" name="tat_year" value="{{ tat_year }}">
+
+    <input type="date" name="date_from" class="form-control form-control-sm" title="Referral date from" style="width:135px;">
+    <input type="date" name="date_to" class="form-control form-control-sm" title="Referral date to" style="width:135px;">
+
+    <button type="submit" class="btn-export">
+      <i class="fas fa-file-excel"></i>
+      <span>Export Full Report</span>
+    </button>
+    <small class="text-muted w-100 text-right" style="font-size:0.7rem;">
+      Filtered by: TAT Referral Date.
+    </small>
+  </form> -->
+
+</div>
+
+
+
   <!-- ================= DETAILED RECORDS ================= -->
-  <div class="container-fluid px-4 pb-5">
+  <div class="pb-5">
+    <form method="get" class="tat-filter-panel">
+      <div class="row align-items-end">
+        <div class="col-lg-4 col-md-12 mb-3 mb-lg-0">
+          <label>Batch Name / Accessions</label>
+          <input type="text" name="tat_q" value="{{ tat_q }}" class="form-control" placeholder="Search batch name or accession range">
+        </div>
+        <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+          <label>Site</label>
+          <select name="tat_site" class="form-control">
+            <option value="">All Sites</option>
+            {% for site in tat_sites %}
+              <option value="{{ site }}" {% if tat_site == site %}selected{% endif %}>{{ site }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+          <label>Status</label>
+          <select name="tat_status" class="form-control">
+            <option value="">All Status</option>
+            {% for item in tat_status_choices %}
+              <option value="{{ item }}" {% if tat_status == item %}selected{% endif %}>{{ item }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+          <label>Year</label>
+          <select name="tat_year" class="form-control">
+            <option value="all" {% if tat_year == "all" %}selected{% endif %}>All Years</option>
+            {% for item in tat_years %}
+              <option value="{{ item }}" {% if tat_year == item|stringformat:"s" %}selected{% endif %}>{{ item }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-lg-2 d-flex">
+          <button type="submit" class="btn btn-primary flex-fill mr-2">
+            <i class="fas fa-search mr-1"></i> Filter
+          </button>
+          <a href="{% url 'tat_review_view' %}" class="btn btn-secondary">Reset</a>
+        </div>
+      </div>
+    </form>
+
+    <div class="tat-status-summary">
+      <div class="summary-tile"><strong>{{ total_batches }}</strong><span>Filtered Batches</span></div>
+      <div class="summary-tile"><strong>{{ ongoing_batches }}</strong><span>Ongoing</span></div>
+      <div class="summary-tile"><strong>{{ overdue_batches }}</strong><span>Overdue</span></div>
+      <div class="summary-tile"><strong>{{ released_batches }}</strong><span>Released</span></div>
+    </div>
+
     <div class="content-card">
       <div class="content-card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="fas fa-table"></i> Detailed TAT Records</h5>
-        <a href="{% url 'export_tat_excel' %}" class="btn btn-light btn-sm" style="border-radius: 50px; font-weight: 600;">
-          <i class="fas fa-download me-1"></i> Export
-        </a>
+        <h5 class="mb-0">
+          <i class="fas fa-table"></i> Detailed TAT Records
+          {% if tat_page_obj %}
+            <span class="badge ml-2">
+              Page {{ tat_page_obj.number }} of {{ tat_page_obj.paginator.num_pages }}
+            </span>
+          {% endif %}
+        </h5>
+        <form method="get" action="{% url 'export_tat_excel' %}" class="d-flex align-items-center flex-wrap justify-content-end" style="gap:0.35rem;">
+          <input type="hidden" name="tat_q" value="{{ tat_q }}">
+          <input type="hidden" name="tat_site" value="{{ tat_site }}">
+          <input type="hidden" name="tat_status" value="{{ tat_status }}">
+          <input type="hidden" name="tat_year" value="{{ tat_year }}">
+          <input type="date" name="date_from" class="form-control form-control-sm" title="Referral date from" style="width:135px;">
+          <input type="date" name="date_to" class="form-control form-control-sm" title="Referral date to" style="width:135px;">
+          <button type="submit" class="btn btn-light btn-sm" style="border-radius: 50px; font-weight: 600;">
+            <i class="fas fa-download me-1"></i> Export
+          </button>
+          <small class="w-100 text-right" style="font-size:0.7rem; color:#eceef0;">
+            Filtered by: TAT Referral Date.
+          </small>
+        </form>
       </div>
-      <div class="table-responsive" style="overflow-x: auto; max-height: 500px;">
+      <div class="table-responsive records-scroll">
         <table class="table records-table">
-          <thead>
+          <thead style="text-align: center;">
             <tr>
               <th>BATCH</th>
               <th>SITE</th>
@@ -883,6 +1211,8 @@ tr:hover .cross-icon {
               <th>COMPLETION DATE</th>
               <th>RUNNING TAT</th>
               <th>STATUS</th>
+              <th>ASSIGNED TO</th>
+              <th style="text-align: center" > ACTION </th>
               {% for config in configs %}
                 <th class="text-center">{{ config.step_type|upper }} DAYS</th>
                 <th class="text-center">WITHIN</th>
@@ -890,61 +1220,62 @@ tr:hover .cross-icon {
             </tr>
           </thead>
           <tbody>
-            {% for tat in tat_records %}
+            {% for row in running_rows %}
             <tr>
-              <td class="batch-code">{{ tat.tat_Batch_Isolates.bat_Batch_Code }}</td>
-              <td>{{ tat.tat_SiteCode }}</td>
+              <td class="batch-code">{{ row.batch_name }}</td>
+              <td>{{ row.site_code }}</td>
             <td>
-                {{ tat.tat_Batch_Isolates.bat_RefNo|default:"-" }}
+                {{ row.accessions|default:"-" }}
             </td>
-              <td>{{ tat.tat_Referral_Date }}</td>
-              <td>{{tat.tat_Date_Released|default:"N/A"}}</td>
+              <td>{{ row.referral_date }}</td>
+              <td>{{ row.tat.tat_Date_Released|default:"N/A" }}</td>
 
               <td>
                 <span class="tat-badge 
-                  {% if tat.tat_Running_TAT > tat.tat_Target_Days %}
+                  {% if row.is_overdue %}
                     status-overdue
                   {% else %}
                     status-released
                   {% endif %}
                 ">
-                  {{ tat.tat_Running_TAT }} days
+                  {{ row.effective_days|default:"-" }} day/s
                 </span>
               </td>
               <td>
                 <span class="status-badge
-                  {% if tat.tat_Status_Release == 'Released' %}
+                  {% if row.tat.tat_Status_Release == 'Released' %}
                     status-released
-                  {% elif tat.tat_Status_Release == 'Overdue' %}
+                  {% elif row.is_overdue %}
                     status-overdue
                   {% else %}
                     status-ongoing
                   {% endif %}
                 ">
-                  {{ tat.tat_Status_Release }}
+                  {% if row.is_overdue %}Overdue{% else %}{{ row.tat.tat_Status_Release }}{% endif %}
                 </span>
               </td>
+              <td>{{ row.assigned_to|default:"-" }}</td>
+              <td>
+                {% if row.batch %}
+                  <a href="{% url 'tat_monitoring_view' row.batch.id %}" class="btn btn-sm btn-primary" style="font-weight: 600;">
+                   <i class="fas fa-tasks mr-1 text-white"></i> <span class="text-white"> Update Process </span>
+                  </a>
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
 
-              {% for config in configs %}
-                {% with tat.steps.all as steps %}
-                  {% for step in steps %}
-                    {% if step.step_config.id == config.id %}
-                      <td class="text-center">{{ step.step_days_count }}</td>
-                      <td class="text-center">
-                        {% if step.within_tat %}
-                          <i class="fas fa-check-circle check-icon"></i>
-                        {% elif step.within_tat == False %}
-                          <i class="fas fa-times-circle cross-icon"></i>
-                        {% else %}
-                          <span class="text-muted">-</span>
-                        {% endif %}
-                      </td>
-                    {% endif %}
-                  {% empty %}
-                    <td class="text-center text-muted">-</td>
-                    <td class="text-center text-muted">-</td>
-                  {% endfor %}
-                {% endwith %}
+              {% for cell in row.step_cells %}
+                <td class="text-center">{{ cell.step.step_days_count|default:"-" }}</td>
+                <td class="text-center">
+                  {% if cell.step.within_tat %}
+                    <i class="fas fa-check-circle check-icon"></i>
+                  {% elif cell.step.within_tat == False %}
+                    <i class="fas fa-times-circle cross-icon"></i>
+                  {% else %}
+                    <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
               {% endfor %}
 
             </tr>
@@ -952,6 +1283,44 @@ tr:hover .cross-icon {
           </tbody>
         </table>
       </div>
+      {% if tat_page_obj and tat_page_obj.paginator.num_pages > 1 %}
+      <div class="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-top">
+        <small class="text-muted">
+          Showing {{ running_rows|length }} of {{ total_batches }} filtered batch(es)
+        </small>
+        <nav aria-label="Detailed TAT records pagination">
+          <ul class="pagination pagination-sm mb-0">
+            {% if tat_page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page=1{% if tat_q %}&tat_q={{ tat_q|urlencode }}{% endif %}{% if tat_site %}&tat_site={{ tat_site|urlencode }}{% endif %}{% if tat_status %}&tat_status={{ tat_status|urlencode }}{% endif %}{% if tat_year %}&tat_year={{ tat_year|urlencode }}{% endif %}">&laquo;</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ tat_page_obj.previous_page_number }}{% if tat_q %}&tat_q={{ tat_q|urlencode }}{% endif %}{% if tat_site %}&tat_site={{ tat_site|urlencode }}{% endif %}{% if tat_status %}&tat_status={{ tat_status|urlencode }}{% endif %}{% if tat_year %}&tat_year={{ tat_year|urlencode }}{% endif %}">&lsaquo;</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+              <li class="page-item disabled"><span class="page-link">&lsaquo;</span></li>
+            {% endif %}
+
+            <li class="page-item active">
+              <span class="page-link">{{ tat_page_obj.number }}</span>
+            </li>
+
+            {% if tat_page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ tat_page_obj.next_page_number }}{% if tat_q %}&tat_q={{ tat_q|urlencode }}{% endif %}{% if tat_site %}&tat_site={{ tat_site|urlencode }}{% endif %}{% if tat_status %}&tat_status={{ tat_status|urlencode }}{% endif %}{% if tat_year %}&tat_year={{ tat_year|urlencode }}{% endif %}">&rsaquo;</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ tat_page_obj.paginator.num_pages }}{% if tat_q %}&tat_q={{ tat_q|urlencode }}{% endif %}{% if tat_site %}&tat_site={{ tat_site|urlencode }}{% endif %}{% if tat_status %}&tat_status={{ tat_status|urlencode }}{% endif %}{% if tat_year %}&tat_year={{ tat_year|urlencode }}{% endif %}">&raquo;</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">&rsaquo;</span></li>
+              <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+      {% endif %}
     </div>
   </div>
 

@@ -66,7 +66,7 @@
               <i class="ni ni-fat-remove mr-1"></i>Clear Saved Mappings
             </button>
           </form>
-          <button type="button" class="btn btn-primary btn-sm ml-2" onclick="autoMap()">
+          <button type="button" class="btn btn-primary btn-sm ml-2" onclick="autoMap(false)">
             <i class="fas fa-magic mr-1"></i>Auto-Map
           </button>
         </div>
@@ -115,6 +115,7 @@
     <form id="mapping-form" method="post" enctype="multipart/form-data" action="{% url 'generate_mapped_excel' %}">
       {% csrf_token %}
       <input type="hidden" name="mapping" id="mapping-json">
+      <input type="hidden" name="retest_headers" id="retest-json">
 
       <!-- Table -->
       <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
@@ -124,7 +125,14 @@
               <th style="width: 4%;">#</th>
               <th style="width: 28%;">Raw Column Header</th>
               <th style="width: 48%;">Map To Model Field</th>
-              <th style="width: 4%;" class="text-center">Retest</th>
+              <th style="width: 4%;" class="text-center">
+                <div>Retest</div>
+                <input
+                  type="checkbox"
+                  id="select-all-retest"
+                  title="Mark all antibiotic mappings as retest"
+                  onchange="toggleAllAntibioticRetest(this)">
+              </th>
               <th style="width: 14%;" class="text-center">Mapped To</th>
               <th style="width: 4%;" class="text-center">Status</th>
               <th style="width: 4%;" class="text-center">Clear</th>
@@ -150,7 +158,7 @@
 
                   <option value="">-- Select Field --</option>
 
-                  <optgroup label="Final_Data Fields">
+                  <optgroup label="{% if target_model == 'referred' %}Referred_Data Fields{% else %}Final_Data Fields{% endif %}">
                     {% for f in model_fields %}
                       <option value="{{ f }}"
                         {% if current_mapping == f %}selected{% endif %}>
@@ -172,7 +180,7 @@
                    <td style="text-align:center;">
                       <input type="checkbox"
                         class="retest-checkbox"
-                        {% if current_mapping.is_retest %}checked{% endif %}
+                        {% if header in saved_retest_headers %}checked{% endif %}
                         onchange="handleRetestChange(this)">
                   </td>
 
@@ -416,14 +424,54 @@ function saveMapping(rawField, mappedField, isRetest = false) {
   }).catch(() => console.error("Failed to save mapping:", rawField));
 }
 
+function isAntibioticOption(selectEl) {
+  const selected = selectEl.options[selectEl.selectedIndex];
+  return selected?.parentElement?.label?.includes("AntibioticEntry") ?? false;
+}
+
+function shouldSaveAsRetest(selectEl) {
+  return selectEl.closest('tr').querySelector('.retest-checkbox')?.checked ?? false;
+}
+
+function syncSelectAllRetestState() {
+  const master = document.getElementById("select-all-retest");
+  if (!master) return;
+
+  const antibioticRows = Array.from(document.querySelectorAll(".field-select"))
+    .filter(isAntibioticOption)
+    .map(select => select.closest("tr"));
+
+  const total = antibioticRows.length;
+  const checked = antibioticRows.filter(row => row.querySelector(".retest-checkbox")?.checked).length;
+
+  master.checked = total > 0 && checked === total;
+  master.indeterminate = checked > 0 && checked < total;
+}
+
+function toggleAllAntibioticRetest(master) {
+  document.querySelectorAll(".field-select").forEach(select => {
+    if (!isAntibioticOption(select)) return;
+
+    const row = select.closest("tr");
+    const checkbox = row.querySelector(".retest-checkbox");
+    if (!checkbox) return;
+
+    checkbox.checked = master.checked;
+    saveMapping(select.dataset.header, select.value, checkbox.checked);
+  });
+
+  syncSelectAllRetestState();
+}
+
 // --------------------------------------------------
 // HANDLE SELECT CHANGE
 // --------------------------------------------------
 function handleMappingChange(selectEl) {
   const row = selectEl.closest('tr');
-  const isRetest = row.querySelector('.retest-checkbox')?.checked ?? false;
+  const isRetest = shouldSaveAsRetest(selectEl);
   updateRowBadge(row, selectEl.value);
   updateMappingCount();
+  syncSelectAllRetestState();
   saveMapping(selectEl.dataset.header, selectEl.value, isRetest);
 }
 
@@ -439,7 +487,7 @@ function normalize(str) {
 }
 
 
-function autoMap() {
+function autoMap(silent = false) {
   const selects = document.querySelectorAll(".field-select");
   let mappedCount = 0;
 
@@ -454,18 +502,22 @@ function autoMap() {
         mappedCount++;
         const row = sel.closest('tr');
         updateRowBadge(row, option.value);
-        saveMapping(sel.dataset.header, option.value);
+        saveMapping(sel.dataset.header, option.value, shouldSaveAsRetest(sel));
         break;
       }
     }
   });
 
   updateMappingCount();
-  alert(`Auto-mapped ${mappedCount} field(s). Please review the mappings.`);
+  syncSelectAllRetestState();
+  if (!silent) alert(`Auto-mapped ${mappedCount} field(s). Please review the mappings.`);
 }
+
 document.addEventListener("DOMContentLoaded", function () {
-  autoMap();
+  autoMap(true); // silent on load — won't show the alert
 });
+
+ 
 
 // --------------------------------------------------
 // UPDATE MAPPING COUNT + STATUS ICONS
@@ -500,6 +552,7 @@ function clearRowMapping(btn) {
   if (checkbox) checkbox.checked = false;
   updateRowBadge(row, "");
   updateMappingCount();
+  syncSelectAllRetestState();
   saveMapping(select.dataset.header, "");  // mapped_field="" triggers delete in view
   if (activeFilter === 'mapped') row.style.display = 'none';
 }
@@ -515,15 +568,30 @@ document.addEventListener("DOMContentLoaded", function () {
     updateRowBadge(row, sel.value);
   });
   updateMappingCount();
+  syncSelectAllRetestState();
 });
 
 // --------------------------------------------------
 // FORM SUBMIT
 // --------------------------------------------------
+function resetGenerateButton() {
+  const btn = document.querySelector('#mapping-form button[type="submit"]');
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ni ni-cloud-download-95 mr-1"></i>Generate Mapped Excel';
+  }
+}
+
 document.getElementById("mapping-form").addEventListener("submit", function (e) {
   const mapping = {};
+  const retestHeaders = [];
   document.querySelectorAll(".field-select").forEach(sel => {
-    if (sel.value) mapping[sel.dataset.header] = sel.value;
+    if (sel.value) {
+      mapping[sel.dataset.header] = sel.value;
+      if (shouldSaveAsRetest(sel) && isAntibioticOption(sel)) {
+        retestHeaders.push(sel.dataset.header);
+      }
+    }
   });
 
   if (Object.keys(mapping).length === 0) {
@@ -534,9 +602,11 @@ document.getElementById("mapping-form").addEventListener("submit", function (e) 
   }
 
   document.getElementById("mapping-json").value = JSON.stringify(mapping);
+  document.getElementById("retest-json").value = JSON.stringify(retestHeaders);
   const btn = e.target.querySelector('button[type="submit"]');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Generating...';
+  window.setTimeout(resetGenerateButton, 5000);
 });
 
 // Enter key for search
@@ -546,17 +616,16 @@ document.getElementById("search-input").addEventListener("keypress", function (e
 
 // Reset button after download / back
 window.addEventListener("pageshow", function () {
-  const btn = document.querySelector('#mapping-form button[type="submit"]');
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ni ni-cloud-download-95 mr-1"></i>Generate Mapped Excel';
-  }
+  resetGenerateButton();
 });
+
+window.addEventListener("focus", resetGenerateButton);
 
 // Handle RETEST Change
 function handleRetestChange(checkboxEl) {
   const row = checkboxEl.closest('tr');
   const select = row.querySelector('.field-select');
+  syncSelectAllRetestState();
   if (!select.value) return; // don't save if no field is mapped yet
   saveMapping(select.dataset.header, select.value, checkboxEl.checked);
 }

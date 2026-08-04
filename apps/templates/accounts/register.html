@@ -3,7 +3,13 @@
 {% block title %} Register {% endblock title %}
 
 <!-- Specific CSS goes HERE -->
-{% block stylesheets %}{% endblock stylesheets %}
+{% block stylesheets %}
+<style>
+  .password-toggle {
+    cursor: pointer;
+  }
+</style>
+{% endblock stylesheets %}
 
 {% block content %}
 
@@ -35,6 +41,36 @@
                 <form method="POST">
 
                   {% csrf_token %}
+
+                  <div class="form-group">
+                    <div class="input-group input-group-alternative mb-3">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="ni ni-single-02"></i></span>
+                      </div>
+                      {{ form.first_name }}
+                    </div>
+                  </div>
+                  <span class="text-error">{{ form.first_name.errors }}</span>
+
+                  <div class="form-group">
+                    <div class="input-group input-group-alternative mb-3">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="ni ni-single-02"></i></span>
+                      </div>
+                      {{ form.middle_name }}
+                    </div>
+                  </div>
+                  <span class="text-error">{{ form.middle_name.errors }}</span>
+
+                  <div class="form-group">
+                    <div class="input-group input-group-alternative mb-3">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="ni ni-single-02"></i></span>
+                      </div>
+                      {{ form.last_name }}
+                    </div>
+                  </div>
+                  <span class="text-error">{{ form.last_name.errors }}</span>
             
                   <div class="form-group">
                     <div class="input-group input-group-alternative mb-3">
@@ -62,6 +98,11 @@
                         <span class="input-group-text"><i class="ni ni-lock-circle-open"></i></span>
                       </div>
                       {{ form.password1 }}
+                      <div class="input-group-append">
+                        <span class="input-group-text password-toggle" data-target="id_password1" role="button" tabindex="0" aria-label="Show password">
+                          <i class="fa fa-eye-slash"></i>
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <span class="text-error">{{ form.password1.errors }}</span>
@@ -72,6 +113,11 @@
                         <span class="input-group-text"><i class="ni ni-lock-circle-open"></i></span>
                       </div>
                       {{ form.password2 }}
+                      <div class="input-group-append">
+                        <span class="input-group-text password-toggle" data-target="id_password2" role="button" tabindex="0" aria-label="Show password confirmation">
+                          <i class="fa fa-eye-slash"></i>
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <span class="text-error">{{ form.password2.errors }}</span>
@@ -112,4 +158,30 @@
 {% endblock content %}
 
 <!-- Specific JS goes HERE --> 
-{% block javascripts %}{% endblock javascripts %}
+{% block javascripts %}
+<script>
+  document.querySelectorAll(".password-toggle").forEach(function (toggle) {
+    function togglePassword() {
+      const passwordField = document.getElementById(toggle.dataset.target);
+      const icon = toggle.querySelector("i");
+      if (!passwordField || !icon) {
+        return;
+      }
+
+      const isPassword = passwordField.type === "password";
+      passwordField.type = isPassword ? "text" : "password";
+      toggle.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
+      icon.classList.toggle("fa-eye", isPassword);
+      icon.classList.toggle("fa-eye-slash", !isPassword);
+    }
+
+    toggle.addEventListener("click", togglePassword);
+    toggle.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        togglePassword();
+      }
+    });
+  });
+</script>
+{% endblock javascripts %}

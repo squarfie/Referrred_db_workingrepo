@@ -1,7 +1,7 @@
 {% extends 'layouts/base.html' %}
 {% load static %}
 {% load widget_tweaks %}
-{% load custom_filters %}
+{% load final_filters %}
 
 {% block title %}View Final Records{% endblock title %}
 
@@ -47,7 +47,7 @@
     .batch-header-title .breadcrumb-item a:hover { color: #00bcd4; }
     .batch-header-title .breadcrumb-item + .breadcrumb-item::before { color: rgba(200,220,255,0.3); }
 
-    .batch-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .batch-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap; margin-left: auto; }
 
     /* ── Content area ── */
     .content-area { padding: 1.75rem 2rem 0; }
@@ -66,6 +66,13 @@
 
     .search-panel form { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 
+    .toolbar-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: nowrap; width: 100%; }
+    .toolbar-search-form { display: flex; align-items: center; gap: 0.5rem; flex: 1 1 auto; min-width: 0; }
+    .toolbar-search-form > div:not(.search-input-wrap), .toolbar-search-form select { flex-shrink: 0; }
+    .toolbar-download-form { display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem; flex: 0 0 auto; flex-wrap: wrap; margin-left: auto; }
+    .toolbar-download-form input { width: 135px; }
+    .toolbar-download-form small { display: block; flex-basis: 100%; color: #6c757d; font-size: 0.7rem; line-height: 1.2; text-align: right; margin: 0.15rem 0 0 0; white-space: nowrap; order: 4; }
+
     .search-input-wrap { position: relative; flex: 1; min-width: 220px; }
     .search-input-wrap .search-icon {
       position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
@@ -83,26 +90,47 @@
 
     /* ── Table card ── */
     .table-card {
-      border: 1px solid #e3e6f0; border-radius: 12px;
-      overflow: hidden; box-shadow: 0 4px 16px rgba(30,90,150,0.08);
+      background:
+        linear-gradient(180deg, rgba(245, 252, 254, 0.98), rgba(255, 255, 255, 0.98));
+      border: 1px solid rgba(0,188,212,0.22); border-radius: 12px;
+      overflow: hidden; box-shadow: 0 14px 30px rgba(15,58,95,0.12);
     }
 
-    .table-responsive { max-height: 650px; overflow-y: auto; overflow-x: auto; }
+    .table-responsive {
+      max-height: 650px;
+      overflow-y: auto;
+      overflow-x: auto;
+      background:
+        linear-gradient(90deg, rgba(224,248,252,0.84) 0%, rgba(255,255,255,0.7) 48%, rgba(224,248,252,0.84) 100%),
+        url("{% static 'assets/img/theme/microbial.jpg' %}") center 36% / cover no-repeat;
+    }
     .table-responsive::-webkit-scrollbar { width: 5px; height: 5px; }
     .table-responsive::-webkit-scrollbar-track { background: #f1f1f1; }
     .table-responsive::-webkit-scrollbar-thumb { background: #c0cfe0; border-radius: 4px; }
     .table-responsive::-webkit-scrollbar-thumb:hover { background: #1e5a96; }
 
     /* ── Data table ── */
-    .data-table { margin: 0; border-collapse: collapse; width: 100%; }
+    .data-table { margin: 0; border-collapse: collapse; width: 100%; background: transparent; }
 
-    .data-table thead { position: sticky; top: 0; z-index: 10; }
+    .data-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+      backdrop-filter: blur(14px) saturate(125%);
+      -webkit-backdrop-filter: blur(14px) saturate(125%);
+      border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    }
 
     .data-table thead th {
-      background: linear-gradient(135deg, #1e5a96 0%, #0f3a5f 100%);
+      background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
       color: white; font-size: 0.72rem; font-weight: 700;
       letter-spacing: 0.6px; text-transform: uppercase;
       padding: 0.9rem 0.9rem; border: none; white-space: nowrap;
+      backdrop-filter: blur(14px) saturate(125%);
+      -webkit-backdrop-filter: blur(14px) saturate(125%);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.34);
     }
 
     .data-table thead th a {
@@ -111,13 +139,74 @@
     }
     .data-table thead th a:hover { opacity: 0.8; }
 
-    .data-table tbody tr { border-bottom: 1px solid #f0f2f7; transition: background 0.18s ease; }
-    .data-table tbody tr:hover { background-color: rgba(0,188,212,0.04); }
+    .data-table tbody tr { border-bottom: 1px solid rgba(15,58,95,0.08); transition: background 0.18s ease; }
+    .data-table tbody tr:hover { background-color: rgba(0,188,212,0.06); }
 
     .data-table tbody td {
       padding: 0.8rem 0.9rem; vertical-align: middle;
       font-size: 0.82rem; color: #3c4a5c;
     }
+
+    .batch-accordion-row {
+      cursor: pointer;
+      background: transparent;
+      border-top: 1px solid rgba(0,188,212,0.2);
+      border-bottom: 1px solid rgba(15,58,95,0.1);
+      box-shadow: inset 4px 0 0 #00bcd4;
+    }
+    .batch-accordion-row:hover {
+      background: transparent !important;
+    }
+    .batch-accordion-cell {
+      padding: 0.85rem 1rem !important;
+      color: #0f3a5f !important;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      background: rgba(232, 248, 252, 0.44);
+    }
+    .batch-accordion-row:hover .batch-accordion-cell {
+      background: rgba(218, 245, 250, 0.58);
+    }
+    .batch-toggle-icon {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      background: #0f3a5f;
+      border: 1px solid rgba(0,188,212,0.45);
+      color: #ffffff;
+      margin-right: 0.65rem;
+      transition: transform 0.18s ease;
+    }
+    .batch-accordion-row.is-open .batch-toggle-icon { transform: rotate(90deg); }
+    .batch-count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(0,188,212,0.14);
+      border: 1px solid rgba(0,188,212,0.44);
+      color: #07889a;
+      font-size: 0.72rem;
+      font-weight: 800;
+      margin-left: 0.65rem;
+    }
+    .batch-site-code {
+      color: #075f78 !important;
+      font-size: 0.72rem;
+      font-weight: 900;
+      margin-left: 0.5rem;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+    }
+    .batch-child-row { display: none; }
+    .batch-child-row.is-visible { display: table-row; }
+    .batch-child-row.is-visible td { background: #f8fdff; }
+    .batch-child-row.is-visible:hover td { background: #eefaff; }
 
     /* ── Info cells ── */
     .info-cell { min-width: 160px; }
@@ -168,6 +257,7 @@
     .abx-divider { border: none; border-top: 1px solid #e3e6f0; margin: 6px 0; }
     .abx-name { font-weight: 700; color: #1e5a96; }
     .abx-ris { font-weight: 700; color: #e74c3c; }
+    .enris-badge { display: inline-block; white-space: nowrap; font-weight: 800; letter-spacing: 0; }
     .abx-alert { font-weight: 600; color: #00bcd4; }
     .no-abx { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #b0b8c9; font-style: italic; }
 
@@ -263,7 +353,26 @@
     @media (max-width: 768px) {
       .batch-header { padding: 1.25rem; }
       .content-area { padding: 1rem; }
+      .batch-header-actions { justify-content: flex-start; margin-left: 0; }
+      .toolbar-controls { flex-wrap: wrap; }
+      .toolbar-download-form { flex: 1 1 100%; width: 100%; margin-left: 0; justify-content: flex-start; flex-wrap: wrap; }
+      .toolbar-download-form input { flex: 1 1 130px; width: auto; }
+      .toolbar-download-form small { text-align: left; white-space: normal; }
     }
+        /* ── Row number badge ── */
+    .row-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #1e5a96, #0f3a5f);
+      color: white;
+      border-radius: 7px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
   </style>
 {% endblock stylesheets %}
 
@@ -290,23 +399,22 @@
     </div>
 
     <div class="batch-header-actions">
-      <a class="btn btn-sm btn-primary" href="{% url 'batch_create_view' %}" title="Create a new batch">
-        <i class="fas fa-plus mr-1"></i>Add Batch
-      </a>
-      <a class="btn btn-sm btn-info" href="{% url 'final_abxentry_view' %}" title="Enter antibiotic results">
-        <i class="fas fa-microscope mr-1"></i>Antibiotic Results
-      </a>
+      {% if user_access.can_create %}
+        <a class="btn btn-sm btn-primary" href="{% url 'batch_create_view' %}" title="Create a new batch">
+          <i class="fas fa-plus mr-1"></i>Add Batch
+        </a>
+        <!-- <a class="btn btn-sm btn-info" href="{% url 'final_abxentry_view' %}" title="Enter antibiotic results">
+          <i class="fas fa-microscope mr-1"></i>Antibiotic Results
+        </a> -->
+      {% endif %}
       <a class="btn btn-sm btn-secondary" href="{% url 'review_batches' %}" title="Review existing batches">
         <i class="fa fa-bell mr-1"></i>Batch Overview
       </a>
-      <a class="btn btn-sm btn-warning" href="{% url 'emerging_list_view' %}">
+      <a class="btn btn-sm btn-warning" href="{% url 'emerging_list_view' %}" title="View emerging resistance list">
         <i class="fa fa-exclamation-circle mr-1"></i>View Emerging
       </a>
-      <a class="btn btn-sm btn-dark" href="{% url 'concordance_analysis' %}">
+      <a class="btn btn-sm btn-info" href="{% url 'concordance_history' %}" title="View concordance analysis">
         <i class="fa fa-bell mr-1"></i>View Concordance
-      </a>
-      <a class="btn btn-sm btn-success" href="{% url 'download_combined_final_table' %}">
-        <i class="ni ni-cloud-download-95 mr-1"></i>Download Final
       </a>
     </div>
   </div>
@@ -317,7 +425,8 @@
     <!-- Search Toolbar -->
     <div class="toolbar-row">
       <div class="search-panel">
-        <form method="get">
+        <div class="toolbar-controls">
+        <form method="get" class="toolbar-search-form">
           <div class="search-input-wrap">
             <i class="fas fa-search search-icon"></i>
             <input
@@ -351,6 +460,15 @@
 
         </select>
         </form>
+        <form method="get" action="{% url 'download_combined_final_table' %}" class="toolbar-download-form">
+          <input type="date" name="date_from" class="form-control form-control-sm" title="Date of Entry from">
+          <input type="date" name="date_to" class="form-control form-control-sm" title="Date of Entry to">
+          <button class="btn btn-sm btn-success" type="submit">
+            <i class="ni ni-cloud-download-95 mr-1"></i>Download Final
+          </button>
+          <small>Filtered by: Date of Entry; falls back to Specimen Date when Date of Entry is blank.</small>
+        </form>
+        </div>
         {% if query %}
         <div class="search-result-info">
           <i class="fas fa-info-circle mr-1"></i>Results for: <strong>{{ query }}</strong>
@@ -365,6 +483,16 @@
         <table class="data-table" id="final-table">
           <thead>
             <tr>
+              <th>
+                <a href="?{% if preserved_params %}{{ preserved_params }}&{% endif %}sort=f_bat_seq&order={% if current_sort == 'f_bat_seq' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
+                  style="text-align: center;">
+                    #
+                    {% if current_sort == 'f_bat_seq' %}
+                        <i class="fas fa-arrow-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                    {% endif %}
+                </a>
+              </th>
+
               <th style="width:90px; text-align:center;"><i class="fas fa-cogs mr-1"></i>Actions</th>
 
               <th>
@@ -402,18 +530,41 @@
 
               <th><i class="fas fa-pills mr-1"></i>Antibiotic Results</th>
               <th style="width:44px; text-align:center;"><i class="fa fa-file-pdf"></i></th>
-              <th style="width:44px; text-align:center;"><i class="fa fa-pencil-alt"></i></th>
+              <th style="width:44px; text-align:center;"><i class="ni ni-single-02"></i></th>
               <th style="text-align:center; white-space:nowrap;">Concordance</th>
             </tr>
           </thead>
 
           <tbody>
-            {% for isolate in page_obj %}
-            <tr class="searchable-row"
+            {% for batch_group in page_groups %}
+            <tr class="batch-accordion-row"
+                data-batch-target="final-batch-{{ forloop.counter }}"
+                data-batch-id="{{ batch_group.batch_id }}"
+                data-load-url="{% url 'final_batch_rows' %}"
+                aria-expanded="false">
+              <td colspan="10" class="batch-accordion-cell">
+                <span class="batch-toggle-icon"><i class="fas fa-chevron-right"></i></span>
+                <i class="fas fa-layer-group mr-2"></i>{{ batch_group.code }}
+                {% if batch_group.site_code %}
+                  <span class="batch-site-code">{{ batch_group.site_code }}</span>
+                {% endif %}
+                <span class="batch-count-badge">{{ batch_group.count }}</span>
+              </td>
+            </tr>
+            {% if batch_group.records %}
+            {% for isolate in batch_group.records %}
+            <tr class="searchable-row batch-child-row"
+                data-batch-row="final-batch-{{ forloop.parentloop.counter }}"
                 data-search-text="{{ isolate.f_AccessionNo }} {{ isolate.f_First_Name }} {{ isolate.f_Last_Name }} {{ isolate.f_Spec_Type }}">
+
+                      <!-- Row number -->
+              <td style="text-align:center;">
+                <span class="row-num">{{ isolate.f_AccessionNo|accession_ref_no|default:isolate.f_bat_seq }}</span>
+              </td>
 
               <!-- Actions -->
               <td style="text-align:center;">
+                {% if user_access.can_update and user_access.can_view_all or user_access.can_update and isolate.f_Batch_id.created_by_id == request.user.id %}
                 <div class="action-row" style="justify-content:center;">
                   <a href="{% url 'edit_final_data' isolate.pk %}" class="action-btn-icon edit" title="Edit record">
                     <i class="fa fa-pencil-alt"></i>
@@ -425,6 +576,9 @@
                     <i class="fa fa-trash"></i>
                   </button>
                 </div>
+                {% else %}
+                  <span style="color:#9fb0c4; font-size:0.72rem;">View only</span>
+                {% endif %}
               </td>
 
               <!-- Identification -->
@@ -512,16 +666,16 @@
                     (
                     {% if entry.ab_Disk_value %}
                       Disk: <strong>{{ entry.ab_Disk_value }}</strong>
-                      {% if entry.ab_Disk_enRIS %}<strong>{{ entry.ab_Disk_enRIS }}</strong>{% endif %})
+                      {% if entry.ab_Disk_enRIS %}<strong class="enris-badge">{{ entry.ab_Disk_enRIS }}</strong>{% endif %})
                       {% if entry.ab_Disk_RIS %}&nbsp;<span class="abx-ris">{{ entry.ab_Disk_RIS }}</span>{% endif %}
                     {% endif %}
                     {% if entry.ab_Disk_value and entry.ab_MIC_value %},{% endif %}
                     {% if entry.ab_MIC_value %}
                       MIC: <strong>
                         {% if entry.ab_MIC_operand %}{{ entry.ab_MIC_operand }}{% endif %}
-                        {{ entry.ab_MIC_value }}
+                        {{ entry.ab_MIC_value|floatformat:"-3" }}
                       </strong>
-                      {% if entry.ab_MIC_enRIS %}<strong>{{ entry.ab_MIC_enRIS }}</strong>{% endif %})
+                      {% if entry.ab_MIC_enRIS %}<strong class="enris-badge">{{ entry.ab_MIC_enRIS }}</strong>{% endif %})
                       {% if entry.ab_MIC_RIS %}&nbsp;<span class="abx-ris">{{ entry.ab_MIC_RIS }}</span>{% endif %}
                       {% if entry.ab_AlertMIC %}&nbsp;<span class="abx-alert">Alert:</span> {{ entry.ab_Alert_val }}{% endif %}
                     {% endif %}
@@ -540,16 +694,16 @@
                     (
                     {% if retest.ab_Retest_DiskValue %}
                       Retest Disk: <strong>{{ retest.ab_Retest_DiskValue }}</strong>
-                      {% if retest.ab_Retest_Disk_enRIS %}<strong>{{ retest.ab_Retest_Disk_enRIS }}</strong>{% endif %})
+                      {% if retest.ab_Retest_Disk_enRIS %}<strong class="enris-badge">{{ retest.ab_Retest_Disk_enRIS }}</strong>{% endif %})
                       {% if retest.ab_Retest_Disk_RIS %}&nbsp;<span class="abx-ris">{{ retest.ab_Retest_Disk_RIS }}</span>{% endif %}
                     {% endif %}
                     {% if retest.ab_Retest_DiskValue and retest.ab_Retest_MICValue %},{% endif %}
                     {% if retest.ab_Retest_MICValue %}
                       Retest MIC: <strong>
                         {% if retest.ab_Retest_MIC_operand %}{{ retest.ab_Retest_MIC_operand }}{% endif %}
-                        {{ retest.ab_Retest_MICValue }}
+                        {{ retest.ab_Retest_MICValue|floatformat:"-3" }}
                       </strong>
-                      {% if retest.ab_Retest_MIC_enRIS %}&nbsp;<strong>{{ retest.ab_Retest_MIC_enRIS }}</strong>{% endif %})
+                      {% if retest.ab_Retest_MIC_enRIS %}&nbsp;<strong class="enris-badge">{{ retest.ab_Retest_MIC_enRIS }}</strong>{% endif %})
                       {% if retest.ab_Retest_MIC_RIS %}&nbsp;<span class="abx-ris">{{ retest.ab_Retest_MIC_RIS }}</span>{% endif %}
                       {% if retest.ab_Retest_AlertMIC %}&nbsp;<span class="abx-alert">Alert:</span> {{ retest.ab_Retest_Alert_val }}{% endif %}
                     {% endif %}
@@ -571,17 +725,19 @@
 
               <!-- Edit Author -->
               <td style="text-align:center;">
-                {% if isolate.f_Batch_id %}
+                {% if isolate.f_Batch_id and user_access.can_update and user_access.can_view_all or isolate.f_Batch_id and user_access.can_update and isolate.f_Batch_id.created_by_id == request.user.id %}
                 <a href="{% url 'batch_edit_view' isolate.f_Batch_id.id %}"
-                   class="action-btn-icon edit" title="Edit Batch Author">
-                  <i class="fa fa-pencil-alt"></i>
+                   class="action-btn-icon edit" title="Edit Batch">
+                  <i class="ni ni-single-02"></i>
                 </a>
+                {% else %}
+                  <span style="color:#ccc;">-</span>
                 {% endif %}
               </td>
 
                   <td style="text-align:center;">
                     {% if isolate.f_Batch_id %}
-                    <form method="POST" action="{% url 'concordance_generate_batch' %}">
+                    <form method="POST" action="{% url 'export_concordance_report_pdf' isolate.f_Batch_id.id %}">
                       {% csrf_token %}
                       <input type="hidden" name="batch_id" value="{{ isolate.f_Batch_id.id }}">
                       <button type="submit"
@@ -593,6 +749,8 @@
                     {% endif %}
                   </td>
             </tr>
+            {% endfor %}
+            {% endif %}
             {% empty %}
             <tr>
               <td colspan="9">
@@ -611,7 +769,7 @@
 
   <span class="page-info-text">
     Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-    &mdash; {{ page_obj.paginator.count }} total record(s)
+    &mdash; {{ page_obj.paginator.count }} batch group(s), {{ total_records }} total record(s)
   </span>
 
   <div class="footer-right">
@@ -788,6 +946,47 @@
       const url = deleteBtn.getAttribute('data-url');
       const deleteForm = document.getElementById('deleteForm');
       if (deleteForm) deleteForm.setAttribute('action', url);
+    }
+
+    const batchHeader = event.target.closest('.batch-accordion-row');
+    if (batchHeader) {
+      const target = batchHeader.getAttribute('data-batch-target');
+      const loadUrl = batchHeader.getAttribute('data-load-url');
+      const isOpen = batchHeader.classList.toggle('is-open');
+      batchHeader.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+      if (isOpen && !batchHeader.dataset.loaded && loadUrl) {
+        const loadingRow = document.createElement('tr');
+        loadingRow.setAttribute('data-batch-row', target);
+        loadingRow.className = 'batch-child-row is-visible';
+        loadingRow.innerHTML = `<td colspan="10" style="text-align:center; padding:1rem; color:#7f8fa4;">Loading records...</td>`;
+        batchHeader.insertAdjacentElement('afterend', loadingRow);
+
+        const params = new URLSearchParams(window.location.search);
+        params.set('batch_id', batchHeader.getAttribute('data-batch-id') || '');
+        params.set('target', target);
+
+        fetch(`${loadUrl}?${params.toString()}`, {
+          headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+          .then(response => response.json())
+          .then(payload => {
+            loadingRow.remove();
+            batchHeader.insertAdjacentHTML('afterend', payload.html || '');
+            batchHeader.dataset.loaded = '1';
+            document.querySelectorAll(`[data-batch-row="${target}"]`).forEach(row => {
+              row.classList.toggle('is-visible', isOpen);
+            });
+          })
+          .catch(() => {
+            loadingRow.innerHTML = `<td colspan="10" style="text-align:center; padding:1rem; color:#f5365c;">Unable to load records. Please try again.</td>`;
+          });
+        return;
+      }
+
+      document.querySelectorAll(`[data-batch-row="${target}"]`).forEach(row => {
+        row.classList.toggle('is-visible', isOpen);
+      });
     }
   });
 

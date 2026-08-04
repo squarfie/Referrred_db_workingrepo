@@ -37,6 +37,7 @@
       <thead class="table-dark">
         <tr>
           <th>Accession No</th>
+          <th>Referral Date</th>
           <th>Specimen</th>
           <th>Organism</th>
           <th>Age</th>
@@ -50,6 +51,7 @@
       {% for case in cases %}
         <tr>
           <td>{{ case.AccessionNo }}</td>
+          <td>{{ case.Referral_Date}}</td>
 
           <td>
             {{ case.Spec_Type }}

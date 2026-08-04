@@ -37,13 +37,15 @@
               {% else %}
                 {% url 'add_specimen' %}
               {% endif %}"
-      id="specimenForm">
+      id="specimenForm"
+      novalidate>
 
 
       {% csrf_token %}
+      {% include "includes/form_errors.html" with form=specimen_form %}
 
       <!-- FORM FIELDS -->
-                  <div class="row mb-4">
+                  <div class="row mb-4 align-items-center">
 
                 <div class="col-md-6">
                     <button type="button"
@@ -52,6 +54,11 @@
                             data-target="#UploadSpecimenModal">
                         <i class="fas fa-file-upload mr-1"></i> Upload CSV / Excel
                     </button>
+                </div>
+                <div class="col-md-6 text-md-right mt-2 mt-md-0">
+                    <a href="{% url 'export_specimens' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-file-export mr-1"></i> Export Excel
+                    </a>
                 </div>
             </div>
 
@@ -162,7 +169,8 @@
     <form method="POST"
           action="{% url 'upload_specimen_code' %}"
           enctype="multipart/form-data"
-          onsubmit="return confirmOverwrite();">
+          onsubmit="return confirmOverwrite();"
+          novalidate>
 
         {% csrf_token %}
 

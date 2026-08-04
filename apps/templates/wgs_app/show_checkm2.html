@@ -4,7 +4,7 @@
 {% block content %}
 
 <!-- Header Section -->
-<div class="header bg-primary pb-6" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
+<div class="header bg-primary pb-3 wgs-page-header" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
     <span class="mask bg-gradient-default opacity-3"></span>
   <div class="container-fluid">
     <div class="header-body">
@@ -32,10 +32,10 @@
 </div>
 
 <!-- Main Content -->
-<div class="container-fluid mt--6">
-  <div class="card shadow">
+<div class="container-fluid wgs-list-page">
+  <div class="card shadow wgs-list-card">
     <!-- Card Header -->
-    <div class="card-header border-0" style="background: linear-gradient(135deg, #11cdef 0%, #1171ef 100%);">
+    <div class="card-header border-0 wgs-list-card-header">
       <div class="row align-items-center">
         <div class="col">
           <h3 class="mb-0 text-white">
@@ -83,7 +83,7 @@
     </div>
 
     <!-- Table -->
-    <div class="table-responsive" style="max-height: 470px; overflow-y: auto;">
+    <div class="table-responsive wgs-list-table-shell" style="max-height: 470px; overflow-y: auto;">
       <table class="table table-hover align-items-center table-flush" id="checkm2-table">
         <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
           <tr>
@@ -295,9 +295,9 @@
           <button type="submit" class="btn btn-danger">
             <i class="fa fa-trash mr-1"></i>Delete Record
           </button>
-          <a href="{% url 'delete_all_checkm2' %}" class="btn btn-warning" onclick="return confirm('⚠️ WARNING: This will delete ALL CheckM2 records. Are you absolutely sure?')">
+          <button type="submit" formaction="{% url 'delete_all_checkm2' %}" class="btn btn-warning" onclick="return confirm('⚠️ WARNING: This will delete ALL CheckM2 records. Are you absolutely sure?')">
             <i class="fa fa-trash-alt mr-1"></i>Delete All
-          </a>
+          </button>
         </div>
       </form>
     </div>

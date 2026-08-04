@@ -7,6 +7,7 @@ import csv
 from decimal import Decimal, InvalidOperation
 from datetime import date, datetime
 from collections import OrderedDict, defaultdict
+from urllib.parse import urlparse
 from django.templatetags.static import static
 # ================================
 # Django Core
@@ -21,11 +22,13 @@ from django.http import (
 from django.urls import reverse
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.contrib import messages
-from django.template.loader import get_template
+from django.template.loader import get_template, render_to_string
 from django.utils import timezone
 from django.utils.timezone import now
 from django.utils.dateparse import parse_date
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.db import IntegrityError, transaction
 from django.db.models import (
     Q,
@@ -33,9 +36,14 @@ from django.db.models import (
     Prefetch,
     Case,
     When,
+    F,
+    Max,
+    OuterRef,
+    Subquery,
 )
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_GET, require_POST
+from django.apps import apps as django_apps
 
 # ================================
 # Third-Party Libraries
@@ -44,7 +52,10 @@ from django.views.decorators.http import require_GET, require_POST
 import openpyxl
 import pandas as pd
 from openpyxl import Workbook
+from openpyxl.cell.cell import MergedCell
 from openpyxl.styles import Font as XLFont  # ✅ Safe alias (NO tkinter)
+from openpyxl.styles import Alignment, Border, PatternFill, Side
+from openpyxl.utils import get_column_letter
 
 # PDF (ReportLab)
 from reportlab.platypus import (
@@ -69,17 +80,432 @@ from openpyxl.styles import Font
 from apps.home.views import link_callback
 from apps.home.models import *
 from apps.home.forms import *
+from apps.home.permissions import (
+    ROLE_ADMIN,
+    ROLE_CHECKER,
+    ROLE_ENCODER,
+    ROLE_LAB_ENCODER,
+    ROLE_LAB_MANAGER,
+    ROLE_VERIFIER,
+    can_manage_batch,
+    get_user_role,
+    role_required,
+)
 from apps.wgs_app.models import *
 from apps.wgs_app.forms import *
 
 from .models import *
 from .forms import *
 from .models import ConcordanceReport
-from .utils import get_filtered_antibiotics, apply_final_breakpoints
+from .utils import (
+    _year_as_int,
+    antibiotic_print_order,
+    get_filtered_antibiotics,
+    apply_final_breakpoints,
+    make_cached_breakpoint_resolver,
+    resolve_breakpoint,
+    get_breakpoint_panel_abx_codes,
+    sort_abx_codes_by_antibiotic,
+)
+from .services import concordance as concordance_service
 from django.db.models.functions import ExtractYear
+from django.contrib.staticfiles import finders
+
+
+def HomeAntibioticList():
+    return django_apps.get_model("home", "Antibiotic_List")
+
+
+def HomeOrganismList():
+    return django_apps.get_model("home", "Organism_List")
+
+
+def HomeBreakpointsTable():
+    return django_apps.get_model("home", "BreakpointsTable")
+
+
+def _breakpoint_year_filter(bp_qs, specimen_year):
+    target_year = _year_as_int(specimen_year)
+    years_by_int = {}
+    for year in bp_qs.values_list("Year", flat=True).distinct():
+        year_int = _year_as_int(year)
+        if year_int is not None:
+            years_by_int.setdefault(year_int, []).append(year)
+
+    if not years_by_int:
+        return bp_qs.none()
+
+    if target_year is not None:
+        matching_years = years_by_int.get(target_year)
+        if matching_years:
+            return bp_qs.filter(Year__in=matching_years)
+
+        selected_year = min(
+            years_by_int,
+            key=lambda year: (abs(year - target_year), year > target_year, year),
+        )
+        return bp_qs.filter(Year__in=years_by_int[selected_year])
+
+    selected_year = max(years_by_int)
+    return bp_qs.filter(Year__in=years_by_int[selected_year])
+
+
+def _final_specific_panel_codes(specimen_year, org_code):
+    org_code = (org_code or "").strip()
+    OrganismList = HomeOrganismList()
+    organism = (
+        OrganismList.objects
+        .filter(Q(Whonet_Org_Code__iexact=org_code) | Q(Replaced_by__iexact=org_code))
+        .values("Family_Code", "Genus_Group", "Genus_Code", "Species_Group", "Whonet_Org_Code", "Replaced_by")
+        .first()
+    )
+
+    if not organism:
+        candidate_levels = [{org_code}]
+    else:
+        candidate_levels = [
+            _final_related_org_values("Family_Code", organism.get("Family_Code")),
+            _final_related_org_values("Genus_Group", organism.get("Genus_Group")),
+            _final_related_org_values("Genus_Code", organism.get("Genus_Code")),
+            _final_related_org_values("Species_Group", organism.get("Species_Group")),
+            {
+                (organism.get("Whonet_Org_Code") or "").strip(),
+                (organism.get("Replaced_by") or "").strip(),
+                org_code,
+            },
+        ]
+
+    Breakpoints = HomeBreakpointsTable()
+    year_bp_qs = _breakpoint_year_filter(Breakpoints.objects.all(), specimen_year)
+
+    for org_values in candidate_levels:
+        org_values = {value for value in org_values if value}
+        if not org_values:
+            continue
+
+        bp_qs = year_bp_qs.filter(_org_value_filter(org_values))
+        abx_codes = {
+            (code or "").strip().upper()
+            for code in bp_qs.values_list("Abx_code", flat=True).distinct()
+            if (code or "").strip()
+        }
+        whonet_codes = {
+            (code or "").strip().upper()
+            for code in bp_qs.values_list("Whonet_Abx", flat=True).distinct()
+            if (code or "").strip()
+        }
+        if abx_codes or whonet_codes:
+            return abx_codes, whonet_codes
+
+    return set(), set()
+
+
+def _org_value_filter(values):
+    query = Q()
+    has_values = False
+    for value in values:
+        value = (value or "").strip()
+        if not value:
+            continue
+        query |= Q(Org__iexact=value)
+        has_values = True
+    return query if has_values else Q(pk__in=[])
+
+
+def _final_related_org_values(field_name, field_value):
+    values = {(field_value or "").strip()}
+    if not field_value:
+        return values
+
+    OrganismList = HomeOrganismList()
+    org_rows = OrganismList.objects.filter(
+        **{f"{field_name}__iexact": field_value}
+    ).values_list("Whonet_Org_Code", "Replaced_by")
+
+    for whonet_code, replaced_by in org_rows:
+        values.add((whonet_code or "").strip())
+        values.add((replaced_by or "").strip())
+
+    return {value for value in values if value}
+
+
+def _final_year_whonet_codes(specimen_year):
+    Breakpoints = HomeBreakpointsTable()
+    bp_qs = _breakpoint_year_filter(Breakpoints.objects.all(), specimen_year)
+    return {
+        (code or "").strip().upper()
+        for code in bp_qs.values_list("Whonet_Abx", flat=True).distinct()
+        if (code or "").strip()
+    }
+
+
+def _code_iexact_filter(field_name, codes):
+    query = Q()
+    has_codes = False
+    for code in codes:
+        code = (code or "").strip()
+        if not code:
+            continue
+        query |= Q(**{f"{field_name}__iexact": code})
+        has_codes = True
+    return query if has_codes else Q(pk__in=[])
+
+
+def _final_antibiotics_for_panel(
+    *,
+    org_code,
+    specimen_year,
+    show_site=False,
+    retest=False,
+    require_org=False,
+    existing_whonet_codes=None,
+):
+    AntibioticList = HomeAntibioticList()
+    qs = AntibioticList.objects.all()
+
+    if retest:
+        qs = qs.filter(Retest=True)
+    elif show_site:
+        qs = qs.filter(Show=True)
+
+    org_code = (org_code or "").strip()
+    if _is_no_organism(org_code):
+        return qs.none()
+    if not org_code:
+        return qs.order_by("Antibiotic", "Whonet_Abx")
+    if specimen_year is None:
+        return qs.order_by("Antibiotic", "Whonet_Abx")
+
+    panel_abx_codes, panel_whonet_codes = _final_specific_panel_codes(specimen_year, org_code)
+    existing_whonet_codes = {
+        (code or "").strip().upper()
+        for code in (existing_whonet_codes or [])
+        if (code or "").strip()
+    }
+
+    if not panel_abx_codes and not panel_whonet_codes:
+        return qs.order_by("Antibiotic", "Whonet_Abx")
+
+    return (
+        qs.filter(
+            _code_iexact_filter("Abx_code", panel_abx_codes) |
+            _code_iexact_filter("Whonet_Abx", panel_whonet_codes) |
+            _code_iexact_filter("Whonet_Abx", existing_whonet_codes)
+        )
+        .order_by("Antibiotic", "Whonet_Abx")
+    )
+
+
+def _parse_disk_value(value):
+    try:
+        disk_value = int(value) if value else None
+    except (TypeError, ValueError):
+        return None
+
+    if disk_value is not None and disk_value < 6:
+        return None
+    return disk_value
+
+
+def _entry_values_match(entry, values):
+    for field, value in values.items():
+        current = getattr(entry, field)
+        if current == value:
+            continue
+        if current is None and value == "":
+            continue
+        if current == "" and value is None:
+            continue
+        return False
+    return True
+
+
+MAIN_ANTIBIOTIC_FIELDS = [
+    "ab_Antibiotic", "ab_Abx_code", "ab_Abx",
+    "ab_Disk_value", "ab_Disk_RIS", "ab_Disk_enRIS",
+    "ab_MIC_value", "ab_MIC_RIS", "ab_MIC_enRIS", "ab_MIC_operand",
+    "ab_AlertMIC", "ab_Alert_val",
+    "ab_Site_Org", "ab_R_breakpoint", "ab_I_breakpoint",
+    "ab_SDD_breakpoint", "ab_S_breakpoint",
+]
+
+RETEST_ANTIBIOTIC_FIELDS = [
+    "ab_Retest_Antibiotic", "ab_Retest_Abx_code", "ab_Retest_Abx",
+    "ab_Retest_DiskValue", "ab_Retest_Disk_RIS", "ab_Retest_Disk_enRIS",
+    "ab_Retest_MICValue", "ab_Retest_MIC_RIS", "ab_Retest_MIC_enRIS",
+    "ab_Retest_MIC_operand", "ab_Retest_AlertMIC", "ab_Retest_Alert_val",
+    "ab_Ret_Org", "ab_Org_Flag", "ab_Abx_Flag", "ab_Abx_Phenotype",
+    "ab_Abx_Phenotype_Other", "ab_Ret_R_breakpoint", "ab_Ret_I_breakpoint",
+    "ab_Ret_SDD_breakpoint", "ab_Ret_S_breakpoint",
+]
+
+
+def _has_main_antibiotic_data(entry):
+    return any([
+        entry.ab_Disk_value is not None,
+        entry.ab_MIC_value is not None,
+        bool((entry.ab_Disk_RIS or "").strip()),
+        bool((entry.ab_Disk_enRIS or "").strip()),
+        bool((entry.ab_MIC_RIS or "").strip()),
+        bool((entry.ab_MIC_enRIS or "").strip()),
+        bool((entry.ab_MIC_operand or "").strip()),
+        bool(entry.ab_AlertMIC),
+    ])
+
+
+def _has_retest_antibiotic_data(entry):
+    return any([
+        entry.ab_Retest_DiskValue is not None,
+        entry.ab_Retest_MICValue is not None,
+        bool((entry.ab_Retest_Disk_RIS or "").strip()),
+        bool((entry.ab_Retest_Disk_enRIS or "").strip()),
+        bool((entry.ab_Retest_MIC_RIS or "").strip()),
+        bool((entry.ab_Retest_MIC_enRIS or "").strip()),
+        bool((entry.ab_Retest_MIC_operand or "").strip()),
+        bool(entry.ab_Retest_AlertMIC),
+    ])
+
+
+def _is_blank_print_value(value):
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() in {"", "n/a", "na", "none", "null", "-", "--"}
+    return False
+
+
+def _has_printable_main_antibiotic_result(entry):
+    return any(
+        not _is_blank_print_value(getattr(entry, field, None))
+        for field in (
+            "ab_Disk_value",
+            "ab_Disk_RIS",
+            "ab_Disk_enRIS",
+            "ab_MIC_value",
+            "ab_MIC_RIS",
+            "ab_MIC_enRIS",
+        )
+    )
+
+
+def _has_printable_retest_antibiotic_result(entry):
+    return any(
+        not _is_blank_print_value(getattr(entry, field, None))
+        for field in (
+            "ab_Retest_DiskValue",
+            "ab_Retest_Disk_RIS",
+            "ab_Retest_Disk_enRIS",
+            "ab_Retest_MICValue",
+            "ab_Retest_MIC_RIS",
+            "ab_Retest_MIC_enRIS",
+        )
+    )
+
+
+def _clear_main_antibiotic_data(entry):
+    for field in MAIN_ANTIBIOTIC_FIELDS:
+        field_obj = entry._meta.get_field(field)
+        if field_obj.get_internal_type() == "BooleanField":
+            setattr(entry, field, False)
+        elif field_obj.get_internal_type() in {"IntegerField", "PositiveSmallIntegerField", "DecimalField"}:
+            setattr(entry, field, None)
+        elif field_obj.null:
+            setattr(entry, field, None)
+        else:
+            setattr(entry, field, "")
+
+
+def _clear_retest_antibiotic_data(entry):
+    for field in RETEST_ANTIBIOTIC_FIELDS:
+        field_obj = entry._meta.get_field(field)
+        if field_obj.get_internal_type() == "BooleanField":
+            setattr(entry, field, False)
+        elif field_obj.get_internal_type() in {"IntegerField", "PositiveSmallIntegerField", "DecimalField"}:
+            setattr(entry, field, None)
+        elif field_obj.null:
+            setattr(entry, field, None)
+        else:
+            setattr(entry, field, "")
+
+
+def _save_or_delete_antibiotic_entry(entry):
+    if _has_main_antibiotic_data(entry) or _has_retest_antibiotic_data(entry):
+        entry.save()
+    else:
+        entry.delete()
+
+
+def _is_no_organism(value):
+    return (value or "").strip().lower() in {"", "n/a", "na", "none"}
+
+
+FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS = {
+    "ABI", "GCT", "AGT", "BD-", "BR-", "CAM", "CAR", "EIK", "FRA",
+    "HA-", "HEL", "KIN", "LEG", "MOR", "NE-",
+}
+
+
+def _uses_fastidious_plus_layout(organism):
+    if not organism:
+        return False
+
+    organism_type = str(organism.get("Organism_Type") or "").strip()
+    if organism_type == "+":
+        return True
+
+    codes = {
+        str(organism.get(field) or "").strip().upper()
+        for field in ("Whonet_Org_Code", "Replaced_by", "Species_Group", "Genus_Group", "Genus_Code")
+    }
+    codes.discard("")
+    if codes & FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS:
+        return True
+
+    organism_name = str(organism.get("Organism") or "").strip().lower()
+    return "HA-" in FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS and (
+        "HIN" in codes or organism_name.startswith("haemophilus ")
+    )
+
+
+def _organism_type_is_plus(org_code):
+    code = str(org_code or "").strip()
+    if not code:
+        return False
+    OrganismList = HomeOrganismList()
+    organism = (
+        OrganismList.objects
+        .filter(Q(Whonet_Org_Code__iexact=code) | Q(Replaced_by__iexact=code))
+        .values("Whonet_Org_Code", "Replaced_by", "Organism_Type", "Species_Group", "Genus_Group", "Genus_Code", "Organism")
+        .first()
+    )
+    return _uses_fastidious_plus_layout(organism)
+
+
+PHENOTYPE_CLEAR_POST_FIELDS = {
+    "phenotype_search_f_site_pre": ("f_Site_Pre", "f_Site_Pre_ed"),
+    "phenotype_search_f_site_post": ("f_Site_Pos", "f_Site_Pos_ed"),
+    "phenotype_search_f_ars_pre": ("f_ars_Pre", "f_ars_Pre_ed"),
+    "phenotype_search_f_ars_post": ("f_ars_Post", "f_ars_Post_ed"),
+}
+
+
+def _is_clear_phenotype_value(value):
+    return (value or "").strip().lower() in {"n/a", "na", "n.a.", "none", "null"}
+
+
+def _apply_clear_phenotype_posts(isolate, post_data):
+    for search_name, (source_field, edit_field) in PHENOTYPE_CLEAR_POST_FIELDS.items():
+        if not (
+            _is_clear_phenotype_value(post_data.get(search_name))
+            or _is_clear_phenotype_value(post_data.get(edit_field))
+        ):
+            continue
+        setattr(isolate, source_field, "")
+        setattr(isolate, edit_field, "")
+
 
 # SHOW FINAL DATA TABLE
-# @login_required(login_url="/login/")
+# @login_required(login_url="login")
 # def show_final_table(request):
 #     query = request.GET.get("q", "").strip()
 
@@ -149,37 +575,14 @@ from django.db.models.functions import ExtractYear
 
 
 
-@login_required(login_url="/login/")
-def show_final_table(request):
+def _final_records_base_queryset(request):
+    records = Final_Data.objects.all()
+    if get_user_role(request.user) == ROLE_ENCODER:
+        records = records.filter(f_Batch_id__created_by=request.user)
+    return records
 
-    query = request.GET.get("q", "").strip()
-    year = request.GET.get("year")
 
-    sort_by = request.GET.get("sort", "f_Date_Modified")
-    order = request.GET.get("order", "desc")
-
-    allowed_sort_fields = {
-        "f_AccessionNo",
-        "f_First_Name",
-        "f_Last_Name",
-        "f_Batch_Code",
-        "f_SiteCode",
-        "f_Date_Modified",
-        "f_Spec_Date",
-    }
-
-    if sort_by not in allowed_sort_fields:
-        sort_by = "f_Date_Modified"
-
-    sort_field = f"-{sort_by}" if order == "desc" else sort_by
-
-    records = (
-        Final_Data.objects
-        .select_related("f_Spec_Type", "f_Batch_id")
-        .prefetch_related("final_entries")
-    )
-
-    #  SEARCH
+def _apply_final_table_filters(records, query="", year=None):
     if query:
         records = records.filter(
             Q(f_AccessionNo__icontains=query) |
@@ -198,15 +601,82 @@ def show_final_table(request):
             Q(f_Spec_Type__Specimen_name__icontains=query)
         ).distinct()
 
-    # YEAR FILTER
-    if year and year.isdigit():
+    if year and str(year).isdigit():
         records = records.filter(f_Referral_Date__year=int(year))
 
-    records = records.order_by(sort_field)
+    return records
 
-    paginator = Paginator(records, 20)
+
+def _final_sort_field(sort_by, order):
+    allowed_sort_fields = {
+        "f_AccessionNo",
+        "f_First_Name",
+        "f_Last_Name",
+        "f_Batch_Code",
+        "f_SiteCode",
+        "f_Date_Modified",
+        "f_Spec_Date",
+        "f_bat_seq",
+    }
+    if sort_by not in allowed_sort_fields:
+        sort_by = "f_Date_Modified"
+    if order not in ["asc", "desc"]:
+        order = "desc"
+    return sort_by, order, f"-{sort_by}" if order == "desc" else sort_by
+
+
+@login_required(login_url="login")
+def show_final_table(request):
+
+    query = request.GET.get("q", "").strip()
+    year = request.GET.get("year")
+
+    sort_by = request.GET.get("sort", "f_Date_Modified")
+    order = request.GET.get("order", "desc")
+
+    sort_by, order, sort_field = _final_sort_field(sort_by, order)
+    records = _apply_final_table_filters(_final_records_base_queryset(request), query, year)
+
+    total_records = records.count()
+
+    batch_sort_map = {
+        "f_Batch_Code": "batch_code",
+        "f_SiteCode": "site_code",
+        "f_Date_Modified": "latest_modified",
+        "f_Spec_Date": "latest_specimen_date",
+    }
+    batch_sort_field = batch_sort_map.get(sort_by, "f_Batch_Code")
+    if order == "desc":
+        batch_sort_field = f"-{batch_sort_field}"
+
+    batch_summaries = (
+        records
+        .values("f_Batch_id")
+        .annotate(
+            record_count=Count("id"),
+            batch_code=Max("f_Batch_id__bat_Batch_Code"),
+            fallback_batch_code=Max("f_Batch_Code"),
+            site_code=Max("f_SiteCode"),
+            latest_modified=Max("f_Date_Modified"),
+            latest_specimen_date=Max("f_Spec_Date"),
+        )
+        .order_by(batch_sort_field, "-batch_code")
+    )
+
+    paginator = Paginator(batch_summaries, 20)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
+    page_groups = []
+    for batch_summary in page_obj.object_list:
+        raw_batch_code = batch_summary.get("batch_code") or batch_summary.get("fallback_batch_code") or ""
+        batch_code = raw_batch_code.strip() or "Unbatched"
+        page_groups.append({
+            "batch_id": batch_summary.get("f_Batch_id") or "",
+            "code": batch_code,
+            "batch_code": raw_batch_code,
+            "count": batch_summary["record_count"],
+            "site_code": batch_summary.get("site_code") or "",
+        })
 
     # Available years
     available_years = (
@@ -228,6 +698,8 @@ def show_final_table(request):
         "home_final/tables_final.html",
         {
             "page_obj": page_obj,
+            "page_groups": page_groups,
+            "total_records": total_records,
             "current_sort": sort_by,
             "current_order": order,
             "query": query,
@@ -238,12 +710,46 @@ def show_final_table(request):
     )
 
 
+@login_required(login_url="login")
+@require_GET
+def final_batch_rows(request):
+    batch_id = request.GET.get("batch_id", "")
+    batch_dom_id = request.GET.get("target", "")
+    query = request.GET.get("q", "").strip()
+    year = request.GET.get("year")
+    sort_by = request.GET.get("sort", "f_Date_Modified")
+    order = request.GET.get("order", "desc")
+    _, _, sort_field = _final_sort_field(sort_by, order)
+
+    records = _apply_final_table_filters(_final_records_base_queryset(request), query, year)
+    if batch_id:
+        records = records.filter(f_Batch_id_id=batch_id)
+    else:
+        records = records.filter(f_Batch_id__isnull=True)
+    records = (
+        records
+        .select_related("f_Spec_Type", "f_Batch_id")
+        .prefetch_related("final_entries")
+        .order_by("f_bat_seq", "f_AccessionNo", "id")
+    )
+    html = render_to_string(
+        "home_final/partials/final_batch_rows.html",
+        {
+            "records": records,
+            "batch_dom_id": batch_dom_id,
+            "request": request,
+        },
+        request=request,
+    )
+    return JsonResponse({"html": html})
+
+
 
 
 # # Create your views here.
 
 # EDIT DATA - NEW VERSION
-# @login_required(login_url="/login/")
+# @login_required(login_url="login")
 # @transaction.atomic
 # def edit_final_data(request, id):
 
@@ -454,13 +960,51 @@ def show_final_table(request):
 #     return redirect("show_final_table")
 
 
+def _final_batch_navigation(isolate):
+    batch = isolate.f_Batch_id
+    if not batch:
+        return {
+            "batch_id": None,
+            "first_id": None,
+            "previous_id": None,
+            "next_id": None,
+            "last_id": None,
+            "position": 1,
+            "total": 1,
+        }
+
+    isolate_ids = list(
+        Final_Data.objects
+        .filter(f_Batch_id=batch)
+        .order_by("f_bat_seq", "f_AccessionNo", "id")
+        .values_list("id", flat=True)
+    )
+
+    try:
+        current_index = isolate_ids.index(isolate.id)
+    except ValueError:
+        current_index = 0
+
+    return {
+        "batch_id": batch.id,
+        "first_id": isolate_ids[0] if isolate_ids else None,
+        "previous_id": isolate_ids[current_index - 1] if current_index > 0 else None,
+        "next_id": isolate_ids[current_index + 1] if current_index + 1 < len(isolate_ids) else None,
+        "last_id": isolate_ids[-1] if isolate_ids else None,
+        "position": current_index + 1,
+        "total": len(isolate_ids),
+    }
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
+@role_required(ROLE_ADMIN, ROLE_CHECKER, ROLE_ENCODER)
 @transaction.atomic
 def edit_final_data(request, id):
 
     isolate = get_object_or_404(Final_Data, pk=id)
+    if not can_manage_batch(request.user, isolate.f_Batch_id):
+        messages.error(request, "You can only update final records from batches that you created.")
+        return redirect("show_final_table")
 
     request.session["current_final_isolate_id"] = isolate.id
 
@@ -475,21 +1019,29 @@ def edit_final_data(request, id):
     if request.method == "GET":
 
         form = FinalReferred_Form(instance=isolate)
-
-        antibiotics_main = (
-            Antibiotic_List.objects
-            .filter(Show=True)
-            .order_by("Antibiotic")
-        )
-
-        antibiotics_retest = (
-            Antibiotic_List.objects
-            .filter(Retest=True)
-            .order_by("Antibiotic")
-        )
-
         existing_entries = Final_AntibioticEntry.objects.filter(
             ab_idNum_f_referred=isolate
+        )
+        existing_main_codes = existing_entries.exclude(
+            ab_Abx_code__isnull=True
+        ).values_list("ab_Abx_code", flat=True)
+        existing_retest_codes = existing_entries.exclude(
+            ab_Retest_Abx_code__isnull=True
+        ).values_list("ab_Retest_Abx_code", flat=True)
+        specimen_year = isolate.f_Spec_Date.year if isolate.f_Spec_Date else None
+
+        antibiotics_main = _final_antibiotics_for_panel(
+            org_code=isolate.f_Site_Org,
+            specimen_year=specimen_year,
+            show_site=True,
+            existing_whonet_codes=existing_main_codes,
+        )
+        antibiotics_retest = _final_antibiotics_for_panel(
+            org_code=isolate.f_ars_OrgCode,
+            specimen_year=specimen_year,
+            retest=True,
+            require_org=True,
+            existing_whonet_codes=existing_retest_codes,
         )
 
         retest_entries = existing_entries.exclude(
@@ -499,6 +1051,7 @@ def edit_final_data(request, id):
         return render(request, "home_final/edit_final.html", {
             "form": form,
             "isolates": isolate,
+            "batch_nav": _final_batch_navigation(isolate),
             "antibiotics_main": antibiotics_main,
             "antibiotics_retest": antibiotics_retest,
             "existing_entries": existing_entries,
@@ -513,24 +1066,61 @@ def edit_final_data(request, id):
 
     old_site_org = (isolate.f_Site_Org or "").strip()
     old_ars_org  = (isolate.f_ars_OrgCode or "").strip()
+    old_specimen_year = isolate.f_Spec_Date.year if isolate.f_Spec_Date else None
+    original_phenotypes = {
+        "f_Site_Pre": isolate.f_Site_Pre,
+        "f_Site_Pos": isolate.f_Site_Pos,
+        "f_ars_Pre": isolate.f_ars_Pre,
+        "f_ars_Post": isolate.f_ars_Post,
+    }
 
     form = FinalReferred_Form(request.POST, instance=isolate)
 
     if not form.is_valid():
-        messages.error(request, "Error saving Final data.")
-        return redirect("edit_final_data", id=id)
+        messages.error(request, "Please check the highlighted fields.")
+        existing_entries = Final_AntibioticEntry.objects.filter(ab_idNum_f_referred=isolate)
+        specimen_year = isolate.f_Spec_Date.year if isolate.f_Spec_Date else None
+        return render(request, "home_final/edit_final.html", {
+            "form": form,
+            "isolates": isolate,
+            "batch_nav": _final_batch_navigation(isolate),
+            "antibiotics_main": _final_antibiotics_for_panel(
+                org_code=isolate.f_Site_Org,
+                specimen_year=specimen_year,
+                show_site=True,
+                existing_whonet_codes=existing_entries.exclude(ab_Abx_code__isnull=True).values_list("ab_Abx_code", flat=True),
+            ),
+            "antibiotics_retest": _final_antibiotics_for_panel(
+                org_code=isolate.f_ars_OrgCode,
+                specimen_year=specimen_year,
+                retest=True,
+                require_org=True,
+                existing_whonet_codes=existing_entries.exclude(ab_Retest_Abx_code__isnull=True).values_list("ab_Retest_Abx_code", flat=True),
+            ),
+            "existing_entries": existing_entries,
+            "retest_entries": existing_entries.exclude(ab_Retest_Abx_code__isnull=True),
+            "classification": classification,
+            "edit_mode": True,
+        })
 
-    isolate = form.save()
+    isolate = form.save(commit=False)
+    for field_name, original_value in original_phenotypes.items():
+        setattr(isolate, field_name, original_value)
+    _apply_clear_phenotype_posts(isolate, request.POST)
+    isolate.save()
 
     # =========================
     # SAVE CLASSIFICATION
     # =========================
-    classification.Class_Chk_Emerging   = "Class_Chk_Emerging" in request.POST
+    classification.Class_Chk_Structured = "Class_Chk_Structured" in request.POST
     classification.Class_Chk_Satscan    = "Class_Chk_Satscan" in request.POST
     classification.Class_Chk_Serotyping = "Class_Chk_Serotyping" in request.POST
     classification.Class_Chk_GHRU_all   = "Class_Chk_GHRU_all" in request.POST
     classification.Class_Chk_GHRU_Neo   = "Class_Chk_GHRU_Neo" in request.POST
+    classification.Class_Chk_EGASP      = "Class_Chk_EGASP" in request.POST
     classification.Class_Chk_Tricycle   = "Class_Chk_Tricycle" in request.POST
+    classification.Class_Chk_Pulsenet   = "Class_Chk_Pulsenet" in request.POST
+    classification.Class_Chk_Tulip      = "Class_Chk_Tulip" in request.POST
     classification.Class_AccessionNo    = isolate.f_AccessionNo
     classification.save()
 
@@ -539,39 +1129,29 @@ def edit_final_data(request, id):
     # =========================
     specimen_year = isolate.f_Spec_Date.year if isolate.f_Spec_Date else None
 
-    if specimen_year:
-        effective_year = (
-            BreakpointsTable.objects
-            .filter(Year__lte=str(specimen_year))
-            .order_by("-Year")
-            .values_list("Year", flat=True)
-            .first()
-        )
-    else:
-        effective_year = (
-            BreakpointsTable.objects
-            .order_by("-Year")
-            .values_list("Year", flat=True)
-            .first()
-        )
-
     new_site_org = (isolate.f_Site_Org or "").strip()
     new_ars_org  = (isolate.f_ars_OrgCode or "").strip()
+    site_org_is_na = _is_no_organism(new_site_org)
+    ars_org_is_na = _is_no_organism(new_ars_org)
 
     # =========================
     # DELETE IF ORGANISM CHANGED
     # =========================
-    if old_site_org != new_site_org:
-        Final_AntibioticEntry.objects.filter(
+    if old_site_org != new_site_org or site_org_is_na:
+        for entry in Final_AntibioticEntry.objects.filter(
             ab_idNum_f_referred=isolate,
             ab_Abx_code__isnull=False
-        ).delete()
+        ):
+            _clear_main_antibiotic_data(entry)
+            _save_or_delete_antibiotic_entry(entry)
 
-    if old_ars_org != new_ars_org:
-        Final_AntibioticEntry.objects.filter(
+    if old_ars_org != new_ars_org or ars_org_is_na:
+        for entry in Final_AntibioticEntry.objects.filter(
             ab_idNum_f_referred=isolate,
             ab_Retest_Abx_code__isnull=False
-        ).delete()
+        ):
+            _clear_retest_antibiotic_data(entry)
+            _save_or_delete_antibiotic_entry(entry)
 
     resolved_site_org = new_site_org
     resolved_ars_org  = new_ars_org
@@ -579,7 +1159,34 @@ def edit_final_data(request, id):
     # =========================
     # MAIN ANTIBIOTICS
     # =========================
-    for abx in Antibiotic_List.objects.filter(Show=True):
+    resolve_bp = make_cached_breakpoint_resolver()
+    existing_main_entries = {
+        (entry.ab_Abx_code or "").strip().upper(): entry
+        for entry in Final_AntibioticEntry.objects.filter(
+            ab_idNum_f_referred=isolate,
+            ab_Abx_code__isnull=False,
+        )
+    }
+    existing_retest_entries_for_main = {
+        (entry.ab_Retest_Abx_code or "").strip().upper(): entry
+        for entry in Final_AntibioticEntry.objects.filter(
+            ab_idNum_f_referred=isolate,
+            ab_Retest_Abx_code__isnull=False,
+        )
+    }
+    can_skip_main_entries = (
+        old_site_org == new_site_org
+        and old_specimen_year == specimen_year
+    )
+    antibiotics_main = list(_final_antibiotics_for_panel(
+        org_code=resolved_site_org,
+        specimen_year=specimen_year,
+        show_site=True,
+        existing_whonet_codes=existing_main_entries.keys(),
+    ))
+
+    if not site_org_is_na:
+      for abx in antibiotics_main:
 
         abx_code = (abx.Whonet_Abx or "").strip().upper()
 
@@ -590,10 +1197,7 @@ def edit_final_data(request, id):
         mic_operand = request.POST.get(f"mic_operand_{abx_code}", "").strip()
         alert_mic   = f"alert_mic_{abx_code}" in request.POST
 
-        try:
-            disk_value = int(disk_value) if disk_value else None
-        except ValueError:
-            disk_value = None
+        disk_value = _parse_disk_value(disk_value)
 
         try:
             mic_value = float(mic_value) if mic_value else None
@@ -601,39 +1205,55 @@ def edit_final_data(request, id):
             mic_value = None
 
         if disk_value is None and mic_value is None:
-            Final_AntibioticEntry.objects.filter(
+            for entry in Final_AntibioticEntry.objects.filter(
                 ab_idNum_f_referred=isolate,
                 ab_Abx_code=abx_code
-            ).delete()
+            ):
+                _clear_main_antibiotic_data(entry)
+                _save_or_delete_antibiotic_entry(entry)
             continue
 
-        entry, _ = Final_AntibioticEntry.objects.update_or_create(
-            ab_idNum_f_referred=isolate,
-            ab_Abx_code=abx_code,
-            defaults={
-                "ab_AccessionNo": isolate.f_AccessionNo,
-                "ab_Antibiotic": abx.Antibiotic,
-                "ab_Abx": abx.Abx_code,
-                "ab_Disk_value": disk_value,
-                "ab_Disk_enRIS": disk_enris,
-                "ab_MIC_value": mic_value,
-                "ab_MIC_enRIS": mic_enris,
-                "ab_MIC_operand": mic_operand,
-                "ab_AlertMIC": alert_mic,
-            }
-        )
+        entry_defaults = {
+            "ab_AccessionNo": isolate.f_AccessionNo,
+            "ab_Antibiotic": abx.Antibiotic,
+            "ab_Abx": abx.Abx_code,
+            "ab_Disk_value": disk_value,
+            "ab_Disk_enRIS": disk_enris,
+            "ab_MIC_value": mic_value,
+            "ab_MIC_enRIS": mic_enris,
+            "ab_MIC_operand": mic_operand,
+            "ab_AlertMIC": alert_mic,
+        }
+        existing_entry = existing_main_entries.get(abx_code)
+        if (
+            can_skip_main_entries
+            and existing_entry
+            and _entry_values_match(existing_entry, entry_defaults)
+        ):
+            continue
+
+        entry = existing_entry or existing_retest_entries_for_main.get(abx_code)
+        if entry is None:
+            entry = Final_AntibioticEntry(
+                ab_idNum_f_referred=isolate,
+                ab_Abx_code=abx_code,
+            )
+        entry.ab_Abx_code = abx_code
+        for field, value in entry_defaults.items():
+            setattr(entry, field, value)
+        entry.save()
 
         entry.ab_breakpoints_id.clear()
         bp_applied = False
 
         # DISK
         if disk_value is not None:
-            bp_disk = BreakpointsTable.objects.filter(
-                Antibiotic_list_id=abx_code,
-                Year=effective_year,
-                Test_Method="DISK",
-                Org__in=[resolved_site_org, ""]
-            ).order_by("-Org").first()
+            bp_disk = resolve_bp(
+                abx_code,
+                specimen_year,
+                resolved_site_org,
+                "DISK",
+            )
 
             if bp_disk:
                 entry.ab_breakpoints_id.set([bp_disk])
@@ -646,12 +1266,12 @@ def edit_final_data(request, id):
 
         # MIC
         if mic_value is not None:
-            bp_mic = BreakpointsTable.objects.filter(
-                Antibiotic_list_id=abx_code,
-                Year=effective_year,
-                Test_Method="MIC",
-                Org__in=[resolved_site_org, ""]
-            ).order_by("-Org").first()
+            bp_mic = resolve_bp(
+                abx_code,
+                specimen_year,
+                resolved_site_org,
+                "MIC",
+            )
 
             if bp_mic:
                 entry.ab_breakpoints_id.set([bp_mic])
@@ -676,7 +1296,34 @@ def edit_final_data(request, id):
     # =========================
     # RETEST ANTIBIOTICS
     # =========================
-    for abx in Antibiotic_List.objects.filter(Retest=True):
+    existing_retest_entries = {
+        (entry.ab_Retest_Abx_code or "").strip().upper(): entry
+        for entry in Final_AntibioticEntry.objects.filter(
+            ab_idNum_f_referred=isolate,
+            ab_Retest_Abx_code__isnull=False,
+        )
+    }
+    existing_main_entries_for_retest = {
+        (entry.ab_Abx_code or "").strip().upper(): entry
+        for entry in Final_AntibioticEntry.objects.filter(
+            ab_idNum_f_referred=isolate,
+            ab_Abx_code__isnull=False,
+        )
+    }
+    can_skip_retest_entries = (
+        old_ars_org == new_ars_org
+        and old_specimen_year == specimen_year
+    )
+    antibiotics_retest = list(_final_antibiotics_for_panel(
+        org_code=resolved_ars_org,
+        specimen_year=specimen_year,
+        retest=True,
+        require_org=True,
+        existing_whonet_codes=existing_retest_entries.keys(),
+    ))
+
+    if not ars_org_is_na:
+      for abx in antibiotics_retest:
 
         abx_code = (abx.Whonet_Abx or "").strip().upper()
 
@@ -687,10 +1334,7 @@ def edit_final_data(request, id):
         mic_operand = request.POST.get(f"retest_mic_operand_{abx_code}", "").strip()
         alert_mic   = f"retest_alert_mic_{abx_code}" in request.POST
 
-        try:
-            disk_value = int(disk_value) if disk_value else None
-        except ValueError:
-            disk_value = None
+        disk_value = _parse_disk_value(disk_value)
 
         try:
             mic_value = float(mic_value) if mic_value else None
@@ -698,38 +1342,54 @@ def edit_final_data(request, id):
             mic_value = None
 
         if disk_value is None and mic_value is None:
-            Final_AntibioticEntry.objects.filter(
+            for entry in Final_AntibioticEntry.objects.filter(
                 ab_idNum_f_referred=isolate,
                 ab_Retest_Abx_code=abx_code
-            ).delete()
+            ):
+                _clear_retest_antibiotic_data(entry)
+                _save_or_delete_antibiotic_entry(entry)
             continue
 
-        entry, _ = Final_AntibioticEntry.objects.update_or_create(
-            ab_idNum_f_referred=isolate,
-            ab_Retest_Abx_code=abx_code,
-            defaults={
-                "ab_AccessionNo": isolate.f_AccessionNo,
-                "ab_Retest_Antibiotic": abx.Antibiotic,
-                "ab_Retest_Abx": abx.Abx_code,
-                "ab_Retest_DiskValue": disk_value,
-                "ab_Retest_MICValue": mic_value,
-                "ab_Retest_Disk_enRIS": disk_enris,
-                "ab_Retest_MIC_enRIS": mic_enris,
-                "ab_Retest_MIC_operand": mic_operand,
-                "ab_Retest_AlertMIC": alert_mic,
-            }
-        )
+        entry_defaults = {
+            "ab_AccessionNo": isolate.f_AccessionNo,
+            "ab_Retest_Antibiotic": abx.Antibiotic,
+            "ab_Retest_Abx": abx.Abx_code,
+            "ab_Retest_DiskValue": disk_value,
+            "ab_Retest_MICValue": mic_value,
+            "ab_Retest_Disk_enRIS": disk_enris,
+            "ab_Retest_MIC_enRIS": mic_enris,
+            "ab_Retest_MIC_operand": mic_operand,
+            "ab_Retest_AlertMIC": alert_mic,
+        }
+        existing_entry = existing_retest_entries.get(abx_code)
+        if (
+            can_skip_retest_entries
+            and existing_entry
+            and _entry_values_match(existing_entry, entry_defaults)
+        ):
+            continue
+
+        entry = existing_entry or existing_main_entries_for_retest.get(abx_code)
+        if entry is None:
+            entry = Final_AntibioticEntry(
+                ab_idNum_f_referred=isolate,
+                ab_Retest_Abx_code=abx_code,
+            )
+        entry.ab_Retest_Abx_code = abx_code
+        for field, value in entry_defaults.items():
+            setattr(entry, field, value)
+        entry.save()
 
         entry.ab_breakpoints_id.clear()
         ret_bp_applied = False
 
         if disk_value is not None:
-            bp_disk = BreakpointsTable.objects.filter(
-                Antibiotic_list_id=abx_code,
-                Year=effective_year,
-                Test_Method="DISK",
-                Org__in=[resolved_ars_org, ""]
-            ).order_by("-Org").first()
+            bp_disk = resolve_bp(
+                abx_code,
+                specimen_year,
+                resolved_ars_org,
+                "DISK",
+            )
 
             if bp_disk:
                 entry.ab_breakpoints_id.set([bp_disk])
@@ -744,12 +1404,12 @@ def edit_final_data(request, id):
                 ret_bp_applied = True
 
         if mic_value is not None:
-            bp_mic = BreakpointsTable.objects.filter(
-                Antibiotic_list_id=abx_code,
-                Year=effective_year,
-                Test_Method="MIC",
-                Org__in=[resolved_ars_org, ""]
-            ).order_by("-Org").first()
+            bp_mic = resolve_bp(
+                abx_code,
+                specimen_year,
+                resolved_ars_org,
+                "MIC",
+            )
 
             if bp_mic:
                 entry.ab_breakpoints_id.set([bp_mic])
@@ -778,6 +1438,17 @@ def edit_final_data(request, id):
         entry.save()
 
     messages.success(request, "Final data saved successfully.")
+    next_after_save = (request.POST.get("next_after_save") or "").strip()
+    if next_after_save and url_has_allowed_host_and_scheme(
+        next_after_save,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_after_save)
+
+    batch_nav = _final_batch_navigation(isolate)
+    if batch_nav.get("next_id"):
+        return redirect("edit_final_data", id=batch_nav["next_id"])
     return redirect("show_final_table")
 
 
@@ -791,29 +1462,137 @@ def edit_final_data(request, id):
 ############## Lab Result
 
 
+def _is_nonviable_result(*values):
+    """True when organism/result text says the isolate was non-viable."""
+    for value in values:
+        normalized = (value or "").strip().lower().replace("-", " ")
+        if normalized in {"not viable", "non viable", "nonviable"}:
+            return True
+    return False
+
+
+def _tested_pdf_abx_code_groups(entries, abx_map, print_order, site_printable, ars_printable):
+    tested_codes = set()
+
+    for entry in entries:
+        if entry.ab_Abx_code:
+            abx_code = abx_map.get(entry.ab_Abx_code.strip().upper())
+            if abx_code and abx_code in site_printable:
+                tested_codes.add(abx_code)
+
+        if entry.ab_Retest_Abx_code:
+            abx_code = abx_map.get(entry.ab_Retest_Abx_code.strip().upper())
+            if abx_code and abx_code in ars_printable:
+                tested_codes.add(abx_code)
+
+    ordered_codes = [code for code in print_order if code in tested_codes]
+    ordered_codes.extend(
+        sort_abx_codes_by_antibiotic(
+            code for code in tested_codes if code not in ordered_codes
+        )
+    )
+    return ordered_codes, ordered_codes
+
+
+def _tested_pdf_abx_codes(entries, abx_map, print_order, site_printable, ars_printable):
+    site_codes, ars_codes = _tested_pdf_abx_code_groups(
+        entries,
+        abx_map,
+        print_order,
+        site_printable,
+        ars_printable,
+    )
+    tested_codes = []
+    for code in [*site_codes, *ars_codes]:
+        if code not in tested_codes:
+            tested_codes.append(code)
+    return tested_codes
+
+
+def _aligned_pdf_abx_codes(site_codes, ars_codes, site_print_order, ars_print_order):
+    combined = set(site_codes) | set(ars_codes)
+    aligned = []
+
+    for code in [*site_print_order, *ars_print_order]:
+        if code in combined and code not in aligned:
+            aligned.append(code)
+
+    aligned.extend(
+        sort_abx_codes_by_antibiotic(
+            code for code in combined if code not in aligned
+        )
+    )
+    return aligned
+
+
+def _blank_no_organism_report_fields(isolate):
+    """Blank only the printed result pane for whichever organism side is n/a."""
+    if _is_no_organism(isolate.f_Site_Org):
+        isolate.f_Site_OrgName = ""
+
+    if _is_no_organism(isolate.f_ars_OrgCode):
+        isolate.f_ars_OrgName = ""
+        isolate.f_ars_ct_ctl = ""
+        isolate.f_ars_tz_tzl = ""
+        isolate.f_ars_cn_cni = ""
+        isolate.f_ars_ip_ipi = ""
+
+
 
 @transaction.atomic
-def generate_final_batch_pdf(request, id):
+def generate_final_batch_pdf_panel_old(request, id):
 
     # fetch batch isolates
     batch = get_object_or_404(Batch_Table, pk=id)
 
-    isolates = (
-        Final_Data.objects
-        .filter(f_Batch_id=batch)
-        .order_by("f_bat_seq")
+    # isolates = (
+    #     Final_Data.objects
+    #     .filter(f_Batch_id=batch)
+    #     .order_by("f_bat_seq")
+    # )
+
+    # # paginate: 2 isolates per page
+    # def chunked(qs, size):
+    #     for i in range(0, qs.count(), size):
+    #         yield qs[i:i + size]
+
+    # isolate_pages = list(chunked(isolates, 2))
+
+    # sort isolates by accession number, then by f_bat_seq
+    def final_ars_sort_key(isolate):
+        accession = (isolate.f_AccessionNo or "").strip().upper()
+
+        # Example: 26ARS_DLS0017 -> prefix DLS, number 17
+        match = re.search(r"([A-Z]+)(\d+)$", accession)
+
+        if match:
+            prefix = match.group(1)
+            number = int(match.group(2))
+            return (prefix, number)
+
+        # fallback to f_bat_seq if accession format is unusual
+        try:
+            return ("", int(isolate.f_bat_seq))
+        except (TypeError, ValueError):
+            return ("", 999999)
+
+
+    isolates = sorted(
+        Final_Data.objects.filter(f_Batch_id=batch),
+        key=final_ars_sort_key
     )
 
     # paginate: 2 isolates per page
-    def chunked(qs, size):
-        for i in range(0, qs.count(), size):
-            yield qs[i:i + size]
+    def chunked(items, size):
+        for i in range(0, len(items), size):
+            yield items[i:i + size]
 
     isolate_pages = list(chunked(isolates, 2))
 
+
     # these are the constants
     MAX_COLS = 29
-    MAX_ROWS = 3
+    MAX_ROWS = 2
 
     def chunk_list(items, size):
         for i in range(0, len(items), size):
@@ -822,54 +1601,35 @@ def generate_final_batch_pdf(request, id):
     pages_data = []
 
     # whonet code map
+    AntibioticList = HomeAntibioticList()
     abx_map = dict(
-        Antibiotic_List.objects
+        AntibioticList.objects
         .values_list("Whonet_Abx", "Abx_code")
     )
+    site_print_order = antibiotic_print_order(show_site=True)
+    ars_print_order = antibiotic_print_order(show_ars=True)
+    printable_abx_site = set(site_print_order)
+    printable_abx_ars = set(ars_print_order)
 
     # build pdf
     for page_isolates in isolate_pages:
         page_entries = []
 
         for isolate in page_isolates:
+            _blank_no_organism_report_fields(isolate)
 
             site_org = isolate.f_Site_Org
-            ars_org = isolate.f_ars_OrgCode
+            ars_org = isolate.f_ars_OrgCode or site_org
+            specimen_year = isolate.f_Spec_Date.year if isolate.f_Spec_Date else None
 
             # fetch the entries
             entries = Final_AntibioticEntry.objects.filter(
                 ab_idNum_f_referred=isolate
             )
 
-            # panels
-            site_panel_abx = set(
-                BreakpointsTable.objects
-                .filter(Org=site_org)
-                .values_list("Abx_code", flat=True)
-                .distinct()
-            )
+            site_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, site_org)
+            ars_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, ars_org)
 
-            ars_panel_abx = set(
-                BreakpointsTable.objects
-                .filter(Org=ars_org)
-                .values_list("Abx_code", flat=True)
-                .distinct()
-            )
-
-            # extract printable antibiotics
-            printable_abx_site = set(
-                Antibiotic_List.objects
-                .filter(Show_Site=True)
-                .values_list("Abx_code", flat=True)
-            )
-
-            printable_abx_ars = set(
-                Antibiotic_List.objects
-                .filter(Show_Ars=True)
-                .values_list("Abx_code", flat=True)
-            )
-
-            # find the encoded antiboitcs
             encoded_site_abx = set()
             encoded_ars_abx = set()
 
@@ -883,15 +1643,41 @@ def generate_final_batch_pdf(request, id):
                     abx = abx_map.get(e.ab_Retest_Abx_code.strip().upper())
                     if abx:
                         encoded_ars_abx.add(abx)
+            encoded_print_abx = encoded_site_abx | encoded_ars_abx
 
-            # create the panels 
-            site_abx_codes = sorted(
-                (site_panel_abx | encoded_site_abx) & printable_abx_site
-            )
+            site_candidates = (set(site_panel_abx) | encoded_print_abx) & printable_abx_site
+            ars_candidates = (set(ars_panel_abx) | encoded_print_abx) & printable_abx_ars
 
-            ars_abx_codes = sorted(
-                (ars_panel_abx | encoded_ars_abx) & printable_abx_ars
+            site_abx_codes = [
+                abx for abx in site_print_order
+                if abx in site_candidates
+            ]
+            site_abx_codes.extend(
+                sort_abx_codes_by_antibiotic(
+                    abx for abx in site_candidates if abx not in site_abx_codes
+                )
             )
+            ars_abx_codes = [
+                abx for abx in ars_print_order
+                if abx in ars_candidates
+            ]
+            ars_abx_codes.extend(
+                sort_abx_codes_by_antibiotic(
+                    abx for abx in ars_candidates if abx not in ars_abx_codes
+                )
+            )
+            if _is_no_organism(isolate.f_Site_Org):
+                site_abx_codes = []
+            if _is_no_organism(isolate.f_ars_OrgCode):
+                ars_abx_codes = []
+            aligned_abx_codes = _aligned_pdf_abx_codes(
+                site_abx_codes,
+                ars_abx_codes,
+                site_print_order,
+                ars_print_order,
+            )
+            site_abx_codes = aligned_abx_codes
+            ars_abx_codes = aligned_abx_codes
 
             # group the antibiotics based on panels
             grouped_site = {
@@ -934,15 +1720,28 @@ def generate_final_batch_pdf(request, id):
             grouped_rows = list(
                 chunk_list(list(grouped_site.items()), MAX_COLS)
             )[:MAX_ROWS]
+            while len(grouped_rows) < MAX_ROWS:
+                grouped_rows.append([])
 
+            ars_uses_plus_layout = _organism_type_is_plus(ars_org)
+            ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
             grouped_ars_rows = list(
-                chunk_list(list(grouped_ars.items()), MAX_COLS)
+                chunk_list(list(grouped_ars.items()), ars_max_cols)
             )[:MAX_ROWS]
+            while len(grouped_ars_rows) < MAX_ROWS:
+                grouped_ars_rows.append([])
+
+            site_group_count = len(grouped_rows)
+            ars_group_count = len(grouped_ars_rows)
 
             page_entries.append({
                 "isolate": isolate,
                 "grouped_rows": grouped_rows,
                 "grouped_ars_rows": grouped_ars_rows,
+                "ars_uses_plus_layout": ars_uses_plus_layout,
+                "patient_rowspan": (site_group_count + ars_group_count) * 5,
+                "site_detail_rowspan": (site_group_count * 5) - 1,
+                "ars_detail_rowspan": (ars_group_count * 5) - 1,
             })
 
         pages_data.append(page_entries)
@@ -958,7 +1757,7 @@ def generate_final_batch_pdf(request, id):
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = 'filename="Batch_Panel_Report.pdf"'
 
-    template = get_template("home_final/Lab_result_panel_final.html")
+    template = get_template("home_final/Lab_result_final.html")
 
     html = template.render(context)
 
@@ -967,6 +1766,231 @@ def generate_final_batch_pdf(request, id):
         dest=response,
         link_callback=link_callback
     )
+
+    return response
+
+
+@transaction.atomic
+def generate_final_batch_pdf(request, id):
+    return generate_final_batch_pdf_panel_old(request, id)
+
+    batch = get_object_or_404(Batch_Table, pk=id)
+    isolates = (
+        Final_Data.objects
+        .filter(f_Batch_id=batch)
+        .order_by("f_bat_seq")
+    )
+
+    def chunked(qs, size):
+        for i in range(0, qs.count(), size):
+            yield qs[i:i + size]
+
+    def chunk_list(items, size):
+        for i in range(0, len(items), size):
+            yield items[i:i + size]
+
+    def fixed_rows(grouped_antibiotics, max_cols=MAX_COLS):
+        if not grouped_antibiotics:
+            return [
+                [("", {"disk": None, "mic": None}) for _ in range(max_cols)]
+                for _ in range(MAX_ROWS)
+            ]
+        rows = list(chunk_list(list(grouped_antibiotics.items()), max_cols))[:MAX_ROWS]
+        while len(rows) < MAX_ROWS:
+            rows.append([])
+        return rows
+
+    MAX_COLS = 29
+    MAX_ROWS = 2
+    isolate_pages = list(chunked(isolates, 2))
+    pages_data = []
+
+    AntibioticList = HomeAntibioticList()
+    antibiotic_order = list(
+        AntibioticList.objects
+        .exclude(Abx_code__exact="")
+        .values("Whonet_Abx", "Abx_code")
+        .order_by("id")
+    )
+    abx_map = {
+        (row["Whonet_Abx"] or "").strip().upper(): (row["Abx_code"] or "").strip()
+        for row in antibiotic_order
+        if (row["Whonet_Abx"] or "").strip() and (row["Abx_code"] or "").strip()
+    }
+    site_print_order = antibiotic_print_order(show_site=True)
+    ars_print_order = antibiotic_print_order(show_ars=True)
+    site_printable = set(site_print_order)
+    ars_printable = set(ars_print_order)
+
+    for page_isolates in isolate_pages:
+        page_entries = []
+
+        for isolate in page_isolates:
+            _blank_no_organism_report_fields(isolate)
+            entries = list(Final_AntibioticEntry.objects.filter(
+                ab_idNum_f_referred=isolate
+            ))
+
+            site_org = (isolate.f_Site_Org or "").strip()
+            ars_org = (isolate.f_ars_OrgCode or "").strip() or site_org
+            specimen_year = isolate.f_Spec_Date.year if isolate.f_Spec_Date else None
+
+            site_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, site_org)
+            ars_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, ars_org)
+            encoded_site_abx = {
+                abx_map.get((entry.ab_Abx_code or "").strip().upper())
+                for entry in entries
+                if entry.ab_Abx_code
+            } - {None, ""}
+            encoded_ars_abx = {
+                abx_map.get((entry.ab_Retest_Abx_code or "").strip().upper())
+                for entry in entries
+                if entry.ab_Retest_Abx_code
+            } - {None, ""}
+            encoded_print_abx = encoded_site_abx | encoded_ars_abx
+
+            site_candidates = (set(site_panel_abx) | encoded_print_abx) & site_printable
+            ars_candidates = (set(ars_panel_abx) | encoded_print_abx) & ars_printable
+
+            site_abx_codes = [abx for abx in site_print_order if abx in site_candidates]
+            site_abx_codes.extend(
+                sort_abx_codes_by_antibiotic(
+                    abx for abx in site_candidates if abx not in site_abx_codes
+                )
+            )
+            ars_abx_codes = [abx for abx in ars_print_order if abx in ars_candidates]
+            ars_abx_codes.extend(
+                sort_abx_codes_by_antibiotic(
+                    abx for abx in ars_candidates if abx not in ars_abx_codes
+                )
+            )
+            if _is_no_organism(isolate.f_Site_Org):
+                site_abx_codes = []
+            if _is_no_organism(isolate.f_ars_OrgCode):
+                ars_abx_codes = []
+
+            aligned_abx_codes = _aligned_pdf_abx_codes(
+                site_abx_codes,
+                ars_abx_codes,
+                site_print_order,
+                ars_print_order,
+            )
+            site_abx_codes = aligned_abx_codes
+            ars_abx_codes = aligned_abx_codes
+
+            grouped_site = {abx: {"disk": None, "mic": None} for abx in site_abx_codes}
+            grouped_ars = {abx: {"disk": None, "mic": None} for abx in ars_abx_codes}
+
+            for e in entries:
+                site_abx = abx_map.get((e.ab_Abx_code or "").strip().upper())
+                if site_abx in grouped_site:
+                    if e.ab_Disk_value is not None:
+                        grouped_site[site_abx]["disk"] = e
+                    if e.ab_MIC_value is not None:
+                        grouped_site[site_abx]["mic"] = e
+
+                ars_abx = abx_map.get((e.ab_Retest_Abx_code or "").strip().upper())
+                if ars_abx in grouped_ars:
+                    if e.ab_Retest_DiskValue is not None:
+                        grouped_ars[ars_abx]["disk"] = e
+                    if e.ab_Retest_MICValue is not None:
+                        grouped_ars[ars_abx]["mic"] = e
+
+            ars_uses_plus_layout = _organism_type_is_plus(ars_org)
+            ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
+            grouped_rows = fixed_rows(grouped_site)
+            grouped_ars_rows = fixed_rows(grouped_ars, ars_max_cols)
+            site_group_count = len(grouped_rows)
+            ars_group_count = len(grouped_ars_rows)
+
+            page_entries.append({
+                "isolate": isolate,
+                "grouped_rows": grouped_rows,
+                "grouped_ars_rows": grouped_ars_rows,
+                "ars_uses_plus_layout": ars_uses_plus_layout,
+                "patient_rowspan": (site_group_count + ars_group_count) * 5,
+                "site_detail_rowspan": (site_group_count * 5) - 1,
+                "ars_detail_rowspan": (ars_group_count * 5) - 1,
+            })
+
+        pages_data.append(page_entries)
+
+    context = {
+        "batch": batch,
+        "pages": pages_data,
+        "now": timezone.now(),
+        "logo_path": static("assets/img/brand/arsplogo.jpg"),
+    }
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'filename="Batch_Panel_Report.pdf"'
+
+    template = get_template("home_final/Lab_result_final.html")
+    html = template.render(context)
+
+    pisa.CreatePDF(
+        html,
+        dest=response,
+        link_callback=link_callback
+    )
+
+    return response
+
+
+# @login_required(login_url="login")
+# def export_concordance_report_pdf_v2(request, report_id):
+#     report = get_object_or_404(
+#         ConcordanceReport.objects.select_related("batch"),
+#         id=report_id,
+#         final_data__isnull=True
+#     )
+
+#     context = _build_batch_concordance_context(report)
+#     context["now"] = datetime.now().strftime("%d %B %Y").upper()
+
+#     template = get_template("home_final/concordance_report_pdf.html")
+#     html = template.render(context)
+
+#     response = HttpResponse(content_type="application/pdf")
+#     response["Content-Disposition"] = (
+#         f'inline; filename=Batch_{report.batch.bat_Batch_Name}_Concordance.pdf'
+#     )
+
+#     pisa_status = pisa.CreatePDF(html, dest=response)
+#     if pisa_status.err:
+#         return HttpResponse("PDF generation error", status=500)
+
+#     return response
+
+
+@login_required(login_url="login")
+def export_concordance_report_pdf_v2(request, report_id):
+    report = get_object_or_404(
+        ConcordanceReport.objects.select_related("batch"),
+        id=report_id,
+        final_data__isnull=True
+    )
+
+    context = _build_batch_concordance_context(report)
+    context["now"] = datetime.now().strftime("%d %B %Y").upper()
+    context["header_path"] = static("assets/img/brand/header_ed.png")
+    context["footer_path"] = static("assets/img/brand/footer.png")
+
+    template = get_template("home_final/concordance_report_pdf.html")
+    html = template.render(context)
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'inline; filename=Batch_{report.batch.bat_Batch_Name}_Concordance.pdf'
+    )
+
+    pisa_status = pisa.CreatePDF(
+        html,
+        dest=response,
+        link_callback=link_callback,
+    )
+    if pisa_status.err:
+        return HttpResponse("PDF generation error", status=500)
 
     return response
 
@@ -985,25 +2009,27 @@ def get_organism_group(request):
         return JsonResponse({"genus_group": ""})
 
     try:
-        organism = Organism_List.objects.get(
+        OrganismList = HomeOrganismList()
+        organism = OrganismList.objects.get(
             Whonet_Org_Code=org_code
         )
         return JsonResponse({
             "genus_group": organism.Genus_Group or ""
         })
-    except Organism_List.DoesNotExist:
+    except HomeOrganismList().DoesNotExist:
         return JsonResponse({"genus_group": ""})
 
 
 ## aut fill  abx code and tier
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def get_antibiotic_name(request):
     whonet_code = request.GET.get("whonet")
+    AntibioticList = HomeAntibioticList()
     try:
-        abx = Antibiotic_List.objects.get(Whonet_Abx=whonet_code)
+        abx = AntibioticList.objects.get(Whonet_Abx=whonet_code)
         return JsonResponse({"name": abx.Antibiotic})
-    except Antibiotic_List.DoesNotExist:
+    except AntibioticList.DoesNotExist:
         return JsonResponse({"name": ""})
 
 @require_GET
@@ -1011,7 +2037,7 @@ def get_antibiotic_details(request):
     whonet_abx = request.GET.get("whonet_abx", "").strip()
     
     # Use filter().first() to avoid DoesNotExist exceptions crashing the AJAX call
-    abx = Antibiotic_List.objects.filter(Whonet_Abx=whonet_abx).first()
+    abx = HomeAntibioticList().objects.filter(Whonet_Abx=whonet_abx).first()
     
     if abx:
         return JsonResponse({
@@ -1023,7 +2049,7 @@ def get_antibiotic_details(request):
     return JsonResponse({"error": "Not found"}, status=404)
 
 
-# @login_required(login_url="/login/")
+# @login_required(login_url="login")
 # def ajax_filter_antibiotics(request):
 #     if not request.user.is_authenticated:
 #         return JsonResponse({"error": "Unauthorized"}, status=401)
@@ -1119,7 +2145,7 @@ def get_antibiotic_details(request):
 
 
 
-# @login_required(login_url="/login/")
+# @login_required(login_url="login")
 # def ajax_filter_antibiotics(request):
 #     if not request.user.is_authenticated:
 #         return JsonResponse({"error": "Unauthorized"}, status=401)
@@ -1214,7 +2240,7 @@ def get_antibiotic_details(request):
 
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def ajax_filter_antibiotics(request):
     # 1. Get ID from GET parameters (passed by JS)
     isolate_id = request.GET.get("isolate_id")
@@ -1252,20 +2278,21 @@ def ajax_filter_antibiotics(request):
             .first()
         )
 
-    # If no breakpoints exist at all, return empty safely
-    if not breakpoint_year:
-        return JsonResponse({"antibiotics": []})
-
-    # ================= FILTER ANTIBIOTICS =================
-    antibiotics = get_filtered_antibiotics(
-        breakpoint_year,
-        org_code,     # ALWAYS organism code
-        retest=retest
-    )
-
     # ================= FETCH EXISTING FINAL ENTRIES =================
     entries = Final_AntibioticEntry.objects.filter(
         ab_idNum_f_referred=isolate
+    )
+    existing_codes = entries.exclude(
+        **{f"{'ab_Retest_Abx_code' if retest else 'ab_Abx_code'}__isnull": True}
+    ).values_list("ab_Retest_Abx_code" if retest else "ab_Abx_code", flat=True)
+
+    # ================= FILTER ANTIBIOTICS =================
+    antibiotics = _final_antibiotics_for_panel(
+        org_code=org_code,
+        specimen_year=specimen_year,
+        show_site=not retest,
+        retest=retest,
+        existing_whonet_codes=existing_codes,
     )
 
     # Map entries by WHONET code
@@ -1314,7 +2341,7 @@ def ajax_filter_antibiotics(request):
     return JsonResponse({"antibiotics": payload})
 
 
-# @login_required(login_url="/login/")
+# @login_required(login_url="login")
 # def ajax_filter_antibiotics(request):
 #     # 1. Get ID from GET parameters (passed by JS)
 #     isolate_id = request.GET.get("isolate_id")
@@ -1414,7 +2441,7 @@ def ajax_filter_antibiotics(request):
 
 
 ########## organism filtering
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def get_organism_name(request):
     org_code = request.GET.get("org_code")
     field_key = request.GET.get("field_key")
@@ -1422,7 +2449,7 @@ def get_organism_name(request):
     if not org_code or not field_key:
         return JsonResponse({"error": "Missing parameters"}, status=400)
 
-    org = Organism_List.objects.filter(
+    org = HomeOrganismList().objects.filter(
         Whonet_Org_Code=org_code
     ).values().first()
 
@@ -1437,17 +2464,52 @@ def get_organism_name(request):
 
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def download_combined_final_table(request):
     """
     Export FINAL DATA + FINAL ANTIBIOTIC ENTRIES into one wide CSV
     """
+    date_from = parse_date(request.GET.get("date_from", "").strip() or "")
+    date_to = parse_date(request.GET.get("date_to", "").strip() or "")
 
     final_data_entries = (
         Final_Data.objects
         .prefetch_related("final_entries")
         .all()
     )
+    if date_from or date_to:
+        entry_filter = Q()
+        fallback_filter = Q(f_Date_of_Entry__isnull=True)
+
+        if date_from:
+            entry_filter &= Q(f_Date_of_Entry__date__gte=date_from)
+            fallback_filter &= Q(f_Spec_Date__gte=date_from)
+
+        if date_to:
+            entry_filter &= Q(f_Date_of_Entry__date__lte=date_to)
+            fallback_filter &= Q(f_Spec_Date__lte=date_to)
+
+        final_data_entries = final_data_entries.filter(entry_filter | fallback_filter)
+
+    classification_fields = [
+        "Class_AccessionNo",
+        "Class_Chk_Emerging",
+        "Class_Chk_Structured",
+        "Class_Chk_Satscan",
+        "Class_Chk_Serotyping",
+        "Class_Chk_GHRU_all",
+        "Class_Chk_GHRU_Neo",
+        "Class_Chk_EGASP",
+        "Class_Chk_Tricycle",
+        "Class_Chk_Pulsenet",
+        "Class_Chk_Tulip",
+    ]
+    classification_by_final_id = {
+        item.Class_idNumReferred_id: item
+        for item in Classification_Table.objects.filter(
+            Class_idNumReferred__in=final_data_entries
+        ).only("Class_idNumReferred_id", *classification_fields)
+    }
 
     # --------------------------------------------------
     # Collect UNIQUE antibiotics (main + retest)
@@ -1456,6 +2518,7 @@ def download_combined_final_table(request):
 
     for abx, ret in (
         Final_AntibioticEntry.objects
+        .filter(ab_idNum_f_referred__in=final_data_entries)
         .values_list("ab_Abx_code", "ab_Retest_Abx_code")
         .distinct()
     ):
@@ -1514,6 +2577,7 @@ def download_combined_final_table(request):
         "f_Spec_Num",
         "f_Spec_Date",
         "f_Spec_Type",
+        "f_Spec_Emerging",
         "f_Reason",
         "f_Growth",
         "f_Urine_ColCt",
@@ -1529,9 +2593,11 @@ def download_combined_final_table(request):
         "f_OtherResMech",
 
         "f_Site_Pre",
+        "f_Site_Pre_ed",
         "f_Site_Org",
         "f_Site_OrgName",
         "f_Site_Pos",
+        "f_Site_Pos_ed",
         "f_Comments",
 
         "f_ars_ampC",
@@ -1546,7 +2612,9 @@ def download_combined_final_table(request):
         "f_ars_mecA",
         "f_ars_ICR",
         "f_ars_Pre",
+        "f_ars_Pre_ed",
         "f_ars_Post",
+        "f_ars_Post_ed",
         "f_ars_OrgCode",
         "f_ars_OrgName",
         "f_ars_ct_ctl",
@@ -1578,7 +2646,7 @@ def download_combined_final_table(request):
     # --------------------------------------------------
     # HEADER
     # --------------------------------------------------
-    header = static_fields[:]
+    header = static_fields[:] + classification_fields
 
     for abx in sorted_antibiotics:
         header.extend([
@@ -1599,6 +2667,12 @@ def download_combined_final_table(request):
             getattr(final_obj, field, "")
             for field in static_fields
         ]
+        classification = classification_by_final_id.get(final_obj.id)
+        row.extend([
+            getattr(classification, field, "")
+            if classification else ""
+            for field in classification_fields
+        ])
 
         abx_data = {}
 
@@ -1657,7 +2731,7 @@ def download_combined_final_table(request):
 
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def final_abxentry_view(request):
     """
     Displays ORDINARY (non-retest) antibiotic results
@@ -1719,7 +2793,7 @@ def final_abxentry_view(request):
     )
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def export_final_antibiotic_entries(request):
     """
     Export ALL Final_AntibioticEntry records to Excel
@@ -1833,30 +2907,62 @@ def get_recommendation_f_description(request):
     if not reco_code:
         return JsonResponse({"description": ""})
 
-    try:
-        reco = Recommendation_items.objects.get(RecoCode=reco_code)
-        return JsonResponse({"description": reco.Description})
-    except Recommendation_items.DoesNotExist:
-        return JsonResponse({"description": ""})
+    reco = (
+        Recommendation_items.objects
+        .filter(RecoCode__iexact=reco_code)
+        .order_by("id")
+        .first()
+    )
+    return JsonResponse({"description": reco.Description if reco else ""})
 
 
 
 ############### Emerging List
 
 
+def filter_emerging_by_request(queryset, request):
+    q = request.GET.get("q", "").strip()
+    date_from_raw = request.GET.get("date_from", "").strip()
+    date_to_raw = request.GET.get("date_to", "").strip()
+    date_from = parse_date(date_from_raw) if date_from_raw else None
+    date_to = parse_date(date_to_raw) if date_to_raw else None
+
+    if q:
+        queryset = queryset.filter(eme_Accession__icontains=q)
+    if date_from:
+        queryset = queryset.filter(
+            eme_primary_key__f_Referral_Date__gte=date_from
+        )
+    if date_to:
+        queryset = queryset.filter(
+            eme_primary_key__f_Referral_Date__lte=date_to
+        )
+
+    return queryset, q, date_from_raw, date_to_raw
+
+
+def get_emerging_export_queryset(request):
+    queryset, q, date_from, date_to = filter_emerging_by_request(
+        Emerging_Table.fully_emerging().select_related("eme_primary_key"),
+        request,
+    )
+    return (
+        queryset.order_by(
+            "-eme_primary_key__f_Referral_Date",
+            "eme_Accession",
+        ),
+        q,
+        date_from,
+        date_to,
+    )
+
+
 @login_required
 def emerging_list_view(request):
 
-    q = request.GET.get("q", "").strip()
-
-    qs = Emerging_Table.fully_emerging()
-
-    if q:
-        qs = qs.filter(
-            eme_Accession__icontains=q
-        )
-
-    qs = qs.order_by("-eme_spec_Date", "eme_Accession")
+    qs, q, date_from, date_to = get_emerging_export_queryset(request)
+    download_params = request.GET.copy()
+    download_params.pop("page", None)
 
     paginator = Paginator(qs, 25)
     page_number = request.GET.get("page")
@@ -1868,6 +2974,9 @@ def emerging_list_view(request):
         {
             "page_obj": page_obj,
             "q": q,
+            "date_from": date_from,
+            "date_to": date_to,
+            "download_querystring": download_params.urlencode(),
         }
     )
 
@@ -1878,28 +2987,40 @@ def is_blank(val):
     return val is None or val == ""
 
 
-@login_required(login_url="/login/")
+def has_final_retest_result(entry):
+    return any(value not in ("", None) for value in (
+        entry.ab_Retest_DiskValue,
+        entry.ab_Retest_MICValue,
+        entry.ab_Retest_Disk_RIS,
+        entry.ab_Retest_MIC_RIS,
+        entry.ab_Retest_Disk_enRIS,
+        entry.ab_Retest_MIC_enRIS,
+    ))
+
+
+@login_required(login_url="login")
 def download_emerging_list(request):
 
 
-    emerging_qs = Emerging_Table.fully_emerging().select_related(
-        "eme_primary_key"
-    )
+    emerging_qs, _, _, _ = get_emerging_export_queryset(request)
 
    #unique antibiotcs
     unique_abx_codes = set()
 
-    abx_qs = Final_AntibioticEntry.objects.filter(
-        ab_idNum_f_referred__in=emerging_qs.values_list(
-            "eme_primary_key_id", flat=True
+    abx_qs = (
+        Final_AntibioticEntry.objects
+        .filter(
+            ab_idNum_f_referred__in=emerging_qs.values_list(
+                "eme_primary_key_id", flat=True
+            ),
+            ab_Retest_Abx_code__isnull=False,
         )
-    ).values_list("ab_Abx_code", "ab_Retest_Abx_code")
+        .exclude(ab_Retest_Abx_code="")
+    )
 
-    for abx_code, rt_code in abx_qs:
-        if abx_code:
-            unique_abx_codes.add(abx_code)
-        if rt_code:
-            unique_abx_codes.add(rt_code)
+    for entry in abx_qs:
+        if has_final_retest_result(entry):
+            unique_abx_codes.add(entry.ab_Retest_Abx_code)
 
     sorted_antibiotics = sorted(unique_abx_codes)
 
@@ -1916,11 +3037,13 @@ def download_emerging_list(request):
     EXPORT_FIELDS = OrderedDict([
         ("eme_Site_Code",    "Site_Code"),
         ("eme_Accession",    "Accession_No"),
-        ("eme_ReferralData", "Referral_Data"),
+        ("eme_ReferralDate", "Referral_Date"),
         ("eme_DateAdmis",    "Date_Admitted"),
         ("eme_Diagnosis",    "Diagnosis"),
         ("eme_Diag_ICD",     "Diagnosis_ICD"),
         ("eme_ars_Org",      "Organism"),
+        ("eme_abx_code_pheno", "Emerging_Antibiotics"),
+        ("eme_abx_Phenotype",  "Resistance Phenotype"),
 
         ("eme_ars_Pre",      "ARS_Pre"),
         ("eme_ars_Post",     "ARS_Post"),
@@ -1939,8 +3062,6 @@ def download_emerging_list(request):
     #write headers
     for abx in sorted_antibiotics:
         header.extend([
-            abx,
-            f"{abx}_RIS",
             f"{abx}_RT",
             f"{abx}_RT_RIS",
         ])
@@ -1965,26 +3086,7 @@ def download_emerging_list(request):
 
         for ab in abx_entries:
 
-            ##3 initial result
-            if ab.ab_Abx_code:
-                code = ab.ab_Abx_code
-                abx_data.setdefault(code, {})
-
-                if not is_blank(ab.ab_Disk_value) or not is_blank(ab.ab_MIC_value):
-                    val = (
-                        ab.ab_Disk_value
-                        if not is_blank(ab.ab_Disk_value)
-                        else f"{ab.ab_MIC_operand or ''}{ab.ab_MIC_value}"
-                    )
-                    ris = ab.ab_Disk_enRIS or ab.ab_MIC_enRIS
-
-                    abx_data[code].update({
-                        "_Val": val,
-                        "_RIS": ris,
-                    })
-
-            ## retest result
-            if ab.ab_Retest_Abx_code:
+            if ab.ab_Retest_Abx_code and has_final_retest_result(ab):
                 code = ab.ab_Retest_Abx_code
                 abx_data.setdefault(code, {})
 
@@ -2005,17 +3107,11 @@ def download_emerging_list(request):
         for abx in sorted_antibiotics:
             data = abx_data.get(abx, {})
 
-            val = data.get("_Val", "")
-            if isinstance(val, (int, float)):
-                val = format(val, ".3f")
-
             rt_val = data.get("RT_Val", "")
             if isinstance(rt_val, (int, float)):
                 rt_val = format(rt_val, ".3f")
 
             row.extend([
-                val,
-                data.get("_RIS", ""),
                 rt_val,
                 data.get("RT_RIS", ""),
             ])
@@ -2029,16 +3125,70 @@ def download_emerging_list(request):
 
 
 @login_required
-def update_wgs_classification_inline(request, pk):
-    if request.method == "POST":
-        isolate = get_object_or_404(Final_Data, pk=pk)
-        # update a few fields
-        isolate.save()
-        return JsonResponse({"status": "ok"})
+@role_required(ROLE_ADMIN, ROLE_CHECKER, ROLE_LAB_ENCODER)
+def update_wgs_classification_inline(request, accession_no):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "POST required"}, status=405)
+
+    isolate = get_object_or_404(Final_Data, f_AccessionNo=accession_no)
+    sampleinfo = (
+        SampleInformation.objects
+        .filter(sample_accession=isolate.f_AccessionNo)
+        .order_by("-Date_uploaded_si", "-pk")
+        .first()
+    )
+    if not sampleinfo:
+        wgs_project = (
+            WGS_Project.objects
+            .filter(Q(Ref_Accession=isolate) | Q(WGS_SampleInfo_Acc=isolate.f_AccessionNo))
+            .first()
+        )
+        if not wgs_project:
+            wgs_project = WGS_Project.objects.create(
+                Ref_Accession=isolate,
+                WGS_SampleInfo_Acc=isolate.f_AccessionNo,
+                WGS_SampleInfoSummary=True,
+            )
+        sampleinfo = SampleInformation.objects.create(
+            sample_project=wgs_project,
+            sample_accession=isolate.f_AccessionNo,
+            sample_name=isolate.f_AccessionNo,
+        )
+
+    sampleinfo.emerging = "Class_Chk_Emerging" in request.POST
+    sampleinfo.structured = "Class_Chk_Structured" in request.POST
+    sampleinfo.satscan = "Class_Chk_Satscan" in request.POST
+    sampleinfo.serotyping = "Class_Chk_Serotyping" in request.POST
+    sampleinfo.ghru_all = "Class_Chk_GHRU_all" in request.POST
+    sampleinfo.ghru_neo = "Class_Chk_GHRU_Neo" in request.POST
+    sampleinfo.ghru = sampleinfo.ghru_all or sampleinfo.ghru_neo
+    sampleinfo.egasp = "Class_Chk_EGASP" in request.POST
+    sampleinfo.tricycle = "Class_Chk_Tricycle" in request.POST
+    sampleinfo.pulsenet = "Class_Chk_Pulsenet" in request.POST
+    sampleinfo.tulip = "Class_Chk_Tulip" in request.POST
+    sampleinfo.save(update_fields=[
+        "emerging",
+        "structured",
+        "satscan",
+        "serotyping",
+        "ghru",
+        "ghru_all",
+        "ghru_neo",
+        "egasp",
+        "tricycle",
+        "pulsenet",
+        "tulip",
+    ])
+
+    messages.success(
+        request,
+        f"WGS sample information flags updated for {accession_no}"
+    )
+    return redirect("/wgs/projects/?tab=wgs_classification")
 
 
 
-# @login_required(login_url="/login/")
+# @login_required(login_url="login")
 # def wgs_classification_view(request, pk):
 
 #     isolate = get_object_or_404(Final_Data, pk=pk)
@@ -2069,7 +3219,8 @@ def update_wgs_classification_inline(request, pk):
 #     )
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
+@role_required(ROLE_ADMIN, ROLE_CHECKER, ROLE_LAB_ENCODER)
 def wgs_classification_view(request, pk):
     isolate = get_object_or_404(Final_Data, pk=pk)
 
@@ -2079,11 +3230,11 @@ def wgs_classification_view(request, pk):
         .first()
     )
 
-    fastq = gambit = mlst = checkm2 = assembly = amrfinder = None
+    bactscout = gambit = mlst = checkm2 = assembly = amrfinder = None
 
     if wgs_project:
-        fastq = FastqSummary.objects.filter(
-            FastQ_Accession=wgs_project.WGS_FastQ_Acc
+        bactscout = BactScout.objects.filter(
+            BactScout_Accession=wgs_project.WGS_BactScout_Acc
         )
 
         gambit = Gambit.objects.filter(
@@ -2111,7 +3262,7 @@ def wgs_classification_view(request, pk):
         "wgs_project": wgs_project,
 
         # tool-specific datasets
-        "fastq": fastq,
+        "bactscout": bactscout,
         "gambit": gambit,
         "mlst": mlst,
         "checkm2": checkm2,
@@ -2237,9 +3388,34 @@ def classify_ast_deviation(site_ris, ars_ris):
 
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def concordance_analysis_view(request):
-    
+    current_year = timezone.localdate().year
+    selected_year = request.GET.get("year", str(current_year)).strip() or str(current_year)
+    dashboard_year = None if selected_year == "all" else selected_year
+    context = concordance_service.collect_concordance_dashboard(dashboard_year)
+    year_options = list(
+        Final_Data.objects
+        .exclude(f_Referral_Date__isnull=True)
+        .annotate(year=ExtractYear("f_Referral_Date"))
+        .values_list("year", flat=True)
+        .distinct()
+        .order_by("-year")
+    )
+    if current_year not in year_options:
+        year_options.insert(0, current_year)
+    context.update({
+        "selected_year": selected_year,
+        "year_options": year_options,
+        "current_year": current_year,
+        "year_scope_label": "All Years" if selected_year == "all" else selected_year,
+    })
+
+    return render(
+        request,
+        "home_final/concordance_dashboard.html",
+        context
+    )
 
     isolates = Final_Data.objects.prefetch_related("final_entries")
 
@@ -2432,12 +3608,17 @@ def concordance_analysis_view(request):
 
 
 # this is per batch
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 @require_POST
 @transaction.atomic
 def concordance_generate_batch(request):
 
     batch_id = request.POST.get("batch_id")
+    report = concordance_service.generate_concordance_for_batch(
+        batch_id,
+        request.user,
+    )
+    return redirect("concordance_batch_detail", report_id=report.id)
 
     batch = get_object_or_404(Batch_Table, id=batch_id)
 
@@ -2588,7 +3769,7 @@ def concordance_generate_batch(request):
 
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def concordance_batch_detail(request, report_id):
 
     report = get_object_or_404(
@@ -2597,13 +3778,8 @@ def concordance_batch_detail(request, report_id):
         final_data__isnull=True
     )
 
-    details = report.details.all().order_by("accession_no")
-
-    context = {
-        "report": report,
-        "details": details,
-        "is_batch_report": True,
-    }
+    context = _build_batch_concordance_context(report)
+    context["is_batch_report"] = True
 
     return render(
         request,
@@ -2614,12 +3790,18 @@ def concordance_batch_detail(request, report_id):
 
 
 # this is per accession
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 @require_POST
 @transaction.atomic
 def concordance_generate_accession(request):
 
     isolate_id = request.POST.get("isolate_id")
+    isolate = get_object_or_404(Final_Data, id=isolate_id)
+    report = concordance_service.generate_concordance_for_isolate(
+        isolate,
+        request.user,
+    )
+    return redirect("concordance_accession_detail", report_id=report.id)
 
     isolate = get_object_or_404(
         Final_Data.objects.prefetch_related("final_entries"),
@@ -2740,7 +3922,7 @@ def concordance_generate_accession(request):
 
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def concordance_accession_detail(request, report_id):
 
     report = get_object_or_404(
@@ -2771,6 +3953,7 @@ def regenerate_concordance_snapshot(isolate, user=None):
     """
     Auto-regenerates concordance snapshot using the unified engine.
     """
+    return concordance_service.generate_concordance_for_isolate(isolate, user)
 
     from django.db import transaction
 
@@ -2856,28 +4039,34 @@ def regenerate_concordance_snapshot(isolate, user=None):
         (total_deviation / total_pairs) * 100, 2
     ) if total_pairs else 0
 
+    genus_match = 1 if genus_con == "G" else 0
+    species_match = 1 if species_con == "S" else 0
+    genus_rate = 100 if genus_con == "G" else 0
+    species_rate = 100 if species_con == "S" else 0
+
     with transaction.atomic():
 
-        ConcordanceReport.objects.filter(
-            batch=isolate.f_Batch_id,
-            final_data__isnull=True
-        ).delete()
-
-        # Create fresh batch snapshot
-        report = ConcordanceReport.objects.create(
-            batch=isolate.f_Batch_id,
-            created_by=user,
-            total_isolates=1,
-            total_pairs=total_pairs,
-            concordant_pairs=concordant_pairs,
-            vmd=vmd,
-            md=md,
-            minor=minor,
-            total_deviation=total_deviation,
-            critical_deviation=critical_deviation,
-            ast_concordance_rate=ast_concordance_rate,
-            critical_deviation_rate=critical_deviation_rate,
-            total_deviation_rate=total_deviation_rate,
+        report, _ = ConcordanceReport.objects.update_or_create(
+            final_data=isolate,
+            defaults={
+                "batch": isolate.f_Batch_id,
+                "created_by": user,
+                "total_isolates": 1,
+                "total_pairs": total_pairs,
+                "concordant_pairs": concordant_pairs,
+                "vmd": vmd,
+                "md": md,
+                "minor": minor,
+                "total_deviation": total_deviation,
+                "critical_deviation": critical_deviation,
+                "ast_concordance_rate": ast_concordance_rate,
+                "critical_deviation_rate": critical_deviation_rate,
+                "total_deviation_rate": total_deviation_rate,
+                "genus_match": genus_match,
+                "species_match": species_match,
+                "genus_rate": genus_rate,
+                "species_rate": species_rate,
+            }
         )
 
         report.details.all().delete()
@@ -2887,31 +4076,276 @@ def regenerate_concordance_snapshot(isolate, user=None):
 
         ConcordanceDetail.objects.bulk_create(detail_objects)
 
-    print("SNAPSHOT FULLY REGENERATED")
-
 
 # =====================================================
 # HISTORY VIEW
 # =====================================================
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def concordance_history_view(request):
+    q = request.GET.get("q", "").strip()
+    report_type = request.GET.get("report_type", "").strip()
+    generated_by = request.GET.get("generated_by", "").strip()
+    quality = request.GET.get("quality", "").strip()
+    year = request.GET.get("year", "").strip()
+    show_all = request.GET.get("show_all") == "1"
 
     reports = (
         ConcordanceReport.objects
-        .select_related("batch", "created_by")
-        .order_by("-created_at")
+        .select_related("batch", "final_data", "created_by")
+        .annotate(total_dev_calc=F("vmd") + F("md") + F("minor"))
     )
+
+    if not show_all:
+        latest_batch_report = (
+            ConcordanceReport.objects
+            .filter(final_data__isnull=True, batch_id=OuterRef("batch_id"))
+            .order_by("-created_at", "-id")
+            .values("id")[:1]
+        )
+        latest_accession_report = (
+            ConcordanceReport.objects
+            .filter(final_data__isnull=False, final_data_id=OuterRef("final_data_id"))
+            .order_by("-created_at", "-id")
+            .values("id")[:1]
+        )
+        reports = reports.filter(
+            Q(final_data__isnull=True, id=Subquery(latest_batch_report))
+            | Q(final_data__isnull=False, id=Subquery(latest_accession_report))
+        )
+
+    if q:
+        reports = reports.filter(
+            Q(batch__bat_Batch_Name__icontains=q)
+            | Q(batch__bat_SiteCode__icontains=q)
+            | Q(batch__bat_RefNo__icontains=q)
+            | Q(final_data__f_AccessionNo__icontains=q)
+            | Q(final_data__f_SiteCode__icontains=q)
+        )
+
+    if report_type == "batch":
+        reports = reports.filter(final_data__isnull=True)
+    elif report_type == "accession":
+        reports = reports.filter(final_data__isnull=False)
+
+    if generated_by:
+        reports = reports.filter(created_by_id=generated_by)
+
+    if year:
+        reports = reports.filter(
+            Q(batch__bat_Referral_Date__year=year)
+            | Q(final_data__f_Referral_Date__year=year)
+        )
+
+    if quality == "perfect":
+        reports = reports.filter(total_dev_calc=0)
+    elif quality == "acceptable":
+        reports = reports.filter(vmd=0, total_dev_calc__gt=0, total_dev_calc__lte=3)
+    elif quality == "review":
+        reports = reports.exclude(Q(total_dev_calc=0) | Q(vmd=0, total_dev_calc__gt=0, total_dev_calc__lte=3))
+
+    reports = reports.order_by("-created_at", "-id")
+    paginator = Paginator(reports, 25)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    batch_years = (
+        Batch_Table.objects
+        .exclude(bat_Referral_Date__isnull=True)
+        .annotate(year=ExtractYear("bat_Referral_Date"))
+        .values_list("year", flat=True)
+    )
+    accession_years = (
+        Final_Data.objects
+        .exclude(f_Referral_Date__isnull=True)
+        .annotate(year=ExtractYear("f_Referral_Date"))
+        .values_list("year", flat=True)
+    )
+    years = sorted(
+        {item for item in list(batch_years) + list(accession_years) if item},
+        reverse=True
+    )
+    users = User.objects.filter(concordancereport__isnull=False).distinct().order_by("username")
+
+    params = request.GET.copy()
+    params.pop("page", None)
+    preserved_params = params.urlencode()
 
     return render(
         request,
         "home_final/concordance_history.html",
-        {"reports": reports}
+        {
+            "page_obj": page_obj,
+            "reports": page_obj.object_list,
+            "report_count": paginator.count,
+            "q": q,
+            "report_type": report_type,
+            "generated_by": generated_by,
+            "quality": quality,
+            "year": year,
+            "show_all": show_all,
+            "years": years,
+            "users": users,
+            "preserved_params": preserved_params,
+            "quality_choices": [
+                ("perfect", "Perfect"),
+                ("acceptable", "Acceptable"),
+                ("review", "Needs Review"),
+            ],
+        }
     )
 
 
 
-@login_required(login_url="/login/")
+def _format_refno_range(isolates, batch=None):
+    if batch and getattr(batch, "bat_RefNo", None):
+        return batch.bat_RefNo
+
+    refnos = [
+        str(value).strip()
+        for value in isolates.exclude(f_RefNo__isnull=True)
+        .exclude(f_RefNo__exact="")
+        .values_list("f_RefNo", flat=True)
+        if str(value).strip()
+    ]
+    numeric_refs = []
+    width = 0
+
+    for refno in refnos:
+        match = re.search(r"(\d+)$", refno)
+        if match:
+            numeric_refs.append(int(match.group(1)))
+            width = max(width, len(match.group(1)))
+
+    if numeric_refs:
+        start = str(min(numeric_refs)).zfill(width or 4)
+        end = str(max(numeric_refs)).zfill(width or 4)
+        return f"{start}-{end}"
+
+    return ", ".join(refnos)
+
+
+def _resolve_site_contact(batch, first_isolate=None):
+    site_code = (
+        getattr(batch, "bat_SiteCode", "")
+        or getattr(first_isolate, "f_SiteCode", "")
+        or ""
+    )
+    site_name = (
+        getattr(first_isolate, "f_Site_Name", "")
+        or getattr(batch, "bat_Site_Name", "")
+        or ""
+    )
+
+    site = None
+    if str(site_code).strip():
+        site = SiteData.objects.filter(SiteCode__iexact=str(site_code).strip()).first()
+    if site is None and str(site_name).strip():
+        site = SiteData.objects.filter(SiteName__iexact=str(site_name).strip()).first()
+
+    recipient_name = (getattr(site, "Site_Lab_Head", "") or "").strip()
+    recipient_credentials = (getattr(site, "Site_Lab_Head_Credentials", "") or "").strip()
+    recipient_designation = (getattr(site, "Site_Lab_Head_Designation", "") or "").strip()
+    recipient_address = (getattr(site, "Site_Address", "") or "").strip()
+    if recipient_name and not recipient_credentials and "," in recipient_name:
+        recipient_name, recipient_credentials = [
+            part.strip()
+            for part in recipient_name.split(",", 1)
+        ]
+
+    salutation_name = "Lab Manager"
+    if recipient_name:
+        name_without_credentials = recipient_name.split(",")[0].strip()
+        name_parts = [part for part in re.split(r"\s+", name_without_credentials) if part]
+        last_name = name_parts[-1].title() if name_parts else name_without_credentials
+        credential_text = f"{recipient_name} {recipient_credentials}"
+        has_doctor_credential = bool(re.search(r"\b(MD|DR\.?|DO)\b", credential_text, re.IGNORECASE))
+        salutation_name = f"Dr. {last_name}" if has_doctor_credential else name_without_credentials
+
+    return {
+        "site_record": site,
+        "recipient_name": recipient_name or "Lab Manager",
+        "credentials": recipient_credentials,
+        "recipient_designation": recipient_designation or "Lab Manager",
+        "recipient_address": recipient_address,
+        "recipient_salutation": salutation_name,
+        "site_address": recipient_address,
+    }
+
+
+def _build_batch_concordance_context(report):
+    batch = report.batch
+    isolates = Final_Data.objects.filter(f_Batch_id=batch).order_by("f_bat_seq", "f_AccessionNo")
+    first_isolate = isolates.first()
+    id_stats = concordance_service.build_id_stats(isolates)
+    details = report.details.all().order_by("isolate_id", "antibiotic")
+    total_pairs = report.total_pairs or 0
+    total_deviation = (report.vmd or 0) + (report.md or 0) + (report.minor or 0)
+    critical_deviation = (report.vmd or 0) + (report.md or 0)
+    different_org_rate = round((id_stats["different_org"] / id_stats["viable_pure"]) * 100, 2) if id_stats["viable_pure"] else 0
+    total_pairs_rate = 100 if total_pairs else 0
+    isolate_ref_map = {
+        isolate.id: isolate.f_RefNo
+        for isolate in isolates
+    }
+    isolate_bat_seq_map = {
+        isolate.id: isolate.f_bat_seq if isolate.f_bat_seq is not None else ""
+        for isolate in isolates
+    }
+    discordant_details = [
+        {
+            "refno": isolate_ref_map.get(detail.isolate_id, ""),
+            "bat_seq": isolate_bat_seq_map.get(detail.isolate_id, ""),
+            "accession_no": detail.accession_no,
+            "organism": detail.organism,
+            "antibiotic": detail.antibiotic,
+            "site_ris": detail.site_ris,
+            "ars_ris": detail.ars_ris,
+            "deviation_code": detail.deviation_code,
+        }
+        for detail in details
+        if detail.deviation_code != "S"
+    ]
+
+    context = {
+        "report": report,
+        "batch": batch,
+        "isolates": isolates,
+        "details": details,
+        "site_name": first_isolate.f_Site_Name if first_isolate else getattr(batch, "bat_Site_Name", ""),
+        "referral_date": first_isolate.f_Referral_Date if first_isolate else getattr(batch, "bat_Referral_Date", ""),
+        "accession_numbers": _format_refno_range(isolates, batch),
+        "total_isolates": isolates.count(),
+        "mixed_count": id_stats["mixed_count"],
+        "nonviable_count": id_stats["nonviable_count"],
+        "viable_pure": id_stats["viable_pure"],
+        "genus_match": id_stats["genus_match"],
+        "species_match": id_stats["species_match"],
+        "different_org": id_stats["different_org"],
+        "different_org_rate": different_org_rate,
+        "genus_rate": id_stats["genus_rate"],
+        "species_rate": id_stats["species_rate"],
+        "discordant_rows": id_stats["discordant_rows"],
+        "total_pairs": total_pairs,
+        "total_pairs_rate": total_pairs_rate,
+        "concordant": report.concordant_pairs or 0,
+        "vmd": report.vmd or 0,
+        "md": report.md or 0,
+        "minor": report.minor or 0,
+        "critical_deviation": critical_deviation,
+        "total_deviation": total_deviation,
+        "concordance_rate": report.ast_concordance_rate or 0,
+        "critical_deviation_rate": round((critical_deviation / total_pairs) * 100, 2) if total_pairs else 0,
+        "total_deviation_rate": round((total_deviation / total_pairs) * 100, 2) if total_pairs else 0,
+        "abx_summary": concordance_service.calculate_antibiotic_summary(details),
+        "isolate_ref_map": isolate_ref_map,
+        "isolate_bat_seq_map": isolate_bat_seq_map,
+        "discordant_details": discordant_details,
+    }
+    context.update(_resolve_site_contact(batch, first_isolate))
+    return context
+
+
+@login_required(login_url="login")
 def concordance_report_detail_view(request, report_id):
 
     report = get_object_or_404(
@@ -2929,13 +4363,13 @@ def concordance_report_detail_view(request, report_id):
 
     return render(
         request,
-        "home_final/concordance_report_batch_detail.html",
+        "home_final/concordance_batch_detail.html",
         context
     )
 
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
 def export_concordance_batch_excel(request, report_id):
 
     # 🔒 Ensure this is a BATCH report only
@@ -3016,6 +4450,20 @@ def export_concordance_batch_excel(request, report_id):
 
     genus_rate = round((genus_match / viable_pure) * 100, 2) if viable_pure else 0
     species_rate = round((species_match / viable_pure) * 100, 2) if viable_pure else 0
+
+    id_stats = concordance_service.build_id_stats(isolates)
+    genus_match = id_stats["genus_match"]
+    species_match = id_stats["species_match"]
+    different_org = id_stats["different_org"]
+    mixed_count = id_stats["mixed_count"]
+    nonviable_count = id_stats["nonviable_count"]
+    viable_pure = id_stats["viable_pure"]
+    genus_rate = id_stats["genus_rate"]
+    species_rate = id_stats["species_rate"]
+    discordant_rows = [
+        [row["refno"], row["site_org"], row["ars_org"]]
+        for row in id_stats["discordant_rows"]
+    ]
 
     # =====================================================
     # AST CALCULATIONS (FROM SNAPSHOT)
@@ -3118,7 +4566,7 @@ def export_concordance_batch_excel(request, report_id):
     ws["C21"] = minor
 
     ws["A22"] = "3.4 Critical Deviations (<=5%)"
-    ws["C22"] = vmd
+    ws["C22"] = vmd + md
 
     ws["A23"] = "3.5 Total Deviations (<=8%)"
     ws["C23"] = total_deviation
@@ -3148,7 +4596,169 @@ def export_concordance_batch_excel(request, report_id):
 
 
 
-@login_required(login_url="/login/")
+@login_required(login_url="login")
+def export_concordance_batch_excel(request, report_id):
+    report = get_object_or_404(
+        ConcordanceReport.objects.select_related("batch"),
+        id=report_id,
+        final_data__isnull=True
+    )
+    if not report.batch:
+        return HttpResponse("Invalid batch report.", status=400)
+
+    context = _build_batch_concordance_context(report)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Concordance Summary"
+
+    blue = PatternFill("solid", fgColor="1E5A96")
+    light_blue = PatternFill("solid", fgColor="D9EAF7")
+    gray = PatternFill("solid", fgColor="E6E6E6")
+    thin = Border(
+        left=Side(style="thin", color="9E9E9E"),
+        right=Side(style="thin", color="9E9E9E"),
+        top=Side(style="thin", color="9E9E9E"),
+        bottom=Side(style="thin", color="9E9E9E"),
+    )
+
+    ws.merge_cells("A1:D1")
+    ws["A1"] = "Table 1: Summary Concordance Report"
+    ws["A1"].font = Font(bold=True, size=14, color="FFFFFF")
+    ws["A1"].fill = blue
+    ws["A1"].alignment = Alignment(horizontal="center")
+
+    info_rows = [
+        ("Sentinel Site", context["site_name"]),
+        ("Date of Referral", context["referral_date"]),
+        ("Accession Numbers", context["accession_numbers"]),
+    ]
+    for idx, (label, value) in enumerate(info_rows, 3):
+        ws.cell(row=idx, column=1, value=label).font = Font(bold=True)
+        ws.cell(row=idx, column=2, value=value)
+        ws.cell(row=idx, column=1).fill = light_blue
+
+    rows = [
+        ("1. QUALITY OF REFERRAL", "TARGET", "Number", "%"),
+        ("1.1 Number of Isolates", "", context["total_isolates"], ""),
+        ("1.2 Number of Nonviable Isolates", "", context["nonviable_count"], ""),
+        ("1.3 Number of Mixed Cultures", "", context["mixed_count"], ""),
+        ("1.4 Number of Viable and Pure Isolates", "", context["viable_pure"], ""),
+        ("2. ORGANISM IDENTIFICATION", "TARGET", "Number", "%"),
+        ("2.1 Concordant ID Genus Level", ">= 96%", context["genus_match"], f"{context['genus_rate']}%"),
+        ("2.2 Concordant ID Species Level", ">= 90%", context["species_match"], f"{context['species_rate']}%"),
+        ("2.3 Different Identification", "", context["different_org"], f"{context['different_org_rate']}%"),
+        ("3. AST RESULTS", "TARGET", "Number", "%"),
+        ("3.1 Total Number of AST pairs analyzed", "", context["total_pairs"], f"{context['total_pairs_rate']}%"),
+        ("3.2 Concordant AST Results", "", context["concordant"], f"{context['concordance_rate']}%"),
+        ("3.3 Discordant AST Results", "", "", ""),
+        ("A - Very Major Deviations", "", context["vmd"], ""),
+        ("B - Major Deviations", "", context["md"], ""),
+        ("C - Minor Deviations", "", context["minor"], ""),
+        ("3.4 Critical Deviations", "<= 5%", context["critical_deviation"], f"{context['critical_deviation_rate']}%"),
+        ("3.5 Total Deviations", "<= 8%", context["total_deviation"], f"{context['total_deviation_rate']}%"),
+    ]
+
+    start_row = 7
+    for offset, row_values in enumerate(rows):
+        row_num = start_row + offset
+        for col_num, value in enumerate(row_values, 1):
+            cell = ws.cell(row=row_num, column=col_num, value=value)
+            cell.border = thin
+            cell.alignment = Alignment(vertical="center", wrap_text=True)
+        if row_values[0].startswith(("1.", "2.", "3.")) and row_values[0].count(".") == 1:
+            for col_num in range(1, 5):
+                ws.cell(row=row_num, column=col_num).fill = gray
+                ws.cell(row=row_num, column=col_num).font = Font(bold=True)
+
+    row_num = start_row + len(rows) + 2
+    ws.cell(row=row_num, column=1, value="Table 2. Discordant Identification").font = Font(bold=True)
+    row_num += 1
+    for col_num, header in enumerate(["Bat Seq", "SITE IDENTIFICATION", "ARSRL IDENTIFICATION"], 1):
+        cell = ws.cell(row=row_num, column=col_num, value=header)
+        cell.fill = gray
+        cell.font = Font(bold=True)
+        cell.border = thin
+    for item in context["discordant_rows"]:
+        row_num += 1
+        for col_num, value in enumerate([item["bat_seq"], item["site_org"], item["ars_org"]], 1):
+            ws.cell(row=row_num, column=col_num, value=value).border = thin
+
+    row_num += 2
+    ws.cell(row=row_num, column=1, value="Table 3. AST Results with Deviations").font = Font(bold=True)
+    row_num += 1
+    ast_headers = ["Bat Seq", "Accession No", "ARSRL_FINAL", "Antibiotic", "Site RIS", "ARSRL RIS", "Deviation"]
+    for col_num, header in enumerate(ast_headers, 1):
+        cell = ws.cell(row=row_num, column=col_num, value=header)
+        cell.fill = gray
+        cell.font = Font(bold=True)
+        cell.border = thin
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    if context["discordant_details"]:
+        for item in context["discordant_details"]:
+            row_num += 1
+            row_values = [
+                item["bat_seq"],
+                item["accession_no"],
+                item["organism"],
+                item["antibiotic"],
+                item["site_ris"],
+                item["ars_ris"],
+                item["deviation_code"],
+            ]
+            for col_num, value in enumerate(row_values, 1):
+                cell = ws.cell(row=row_num, column=col_num, value=value)
+                cell.border = thin
+                cell.alignment = Alignment(vertical="center", wrap_text=True)
+    else:
+        row_num += 1
+        ws.cell(row=row_num, column=1, value="No AST deviation records.")
+        ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=len(ast_headers))
+        for col_num in range(1, len(ast_headers) + 1):
+            cell = ws.cell(row=row_num, column=col_num)
+            cell.border = thin
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    detail_ws = wb.create_sheet("AST Snapshot")
+    detail_headers = ["Bat Seq", "Accession No", "Organism", "Antibiotic", "Site RIS", "ARSRL RIS", "Deviation"]
+    for col_num, header in enumerate(detail_headers, 1):
+        cell = detail_ws.cell(row=1, column=col_num, value=header)
+        cell.fill = blue
+        cell.font = Font(color="FFFFFF", bold=True)
+        cell.alignment = Alignment(horizontal="center")
+    for detail in context["details"]:
+        detail_ws.append([
+            context["isolate_bat_seq_map"].get(detail.isolate_id, ""),
+            detail.accession_no,
+            detail.organism,
+            detail.antibiotic,
+            detail.site_ris,
+            detail.ars_ris,
+            detail.deviation_code,
+        ])
+
+    for sheet in [ws, detail_ws]:
+        sheet.freeze_panes = "A2" if sheet == detail_ws else "A7"
+        for column_index in range(1, sheet.max_column + 1):
+            col_letter = get_column_letter(column_index)
+            max_length = 0
+            for row_index in range(1, sheet.max_row + 1):
+                cell = sheet.cell(row=row_index, column=column_index)
+                if isinstance(cell, MergedCell) or cell.value is None:
+                    continue
+                max_length = max(max_length, len(str(cell.value)))
+            sheet.column_dimensions[col_letter].width = min(max(max_length + 2, 12), 42)
+
+    filename = f"{report.batch.bat_Batch_Name}_Concordance.xlsx"
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
+
+
+@login_required(login_url="login")
 def export_concordance_accession_excel(request, report_id):
 
     # 🔒 Ensure this is an ACCESSION report only
@@ -3184,6 +4794,13 @@ def export_concordance_accession_excel(request, report_id):
         genus_con = "X"
         species_con = "X"
 
+    genus_con, species_con = concordance_service.classify_id_concordance(
+        isolate.f_Site_OrgName,
+        isolate.f_ars_Pre,
+        isolate.f_ars_OrgName,
+        isolate.f_ars_Post,
+    )
+
     # =====================================================
     # AST SNAPSHOT VALUES (FROM REPORT)
     # =====================================================
@@ -3212,8 +4829,8 @@ def export_concordance_accession_excel(request, report_id):
     ws["A1"] = "Accession Number"
     ws["B1"] = isolate.f_AccessionNo
 
-    ws["A1"] = "Sentinel Site"
-    ws["B1"] = isolate.f_Site_Name
+    ws["A2"] = "Sentinel Site"
+    ws["B2"] = isolate.f_Site_Name
 
     ws["A3"] = "Date of Referral"
     ws["B3"] = str(isolate.f_Referral_Date)
@@ -3310,159 +4927,180 @@ def export_concordance_accession_excel(request, report_id):
 
 
 
+def link_callback(uri, rel):
+    """
+    Converts static/media URLs to absolute file paths for xhtml2pdf.
+    Needed for images like header_ed.jpg and footer.jpg.
+    """
+
+    path = urlparse(uri).path
+
+    if path.startswith(settings.MEDIA_URL):
+        file_path = os.path.join(
+            settings.MEDIA_ROOT,
+            path.replace(settings.MEDIA_URL, "")
+        )
+
+    elif path.startswith(settings.STATIC_URL):
+        relative_path = path.replace(settings.STATIC_URL, "")
+        file_path = finders.find(relative_path)
+
+        if not file_path:
+            file_path = os.path.join(settings.STATIC_ROOT, relative_path)
+
+    else:
+        return uri
+
+    if not os.path.isfile(file_path):
+        raise Exception(f"File not found: {file_path}")
+
+    return file_path
 
 
+# @login_required(login_url="login")
+# def export_concordance_report_pdf(request, report_id):
 
-@login_required(login_url="/login/")
-def export_concordance_report_pdf(request, report_id):
+#     report = get_object_or_404(
+#         ConcordanceReport.objects.select_related("batch"),
+#         id=report_id
+#     )
 
-    report = get_object_or_404(
-        ConcordanceReport.objects.select_related("batch"),
-        id=report_id
-    )
+#     batch = report.batch
+#     isolates = Final_Data.objects.filter(f_Batch_id=batch)
 
-    batch = report.batch
-    isolates = Final_Data.objects.filter(f_Batch_id=batch)
+#     total_isolates = isolates.count()
 
-    total_isolates = isolates.count()
+#     site_name = isolates.first().f_Site_Name if isolates.exists() else ""
+#     referral_date = isolates.first().f_Referral_Date if isolates.exists() else ""
+#     refno = isolates.first().f_RefNo if isolates.exists() else ""
 
-    site_name = isolates.first().f_Site_Name if isolates.exists() else ""
-    referral_date = isolates.first().f_Referral_Date if isolates.exists() else ""
-    refno = isolates.first().f_RefNo if isolates.exists() else ""
+#     # =====================================================
+#     # ORGANISM CONCORDANCE (LIVE CALCULATION)
+#     # =====================================================
 
-    # =====================================================
-    # ORGANISM CONCORDANCE (LIVE CALCULATION)
-    # =====================================================
+#     genus_match = 0
+#     species_match = 0
+#     different_org = 0
+#     mixed_count = 0
+#     nonviable_count = 0
+#     discordant_rows = []
 
-    genus_match = 0
-    species_match = 0
-    different_org = 0
-    mixed_count = 0
-    nonviable_count = 0
-    discordant_rows = []
+#     for isolate in isolates:
 
-    for isolate in isolates:
+#         site_org = (isolate.f_Site_OrgName or "").strip().lower()
+#         ars_org = (isolate.f_ars_OrgName or "").strip().lower()
+#         ars_pre = (isolate.f_ars_Pre or "").strip().lower()
 
-        site_org = (isolate.f_Site_OrgName or "").strip().lower()
-        ars_org = (isolate.f_ars_OrgName or "").strip().lower()
-        ars_pre = (isolate.f_ars_Pre or "").strip().lower()
+#         if "mixed culture" in ars_pre:
+#             mixed_count += 1
+#             continue
 
-        if "mixed culture" in ars_pre:
-            mixed_count += 1
-            continue
+#         if ars_org == "not viable":
+#             nonviable_count += 1
+#             continue
 
-        if ars_org == "not viable":
-            nonviable_count += 1
-            continue
+#         if site_org and ars_org:
 
-        if site_org and ars_org:
+#             if site_org == ars_org:
+#                 species_match += 1
+#                 genus_match += 1
 
-            if site_org == ars_org:
-                species_match += 1
-                genus_match += 1
+#             elif site_org.split(" ")[0] == ars_org.split(" ")[0]:
+#                 genus_match += 1
 
-            elif site_org.split(" ")[0] == ars_org.split(" ")[0]:
-                genus_match += 1
+#             else:
+#                 different_org += 1
+#                 discordant_rows.append({
+#                     "refno": isolate.f_RefNo,
+#                     "site_org": isolate.f_Site_OrgName,
+#                     "ars_org": isolate.f_ars_OrgName
+#                 })
 
-            else:
-                different_org += 1
-                discordant_rows.append({
-                    "refno": isolate.f_RefNo,
-                    "site_org": isolate.f_Site_OrgName,
-                    "ars_org": isolate.f_ars_OrgName
-                })
+#     viable_pure = total_isolates - mixed_count - nonviable_count
 
-    viable_pure = total_isolates - mixed_count - nonviable_count
+#     genus_rate = round((genus_match / viable_pure) * 100, 2) if viable_pure else 0
+#     species_rate = round((species_match / viable_pure) * 100, 2) if viable_pure else 0
 
-    genus_rate = round((genus_match / viable_pure) * 100, 2) if viable_pure else 0
-    species_rate = round((species_match / viable_pure) * 100, 2) if viable_pure else 0
+#     id_stats = concordance_service.build_id_stats(isolates)
+#     genus_match = id_stats["genus_match"]
+#     species_match = id_stats["species_match"]
+#     different_org = id_stats["different_org"]
+#     mixed_count = id_stats["mixed_count"]
+#     nonviable_count = id_stats["nonviable_count"]
+#     viable_pure = id_stats["viable_pure"]
+#     genus_rate = id_stats["genus_rate"]
+#     species_rate = id_stats["species_rate"]
+#     discordant_rows = id_stats["discordant_rows"]
 
-    # =====================================================
-    # AST CALCULATIONS (FROM SNAPSHOT)
-    # =====================================================
+#     # =====================================================
+#     # AST CALCULATIONS (FROM SNAPSHOT)
+#     # =====================================================
 
-    total_pairs = report.total_pairs or 0
-    concordant = report.concordant_pairs or 0
-    vmd = report.vmd or 0
-    md = report.md or 0
-    minor = report.minor or 0
+#     total_pairs = report.total_pairs or 0
+#     concordant = report.concordant_pairs or 0
+#     vmd = report.vmd or 0
+#     md = report.md or 0
+#     minor = report.minor or 0
 
-    total_deviation = vmd + md + minor
+#     total_deviation = vmd + md + minor
 
-    concordance_rate = round((concordant / total_pairs) * 100, 2) if total_pairs else 0
-    vmd_rate = round((vmd / total_pairs) * 100, 2) if total_pairs else 0
-    total_deviation_rate = round((total_deviation / total_pairs) * 100, 2) if total_pairs else 0
+#     concordance_rate = round((concordant / total_pairs) * 100, 2) if total_pairs else 0
+#     vmd_rate = round((vmd / total_pairs) * 100, 2) if total_pairs else 0
+#     total_deviation_rate = round((total_deviation / total_pairs) * 100, 2) if total_pairs else 0
 
-    # =====================================================
-    # DISCORDANT ANTIBIOTIC SUMMARY
-    # =====================================================
+#     # =====================================================
+#     # DISCORDANT ANTIBIOTIC SUMMARY
+#     # =====================================================
 
-    details = report.details.all()
+#     details = report.details.all()
+#     abx_summary = concordance_service.calculate_antibiotic_summary(details)
 
-    from collections import defaultdict
+#     context = {
+#         "report": report,
+#         "site_name": site_name,
+#         "referral_date": referral_date,
+#         "refno": refno,
+#         "total_isolates": total_isolates,
+#         "mixed_count": mixed_count,
+#         "nonviable_count": nonviable_count,
+#         "viable_pure": viable_pure,
+#         "genus_match": genus_match,
+#         "species_match": species_match,
+#         "different_org": different_org,
+#         "genus_rate": genus_rate,
+#         "species_rate": species_rate,
+#         "discordant_rows": discordant_rows,
+#         "total_pairs": total_pairs,
+#         "concordant": concordant,
+#         "vmd": vmd,
+#         "md": md,
+#         "minor": minor,
+#         "concordance_rate": concordance_rate,
+#         "vmd_rate": vmd_rate,
+#         "total_deviation": total_deviation,
+#         "total_deviation_rate": total_deviation_rate,
+#         "abx_summary": abx_summary,
+#         "now": datetime.now().strftime("%d %B %Y"),
+#         "header_path": static("assets/img/brand/header_ed.png"),
+#         "footer_path": static("assets/img/brand/footer.png"),
+        
+#     }
 
-    abx_summary = defaultdict(lambda: {
-        "total": 0,
-        "vmd": 0,
-        "md": 0,
-        "minor": 0
-    })
+#     template = get_template("home_final/concordance_report_pdf.html")
+#     html = template.render(context)
 
-    for row in details:
-        if row.deviation_code != "Concordant":
+#     response = HttpResponse(content_type="application/pdf")
+#     response["Content-Disposition"] = (
+#         f'inline; filename=Batch_{report.batch.bat_Batch_Name}_Concordance.pdf'
+#     )
 
-            abx_summary[row.antibiotic]["total"] += 1
+#     pisa_status = pisa.CreatePDF(
+#     html,
+#     dest=response,
+#     link_callback=link_callback
+# )
 
-            if row.deviation_code == "Very Major":
-                abx_summary[row.antibiotic]["vmd"] += 1
-            elif row.deviation_code == "Major":
-                abx_summary[row.antibiotic]["md"] += 1
-            else:
-                abx_summary[row.antibiotic]["minor"] += 1
+#     if pisa_status.err:
+#         return HttpResponse("PDF generation error", status=500)
 
-    context = {
-        "report": report,
-        "site_name": site_name,
-        "referral_date": referral_date,
-        "refno": refno,
-        "total_isolates": total_isolates,
-        "mixed_count": mixed_count,
-        "nonviable_count": nonviable_count,
-        "viable_pure": viable_pure,
-        "genus_match": genus_match,
-        "species_match": species_match,
-        "different_org": different_org,
-        "genus_rate": genus_rate,
-        "species_rate": species_rate,
-        "discordant_rows": discordant_rows,
-        "total_pairs": total_pairs,
-        "concordant": concordant,
-        "vmd": vmd,
-        "md": md,
-        "minor": minor,
-        "concordance_rate": concordance_rate,
-        "vmd_rate": vmd_rate,
-        "total_deviation": total_deviation,
-        "total_deviation_rate": total_deviation_rate,
-        "abx_summary": dict(abx_summary),
-        "now": datetime.now().strftime("%d %B %Y"),
-    }
-
-    template = get_template("home_final/concordance_report_pdf.html")
-    html = template.render(context)
-
-    response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = (
-        f'inline; filename=Batch_{report.batch.bat_Batch_Name}_Concordance.pdf'
-    )
-
-    pisa_status = pisa.CreatePDF(html, dest=response)
-
-    if pisa_status.err:
-        return HttpResponse("PDF generation error", status=500)
-
-    return response
-
-
-
-
+#     return response

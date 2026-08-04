@@ -1,13 +1,387 @@
 {% extends 'layouts/base.html' %}
+{% load static %}
 {% block title %}WGS Data Overview{% endblock %}
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<style>
+    /* ── Toolbar (title + search + counter + download + filters) ── */
+    .wgs-toolbar {
+      padding: 0.65rem 1rem !important;
+      border: 0;
+      overflow: visible;
+      box-shadow: none;
+      background: #ffffff;
+      border-bottom: 1px solid rgba(0, 188, 212, 0.16);
+    }
+
+    .wgs-overview-card {
+      border: 1px solid rgba(0, 188, 212, 0.18);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #ffffff;
+      box-shadow: 0 14px 32px rgba(15, 58, 95, 0.16);
+    }
+
+    .wgs-overview-card > .card.shadow {
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none !important;
+    }
+
+    .wgs-overview-card .card-body {
+      background: #ffffff;
+      padding: 1.25rem;
+    }
+
+    .wgs-toolbar-row-1 {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .wgs-pane-title {
+      color: #0f3a5f;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0;
+      white-space: nowrap;
+      margin: 0;
+    }
+
+    .wgs-pane-search {
+      flex: 1 1 280px;
+      max-width: 360px;
+    }
+
+    .wgs-overview-filter-form {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 1 1 620px;
+      flex-wrap: wrap;
+      min-width: 280px;
+    }
+
+    .wgs-year-filter,
+    .wgs-date-filter {
+      height: 30px;
+      border: 1px solid #d8e2ef;
+      border-radius: 8px;
+      color: #24466f;
+      font-size: 0.78rem;
+      font-weight: 700;
+      box-shadow: 0 3px 10px rgba(15, 58, 95, 0.06);
+    }
+
+    .wgs-year-filter {
+      width: 125px;
+      height: 38px;
+    }
+
+    .wgs-download-filter-grid {
+      display: grid;
+      grid-template-columns: minmax(135px, 1fr) minmax(135px, 1fr);
+      gap: 0.75rem;
+      margin-top: 1rem;
+      padding: 0.85rem;
+      border: 1px solid #d8e2ef;
+      border-radius: 8px;
+      background: #f8fbff;
+    }
+
+    .wgs-download-filter-grid label {
+      color: #24466f;
+      font-size: 0.72rem;
+      font-weight: 800;
+      margin-bottom: 0.25rem;
+    }
+
+    .wgs-download-filter-grid .form-control {
+      height: 34px;
+      font-size: 0.8rem;
+      border-radius: 7px;
+    }
+
+    .wgs-download-filter-note {
+      color: #7890a6;
+      font-size: 0.72rem;
+      font-weight: 600;
+      margin-top: 0.45rem;
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 767.98px) {
+      .wgs-download-filter-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .wgs-pane-search .input-group {
+      height: 30px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid #d8e2ef;
+      overflow: hidden;
+      box-shadow: 0 3px 10px rgba(15, 58, 95, 0.06);
+    }
+
+    .wgs-pane-search .input-group-text,
+    .wgs-pane-search .form-control,
+    .wgs-pane-search .btn {
+      height: 30px;
+      border: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .wgs-pane-search .form-control {
+      color: #24466f;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    .wgs-pane-search .form-control::placeholder {
+      color: #7890a6;
+    }
+
+    .wgs-pane-search .btn {
+      color: #ffffff !important;
+      font-weight: 800;
+      padding-inline: 0.75rem;
+      background: #0f4c81 !important;
+      border-radius: 6px !important;
+      height: 24px;
+      margin: 3px;
+      font-size: 0.72rem;
+    }
+
+    .wgs-pane-search .search-clear-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      height: 24px;
+      margin: 3px 3px 3px 0;
+      padding: 0 0.6rem;
+      border-radius: 6px;
+      color: #ffffff !important;
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+      background: #5f6b76;
+    }
+
+    .wgs-pane-search .search-clear-btn:hover {
+      color: #ffffff !important;
+      background: #4b5560;
+    }
+
+    .wgs-pane-counter {
+      color: #24466f;
+      font-weight: 700;
+      letter-spacing: 0;
+      font-size: 0.78rem;
+      white-space: nowrap;
+      margin-left: auto;
+    }
+
+    .wgs-pane-counter strong {
+      color: #08798a !important;
+      font-weight: 900;
+    }
+
+    .wgs-download-toolbar-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-height: 30px;
+      padding: 0.3rem 0.75rem;
+      border-radius: 7px;
+      font-weight: 800;
+      font-size: 0.78rem;
+      box-shadow: 0 4px 12px rgba(0, 150, 136, 0.18);
+      white-space: nowrap;
+    }
+
+    .wgs-toolbar-row-2 {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-top: 0.55rem;
+      padding-top: 0.55rem;
+      border-top: 1px solid rgba(15, 58, 95, 0.08);
+      flex-wrap: wrap;
+    }
+
+    .wgs-filter-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #24466f;
+      white-space: nowrap;
+    }
+
+    .wgs-toolbar-row-2 .btn {
+      padding: 0.25rem 0.6rem;
+      font-size: 0.72rem;
+    }
+
+    .wgs-table-shell {
+      max-height: 550px;
+      overflow-y: auto;
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 188, 212, 0.28);
+      background: #f8fcfd;
+    }
+
+    .wgs-overview-page {
+      position: relative;
+      min-height: calc(100vh - 280px);
+      padding-top: 1.35rem;
+      padding-bottom: 2rem;
+      background: linear-gradient(180deg, #effaff 0%, #f8fcfe 48%, #ffffff 100%);
+    }
+
+    .wgs-overview-page::before,
+    .wgs-overview-page::after {
+      display: none !important;
+    }
+
+    .wgs-page-header .header-body {
+      min-height: 98px;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .wgs-page-header .header-body > .row {
+      width: 100%;
+    }
+
+    @media (max-width: 991.98px) {
+      .wgs-page-header {
+        min-height: 98px !important;
+      }
+
+      .wgs-page-header .header-body {
+        min-height: 100px;
+      }
+    }
+
+    .wgs-table-shell::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+
+    .wgs-table-shell::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    .wgs-table-shell::-webkit-scrollbar-thumb {
+      background: #c0cfe0;
+      border-radius: 4px;
+    }
+
+    .wgs-table-shell::-webkit-scrollbar-thumb:hover {
+      background: #1e5a96;
+    }
+
+    #wgs-table {
+      margin: 0;
+      border-collapse: collapse;
+      background: transparent;
+    }
+
+    #wgs-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    #wgs-table thead {
+      background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+      backdrop-filter: blur(14px) saturate(125%);
+      -webkit-backdrop-filter: blur(14px) saturate(125%);
+      border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    #wgs-table thead th {
+      background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+      color: #fff !important;
+      border: 0;
+      padding: 0.9rem 0.9rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      backdrop-filter: blur(14px) saturate(125%);
+      -webkit-backdrop-filter: blur(14px) saturate(125%);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+    }
+
+    #wgs-table tbody tr {
+      background: #f8fcfd;
+      border-bottom: 1px solid rgba(15, 58, 95, 0.12);
+      transition: background 0.18s ease;
+    }
+
+    #wgs-table tbody tr:hover {
+      background: #eaf9fc;
+    }
+
+    #wgs-table tbody td {
+      background: transparent;
+      color: #173a55;
+      font-weight: 600;
+      padding: 0.85rem 0.9rem;
+      vertical-align: middle;
+    }
+
+    #wgs-table .wgs-accession-link {
+      color: #064f76 !important;
+      font-weight: 900;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+    }
+
+    #wgs-table .badge-success,
+    #wgs-table .badge-light {
+      min-width: 46px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 800;
+      border: 1px solid transparent;
+      box-shadow: 0 2px 6px rgba(15, 58, 95, 0.14);
+    }
+
+    #wgs-table .badge-success {
+      background: #0097a7 !important;
+      border-color: rgba(0, 151, 167, 0.78) !important;
+      color: #ffffff !important;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.14);
+    }
+
+    #wgs-table .badge-light {
+      background: rgba(255, 255, 255, 0.88) !important;
+      border-color: rgba(15, 58, 95, 0.18) !important;
+      color: #52697c !important;
+    }
+</style>
+
+{% endblock stylesheets%}
+
 
 {% block content %}
 <!-- Header Section -->
-<div class="header bg-primary pb-6" style="min-height: 200px; background-image: url(/static/assets/img/theme/microbial.jpg); background-size: cover; background-position: bottom center;">
+<div class="header bg-primary pb-3 wgs-page-header" style="min-height: 128px; background-image: url(/static/assets/img/theme/microbial.jpg); background-size: cover; background-position: center center;">
   <span class="mask bg-gradient-default opacity-3"></span>
   <div class="container-fluid">
     <div class="header-body">
-      <div class="row align-items-center py-4">
+      <div class="row align-items-center py-3">
         <div class="col-lg-6 col-7">
           <h6 class="h2 text-white d-inline-block mb-0">Referred Isolates Database</h6>
           <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
@@ -20,7 +394,6 @@
         <div class="col-lg-6 col-5 text-right">
           <a class="btn btn-sm btn-neutral" href="{% url 'batch_create_view' %}">New Batch</a>
           <a class="btn btn-sm btn-neutral" href="{% url 'upload_wgs_view' %}">Upload Data</a>
-          <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#downloadModal">Download WGS Data</button>
           <button class="btn btn-sm btn-neutral" onclick="history.back()">Back</button>
         </div>
       </div>
@@ -29,100 +402,101 @@
 </div>
 
 <!-- Main Content -->
-<div class="container-fluid mt--6">
-  
-  <div class="card shadow">
-    
-<div class="card shadow">
-  <div class="card-header bg-gradient-primary border-0 py-3">
-    <div class="row align-items-center">
-      
-      <div class="col-lg-8 d-flex align-items-center">
-        <h3 class="mb-0 text-white mr-4">
-          <i class="ni ni-atom mr-2"></i>WGS Data Overview
-        </h3>
+<div class="container-fluid wgs-overview-page">
 
-        <div style="width: 320px;">
-          <form method="get" class="mb-0">
-            <div class="input-group input-group-sm input-group-alternative">
-              <div class="input-group-prepend">
-                <span class="input-group-text"><i class="fas fa-search"></i></span>
-              </div>
-              <input
-                type="text"
-                name="q"
-                value="{{ request.GET.q }}"
-                class="form-control"
-                placeholder="Search data..."
-              >
-              <div class="input-group-append">
-                <button class="btn btn-neutral btn-sm" type="submit">Go</button>
+  <div class="card shadow wgs-overview-card">
+
+    <div class="card shadow">
+      <div class="wgs-toolbar">
+        <div class="wgs-toolbar-row-1">
+          <h2 class="wgs-pane-title">
+            <i class="ni ni-atom mr-2"></i>WGS Data Overview
+          </h2>
+
+          <form method="get" class="wgs-overview-filter-form mb-0">
+            <div class="wgs-pane-search">
+              <div class="input-group input-group-sm input-group-alternative">
+                <div class="input-group-prepend">
+                  <span class="input-group-text"><i class="fas fa-search"></i></span>
+                </div>
+                <input
+                  type="text"
+                  name="q"
+                  value="{{ request.GET.q }}"
+                  class="form-control"
+                  placeholder="Search data..."
+                >
+                <div class="input-group-append">
+                  <button class="btn btn-neutral btn-sm" type="submit">
+                    <i class="fas fa-search mr-1"></i>Search
+                  </button>
+                  {% if q or selected_year %}
+                    <a href="{% url 'view_wgs_overview' %}" class="search-clear-btn">
+                      <i class="fas fa-redo"></i>
+                      Reset
+                    </a>
+                  {% endif %}
+                </div>
               </div>
             </div>
+
+            <select name="year" class="form-control form-control-sm wgs-year-filter" onchange="this.form.submit()">
+              <option value="">All Years</option>
+              {% for year in available_years %}
+                <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+
           </form>
-          
-          {% if request.GET.q %}
-            <div class="position-absolute">
-              <small class="text-white-50">
-                Found results for "{{ request.GET.q }}" 
-                <a href="{% url 'view_wgs_overview' %}" class="text-warning ml-1">Clear</a>
-              </small>
-            </div>
-          {% endif %}
-        </div>
-      </div>
 
-            <div class="col text-right">
-          <span class="text-white counter-text">
-            Loaded <strong style="color: #201cf0;">{{ table_data|length }} Accession(s)</strong> with sequencing data. 
+          <span class="wgs-pane-counter counter-text">
+            Showing <strong>{{ table_data|length }}</strong> of
+            <strong>{{ counts.total }}</strong> accession(s) with sequencing data.
           </span>
+
+          <button class="btn btn-sm btn-success wgs-download-toolbar-btn" data-toggle="modal" data-target="#downloadModal">
+            <i class="ni ni-cloud-download-95"></i>
+            Download WGS Data
+          </button>
         </div>
-    </div>
-  </div>
-</div>
 
-
-
-    <div class="card-body">
-      <!-- Filter Section -->
-      <div class="row mb-4">
-        <div class="col-12">
-          <div class="d-flex align-items-center justify-content-between flex-wrap">
-            <h5 class="mb-0"><i class="ni ni-ui-04 mr-2"></i>Filter by Data Type:</h5>
-            <div class="d-flex gap-2 flex-wrap">
-              <button class="btn btn-sm btn-outline-success filter-btn" data-filter="fastq">
-                <i class="ni ni-cloud-upload-96 mr-1"></i>FastQ
-              </button>
-              <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="gambit">
-                <i class="ni ni-chart-bar-32 mr-1"></i>Gambit
-              </button>
-              <button class="btn btn-sm btn-outline-warning filter-btn" data-filter="mlst">
-                <i class="ni ni-atom mr-1"></i>MLST
-              </button>
-              <button class="btn btn-sm btn-outline-info filter-btn" data-filter="checkm2">
-                <i class="ni ni-check-bold mr-1"></i>CheckM2
-              </button>
-              <button class="btn btn-sm btn-outline-danger filter-btn" data-filter="assembly">
-                <i class="ni ni-settings mr-1"></i>Assembly
-              </button>
-              <button class="btn btn-sm btn-outline-purple filter-btn" data-filter="amrfinder">
-                <i class="ni ni-lock-circle-open mr-1"></i>AMRFinder
-              </button>
-              <button class="btn btn-sm btn-secondary" id="clear-filter">
-                <i class="ni ni-fat-remove mr-1"></i>Clear Filter
-              </button>
-            </div>
+        <div class="wgs-toolbar-row-2">
+          <span class="wgs-filter-label"><i class="ni ni-ui-04 mr-1"></i>Filter:</span>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-sm btn-outline-success filter-btn" data-filter="bactscout">
+              <i class="fas fa-bacteria mr-1"></i>BactScout
+            </button>
+            <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="gambit">
+              <i class="ni ni-chart-bar-32 mr-1"></i>Gambit
+            </button>
+            <button class="btn btn-sm btn-outline-warning filter-btn" data-filter="mlst">
+              <i class="ni ni-atom mr-1"></i>MLST
+            </button>
+            <button class="btn btn-sm btn-outline-info filter-btn" data-filter="checkm2">
+              <i class="ni ni-check-bold mr-1"></i>CheckM2
+            </button>
+            <button class="btn btn-sm btn-outline-danger filter-btn" data-filter="assembly">
+              <i class="ni ni-settings mr-1"></i>Assembly
+            </button>
+            <button class="btn btn-sm btn-outline-purple filter-btn" data-filter="amrfinder">
+              <i class="ni ni-lock-circle-open mr-1"></i>AMRFinder
+            </button>
+            <button class="btn btn-sm btn-secondary" id="clear-filter">
+              <i class="ni ni-fat-remove mr-1"></i>Clear Filter
+            </button>
           </div>
         </div>
       </div>
+    </div>
 
+    <div class="card-body">
       <!-- Table -->
-      <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
+      <div class="table-responsive wgs-table-shell">
         <table class="table table-hover table-flush align-middle mb-0" id="wgs-table">
           <thead class="thead-light sticky-top">
             <tr class="text-center">
               <th class="text-left">Accession No</th>
-              <th><i class="ni ni-cloud-upload-96 text-success"></i> FastQ</th>
+              <th><i class="fas fa-bacteria text-success"></i> BactScout</th>
               <th><i class="ni ni-chart-bar-32 text-primary"></i> Gambit</th>
               <th><i class="ni ni-atom text-warning"></i> MLST</th>
               <th><i class="ni ni-check-bold text-info"></i> CheckM2</th>
@@ -134,14 +508,14 @@
           <tbody>
             {% for entry in table_data%}
             <tr class="text-center data-row"
-                data-fastq="{{ entry.summary_flags.fastq|yesno:'true,false' }}"
+                data-bactscout="{{ entry.summary_flags.bactscout|yesno:'true,false' }}"
                 data-gambit="{{ entry.summary_flags.gambit|yesno:'true,false' }}"
                 data-mlst="{{ entry.summary_flags.mlst|yesno:'true,false' }}"
                 data-checkm2="{{ entry.summary_flags.checkm2|yesno:'true,false' }}"
                 data-assembly="{{ entry.summary_flags.assembly|yesno:'true,false' }}"
                 data-amrfinder="{{ entry.summary_flags.amrfinder|yesno:'true,false' }}">
-              <td class="text-left"><strong class="text-primary">{{ entry.accession }}</strong></td>
-              <td>{% if entry.summary_flags.fastq %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
+              <td class="text-left"><strong class="text-primary wgs-accession-link">{{ entry.accession }}</strong></td>
+              <td>{% if entry.summary_flags.bactscout %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
               <td>{% if entry.summary_flags.gambit %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
               <td>{% if entry.summary_flags.mlst %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
               <td>{% if entry.summary_flags.checkm2 %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
@@ -159,6 +533,46 @@
       </div>
 
 
+
+      {% if page_obj and page_obj.paginator.num_pages > 1 %}
+      <div class="d-flex justify-content-between align-items-center px-3 py-3 border-top">
+        <small class="text-muted">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} -
+          {{ counts.total }} total accession(s)
+        </small>
+        <nav aria-label="WGS overview pagination">
+          <ul class="pagination pagination-sm mb-0">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page=1{% if preserved_params %}&{{ preserved_params }}{% endif %}">&laquo;</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if preserved_params %}&{{ preserved_params }}{% endif %}">&lsaquo;</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+              <li class="page-item disabled"><span class="page-link">&lsaquo;</span></li>
+            {% endif %}
+
+            <li class="page-item active">
+              <span class="page-link">{{ page_obj.number }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if preserved_params %}&{{ preserved_params }}{% endif %}">&rsaquo;</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if preserved_params %}&{{ preserved_params }}{% endif %}">&raquo;</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">&rsaquo;</span></li>
+              <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+      {% endif %}
 
     </div>
   </div>
@@ -180,15 +594,29 @@
               <ul>
                 <li><strong>Complete Sets:</strong> Found in <em>all</em> WGS tables</li>
                 <li><strong>Partial Sets:</strong> Found in <em>any</em> WGS table</li>
+                <li><strong>Included WGS tables:</strong> BactScout, MLST, CheckM2, Assembly, AMRFinder, and Gambit</li>
               </ul>
+              <div class="wgs-download-filter-grid">
+                <div>
+                  <label for="download-date-from">From</label>
+                  <input id="download-date-from" type="date" name="date_from" form="wgs-download-form" class="form-control">
+                </div>
+                <div>
+                  <label for="download-date-to">To</label>
+                  <input id="download-date-to" type="date" name="date_to" form="wgs-download-form" class="form-control">
+                </div>
+              </div>
+              <p class="wgs-download-filter-note">Download date filter uses WGS upload date.</p>
             </div>
             <div class="modal-footer justify-content-between">
-                <a href="{% url 'download_matched_wgs_data' %}?mode=all" class="btn btn-primary">
+              <form id="wgs-download-form" method="get" action="{% url 'download_matched_wgs_data' %}" class="d-flex justify-content-between w-100 mb-0">
+                <button type="submit" name="mode" value="all" class="btn btn-primary wgs-download-link">
                   <i class="ni ni-check-bold"></i> Complete Sets
-                </a>
-                <a href="{% url 'download_matched_wgs_data' %}?mode=any" class="btn btn-success">
+                </button>
+                <button type="submit" name="mode" value="any" class="btn btn-success wgs-download-link">
                   <i class="ni ni-cloud-download-95"></i> Partial Sets
-                </a>
+                </button>
+              </form>
             </div>
           </div>
         </div>
@@ -228,7 +656,7 @@
   border-color: var(--btn-bg);
 }
 
-.filter-btn[data-filter="fastq"].active {
+.filter-btn[data-filter="bactscout"].active {
   --btn-bg: #2dce89;
 }
 
@@ -272,12 +700,22 @@ document.addEventListener('DOMContentLoaded', function() {
   const clearButton = document.getElementById('clear-filter');
   const dataRows = document.querySelectorAll('.data-row');
   const counterText = document.querySelector('.counter-text');
-  let activeFilter = null;
+  const activeFilters = new Set();
 
-  function applyFilter(filterType) {
+  function applyFilters() {
+    const selectedFilters = Array.from(activeFilters);
+
     dataRows.forEach(row => {
-      const hasData = row.dataset[filterType] === 'true';
-      row.style.display = hasData ? '' : 'none';
+      if (!selectedFilters.length) {
+        row.style.display = '';
+        return;
+      }
+
+      const isMatch = selectedFilters.every(
+        filterType => row.dataset[filterType] === 'true'
+      );
+
+      row.style.display = isMatch ? '' : 'none';
     });
     updateCounter();
   }
@@ -290,7 +728,10 @@ document.addEventListener('DOMContentLoaded', function() {
   function updateCounter() {
     const visibleCount = Array.from(dataRows).filter(r => r.style.display !== 'none').length;
     if (counterText) {
-      const label = activeFilter ? `with ${activeFilter.toUpperCase()}` : 'in Total';
+      const selectedFilters = Array.from(activeFilters);
+      const label = selectedFilters.length
+        ? `matching all: ${selectedFilters.map(filterType => filterType.toUpperCase()).join(', ')}`
+        : 'in Total';
       counterText.innerHTML = `<strong>${visibleCount}</strong> Accession(s) ${label}`;
     }
   }
@@ -298,22 +739,21 @@ document.addEventListener('DOMContentLoaded', function() {
   filterButtons.forEach(btn => {
     btn.addEventListener('click', function() {
       const filterType = this.dataset.filter;
-      
-      if (activeFilter === filterType) {
-        activeFilter = null;
-        btn.classList.remove('active');
-        showAllRows();
+
+      if (activeFilters.has(filterType)) {
+        activeFilters.delete(filterType);
+        this.classList.remove('active');
       } else {
-        filterButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeFilter = filterType;
-        applyFilter(filterType);
+        activeFilters.add(filterType);
+        this.classList.add('active');
       }
+
+      applyFilters();
     });
   });
 
   clearButton.addEventListener('click', function() {
-    activeFilter = null;
+    activeFilters.clear();
     filterButtons.forEach(b => b.classList.remove('active'));
     showAllRows();
   });
@@ -345,8 +785,9 @@ document.addEventListener('DOMContentLoaded', function() {
       // Create new placeholder row
       const newRow = document.createElement('tr');
       newRow.id = `details-${accession}`;
+      newRow.className = 'wgs-detail-row';
       newRow.innerHTML = `
-        <td colspan="8" class="text-center py-5">
+        <td colspan="8" class="wgs-detail-cell text-center py-5">
           <div class="spinner-border text-primary" role="status">
             <span class="sr-only">Loading...</span>
           </div>
@@ -364,14 +805,14 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(res => res.json())
         .then(data => {
           if (data.html) {
-            newRow.innerHTML = `<td colspan="8">${data.html}</td>`;
+            newRow.innerHTML = `<td colspan="8" class="wgs-detail-cell">${data.html}</td>`;
           } else {
-            newRow.innerHTML = `<td colspan="8" class="text-center text-danger">Failed to load details.</td>`;
+            newRow.innerHTML = `<td colspan="8" class="wgs-detail-cell text-center text-danger">Failed to load details.</td>`;
           }
         })
         .catch(err => {
           console.error(err);
-          newRow.innerHTML = `<td colspan="8" class="text-center text-danger">Error loading details.</td>`;
+          newRow.innerHTML = `<td colspan="8" class="wgs-detail-cell text-center text-danger">Error loading details.</td>`;
           // Revert button on error
           icon.className = 'ni ni-zoom-split-in';
           text.textContent = 'View';

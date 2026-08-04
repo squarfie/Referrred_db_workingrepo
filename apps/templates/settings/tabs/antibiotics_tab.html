@@ -40,13 +40,15 @@
                   {% else %}
                     {% url 'add_antibiotics' %}
                   {% endif %}"
-          id="antibioticsform">
+          id="antibioticsform"
+          novalidate>
 
 
       {% csrf_token %}
+      {% include "includes/form_errors.html" with form=antibiotic_form %}
 
       <!-- Upload + Flags -->
-      <div class="row mb-4">
+      <div class="row mb-4 align-items-center">
 
         <div class="col-md-3 mb-2">
           <button type="button"
@@ -55,6 +57,11 @@
                   data-target="#UploadAntibioticsModal">
             <i class="fas fa-file-upload mr-1"></i> Upload CSV/Excel
           </button>
+        </div>
+        <div class="col-md-9 text-md-right mb-2">
+          <a href="{% url 'export_antibiotics' %}" class="btn btn-outline-primary">
+            <i class="fas fa-file-export mr-1"></i> Export Excel
+          </a>
         </div>
 
 
@@ -102,7 +109,7 @@
 
         <div class="col-md-6 mb-3">
           <label>Guidelines</label>
-          <select name="Guidelines" class="form-control">
+          <select name="Guidelines" class="form-control" required data-required="true">
             <option disabled>Select Guidelines</option>
             {% for value, label in antibiotic_form.fields.Guidelines.choices %}
               <option value="{{ value }}"
@@ -115,7 +122,7 @@
 
         <div class="col-md-6 mb-3">
           <label>Test Method</label>
-          <select name="Test_Method" class="form-control">
+          <select name="Test_Method" class="form-control" required data-required="true">
             <option disabled>Select Method</option>
             {% for value, label in antibiotic_form.fields.Test_Method.choices %}
               <option value="{{ value }}"
@@ -135,6 +142,8 @@
           <label>Antibiotic Name</label>
           <input class="form-control"
                  name="Antibiotic"
+                 required
+                 data-required="true"
                  value="{{ antibiotic_antibiotic_form.Antibiotic.value }}">
         </div>
 
@@ -142,6 +151,8 @@
           <label>Antibiotic Code</label>
           <input class="form-control"
                  name="Abx_code"
+                 required
+                 data-required="true"
                  value="{{ antibiotic_antibiotic_form.Abx_code.value }}">
         </div>
 
@@ -160,6 +171,8 @@
           <label>WHONET Code</label>
           <input class="form-control"
                  name="Whonet_Abx"
+                 required
+                 data-required="true"
                  value="{{ antibiotic_antibiotic_form.Whonet_Abx.value }}">
         </div>
 
@@ -218,7 +231,8 @@
   <form method="POST"
         action="{% url 'upload_antibiotics' %}"
         enctype="multipart/form-data"
-        onsubmit="return confirmOverwrite();">
+        onsubmit="return confirmOverwrite();"
+        novalidate>
 
     {% csrf_token %}
 

@@ -60,7 +60,7 @@
                 <a href="{% url 'edit_final_data' final.id %}" class="btn btn-sm btn-outline-primary w-100" style="padding: 5px; margin-bottom: 2px;">
                   <i class="fas fa-edit"></i> Edit Final
                 </a>
-                <a href="{% url 'generate_final_batch_pdf' final.id %}" class="btn btn-sm btn-outline-warning w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
+                <a href="{% url 'generate_final_batch_pdf' final.f_Batch_id.id %}" class="btn btn-sm btn-outline-warning w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
                   <i class="fas fa-print"></i> Final Result
                 </a>
               </td>

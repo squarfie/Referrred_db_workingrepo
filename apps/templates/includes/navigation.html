@@ -1,4 +1,4 @@
-<nav class="navbar navbar-top navbar-expand navbar-dark bg-primary border-bottom">
+<nav class="navbar navbar-top arsp-navbar-top navbar-expand navbar-dark border-bottom">
   <div class="container-fluid">
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       
@@ -17,11 +17,74 @@
         </button>
       </form>
       <!-- end of search form -->
-      <div class="col-md-6 mt-1">
+      <style>
+        .global-message-stack {
+          position: fixed;
+          top: 76px;
+          right: 24px;
+          z-index: 2050;
+          width: min(560px, calc(100vw - 48px));
+          pointer-events: none;
+        }
+
+        .global-message-alert {
+          pointer-events: auto;
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+          margin-bottom: 0.75rem;
+          padding: 0.95rem 1.1rem;
+          border: 0;
+          border-left: 6px solid currentColor;
+          border-radius: 10px;
+          box-shadow: 0 12px 32px rgba(15, 23, 42, 0.24);
+          color: #172b4d;
+          font-size: 0.92rem;
+          font-weight: 700;
+          line-height: 1.35;
+        }
+
+        .global-message-alert i {
+          margin-top: 0.12rem;
+          font-size: 1.15rem;
+        }
+
+        .global-message-alert.alert-success {
+          background: #e8fff1;
+          color: #116b35;
+        }
+
+        .global-message-alert.alert-warning {
+          background: #fff7db;
+          color: #8a5a00;
+        }
+
+        .global-message-alert.alert-danger,
+        .global-message-alert.alert-error {
+          background: #ffe8ec;
+          color: #a3122f;
+        }
+
+        .global-message-alert.alert-info {
+          background: #e8f7ff;
+          color: #075985;
+        }
+      </style>
+
+      <div class="global-message-stack" aria-live="polite" aria-atomic="true">
         {% if messages %}
           {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} border-0 p-0 text-dark fade show" style="background: transparent; font-weight: bold; font-size: 14px;">
-              {{ message }}
+            <div class="alert global-message-alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} fade show" role="alert">
+              {% if message.tags == "success" %}
+                <i class="fas fa-check-circle"></i>
+              {% elif message.tags == "warning" %}
+                <i class="fas fa-exclamation-triangle"></i>
+              {% elif message.tags == "error" %}
+                <i class="fas fa-times-circle"></i>
+              {% else %}
+                <i class="fas fa-info-circle"></i>
+              {% endif %}
+              <span>{{ message }}</span>
             </div>
           {% endfor %}
         {% endif %}
@@ -125,7 +188,7 @@
 
 <script>
   setTimeout(function() {
-    let alerts = document.querySelectorAll(".alert");
+    let alerts = document.querySelectorAll(".global-message-alert");
     alerts.forEach(function(alert) {
       alert.classList.remove("show");
       alert.classList.add("fade");

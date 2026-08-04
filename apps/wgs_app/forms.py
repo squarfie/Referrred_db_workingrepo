@@ -15,7 +15,6 @@ class WGSProjectForm(forms.ModelForm):
                'WGS_SampleInfoSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
                'WGS_BactScoutSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
                'WGS_GtdbTkSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-               'WGS_FastqSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
                'WGS_GambitSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
                'WGS_MlstSummary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
                'WGS_Checkm2Summary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -28,11 +27,30 @@ class DemogsDataUploadForm(forms.ModelForm):
           model = DemogsData_upload
           fields = ['DemogsDataFile']
 
-
+# display yes/no field for boolean fields in the form
+def yes_no_field():
+    return forms.TypedChoiceField(
+        choices=(
+            (False, "No"),
+            (True, "Yes"),
+        ),
+        coerce=lambda value: value in (
+            True,
+            "True",
+            "true",
+            "1",
+            1,
+        ),
+        initial=False,
+        required=False,
+    )
 
 
 class SampleInfoForm(forms.ModelForm):
-        class Meta:
+     DNA_extraction = yes_no_field()
+     library_preparation = yes_no_field()
+     sequencing_platform = yes_no_field()
+     class Meta:
             model = SampleInformation
             fields = '__all__'
 
@@ -66,19 +84,6 @@ class GtdbTkUploadForm(forms.ModelForm):
      class Meta:
           model = GtdbTkUpload
           fields = ['GtdbTkFile']
-
-
-
-class FastqUploadForm(forms.ModelForm):
-     class Meta:
-          model = FastqUpload
-          fields = ['fastqfile']
-
-
-class FastqForm(forms.ModelForm):
-        class Meta:
-            model = FastqSummary
-            fields = '__all__'
 
 
 class GambitUploadForm(forms.ModelForm):

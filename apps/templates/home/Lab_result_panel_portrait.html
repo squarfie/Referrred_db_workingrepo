@@ -72,6 +72,17 @@ th, td {
     line-height: auto !important;
 }
 
+.enris-cell {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    font-size: 7px !important;
+    font-weight: bold !important;
+    line-height: 1 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
 .page-break {
     page-break-before: always;
 }
@@ -161,14 +172,14 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
 </tr>
 
 <tr>
-    <td>{{ isolate.bat_seq }}</td>
+    <td>{{ isolate.AccessionNo|accession_ref_no|default:isolate.bat_seq }}</td>
     <td colspan="9" style="text-align:left; font-size: 10px;">
         <strong>{{ isolate.Last_Name }}, {{ isolate.First_Name }}</strong>
     </td>
     <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 9px;"> Lab No: <strong>{{isolate.Referral_Date}}</strong></td>
     <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 9px;"> Patient ID: <strong>{{isolate.Patient_ID}}</strong></td>
     <td colspan="5" style="border-left: 0; border-right: 0; text-align: left; font-size: 9px;"> Date of Birth: <strong>{{isolate.Date_Birth}}</strong></td>
-    <td colspan="5" style="border-left: 0; text-align: left; font-size: 9px;">Age / Sex: <strong> {{isolate.Age}} / {{isolate.Sex}}</strong></td>
+    <td colspan="5" style="border-left: 0; text-align: left; font-size: 9px;">Age / Sex: <strong> {{isolate.Age|age_result_display:isolate}} / {{isolate.Sex}}</strong></td>
 </tr>
 <tr>
     <td colspan="5" style="border-right: 0; text-align: left; font-size: 9px;">Ad Date: <strong>{{isolate.Date_Admis}}</strong></td>
@@ -189,13 +200,13 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
 <tr>
 <td colspan="8" style="font-size: 10px;">
     Identification <br>    {% if isolate.Site_OrgName %}
-        <strong><i>{{ isolate.Site_OrgName|default:"" }}</i></strong>
+        <strong><i>{{ isolate.Site_OrgName|scientific_name }}</i></strong>
     {% else %}
         <strong><i>No Organism Identified</i></strong>
     {% endif %}
 </td>
-<td colspan="6">{% if isolate.Site_Pre %}{{ isolate.Site_Pre|default:""}} {% else %} <span>&nbsp;</span>{% endif %} </td>
-<td colspan="6">{% if isolate.Site_Pos %} {{ isolate.Site_Pos|default:"" }} {% else %} <span>&nbsp;</span>{% endif %} </td>
+<td colspan="6">{{ isolate.Site_Pre_ed|prefer_text:isolate.Site_Pre }}</td>
+<td colspan="6">{{ isolate.Site_Pos_ed|prefer_text:isolate.Site_Pos }}</td>
 <td colspan="10" style="border-top: 0;">{{isolate.Comments}}.</td>
 </tr>
 
@@ -241,7 +252,7 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
 
 <tr>
 {% for abx, data in row %}
-    <td class="abx-col" style="font-size: 9px; font-weight: bold;">{% if data.disk.ab_Disk_enRIS %} {{ data.disk.ab_Disk_enRIS|default:""}} {% else %} <span>&nbsp;</span> {% endif %}</td>
+    <td class="abx-col enris-cell">{% if data.disk.ab_Disk_enRIS %}{{ data.disk.ab_Disk_enRIS|default:""}}{% else %}<span>&nbsp;</span>{% endif %}</td>
 {% endfor %}
 {% with abx_count=row|length %}
 {% for i in "x"|rjust:29 %}
@@ -276,7 +287,7 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
 <tr>
 
 {% for abx, data in row %}
-    <td class="abx-col mic" style="font-size: 9px; font-weight: bold;">
+    <td class="abx-col mic enris-cell">
      {% if data.mic.ab_MIC_enRIS %}   {{ data.mic.ab_MIC_enRIS}} {% else %} <span>&nbsp;</span> {% endif %}
     </td>
 {% endfor %}
@@ -300,7 +311,7 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
 </tr>
 
 <tr>
-    <td>{{ isolate.bat_seq }}</td>
+    <td>{{ isolate.AccessionNo|accession_ref_no|default:isolate.bat_seq }}</td>
     <td colspan="29" style="text-align:left; font-size: 10px;">
         <strong>{{ isolate.Last_Name }}, {{ isolate.First_Name }}</strong>
     </td>
@@ -321,13 +332,13 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
 <td colspan="8" style="font-size: 10px;">
     Identification <br>
     {% if isolate.Site_OrgName %}
-        <strong><i>{{ isolate.Site_OrgName }}</i></strong>
+        <strong><i>{{ isolate.Site_OrgName|scientific_name }}</i></strong>
     {% else %}
         <strong><i>No Organism Identified</i></strong>
     {% endif %}
 </td>
-<td colspan="6">{{ isolate.Site_Pre }}</td>
-<td colspan="6">{{ isolate.Site_Pos }}</td>
+<td colspan="6">{{ isolate.Site_Pre_ed|prefer_text:isolate.Site_Pre }}</td>
+<td colspan="6">{{ isolate.Site_Pos_ed|prefer_text:isolate.Site_Pos }}</td>
 <td colspan="10" style="border-top: 0;">&nbsp;</td>
 <tr>
 <td class="gray" colspan="30" style="font-size: 10px;">
@@ -384,13 +395,13 @@ CONFIRMATORY TEST RESULT: {{ batch.bat_Site_Name|upper }}
       Identification 
     <br>
     {% if isolate.ars_OrgName %}
-        <strong><i>{{ isolate.ars_OrgName|default:"" }}</i></strong>
+        <strong><i>{{ isolate.ars_OrgName|scientific_name }}</i></strong>
     {% else %}
         <strong><i>No Organism Identified</i></strong>
     {% endif %}
 </td>
-<td colspan="6">{% if isolate.ars_Pre %} {{ isolate.ars_Pre|default:"" }} {% else %} <span>&nbsp;</span> {% endif %}</td>
-<td colspan="6">{% if isolate.ars_Post %}{{ isolate.ars_Post|default:"" }} {% else %} <span>&nbsp;</span> {% endif %} </td>
+<td colspan="6">{{ isolate.ars_Pre_ed|prefer_text:isolate.ars_Pre }}</td>
+<td colspan="6">{{ isolate.ars_Post_ed|prefer_text:isolate.ars_Post }}</td>
 <td colspan="4" style="text-align: left;"> <span style="font-weight: bold; padding-inline: 1px;"> ESBL </span> <br>
 CT/CTL: {{isolate.ars_ct_ctl|default:""}} <br>
 TZ/TZL: {{isolate.ars_tz_tzl|default:""}}
@@ -450,7 +461,7 @@ IP/IPI: <br> {{isolate.ars_ip_ipi|default:""}}
 
         <tr>
     {% for abx, data in row %}
-        <td class="abx-col" style="font-size: 7px; font-weight: bold;">
+        <td class="abx-col enris-cell">
        {% if data.disk.ab_Retest_Disk_enRIS %}     {{ data.disk.ab_Retest_Disk_enRIS|default:""}} {% else %} <span>&nbsp;</span> {% endif %}
         </td>
     {% endfor %}
@@ -484,7 +495,7 @@ IP/IPI: <br> {{isolate.ars_ip_ipi|default:""}}
     </tr>
         <tr>
     {% for abx, data in row %}
-        <td class="abx-col mic" style="font-size: 7px; font-weight: bold;">
+        <td class="abx-col mic enris-cell">
          {% if data.mic.ab_Retest_MIC_enRIS %}   {{ data.mic.ab_Retest_MIC_enRIS|default:"" }} {% else %} <span>&nbsp;</span> {% endif %}
         </td>
     {% endfor %}
@@ -595,32 +606,26 @@ IP/IPI: <br> {{isolate.ars_ip_ipi|default:""}}
       <td colspan="2" style="font-size: 8px;">
 </td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 8px;">  {{page.0.isolate.arsp_Encoder}}
+      <td colspan="4" style="font-size: 8px;">  {{ page.0.isolate.arsp_Encoder|professional_caps }}
         <br>
         {% if page.0.isolate.arsp_Enc_Lic %}Lic No: {{page.0.isolate.arsp_Enc_Lic|default_if_none:""}}{% else %} <span>&nbsp;</span>{% endif %}
       </td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 8px;">{{page.0.isolate.arsp_Checker}}
+      <td colspan="4" style="font-size: 8px;">{{ page.0.isolate.arsp_Checker|professional_caps }}
         <br>
         {% if page.0.isolate.arsp_Chec_Lic%}Lic No: {{page.0.isolate.arsp_Chec_Lic|default_if_none:""}}{% else %}&nbsp;{% endif %}
       </td>
       <td colspan="2"></td>
-      <td colspan="7" style="font-size: 8px;">{{page.0.isolate.arsp_Verifier}} / {{page.0.isolate.arsp_LabManager}}
+      <td colspan="7" style="font-size: 8px;">{{ page.0.isolate.arsp_Verifier|professional_caps }} / {{ page.0.isolate.arsp_LabManager|professional_caps }}
         <br>
-         {% if page.0.isolate.arsp_Ver_Lic %}
-            Lic No: {{ page.0.isolate.arsp_Ver_Lic|default_if_none:"" }}
-        {% endif %}
-
-        {% if page.0.isolate.arsp_Lab_Lic %}
-            &nbsp;/ {{ page.0.isolate.arsp_Lab_Lic|default_if_none:"" }}
-        {% endif %}
-
-        {% if not page.0.isolate.arsp_Ver_Lic and not page.0.isolate.arsp_Lab_Lic %}
-            &nbsp;
+        {% if page.0.isolate.arsp_Ver_Lic or page.0.isolate.arsp_Lab_Lic %}
+          License No.:{% if page.0.isolate.arsp_Ver_Lic %} {{ page.0.isolate.arsp_Ver_Lic|default_if_none:"" }}{% endif %}{% if page.0.isolate.arsp_Ver_Lic and page.0.isolate.arsp_Lab_Lic %} / {% endif %}{% if page.0.isolate.arsp_Lab_Lic %}{{ page.0.isolate.arsp_Lab_Lic|default_if_none:"" }}{% endif %}
+        {% else %}
+          &nbsp;
         {% endif %}
     </td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 8px;">{{page.0.isolate.arsp_Head}}
+      <td colspan="4" style="font-size: 8px;">{{ page.0.isolate.arsp_Head|professional_caps }}
         <br>
         {% if page.0.isolate.arsp_Head_Lic%}Lic No: {{page.0.isolate.arsp_Head_Lic|default_if_none:""}}{% else %}&nbsp;{% endif%}
       </td>

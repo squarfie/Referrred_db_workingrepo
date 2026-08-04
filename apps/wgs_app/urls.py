@@ -10,6 +10,7 @@ urlpatterns = [
     
     
     path("sample-info", views.upload_sample_information, name="upload_sample_information"),
+    path("sample-info/relink-matches/", views.relink_sample_information_matches, name="relink_sample_information_matches"),
     path("show/sample-info/", views.show_sample_information, name="show_sample_information"),
     path("delete/sample-info/<int:pk>/", views.delete_sample_information, name="delete_sample_information"),
     path("del_all/sample-info/", views.delete_all_sample_information, name="delete_all_sample_information"),
@@ -29,10 +30,6 @@ urlpatterns = [
     path("delete_by_date/gtdbtk/", views.delete_gtdbtk_by_date, name="delete_gtdbtk_by_date"),
 
 
-    path('fastq', views.upload_fastq, name='upload_fastq'),
-    path('show/fastq', views.show_fastq, name='show_fastq'),
-    path('delete/fastq/<int:pk>/', views.delete_fastq, name='delete_fastq'),
-    
     path('gambit', views.upload_gambit, name='upload_gambit'),
     path('show/gambit/', views.show_gambit, name='show_gambit'),
     path('delete/gambit/<int:pk>/', views.delete_gambit, name='delete_gambit'),
@@ -56,7 +53,6 @@ urlpatterns = [
 
 
     path('del_all/gambit/', views.delete_all_gambit, name='delete_all_gambit'),
-    path('del_all/fastq/', views.delete_all_fastq, name='delete_all_fastq'),
     path('del_all/mlst/', views.delete_all_mlst, name='delete_all_mlst'),
     path('del_all/checkm2/', views.delete_all_checkm2, name='delete_all_checkm2'),
     path('del_all/assembly/', views.delete_all_assembly, name='delete_all_assembly'),
@@ -68,7 +64,6 @@ urlpatterns = [
     path('wgs/download_matched/', views.download_matched_wgs_data, name='download_matched_wgs_data'),
 
     
-    path("delete_by_date/fastq", views.delete_fastq_by_date, name="delete_fastq_by_date"),
     path("delete_by_date/gambit", views.delete_gambit_by_date, name="delete_gambit_by_date"),
     path("delete_by_date/mlst", views.delete_mlst_by_date, name="delete_mlst_by_date"),
     path("delete_by_date/checkm2", views.delete_checkm2_by_date, name="delete_checkm2_by_date"),
@@ -94,7 +89,7 @@ urlpatterns = [
     path("final/delete_abx_date", views.delete_finalantibiotic_by_date, name="delete_finalantibiotic_by_date"),
     
     path("batch-generator", views.create_batch_from_referred, name="create_batch_from_referred"),
-    path('auto-batch', views.generate_batches_from_referred, name="generate_batches_from_referred"),
+    path('auto-batch', views.create_batch_from_referred, name="generate_batches_from_referred"),
 
     path('raw/export-raw', views.export_raw_Antibioticentry, name="export_raw_Antibioticentry"),
     path('raw/del_abx_date', views.delete_rawantibiotic_by_date, name="delete_rawantibiotic_by_date"),

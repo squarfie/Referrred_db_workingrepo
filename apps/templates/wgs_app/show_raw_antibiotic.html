@@ -5,7 +5,7 @@
 {% block content %}
 
 <!-- HEADER -->
-<div class="header bg-primary pb-6" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
+<div class="header bg-primary pb-3 wgs-page-header" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
     <span class="mask bg-gradient-default opacity-3"></span>
   <div class="container-fluid">
     <div class="header-body">
@@ -22,9 +22,12 @@
           <a class="btn btn-sm btn-neutral" href="{% url 'upload_wgs_view' %}">
             <i class="ni ni-cloud-upload-96 mr-1"></i>Upload Data
           </a>
-          <a class="btn btn-sm btn-danger" href="{% url 'delete_all_raw_antibiotic' %}">
-            <i class="fa fa-trash mr-1"></i>Delete All
-          </a>
+          <form method="POST" action="{% url 'delete_all_raw_antibiotic' %}" class="d-inline" onsubmit="return confirm('WARNING: This will delete ALL Raw Antibiotic records. Are you absolutely sure?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-danger">
+              <i class="fa fa-trash mr-1"></i>Delete All
+            </button>
+          </form>
 
         </div>
       </div>
@@ -33,11 +36,11 @@
 </div>
 
 <!-- MAIN -->
-<div class="container-fluid mt--6">
-  <div class="card shadow">
+<div class="container-fluid wgs-list-page">
+  <div class="card shadow wgs-list-card">
 
     <!-- CARD HEADER -->
-    <div class="card-header border-0" style="background: linear-gradient(135deg, #2c4ebe 0%, #65e7e5 100%);">
+    <div class="card-header border-0 wgs-list-card-header">
       <div class="row align-items-center">
         <div class="col">
           <h3 class="mb-0 text-white">
@@ -83,8 +86,8 @@
     </div>
 
     <!-- TABLE -->
-    <div class="table-responsive">
-      <table id="fastq-table" class="table align-items-center table-flush">
+    <div class="table-responsive wgs-list-table-shell">
+      <table id="data-table" class="table align-items-center table-flush">
 
         <thead>
           <tr>
@@ -236,7 +239,7 @@ $(document).ready(function(){
 
 function searchTable() {
     let filter = document.getElementById("search-input").value.toLowerCase();
-    let rows = document.querySelectorAll("#fastq-table tbody tr");
+    let rows = document.querySelectorAll("#data-table tbody tr");
     rows.forEach(row => {
         row.style.display = row.innerText.toLowerCase().includes(filter) ? "" : "none";
     });

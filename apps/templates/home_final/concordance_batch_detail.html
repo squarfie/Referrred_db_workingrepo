@@ -3,19 +3,21 @@
 
 {% block content %}
 
+<div class="concordance-detail-shell concordance-batch-shell">
+
 <!-- ══════════════ PAGE HEADER ══════════════ -->
-<div class="header-container">
+<div class="header-container concordance-batch-header">
   <div class="grid-bg"></div>
-  <div class="particles">
+  <!-- <div class="particles">
     <div class="particle"></div><div class="particle"></div><div class="particle"></div>
     <div class="particle"></div><div class="particle"></div><div class="particle"></div>
     <div class="particle"></div><div class="particle"></div><div class="particle"></div>
     <div class="scanner"></div><div class="scanner"></div><div class="scanner"></div>
     <div class="glow-orb"></div><div class="glow-orb"></div>
-  </div>
+  </div> -->
   <div class="overlay"></div>
 
-  <div class="header-content">
+  <div class="header-content concordance-batch-title">
     <h1>
       <i class="fas fa-layer-group me-2"></i>
       Concordance Snapshot – Batch {{ report.batch.bat_Batch_Name }}
@@ -38,7 +40,7 @@
   </div>
 
   <!-- Action buttons -->
-  <div style="position:absolute; top:20px; right:40px; z-index:3; display:flex; flex-direction:row; align-items:center; gap:0.6rem;">
+  <div class="concordance-batch-actions">
     <a href="{% url 'export_concordance_batch_excel' report.id %}"
        class="btn-new-crf"
        style="position:static; background:linear-gradient(135deg,#1abc9c,#16a085); box-shadow:0 8px 25px rgba(26,188,156,.4);">
@@ -68,7 +70,7 @@
     <div class="card-header d-flex align-items-center gap-2"
          style="background:linear-gradient(135deg,#1e3a5f,#0f2744); padding:1.1rem 1.75rem; border:none;">
       <i class="fas fa-chart-bar" style="color:#00bcd4; font-size:1.1rem;"></i>
-      <h5 class="mb-0 text-white fw-bold" style="font-size:1.05rem;">AST Result Summary</h5>
+      <h5 class="mb-0 text-white fw-bold" style="font-size:1.05rem;">&nbsp; AST Result Summary</h5>
     </div>
 
     <div class="card-body p-0">
@@ -80,7 +82,7 @@
 
         <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-vials me-1"></i>Total Isolates
+            <i class="fas fa-vials me-1"></i>&nbsp; Total Isolates
           </p>
           <div style="font-size:2.4rem;font-weight:900;color:#00bcd4;line-height:1;">{{ report.total_isolates }}</div>
           <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">Samples</p>
@@ -88,7 +90,7 @@
 
         <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-layer-group me-1"></i>Total Comparisons
+            <i class="fas fa-layer-group me-1"></i>&nbsp; Total Comparisons
           </p>
           <div style="font-size:2.4rem;font-weight:900;color:#5a85dd;line-height:1;">{{ report.total_pairs }}</div>
           <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">AST pairs</p>
@@ -96,7 +98,7 @@
 
         <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-check-double me-1"></i>Concordant
+            <i class="fas fa-check-double me-1"></i>&nbsp; Concordant
           </p>
           <div style="font-size:2.4rem;font-weight:900;color:#1abc9c;line-height:1;">{{ report.concordant_pairs }}</div>
           <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">Matches</p>
@@ -104,7 +106,7 @@
 
         <div class="col-6 col-md-3 text-center p-4">
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-percentage me-1"></i>Concordance Rate
+            <i class="fas fa-percentage me-1"></i>&nbsp; Concordance Rate
           </p>
           <div style="font-size:2.4rem;font-weight:900;background:linear-gradient(135deg,#00bcd4,#1abc9c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;">
             {{ report.ast_concordance_rate }}%
@@ -120,7 +122,7 @@
         <div class="col-4 text-center p-4 position-relative" style="border-right:1px solid #eef1f5;">
           <div style="position:absolute;top:0;left:0;right:0;height:3px;background:#e74c3c;"></div>
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-times-circle me-1"></i>Very Major
+            <i class="fas fa-times-circle me-1"></i>&nbsp; Very Major
           </p>
           <div style="font-size:2rem;font-weight:900;color:#e74c3c;line-height:1;">{{ report.vmd }}</div>
         </div>
@@ -128,7 +130,7 @@
         <div class="col-4 text-center p-4 position-relative" style="border-right:1px solid #eef1f5;">
           <div style="position:absolute;top:0;left:0;right:0;height:3px;background:#e67e22;"></div>
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-exclamation-circle me-1"></i>Major
+            <i class="fas fa-exclamation-circle me-1"></i>&nbsp; Major
           </p>
           <div style="font-size:2rem;font-weight:900;color:#e67e22;line-height:1;">{{ report.md }}</div>
         </div>
@@ -136,7 +138,7 @@
         <div class="col-4 text-center p-4 position-relative">
           <div style="position:absolute;top:0;left:0;right:0;height:3px;background:#90a4ae;"></div>
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-minus-circle me-1"></i>Minor
+            <i class="fas fa-minus-circle me-1"></i>&nbsp; Minor
           </p>
           <div style="font-size:2rem;font-weight:900;color:#78909c;line-height:1;">{{ report.minor }}</div>
         </div>
@@ -152,7 +154,7 @@
     <div class="card-header d-flex align-items-center gap-2"
          style="background:linear-gradient(135deg,#00897b,#00695c); padding:1.1rem 1.75rem; border:none;">
       <i class="fas fa-dna" style="color:#80cbc4; font-size:1.1rem;"></i>
-      <h5 class="mb-0 text-white fw-bold" style="font-size:1.05rem;">Organism Identification Concordance</h5>
+      <h5 class="mb-0 text-white fw-bold" style="font-size:1.05rem;">&nbsp; Organism Identification Concordance</h5>
     </div>
 
     <div class="card-body p-0">
@@ -163,7 +165,7 @@
 
         <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-check me-1"></i>Genus Match (G)
+            <i class="fas fa-check me-1"></i>&nbsp; Genus Match (G)
           </p>
           <div style="font-size:2.4rem;font-weight:900;color:#26a69a;line-height:1;">{{ report.genus_match }}</div>
           <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">{{ report.genus_rate }}%</p>
@@ -171,7 +173,7 @@
 
         <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-check-double me-1"></i>Species Match (S)
+            <i class="fas fa-check-double me-1"></i>&nbsp; Species Match (S)
           </p>
           <div style="font-size:2.4rem;font-weight:900;color:#00bcd4;line-height:1;">{{ report.species_match }}</div>
           <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">{{ report.species_rate }}%</p>
@@ -179,19 +181,19 @@
 
         <div class="col-6 col-md-3 text-center p-4" style="border-right:1px solid #f0f4f8;">
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-flask me-1"></i>Mixed Culture (M)
+            <i class="fas fa-flask me-1"></i>&nbsp; Mixed Culture (M)
           </p>
           <div style="font-size:2.4rem;font-weight:900;color:#e67e22;line-height:1;">
-            {{ details|dictsort:"genus_con"|length }}
+            {{ mixed_count }}
           </div>
           <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">Isolates</p>
         </div>
 
         <div class="col-6 col-md-3 text-center p-4">
           <p class="mb-1" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#90a4ae;">
-            <i class="fas fa-ban me-1"></i>Not Viable (N)
+            <i class="fas fa-ban me-1"></i>&nbsp; Not Viable (N)
           </p>
-          <div style="font-size:2.4rem;font-weight:900;color:#90a4ae;line-height:1;">—</div>
+          <div style="font-size:2.4rem;font-weight:900;color:#90a4ae;line-height:1;">{{ nonviable_count }}</div>
           <p class="mb-0" style="font-size:.82rem;color:#90a4ae;">Isolates</p>
         </div>
 
@@ -206,23 +208,23 @@
     <div class="card-header d-flex justify-content-between align-items-center"
          style="background:linear-gradient(135deg,#1e5a96,#0f3a5f); padding:1.1rem 1.75rem; border:none;">
       <h5 class="mb-0 text-white fw-bold d-flex align-items-center gap-2" style="font-size:1.05rem;">
-        <i class="fas fa-table"></i> Deviation Details
+        <i class="fas fa-table"></i>&nbsp; Deviation Details
       </h5>
       <span style="background:rgba(255,255,255,.2);color:white;padding:.35rem 1rem;border-radius:50px;font-weight:700;font-size:.8rem;border:1px solid rgba(255,255,255,.3);">
         {{ details|length }} ROW{{ details|length|pluralize }}
       </span>
     </div>
 
-    <div class="table-responsive">
+    <div class="table-responsive snapshot-table-scroll">
       <table class="table table-hover mb-0">
-        <thead>
+        <thead class="table-light">
           <tr>
-            <th><i class="fas fa-barcode me-1"></i>Batch Number</th>
-            <th><i class="fas fa-bacteria me-1"></i>Organism</th>
-            <th><i class="fas fa-capsules me-1"></i>Antibiotic</th>
-            <th class="text-center">Site RIS</th>
-            <th class="text-center">ARS RIS</th>
-            <th class="text-center">Deviation</th>
+            <th><span class="fw-bold text-white "> Batch Number </span></th>
+            <th> <span class="fw-bold text-white "> Organism </span></th>
+            <th> <span class="fw-bold text-white "> Antibiotic </span></th>
+            <th class="text-center text-white">  Site RIS</th>
+            <th class="text-center text-white">ARS RIS</th>
+            <th class="text-center text-white">Deviation</th>
           </tr>
         </thead>
         <tbody>
@@ -273,7 +275,7 @@
                 <div style="width:80px;height:80px;background:rgba(0,188,212,.08);border:2px dashed rgba(0,188,212,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
                   <i class="fas fa-check-circle" style="font-size:2rem;color:rgba(0,188,212,.45);"></i>
                 </div>
-                <h5 style="color:#607d8b;font-weight:700;margin-bottom:.4rem;">No Deviation Records</h5>
+                <h5 style="color:#607d8b;font-weight:700;margin-bottom:.4rem;">&nbsp; No Deviation Records</h5>
                 <p style="color:#90a4ae;font-size:.9rem;margin:0;">No comparison records were generated for this batch.</p>
               </div>
             </td>
@@ -286,5 +288,117 @@
   </div>
 
 </div>
+
+</div>
+
+<style>
+.concordance-batch-header {
+  position: relative;
+  min-height: 270px;
+  padding: 2rem 2rem;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.concordance-batch-header .concordance-batch-title {
+  position: absolute;
+  left: 2rem;
+  top: 50%;
+  z-index: 3;
+  width: min(920px, calc(100% - 470px));
+  max-width: none;
+  margin: 0;
+  text-align: left;
+  transform: translateY(-42%);
+}
+
+.concordance-batch-header .concordance-batch-title h1 {
+  max-width: none;
+  margin-bottom: 0.6rem;
+  font-size: 1.65rem;
+  line-height: 1.28;
+  word-break: break-word;
+}
+
+.concordance-batch-header .concordance-batch-title p {
+  margin-bottom: 1rem;
+}
+
+.concordance-batch-actions {
+  position: absolute;
+  top: 1.35rem;
+  right: 2rem;
+  z-index: 3;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  max-width: none;
+}
+
+.concordance-batch-actions .btn-new-crf {
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .concordance-batch-header {
+    min-height: 300px;
+    align-items: flex-end;
+    padding-top: 5rem;
+  }
+
+  .concordance-batch-header .concordance-batch-title {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    transform: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .concordance-batch-header {
+    min-height: 340px;
+    padding: 5.5rem 1rem 1.5rem;
+  }
+
+  .concordance-batch-actions {
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .concordance-batch-header .concordance-batch-title h1 {
+    font-size: 1.35rem;
+  }
+}
+
+.snapshot-table-scroll {
+  max-height: 520px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.snapshot-table-scroll thead {
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+}
+
+.snapshot-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+  color: #fff;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.34);
+}
+</style>
 
 {% endblock %}

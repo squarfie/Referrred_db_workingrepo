@@ -6,6 +6,12 @@ from django import forms
 from apps.home.forms import *
 from apps.wgs_app.forms import *
 from phonenumber_field.formfields import PhoneNumberField
+import re
+
+
+def final_accession_year_prefix(accession):
+    match = re.match(r"\s*(\d{2})ARS", str(accession or "").strip(), re.IGNORECASE)
+    return match.group(1) if match else ""
 
 
 
@@ -18,6 +24,7 @@ class FinalAntibioticUploadForm(forms.ModelForm):
         }
 
 
+
 #### Final referred form
 class FinalReferred_Form(forms.ModelForm):
 
@@ -26,11 +33,14 @@ class FinalReferred_Form(forms.ModelForm):
             widget=forms.Select(attrs={'class': "form-select fw-bold"}),
             empty_label="Select Specimen",
             required=False,
+            error_messages={
+                "invalid_choice": "Invalid specimen type. Select a specimen from the list.",
+            },
         )
 
 
         f_ars_OrgCode = forms.ModelChoiceField(
-            queryset=Organism_List.objects.all(),
+            queryset=Organism_List.objects.all().order_by('Whonet_Org_Code'),
             to_field_name='Whonet_Org_Code',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Organism",
@@ -38,7 +48,7 @@ class FinalReferred_Form(forms.ModelForm):
             
         )
         f_Site_Org = forms.ModelChoiceField(
-            queryset=Organism_List.objects.all(),
+            queryset=Organism_List.objects.all().order_by('Whonet_Org_Code'),
             to_field_name='Whonet_Org_Code', 
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Organism",
@@ -63,17 +73,15 @@ class FinalReferred_Form(forms.ModelForm):
         )
 
         
-        f_ars_reco_Code = forms.ModelChoiceField(
-            queryset=Recommendation_items.objects.all(),
-            to_field_name='RecoCode',  
+        f_ars_reco_Code = forms.ChoiceField(
+            choices=recommendation_code_choices,
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
-            empty_label="Select no",
             required=False,
             
         )
 
         f_Site_Pre = forms.ModelChoiceField(
-            queryset=Phenotype_Pre.objects.all(),
+            queryset=Phenotype_Pre.objects.all().order_by('Pre_Phenotypes'),
             to_field_name='Pre_Phenotypes',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Phenotype",
@@ -82,7 +90,7 @@ class FinalReferred_Form(forms.ModelForm):
         )
 
         f_Site_Pos = forms.ModelChoiceField(
-            queryset=Phenotype_Post.objects.all(),
+            queryset=Phenotype_Post.objects.all().order_by('Post_Phenotypes'),
             to_field_name='Post_Phenotypes',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Phenotype",
@@ -92,7 +100,7 @@ class FinalReferred_Form(forms.ModelForm):
 
 
         f_ars_Pre = forms.ModelChoiceField(
-            queryset=Phenotype_Pre.objects.all(),
+            queryset=Phenotype_Pre.objects.all().order_by('Pre_Phenotypes'),
             to_field_name='Pre_Phenotypes',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Phenotype",
@@ -101,7 +109,7 @@ class FinalReferred_Form(forms.ModelForm):
         )
 
         f_ars_Post = forms.ModelChoiceField(
-            queryset=Phenotype_Post.objects.all(),
+            queryset=Phenotype_Post.objects.all().order_by('Post_Phenotypes'),
             to_field_name='Post_Phenotypes',  # Specify the field you want as the value
             widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;'}),
             empty_label="Select Phenotype",
@@ -120,7 +128,11 @@ class FinalReferred_Form(forms.ModelForm):
             'f_Spec_Date' :forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'MM/DD/YYYY'}),
             'f_RefNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 0001'}),
             'f_BatchNo' :forms.DateInput(attrs={'class': 'form-control', 'placeholder': 'ex. 1.1'}),
+            'f_Site_Pre_ed': forms.TextInput(attrs={'class': 'form-control'}),
+            'f_Site_Pos_ed': forms.TextInput(attrs={'class': 'form-control'}),
             'f_Comments': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '3'}),
+            'f_ars_Pre_ed': forms.TextInput(attrs={'class': 'form-control'}),
+            'f_ars_Post_ed': forms.TextInput(attrs={'class': 'form-control'}),
             'f_ars_reco': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '14'}),
             'f_ars_description': forms.Textarea(attrs={'class': 'textarea form-control', 'rows': '9'}),
             "f_Batch_id": forms.HiddenInput(),
@@ -136,6 +148,17 @@ class FinalReferred_Form(forms.ModelForm):
             super().__init__(*args, **kwargs)
             # self.fields['SiteCode'].queryset = SiteData.objects.all() # Always load the latest Site Code
             self.fields['f_bat_seq'].widget.attrs['readonly'] = True
+            accession = (
+                self.data.get("f_AccessionNo")
+                if self.is_bound
+                else getattr(self.instance, "f_AccessionNo", "")
+            )
+            derived_seq = final_accession_ref_sequence(accession)
+            if derived_seq is not None:
+                self.initial["f_bat_seq"] = derived_seq
+                self.fields["f_bat_seq"].initial = derived_seq
+                if self.instance:
+                    self.instance.f_bat_seq = derived_seq
             self.fields["f_Batch_id"].disabled = True
             self.fields['f_SiteCode'].widget.attrs['readonly'] = True
             self.fields['f_Batch_Code'].widget.attrs['readonly'] = True
@@ -146,6 +169,9 @@ class FinalReferred_Form(forms.ModelForm):
             self.fields['f_BatchNo'].widget.attrs['readonly'] = True
             self.fields['f_Site_Name'].widget.attrs['readonly'] = True
             self.fields['f_Age'].widget.attrs['readonly'] = True
+            self.fields['f_Age_Display'].widget.attrs['readonly'] = True
+            self.fields['f_Age_Display'].widget.attrs['class'] = 'form-control'
+            self.fields['f_Age_Display'].widget.attrs['tabindex'] = '-1'
             self.fields['f_Site_Org'].queryset = Organism_List.objects.all() # Always load the latest Site Code
             self.fields['f_Site_Org'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
             self.fields['f_Site_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
@@ -153,6 +179,28 @@ class FinalReferred_Form(forms.ModelForm):
             self.fields['f_ars_OrgCode'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
             self.fields['f_ars_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
            
+        def clean_f_bat_seq(self):
+            accession = (
+                self.cleaned_data.get("f_AccessionNo")
+                or getattr(self.instance, "f_AccessionNo", "")
+            )
+            derived_seq = final_accession_ref_sequence(accession)
+            if derived_seq is not None:
+                return derived_seq
+            return self.cleaned_data.get("f_bat_seq")
+
+        def clean(self):
+            cleaned_data = super().clean()
+            accession = (
+                cleaned_data.get("f_AccessionNo")
+                or getattr(self.instance, "f_AccessionNo", "")
+            )
+            derived_seq = final_accession_ref_sequence(accession)
+            if derived_seq is not None:
+                cleaned_data["f_bat_seq"] = derived_seq
+
+            return cleaned_data
+
 
 
 class Final_AntibioticEntryForm(forms.ModelForm):

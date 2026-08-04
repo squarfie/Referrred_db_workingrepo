@@ -6,7 +6,7 @@
 
 <!-- Header Section -->
 <div class="header pb-6" style="height: 180px; background: linear-gradient(135deg, #12142b 0%, #243064 50%, #2e578d 100%); position: relative; overflow: hidden;">
-  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%); opacity: 0.6;"></div>
+        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.08) 0%, transparent 50%); opacity: 0.6; pointer-events: none;"></div>
   <div class="container-fluid" style="position: relative; z-index: 1;">
     <div class="header-body">
       <div class="row align-items-center py-4">
@@ -39,20 +39,30 @@
           <h3 class="mb-0" style="color: #1a7a8e;">
             <i class="fas fa-flask mr-2"></i>Antimicrobial Susceptibility Breakpoints
           </h3>
+          <div class="mt-2">
+            <span class="badge badge-info" style="font-size: 0.85rem;">
+              {{ total_breakpoints }} total breakpoint record(s)
+            </span>
+            {% if q or organism or test_method or whonet_abx or resistance_phenotype %}
+              <span class="badge badge-primary ml-2" style="font-size: 0.85rem;">
+                {{ filtered_count }} matching current filter
+              </span>
+            {% endif %}
+          </div>
         </div>
-        <div class="col-md-6 text-right">
-          <a href="{% url 'export_breakpoints' %}" class="btn btn-sm btn-primary">
-            <i class="fas fa-file-export mr-1"></i>Export/Download
-          </a>
-            <a class="btn btn-sm btn-success" href="{% url 'add_breakpoints'%}">
-            <i class="fas fa-plus mr-1"></i>Add New
-          </a>
-          <button class="btn btn-sm btn-secondary" onclick="history.back()">
-            <i class="fas fa-arrow-left mr-1"></i>Back
-          </button>
-        </div>
-      </div>
-    </div>
+                    <div class="col-md-6 text-right">
+                        <a href="{% url 'export_breakpoints' %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-file-export mr-1"></i>Export/Download
+                        </a>
+                        <a class="btn btn-sm btn-success" href="{% url 'add_breakpoints'%}">
+                            <i class="fas fa-plus mr-1"></i>Add New
+                        </a>
+                        <a class="btn btn-sm btn-secondary" href="/settings/" data-back-target="/settings/">
+                            <i class="fas fa-arrow-left mr-1"></i>Back
+                        </a>
+                    </div>
+                </div>
+            </div>
 
     <!-- Toolbar Section -->
     <div class="card-body border-bottom" style="background: linear-gradient(to bottom, #f8fcfd 0%, #ffffff 100%);">
@@ -61,6 +71,10 @@
           <div class="row justify-content-left mb-3">
              <div class="col-xl-6 col-lg-7 col-md-9 col-sm-12">
               <form method="get" class="w-100">
+                <input type="hidden" name="organism" value="{{ organism }}">
+                <input type="hidden" name="test_method" value="{{ test_method }}">
+                <input type="hidden" name="whonet_abx" value="{{ whonet_abx }}">
+                <input type="hidden" name="resistance_phenotype" value="{{ resistance_phenotype }}">
                 <div class="input-group"
                     style="box-shadow: 0 2px 8px rgba(29, 156, 173, 0.15);
                             border-radius: 0.5rem;
@@ -106,6 +120,63 @@
 
 
       <!-- Important Note -->
+      <!-- Dedicated Filters -->
+      <form method="get" class="w-100 mb-3">
+        <input type="hidden" name="q" value="{{ q }}">
+        <div class="row align-items-end">
+          <div class="col-xl-3 col-lg-3 col-md-6 mb-2">
+            <label class="form-control-label text-muted small mb-1">Organism</label>
+            <select name="organism" class="form-control">
+              <option value="">All organisms</option>
+              {% for value in filter_options.organisms %}
+                <option value="{{ value }}" {% if value == organism %}selected{% endif %}>{{ value }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-xl-2 col-lg-3 col-md-6 mb-2">
+            <label class="form-control-label text-muted small mb-1">Test Method</label>
+            <select name="test_method" class="form-control">
+              <option value="">All methods</option>
+              {% for value in filter_options.test_methods %}
+                <option value="{{ value }}" {% if value == test_method %}selected{% endif %}>{{ value }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-xl-3 col-lg-3 col-md-6 mb-2">
+            <label class="form-control-label text-muted small mb-1">WHONET ABX</label>
+            <select name="whonet_abx" class="form-control">
+              <option value="">All WHONET codes</option>
+              {% for value in filter_options.whonet_abx %}
+                <option value="{{ value }}" {% if value == whonet_abx %}selected{% endif %}>{{ value }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-xl-2 col-lg-3 col-md-6 mb-2">
+            <label class="form-control-label text-muted small mb-1">Resistance Phenotype</label>
+            <select name="resistance_phenotype" class="form-control">
+              <option value="">All phenotypes</option>
+              {% for value in filter_options.resistance_phenotypes %}
+                <option value="{{ value }}" {% if value == resistance_phenotype %}selected{% endif %}>{{ value }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-xl-2 col-lg-12 col-md-12 mb-2">
+            <button class="btn btn-primary btn-sm" type="submit">
+              <i class="fas fa-filter mr-1"></i>Filter
+            </button>
+            {% if q or organism or test_method or whonet_abx or resistance_phenotype %}
+              <a href="{% url 'breakpoints_view' %}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-times mr-1"></i>Clear
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </form>
+
       <div class="alert" style="background: linear-gradient(135deg, #e8f5f7 0%, #d1e8ed 100%); border-left: 4px solid #2d9cad; border-radius: 0.5rem;">
         <div class="d-flex align-items-center">
           <i class="fas fa-info-circle mr-3" style="font-size: 1.5rem; color: #2d9cad;"></i>
@@ -217,7 +288,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="17" class="text-center py-5">
+            <td colspan="21" class="text-center py-5">
               <i class="ni ni-folder-17 text-muted" style="font-size: 3rem;"></i>
               <p class="text-muted mt-3 mb-0">No breakpoint records found</p>
             </td>
@@ -233,6 +304,11 @@
         <!-- Go To Page Form -->
         <div class="col-md-4">
           <form method="get" class="form-inline">
+            <input type="hidden" name="q" value="{{ q }}">
+            <input type="hidden" name="organism" value="{{ organism }}">
+            <input type="hidden" name="test_method" value="{{ test_method }}">
+            <input type="hidden" name="whonet_abx" value="{{ whonet_abx }}">
+            <input type="hidden" name="resistance_phenotype" value="{{ resistance_phenotype }}">
             <label class="mr-2 mb-0 text-primary">Go to page:</label>
             <input type="number" name="page"
                    min="1"
@@ -260,7 +336,7 @@
               <!-- First Page -->
               {% if page_obj.has_previous %}
                 <li class="page-item">
-                  <a class="page-link" href="?page=1" title="First page">
+                  <a class="page-link" href="?page=1{% if preserved_params %}&{{ preserved_params }}{% endif %}" title="First page">
                     <i class="fas fa-angle-double-left"></i>
                   </a>
                 </li>
@@ -273,7 +349,7 @@
               <!-- Previous -->
               {% if page_obj.has_previous %}
                 <li class="page-item">
-                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}" title="Previous page">
+                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if preserved_params %}&{{ preserved_params }}{% endif %}" title="Previous page">
                     <i class="fas fa-angle-left"></i>
                   </a>
                 </li>
@@ -292,7 +368,7 @@
                     </li>
                   {% else %}
                     <li class="page-item">
-                      <a class="page-link" href="?page={{ num }}{% if q %}&q={{ q }}{% endif %}">{{ num }}</a>
+                      <a class="page-link" href="?page={{ num }}{% if preserved_params %}&{{ preserved_params }}{% endif %}">{{ num }}</a>
                     </li>
                   {% endif %}
                 {% endif %}
@@ -301,7 +377,7 @@
               <!-- Next -->
               {% if page_obj.has_next %}
                 <li class="page-item">
-                  <a class="page-link" href="?page={{ page_obj.next_page_number }}" title="Next page">
+                  <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if preserved_params %}&{{ preserved_params }}{% endif %}" title="Next page">
                     <i class="fas fa-angle-right"></i>
                   </a>
                 </li>
@@ -314,7 +390,7 @@
               <!-- Last Page -->
               {% if page_obj.number < page_obj.paginator.num_pages %}
                 <li class="page-item">
-                  <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" title="Last page">
+                  <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if preserved_params %}&{{ preserved_params }}{% endif %}" title="Last page">
                     <i class="fas fa-angle-double-right"></i>
                   </a>
                 </li>
@@ -359,10 +435,16 @@
           <button type="button" class="btn btn-danger" id="confirmDelete">
             <i class="fa fa-trash mr-1"></i>Delete Record
           </button>
-          <a href="{% url 'delete_all_breakpoints' %}" class="btn btn-warning" onclick="return confirm('⚠️ WARNING: This will delete ALL breakpoint records. Are you absolutely sure?')">
-            <i class="fa fa-trash-alt mr-1"></i>Delete All
-          </a>
         </div>
+      </form>
+      <form method="POST"
+            action="{% url 'delete_all_breakpoints' %}"
+            class="px-3 pb-3"
+            onsubmit="return confirm('WARNING: This will delete ALL breakpoint records only. It will not delete the rest of the database. Are you absolutely sure?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-warning btn-block">
+          <i class="fa fa-trash-alt mr-1"></i>Delete All Breakpoints
+        </button>
       </form>
     </div>
   </div>

@@ -43,6 +43,13 @@ th, td {
     font-size: 8px;
 }
 
+.enris-text {
+    font-size: 7px !important;
+    font-weight: bold !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+}
+
 .page-break {
     page-break-before: always;
 }
@@ -107,7 +114,7 @@ th, td {
                     <!-- bat_seq spans 2 rows -->
                     <td rowspan="2"
                         style="font-size:9px; text-align:left; border-right:0; border-bottom:0;">
-                        <strong>{{ isolate.bat_seq }}</strong>
+                        <strong>{{ isolate.AccessionNo|accession_ref_no|default:isolate.bat_seq }}</strong>
                     </td>
 
                     <!-- patient name spans 2 rows -->
@@ -145,13 +152,13 @@ th, td {
             <!-- DISK ROW -->
             <tr>
                 {% if forloop.first %}
-                <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: le;">{{ isolate.Site_Pre }}</td>
+                <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: le;">{{ isolate.Site_Pre_ed|prefer_text:isolate.Site_Pre }}</td>
                 <td><strong>DISK</strong></td>
                 {% endif%}
 
                 {% if not forloop.first %}
                     <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black;"></td>
-                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: left;">{{isolate.Site_Pos}}</td>
+                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: left;">{{ isolate.Site_Pos_ed|prefer_text:isolate.Site_Pos }}</td>
                     <td><strong>DISK</strong></td>
                 {% endif %}
 
@@ -159,7 +166,7 @@ th, td {
                 {% for abx, data in row %}
                     <td style="font-size:7px;">
                         {{ data.disk.ab_Disk_value|default_if_none:"&nbsp;"|safe }} <br>
-                        {{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe}}
+                        <span class="enris-text">{{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe}}</span>
                     </td>
                 {% endfor %}
                 {% if forloop.first %}
@@ -191,7 +198,7 @@ th, td {
                     <td class="mic" style="font-size:7px;">
                         {{ data.mic.ab_MIC_operand }}
                         {{ data.mic.ab_MIC_value|floatformat:2|default_if_none:"&nbsp;"|safe }} <br>
-                        {{ data.mic.ab_MIC_enRIS|default_if_none:"&nbsp;"|safe }}
+                        <span class="enris-text">{{ data.mic.ab_MIC_enRIS|default_if_none:"&nbsp;"|safe }}</span>
                     </td>
                 {% endfor %}
             </tr>
@@ -223,13 +230,15 @@ th, td {
                             {% for abx, data in row %}
                                 <th>{{ abx }}</th>
                             {% endfor %}
+                            {% if not isolate.ars_OrgCode|organism_type_is_plus %}
                                 {% if forloop.first %}
                                 <th colspan="3" style="border-bottom: 0;">Confirmatory Tests:</th>
                                 {% endif%}
                                 {%if not forloop.first %}
-                               <td style="font-size: 7px;">ampC</td>
-                               <td style="font-size: 7px;">CN/CNI</td>
-                               <td style="font-size: 7px;">{{isolate.ars_cn_cni|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                                   <td style="font-size: 7px;">ampC</td>
+                                   <td style="font-size: 7px;">CN/CNI</td>
+                                   <td style="font-size: 7px;">{{isolate.ars_cn_cni|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                                {% endif %}
                             {% endif %}
                         </tr>
 
@@ -239,13 +248,13 @@ th, td {
                             
                              {% if forloop.first %}
                             <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
-                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">{{isolate.ars_Pre}}</td>
+                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">{{ isolate.ars_Pre_ed|prefer_text:isolate.ars_Pre }}</td>
                             <td><strong>DISK</strong></td>
                             {% endif %}
 
                             {% if not forloop.first %}
                             <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
-                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"> {{isolate.ars_Post}}</td>
+                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">{{ isolate.ars_Post_ed|prefer_text:isolate.ars_Post }}</td>
                             <td><strong>DISK</strong></td>
                             {% endif %}
 
@@ -255,15 +264,17 @@ th, td {
                                 </td>
                             {% endfor %}
 
-                            {%if forloop.first %}
-                               <td style="font-size: 7px; border-bottom: 0;">ESBL</td>
-                               <td style="font-size: 7px;">CT/CTL</td>
-                               <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
-                            {% endif %}
-                            {%if not forloop.first %}
-                               <td style="font-size: 7px;">MBL</td>
-                               <td style="font-size: 7px;">IP/IPI</td>
-                               <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% if not isolate.ars_OrgCode|organism_type_is_plus %}
+                                {%if forloop.first %}
+                                   <td style="font-size: 7px; border-bottom: 0;">ESBL</td>
+                                   <td style="font-size: 7px;">CT/CTL</td>
+                                   <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                                {% endif %}
+                                {%if not forloop.first %}
+                                   <td style="font-size: 7px;">MBL</td>
+                                   <td style="font-size: 7px;">IP/IPI</td>
+                                   <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                                {% endif %}
                             {% endif %}
 
 
@@ -290,14 +301,16 @@ th, td {
                                 </td>
                             {% endfor %}
 
-                            {% if forloop.first %}
-                            <td style="border-top: 0;">&nbsp;</td>
-                            <td style="font-size: 7px;">TZ/TZL</td>
-                            <td style="font-size: 7px;">{{isolate.ars_tz_tzl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
-                            {% endif %}
-                            {% if not forloop.first %}
+                            {% if not isolate.ars_OrgCode|organism_type_is_plus %}
+                                {% if forloop.first %}
+                                <td style="border-top: 0;">&nbsp;</td>
+                                <td style="font-size: 7px;">TZ/TZL</td>
+                                <td style="font-size: 7px;">{{isolate.ars_tz_tzl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                                {% endif %}
+                                {% if not forloop.first %}
                             <td style="border-top: 0;" colspan="3">&nbsp;</td>
                        
+                            {% endif %}
                             {% endif %}
 
                         </tr>
@@ -322,7 +335,7 @@ th, td {
                     <!-- bat_seq spans 2 rows -->
                     <td rowspan="2"
                         style="font-size:9px; text-align:left; border-right:0; border-bottom:0;">
-                        <strong>{{ isolate.bat_seq }}</strong>
+                        <strong>{{ isolate.AccessionNo|accession_ref_no|default:isolate.bat_seq }}</strong>
                     </td>
 
                     <!-- patient name spans 2 rows -->
@@ -360,13 +373,13 @@ th, td {
             <!-- DISK ROW -->
             <tr>
                 {% if forloop.first %}
-                <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: le;">{{ isolate.Site_Pre }}</td>
+                <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: le;">{{ isolate.Site_Pre_ed|prefer_text:isolate.Site_Pre }}</td>
                 <td><strong>DISK</strong></td>
                 {% endif%}
 
                 {% if not forloop.first %}
                     <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black;"></td>
-                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: left;">{{isolate.Site_Pos}}</td>
+                    <td colspan="4" style="border-top:0; border-bottom:0; border-right:1px solid black; text-align: left;">{{ isolate.Site_Pos_ed|prefer_text:isolate.Site_Pos }}</td>
                     <td><strong>DISK</strong></td>
                 {% endif %}
 
@@ -374,7 +387,7 @@ th, td {
                 {% for abx, data in row %}
                     <td style="font-size:7px;">
                         {{ data.disk.ab_Disk_value|default_if_none:"&nbsp;"|safe }} <br>
-                        {{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe}}
+                        <span class="enris-text">{{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe}}</span>
                     </td>
                 {% endfor %}
                 {% if forloop.first %}
@@ -406,7 +419,7 @@ th, td {
                     <td class="mic" style="font-size:7px;">
                         {{ data.mic.ab_MIC_operand }}
                         {{ data.mic.ab_MIC_value|floatformat:2|default_if_none:"&nbsp;"|safe }} <br>
-                        {{ data.mic.ab_MIC_enRIS|default_if_none:"&nbsp;"|safe }}
+                        <span class="enris-text">{{ data.mic.ab_MIC_enRIS|default_if_none:"&nbsp;"|safe }}</span>
                     </td>
                 {% endfor %}
             </tr>
@@ -438,13 +451,15 @@ th, td {
                             {% for abx, data in row %}
                                 <th>{{ abx }}</th>
                             {% endfor %}
+                            {% if not isolate.ars_OrgCode|organism_type_is_plus %}
                                 {% if forloop.first %}
                                 <th colspan="3" style="border-bottom: 0;">Confirmatory Tests:</th>
                                 {% endif%}
                                 {%if not forloop.first %}
-                               <td style="font-size: 7px;">ampC</td>
-                               <td style="font-size: 7px;">CN/CNI</td>
-                               <td style="font-size: 7px;">{{isolate.ars_cn_cni|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                                   <td style="font-size: 7px;">ampC</td>
+                                   <td style="font-size: 7px;">CN/CNI</td>
+                                   <td style="font-size: 7px;">{{isolate.ars_cn_cni|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                                {% endif %}
                             {% endif %}
                         </tr>
 
@@ -454,13 +469,13 @@ th, td {
                             
                              {% if forloop.first %}
                             <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
-                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">{{isolate.ars_Pre}}</td>
+                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">{{ isolate.ars_Pre_ed|prefer_text:isolate.ars_Pre }}</td>
                             <td><strong>DISK</strong></td>
                             {% endif %}
 
                             {% if not forloop.first %}
                             <td colspan="4" style="border-top: 0; border-bottom: 0;"></td>
-                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;"> {{isolate.ars_Post}}</td>
+                            <td colspan="4" style="border-top: 0; border-bottom: 0; text-align: left;">{{ isolate.ars_Post_ed|prefer_text:isolate.ars_Post }}</td>
                             <td><strong>DISK</strong></td>
                             {% endif %}
 
@@ -470,15 +485,17 @@ th, td {
                                 </td>
                             {% endfor %}
 
-                            {%if forloop.first %}
-                               <td style="font-size: 7px; border-bottom: 0;">ESBL</td>
-                               <td style="font-size: 7px;">CT/CTL</td>
-                               <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
-                            {% endif %}
-                            {%if not forloop.first %}
-                               <td style="font-size: 7px;">MBL</td>
-                               <td style="font-size: 7px;">IP/IPI</td>
-                               <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                            {% if not isolate.ars_OrgCode|organism_type_is_plus %}
+                                {%if forloop.first %}
+                                   <td style="font-size: 7px; border-bottom: 0;">ESBL</td>
+                                   <td style="font-size: 7px;">CT/CTL</td>
+                                   <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                                {% endif %}
+                                {%if not forloop.first %}
+                                   <td style="font-size: 7px;">MBL</td>
+                                   <td style="font-size: 7px;">IP/IPI</td>
+                                   <td style="font-size: 7px;">{{isolate.ars_ct_ctl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                                {% endif %}
                             {% endif %}
 
 
@@ -505,14 +522,16 @@ th, td {
                                 </td>
                             {% endfor %}
 
-                            {% if forloop.first %}
-                            <td style="border-top: 0;">&nbsp;</td>
-                            <td style="font-size: 7px;">TZ/TZL</td>
-                            <td style="font-size: 7px;">{{isolate.ars_tz_tzl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
-                            {% endif %}
-                            {% if not forloop.first %}
+                            {% if not isolate.ars_OrgCode|organism_type_is_plus %}
+                                {% if forloop.first %}
+                                <td style="border-top: 0;">&nbsp;</td>
+                                <td style="font-size: 7px;">TZ/TZL</td>
+                                <td style="font-size: 7px;">{{isolate.ars_tz_tzl|default_if_none:"&nbsp;"|default:"&nbsp;"|safe}}</td>
+                                {% endif %}
+                                {% if not forloop.first %}
                             <td style="border-top: 0;" colspan="3">&nbsp;</td>
                        
+                            {% endif %}
                             {% endif %}
 
                         </tr>
@@ -531,15 +550,17 @@ th, td {
             
             <tr>
                 <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0;"> <strong>Date:</strong></td>
-                <td colspan="4" style="border-left: 0; border-right: 0;"> </td>
+                <td colspan="4" style="border-left: 0; border-right: 0;">
+                    {% if isolate.Batch_id.bat_Date_Accomplished %}{{ isolate.Batch_id.bat_Date_Accomplished|date:"d-M-Y" }}{% elif isolate.Date_Accomplished_ARSP %}{{ isolate.Date_Accomplished_ARSP|date:"d-M-Y" }}{% endif %}
+                </td>
                 <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0;"><strong>Encoded by:</strong></td>
-                <td colspan="5" style="border-left: 0; border-right: 0;">{{isolate.arsp_Encoder}}</td>
+                <td colspan="5" style="border-left: 0; border-right: 0;">{{ isolate.arsp_Encoder|professional_caps }}</td>
                 <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0;"><strong>Checked by:</strong></td>
-                <td colspan="6" style="border-left: 0; border-right: 0;">{{isolate.arsp_Checker}}</td>
+                <td colspan="6" style="border-left: 0; border-right: 0;">{{ isolate.arsp_Checker|professional_caps }}</td>
                 <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0;"><strong>Verified by:</strong></td>
-                <td colspan="10" style="border-left: 0; border-right: 0;">{{isolate.arsp_Verifier}} / {{isolate.arsp_LabManager}}</td>
+                <td colspan="10" style="border-left: 0; border-right: 0;">{{ isolate.arsp_Verifier|professional_caps }} / {{ isolate.arsp_LabManager|professional_caps }}</td>
                 <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0;"><strong>Noted by:</strong></td>
-                <td colspan="6" style="border-left: 0; border-right: 0;">{{isolate.arsp_Head}}</td>
+                <td colspan="6" style="border-left: 0; border-right: 0;">{{ isolate.arsp_Head|professional_caps }}</td>
             </tr>
             <tr style="height: 12px;">
                 <td colspan="2" style="border: none;"></td>
@@ -549,7 +570,13 @@ th, td {
                 <td colspan="2"  style="border: none;"></td>
                 <td colspan="6"  style="border: none;">{{isolate.arsp_Chec_Lic }}</td>
                 <td colspan="2"  style="border: none;"></td>
-                <td colspan="9"  style="border: none;">{{isolate.arsp_Ver_Lic}}   {{isolate.arsp_Lab_Lic}}</td>
+                <td colspan="9"  style="border: none;">
+                    {% if isolate.arsp_Ver_Lic or isolate.arsp_Lab_Lic %}
+                        License No.:{% if isolate.arsp_Ver_Lic %} {{ isolate.arsp_Ver_Lic }}{% endif %}{% if isolate.arsp_Ver_Lic and isolate.arsp_Lab_Lic %} / {% endif %}{% if isolate.arsp_Lab_Lic %}{{ isolate.arsp_Lab_Lic }}{% endif %}
+                    {% else %}
+                        &nbsp;
+                    {% endif %}
+                </td>
                 <td colspan="2"  style="border: none;"></td>
                 <td colspan="6"  style="border: none;">{{isolate.arsp_Head_Lic}}</td>
             </tr>

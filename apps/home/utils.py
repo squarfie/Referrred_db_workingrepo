@@ -6,8 +6,9 @@ from sqlalchemy import create_engine
 import pandas as pd
 from django.db import models
 from django.db.models import Q
-from apps.home.models import *
 from django.apps import apps
+from apps.home.models import *
+from apps.home_final.utils import _year_as_int
 
 
 #creating a connection to postgresql
@@ -89,54 +90,73 @@ def generate_codes(site_code, referral_date_obj, ref_no_raw, batch_no, total_bat
 def get_filtered_antibiotics(breakpoint_year, resolved_org, *, retest=False):
     """
     Returns Antibiotic_List filtered by breakpoint availability.
-    Matches organism-specific breakpoints first, then generic ones.
+    Uses the nearest breakpoint year available for the selected organism.
+    Falls back to all visible antibiotics if the organism has no breakpoints.
     """
+    Antibiotic_List = apps.get_model("home", "Antibiotic_List")
+    BreakpointsTable = apps.get_model("home", "BreakpointsTable")
 
     qs = Antibiotic_List.objects.all()
-
 
     if retest:
         qs = qs.filter(Retest=True)
     else:
         qs = qs.filter(Show=True)
 
-
     if not breakpoint_year:
         return qs.order_by("Antibiotic")
 
-
     bp_qs = BreakpointsTable.objects.filter(
-        Year=breakpoint_year
+        Q(Spec_code__isnull=True) |
+        Q(Spec_code="")
     )
-
- 
     if resolved_org:
         resolved_org = resolved_org.strip()
-
-        if retest:
-            # ARSRL / retest organism
-            bp_qs = bp_qs.filter(
-                Q(Org__iexact=resolved_org) |
-                Q(Org__isnull=True) |
-                Q(Org="")
-            )
-        else:
-            # Sentinel organism
-            bp_qs = bp_qs.filter(
-                Q(Org__iexact=resolved_org) |
-                Q(Org__isnull=True) |
-                Q(Org="")
-            )
-
+        bp_qs = bp_qs.filter(
+            Q(Org__iexact=resolved_org) |
+            Q(Org__isnull=True) |
+            Q(Org="")
+        )
 
     if not bp_qs.exists():
         return qs.order_by("Antibiotic")
 
-    whonet_codes = (
-        bp_qs
-        .values_list("Whonet_Abx", flat=True)
-        .distinct()
-    )
+    def year_as_int(value):
+        try:
+            return int(str(value).strip())
+        except (TypeError, ValueError):
+            return None
+
+    target_year = year_as_int(breakpoint_year)
+    years = []
+    for year in bp_qs.values_list("Year", flat=True).distinct():
+        year_int = year_as_int(year)
+        if year_int is not None:
+            years.append(year_int)
+
+    if not years:
+        return qs.order_by("Antibiotic")
+
+    if target_year is None:
+        selected_year = max(years)
+        bp_qs = bp_qs.filter(Year=str(selected_year))
+    else:
+        previous_or_current_years = [year for year in years if year <= target_year]
+        if previous_or_current_years:
+            bp_qs = bp_qs.filter(Year__in=[str(year) for year in previous_or_current_years])
+        else:
+            bp_qs = bp_qs.filter(Year=str(min(years)))
+
+    latest_year_by_code = {}
+    for code, year in bp_qs.values_list("Whonet_Abx", "Year"):
+        code = (code or "").strip().upper()
+        year_int = year_as_int(year)
+        if not code or year_int is None:
+            continue
+        if code not in latest_year_by_code or year_int > latest_year_by_code[code]:
+            latest_year_by_code[code] = year_int
+
+    whonet_codes = list(latest_year_by_code.keys())
 
     return (
         qs
@@ -155,6 +175,8 @@ def resolve_organism_name(org_code):
     """
     if not org_code:
         return None
+
+    Organism_List = apps.get_model("home", "Organism_List")
 
     org = (
         Organism_List.objects
@@ -223,3 +245,132 @@ def working_days(start_date, end_date, step_owner=None):
         current += timedelta(days=1)
 
     return day_count
+
+
+
+PANEL_ORG_KEY_FIELDS = (
+    "Family_Code",
+    "Genus_Group",
+    "Genus_Code",
+    "Species_Group",
+    "Whonet_Org_Code",
+)
+
+
+def _normalize_panel_key(value):
+    return str(value or "").strip()
+
+
+def _organism_panel_keys(resolved_org):
+    resolved_org = _normalize_panel_key(resolved_org)
+    if not resolved_org:
+        return []
+
+    Organism_List = apps.get_model("home", "Organism_List")
+    organism = (
+        Organism_List.objects
+        .filter(Q(Whonet_Org_Code__iexact=resolved_org) | Q(Replaced_by__iexact=resolved_org))
+        .values(*PANEL_ORG_KEY_FIELDS)
+        .first()
+    )
+
+    keys = []
+    if organism:
+        for field in PANEL_ORG_KEY_FIELDS:
+            key = _normalize_panel_key(organism.get(field))
+            if key and key.lower() not in {item.lower() for item in keys}:
+                keys.append(key)
+
+    if resolved_org and resolved_org.lower() not in {item.lower() for item in keys}:
+        keys.append(resolved_org)
+
+    return keys
+
+
+def _panel_key_filter(panel_keys):
+    query = Q()
+    for key in panel_keys:
+        query |= Q(Org__iexact=key)
+    return query | Q(Org__isnull=True) | Q(Org="")
+
+
+def get_breakpoint_panel_abx_codes(breakpoint_year, resolved_org):
+    """
+    Return distinct printable panel antibiotic codes from breakpoints.
+
+    Panel selection is organism-based, not specimen-based.
+
+    Important:
+    - Do NOT filter by Spec_code.
+    - Spec_code may exist in breakpoint rows, but it should not exclude the
+      antibiotic from the printed organism panel.
+    - Show_Site and Show_Ars are still respected later in the PDF function
+      through antibiotic_print_order(show_site=True/show_ars=True).
+    """
+
+    # Do not filter Spec_code here.
+    # We want the organism panel regardless of specimen type.
+    bp_qs = BreakpointsTable.objects.all()
+
+    resolved_org = (resolved_org or "").strip()
+    panel_keys = _organism_panel_keys(resolved_org)
+    panel_key_lookup = {key.lower(): index + 1 for index, key in enumerate(panel_keys)}
+
+    if panel_keys:
+        bp_qs = bp_qs.filter(_panel_key_filter(panel_keys))
+    else:
+        bp_qs = bp_qs.filter(
+            Q(Org__isnull=True) |
+            Q(Org="")
+        )
+
+    target_year = _year_as_int(breakpoint_year)
+    best_by_whonet = {}
+
+    for bp in bp_qs:
+        whonet_code = (bp.Whonet_Abx or "").strip().upper()
+        panel_code = (bp.Abx_code or "").strip()
+        bp_year = _year_as_int(bp.Year)
+
+        if not whonet_code or not panel_code or bp_year is None:
+            continue
+
+        # Do not use breakpoint rows newer than the isolate/specimen year.
+        if target_year is not None and bp_year > target_year:
+            continue
+
+        org_key = (bp.Org or "").strip().lower()
+        org_rank = panel_key_lookup.get(org_key, 0)
+
+        candidate_rank = (bp_year, org_rank)
+        existing = best_by_whonet.get(whonet_code)
+
+        if existing is None or candidate_rank > existing["rank"]:
+            best_by_whonet[whonet_code] = {
+                "rank": candidate_rank,
+                "panel_code": panel_code,
+            }
+
+    if not best_by_whonet and target_year is not None:
+        # If all available breakpoints are newer than the specimen year,
+        # use the earliest available future year as fallback.
+        future_years = []
+        for year in bp_qs.values_list("Year", flat=True).distinct():
+            year_int = _year_as_int(year)
+            if year_int is None:
+                continue
+            try:
+                is_future_year = year_int > target_year
+            except TypeError:
+                continue
+            if is_future_year:
+                future_years.append(year_int)
+
+        if future_years:
+            return get_breakpoint_panel_abx_codes(str(min(future_years)), resolved_org)
+
+    return {
+        item["panel_code"]
+        for item in best_by_whonet.values()
+        if item["panel_code"]
+    }

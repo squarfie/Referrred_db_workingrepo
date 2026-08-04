@@ -9,9 +9,11 @@ from .forms import *
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
-from django.urls import reverse_lazy
+from django.urls import reverse
+from django.utils.html import format_html
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
+from apps.home.models import UserProfile
 
 
 def login_view(request):
@@ -26,8 +28,10 @@ def login_view(request):
             if user is not None:
                 login(request, user)
                 return redirect("/")
+            elif User.objects.filter(username=username).exists():
+                msg = 'Password is incorrect for this username.'
             else:
-                msg = 'Invalid credentials'
+                msg = 'Username not found.'
         else:
             msg = 'Error validating the form'
 
@@ -41,12 +45,19 @@ def register_user(request):
     if request.method == "POST":
         form = SignUpForm(request.POST)
         if form.is_valid():
-            form.save()
+            user = form.save()
+            UserProfile.objects.update_or_create(
+                user=user,
+                defaults={"Middle_Name": form.cleaned_data.get("middle_name", "")},
+            )
             username = form.cleaned_data.get("username")
             raw_password = form.cleaned_data.get("password1")
             user = authenticate(username=username, password=raw_password)
 
-            msg = 'User created - please <a href="/login">login</a>.'
+            msg = format_html(
+                'User created - please <a href="{}">login</a>.',
+                reverse("login"),
+            )
             success = True
         else:
             msg = 'Form is not valid'

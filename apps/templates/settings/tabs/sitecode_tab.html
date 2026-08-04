@@ -27,12 +27,14 @@
     <form method="POST"
           action="{% url 'add_dropdown' %}"
           id="siteform"
-          autocomplete="on">
+          autocomplete="on"
+          novalidate>
 
       {% csrf_token %}
+      {% include "includes/form_errors.html" with form=site_form %}
 
       <!-- Upload  -->
-      <div class="row mb-4">
+      <div class="row mb-4 align-items-center">
         <div class="col-md-6">
           <button type="button"
                   class="btn btn-secondary"
@@ -41,12 +43,17 @@
             <i class="fas fa-file-upload mr-1"></i> Upload CSV / Excel
           </button>
         </div>
+        <div class="col-md-6 text-md-right mt-2 mt-md-0">
+          <a href="{% url 'export_sitecodes' %}" class="btn btn-outline-primary">
+            <i class="fas fa-file-export mr-1"></i> Export Excel
+          </a>
+        </div>
       </div>
 
       <!-- FORM FIELDS -->
       <div class="row pt-3">
 
-        <div class="col-md-6 mb-3">
+        <div class="col-md-4 mb-3">
           <label>
             <i class="fas fa-tag mr-2"></i> Site Code
           </label>
@@ -57,7 +64,7 @@
           </small>
         </div>
 
-        <div class="col-md-6 mb-3">
+        <div class="col-md-8 mb-3">
           <label>
             <i class="fas fa-hospital mr-2"></i> Hospital Name
           </label>
@@ -66,6 +73,104 @@
             <i class="fas fa-info-circle mr-1"></i>
             Complete laboratory name
           </small>
+        </div>
+
+        <div class="col-md-12 mb-3">
+          <label>
+            <i class="fas fa-map-marker-alt mr-2"></i> Hospital Address
+          </label>
+          {{ site_form.Site_Address|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-12 mt-2 mb-2">
+          <h6 class="text-uppercase text-muted mb-0">Lab Manager / Head of Laboratory</h6>
+        </div>
+
+        <div class="col-md-4 mb-3">
+          <label>Lab Manager</label>
+          {{ site_form.Site_Lab_Head|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-2 mb-3">
+          <label>Credentials</label>
+          {{ site_form.Site_Lab_Head_Credentials|append_attr:"class:form-control" }}
+          <small class="helper-text">
+            <i class="fas fa-info-circle mr-1"></i>
+           e.g. MD, PhD, RMT, etc.
+          </small>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>Designation</label>
+          {{ site_form.Site_Lab_Head_Designation|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>Email</label>
+          {{ site_form.Site_Lab_Head_Email|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>Contact No.</label>
+          {{ site_form.Site_Lab_Head_Contact|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-12 mt-2 mb-2">
+          <h6 class="text-uppercase text-muted mb-0">Medical Center Chief</h6>
+        </div>
+
+        <div class="col-md-4 mb-3">
+          <label>Name</label>
+          {{ site_form.Site_Med_Ctr_Chief|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-2 mb-3">
+          <label>Credentials</label>
+          {{ site_form.Site_Med_Ctr_Chief_Credentials|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>Designation</label>
+          {{ site_form.Site_Med_Ctr_Chief_Designation|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>Email</label>
+          {{ site_form.Site_Med_Ctr_Chief_Email|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>Contact No.</label>
+          {{ site_form.Site_Med_Ctr_Chief_Contact|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-12 mt-2 mb-2">
+          <h6 class="text-uppercase text-muted mb-0">Medical Technologist</h6>
+        </div>
+
+        <div class="col-md-4 mb-3">
+          <label>Name</label>
+          {{ site_form.Site_MedTech|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-2 mb-3">
+          <label>Credentials</label>
+          {{ site_form.Site_MedTech_Credentials|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>Designation</label>
+          {{ site_form.Site_MedTech_Designation|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>Email</label>
+          {{ site_form.Site_MedTech_Email|append_attr:"class:form-control" }}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>Contact No.</label>
+          {{ site_form.Site_MedTech_Contact|append_attr:"class:form-control" }}
         </div>
 
       </div>
@@ -98,7 +203,8 @@
     <form method="POST"
           action="{% url 'site_upload' %}"
           enctype="multipart/form-data"
-          onsubmit="return confirmOverwrite();">
+          onsubmit="return confirmOverwrite();"
+          novalidate>
 
         {% csrf_token %}
 
@@ -129,7 +235,7 @@
 </div>
 <script>
 function confirmOverwrite() {
-  return confirm("WARNING: Uploading will overwrite existing Site Code data. Continue?");
+  return confirm("Existing Site Codes will be skipped and only new codes will be added. Continue?");
 }
 </script>
 

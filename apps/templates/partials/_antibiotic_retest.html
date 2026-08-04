@@ -35,7 +35,9 @@
                         <td>
                           <input name="retest_disk_enris_{{ retest.Whonet_Abx }}"
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_disk_enris' %}"
-                                 type="text" style="width: 50px;">
+                                 type="text" maxlength="4"
+                                 oninput="this.value = this.value.toUpperCase();"
+                                 style="width: 70px; text-align: center; text-transform: uppercase;">
                         </td>
                       </tr>
                     {% endif %}
@@ -89,7 +91,9 @@
                         <td>
                           <input name="retest_mic_enris_{{ retest.Whonet_Abx }}"
                                  value="{% get_existing_value retest_entries retest.Whonet_Abx 'retest_mic_enris' %}"
-                                 type="text" style="width: 50px;">
+                                 type="text" maxlength="4"
+                                 oninput="this.value = this.value.toUpperCase();"
+                                 style="width: 70px; text-align: center; text-transform: uppercase;">
                         </td>
                         <td>
                           {% get_existing_value retest_entries retest.Whonet_Abx 'retest_alert_mic' as retest_alert_mic_checked %}

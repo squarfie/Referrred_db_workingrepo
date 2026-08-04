@@ -18,7 +18,7 @@
   <!-- BODY -->
   <div class="card-body">
 
-    <form method="POST" action="{% url 'add_non_working_day' %}">
+    <form method="POST" action="{% url 'add_non_working_day' %}" id="nonWorkingDayForm" novalidate>
       {% csrf_token %}
 
       <div class="row">
