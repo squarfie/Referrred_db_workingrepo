@@ -361,6 +361,33 @@ def professional_caps(value):
 
 
 @register.filter
+def with_staff_credentials(value):
+    """
+    Append ARSRL staff credentials to signatory names when available.
+    """
+    name = str(value or "").strip()
+    if not name:
+        return ""
+
+    from apps.home.models import arsStaff_Details
+
+    staff = (
+        arsStaff_Details.objects
+        .filter(Staff_Name__iexact=name)
+        .values("Staff_Credentials")
+        .first()
+    )
+    credentials = str((staff or {}).get("Staff_Credentials") or "").strip()
+    if not credentials:
+        return name
+
+    if re.search(rf"(?:,\s*|\s+){re.escape(credentials)}$", name, flags=re.IGNORECASE):
+        return name
+
+    return f"{name}, {credentials}"
+
+
+@register.filter
 def break_long_words(value, width=20):
     if not value:
         return value

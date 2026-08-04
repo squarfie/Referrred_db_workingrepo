@@ -1,0 +1,219 @@
+{% extends 'layouts/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %} WGS Pipeline Form {% endblock title %}
+
+{% block content %}
+<div class="header bg-primary pb-6 pt-5 pt-md-7">
+  <div class="container-fluid">
+    <h1 class="text-white mb-0">{% if pipeline %}Edit{% else %}Create{% endif %} WGS Pipeline</h1>
+  </div>
+</div>
+
+<div class="container-fluid mt--5">
+  <div class="card shadow">
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-control-label">{{ form.name.label }}</label>
+            {{ form.name|add_class:"form-control" }}
+            {% for error in form.name.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-control-label">{{ form.slug.label }}</label>
+            {{ form.slug|add_class:"form-control" }}
+            {% for error in form.slug.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-12 mb-3">
+            <label class="form-control-label">{{ form.description.label }}</label>
+            {{ form.description|add_class:"form-control" }}
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-control-label">{{ form.sequencing_type.label }}</label>
+            {{ form.sequencing_type|add_class:"form-control" }}
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-control-label">{{ form.platform.label }}</label>
+            {{ form.platform|add_class:"form-control" }}
+          </div>
+          <div class="col-12 mb-3">
+            <label class="form-control-label">{{ form.category.label }}</label>
+            <div class="pipeline-category-grid">
+              {% for choice in form.category %}
+              <label class="pipeline-category-option">
+                {{ choice.tag }}
+                <span>{{ choice.choice_label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% for error in form.category.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-control-label">{{ form.sheet_name.label }}</label>
+            {{ form.sheet_name|add_class:"form-control" }}
+          </div>
+
+          {% if not pipeline %}
+          <div class="col-md-6 mb-3">
+            <label class="form-control-label">Sample pipeline file</label>
+            <input type="file" name="sample_file" class="form-control" accept=".csv,.xlsx,.xls">
+            <small class="form-text text-muted">Upload a sample CSV/XLSX to detect columns for this pipeline.</small>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if preview_columns %}
+        <hr>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label class="form-control-label">Column used to match existing accession</label>
+            <select name="accession_column" class="form-control" required>
+              {% for column in preview_columns %}
+              <option value="{{ column.name }}" {% if column.name == accession_guess %}selected{% endif %}>{{ column.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-control-label">Sample/name column</label>
+            <select name="sample_name_column" class="form-control">
+              <option value="">None</option>
+              {% for column in preview_columns %}
+              <option value="{{ column.name }}" {% if column.name == sample_guess %}selected{% endif %}>{{ column.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-control-label">Date column</label>
+            <select name="date_column" class="form-control">
+              <option value="">None</option>
+              {% for column in preview_columns %}
+              <option value="{{ column.name }}" {% if column.name == date_guess %}selected{% endif %}>{{ column.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="table-responsive mb-4">
+          <table class="table table-sm align-items-center mb-0">
+            <thead class="thead-light">
+              <tr>
+                <th>Use</th>
+                <th>Source Column</th>
+                <th>Display Label</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for column in preview_columns %}
+              <tr>
+                <td>
+                  <input type="hidden" name="column_name_{{ column.index }}" value="{{ column.name }}">
+                  <label class="custom-toggle mb-0">
+                    <input type="checkbox" name="selected_column_indices" value="{{ column.index }}" {% if column.include %}checked{% endif %}>
+                    <span class="custom-toggle-slider rounded-circle"></span>
+                  </label>
+                </td>
+                <td><strong>{{ column.name }}</strong></td>
+                <td><input class="form-control form-control-sm" type="text" name="field_label_{{ column.index }}" value="{{ column.label }}"></td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <span class="badge badge-info mr-2 pipeline-type-current">
+                      {% if column.data_type == "integer" %}Integer{% elif column.data_type == "decimal" %}Decimal{% elif column.data_type == "date" %}Date{% elif column.data_type == "boolean" %}Boolean{% else %}Text{% endif %}
+                    </span>
+                    <select class="form-control form-control-sm pipeline-type-select" name="field_type_{{ column.index }}" style="color:#172b4d;background-color:#fff;font-weight:600;">
+                    <option value="text" {% if column.data_type == "text" %}selected{% endif %}>Text</option>
+                    <option value="integer" {% if column.data_type == "integer" %}selected{% endif %}>Integer</option>
+                    <option value="decimal" {% if column.data_type == "decimal" %}selected{% endif %}>Decimal</option>
+                    <option value="date" {% if column.data_type == "date" %}selected{% endif %}>Date</option>
+                    <option value="boolean" {% if column.data_type == "boolean" %}selected{% endif %}>Boolean</option>
+                    </select>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          {{ form.accession_column.as_hidden }}
+          {{ form.sample_name_column.as_hidden }}
+          {{ form.date_column.as_hidden }}
+        {% endif %}
+
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <div class="custom-control custom-checkbox">
+              {{ form.show_in_upload_center|add_class:"custom-control-input" }}
+              <label class="custom-control-label" for="{{ form.show_in_upload_center.id_for_label }}">Show in upload center</label>
+            </div>
+          </div>
+          <div class="col-md-4 mb-3">
+            <div class="custom-control custom-checkbox">
+              {{ form.show_in_overview|add_class:"custom-control-input" }}
+              <label class="custom-control-label" for="{{ form.show_in_overview.id_for_label }}">Show in overview</label>
+            </div>
+          </div>
+          <div class="col-md-4 mb-3">
+            <div class="custom-control custom-checkbox">
+              {{ form.is_active|add_class:"custom-control-input" }}
+              <label class="custom-control-label" for="{{ form.is_active.id_for_label }}">Is active</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-right">
+          <a href="{% url 'settings_page' %}?tab=wgs_pipeline" class="btn btn-secondary">Cancel</a>
+          {% if preview_columns or pipeline %}
+          <button class="btn btn-primary" type="submit" name="action" value="save_pipeline">Save Pipeline</button>
+          {% else %}
+          <button class="btn btn-primary" type="submit" name="action" value="preview_sample">Detect Columns</button>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<style>
+.pipeline-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.5rem;
+}
+
+.pipeline-category-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 38px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #d8e2ef;
+  border-radius: 7px;
+  background: #fff;
+  color: #172b4d;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pipeline-category-option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.pipeline-type-select').forEach(function (select) {
+    const badge = select.closest('td').querySelector('.pipeline-type-current');
+    const syncTypeBadge = function () {
+      const selected = select.options[select.selectedIndex];
+      badge.textContent = selected ? selected.text : 'Text';
+    };
+    syncTypeBadge();
+    select.addEventListener('change', syncTypeBadge);
+  });
+});
+</script>
+{% endblock content %}

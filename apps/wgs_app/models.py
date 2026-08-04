@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from apps.home_final.models import Classification_Table, Final_Data
@@ -54,6 +55,244 @@ class WGS_Project(models.Model):
 
     def __str__(self):
         return str(self.Ref_Accession) if self.Ref_Accession else ""
+
+
+class CustomWGSPipeline(models.Model):
+    CATEGORY_CHOICES = [
+        ("quality_control", "Quality control"),
+        ("genome_assembly", "Genome assembly"),
+        ("species_identification", "Species identification"),
+        ("serotyping", "Serotyping"),
+        ("phylogrouping", "Phylogrouping"),
+        ("sequence_typing", "Sequence typing"),
+        ("amr_detection", "Antimicrobial resistance detection"),
+        ("virulence_detection", "Virulence detection"),
+        ("genome_annotation", "Genome annotation"),
+        ("variant_calling", "Variant calling"),
+        ("phylogenetics", "Phylogenetic analysis"),
+        ("other", "Other"),
+    ]
+    SEQUENCING_TYPE_CHOICES = [
+        ("short_read", "Short read"),
+        ("long_read", "Long read"),
+        ("hybrid", "Hybrid"),
+        ("other", "Other"),
+    ]
+    PLATFORM_LABELS = {
+        "illumina": "Illumina",
+        "nanopore": "Nanopore",
+        "pacbio": "PacBio",
+        "hybrid": "Hybrid",
+        "other": "Other",
+    }
+
+    name = models.CharField(max_length=150, unique=True)
+    slug = models.SlugField(max_length=170, unique=True)
+    description = models.TextField(blank=True)
+    sequencing_type = models.CharField(max_length=20, choices=SEQUENCING_TYPE_CHOICES, default="short_read")
+    platform = models.CharField(max_length=100, default="Illumina")
+    category = models.JSONField(default=list, blank=True)
+    sheet_name = models.CharField(max_length=120, blank=True)
+    accession_column = models.CharField(max_length=120, default="accession")
+    sample_name_column = models.CharField(max_length=120, blank=True)
+    date_column = models.CharField(max_length=120, blank=True)
+    show_in_upload_center = models.BooleanField(default=True)
+    show_in_overview = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="custom_wgs_pipelines",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "custom_wgs_pipeline"
+        ordering = ["sequencing_type", "name"]
+
+    def __str__(self):
+        return self.name
+
+    def category_values(self):
+        if isinstance(self.category, list):
+            return [value for value in self.category if value]
+        if self.category:
+            return [str(self.category)]
+        return []
+
+    def get_category_display(self):
+        labels = dict(self.CATEGORY_CHOICES)
+        return ", ".join(labels.get(value, value) for value in self.category_values())
+
+    def get_platform_display(self):
+        platform = str(self.platform or "").strip()
+        return self.PLATFORM_LABELS.get(platform.lower(), platform)
+
+
+class CustomWGSPipelineField(models.Model):
+    DATA_TYPE_CHOICES = [
+        ("text", "Text"),
+        ("integer", "Integer"),
+        ("decimal", "Decimal"),
+        ("date", "Date"),
+        ("boolean", "Boolean"),
+    ]
+
+    pipeline = models.ForeignKey(CustomWGSPipeline, on_delete=models.CASCADE, related_name="fields")
+    field_key = models.SlugField(max_length=120)
+    display_label = models.CharField(max_length=150)
+    source_column = models.CharField(max_length=150)
+    column_aliases = models.TextField(blank=True)
+    data_type = models.CharField(max_length=20, choices=DATA_TYPE_CHOICES, default="text")
+    required = models.BooleanField(default=False)
+    default_value = models.CharField(max_length=255, blank=True)
+    show_in_table = models.BooleanField(default=True)
+    show_in_detail = models.BooleanField(default=True)
+    show_in_export = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "custom_wgs_pipeline_field"
+        ordering = ["sort_order", "display_label"]
+        unique_together = (("pipeline", "field_key"),)
+
+    def __str__(self):
+        return f"{self.pipeline.name}: {self.display_label}"
+
+    def upload_column_options(self):
+        options = [self.source_column]
+        options.extend(line.strip() for line in self.column_aliases.splitlines() if line.strip())
+        return options
+
+
+class CustomWGSPipelineUploadBatch(models.Model):
+    STATUS_CHOICES = [
+        ("completed", "Completed"),
+        ("completed_with_warnings", "Completed with warnings"),
+        ("failed", "Failed"),
+    ]
+
+    pipeline = models.ForeignKey(CustomWGSPipeline, on_delete=models.CASCADE, related_name="upload_batches")
+    file_name = models.CharField(max_length=255)
+    sheet_name = models.CharField(max_length=120, blank=True)
+    row_count = models.PositiveIntegerField(default=0)
+    created_count = models.PositiveIntegerField(default=0)
+    updated_count = models.PositiveIntegerField(default=0)
+    skipped_count = models.PositiveIntegerField(default=0)
+    matched_count = models.PositiveIntegerField(default=0)
+    unmatched_count = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="completed")
+    error_log = models.TextField(blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="custom_wgs_upload_batches",
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "custom_wgs_pipeline_upload_batch"
+        ordering = ["-uploaded_at", "-id"]
+
+    def __str__(self):
+        return f"{self.pipeline.name} upload {self.uploaded_at:%Y-%m-%d %H:%M}"
+
+
+class CustomWGSPipelineRecord(models.Model):
+    MATCH_STATUS_CHOICES = [
+        ("matched", "Matched"),
+        ("unmatched", "Unmatched"),
+        ("invalid", "Invalid"),
+    ]
+    MATCH_SOURCE_CHOICES = [
+        ("final", "Final data"),
+        ("raw", "Raw data"),
+        ("wgs_project", "WGS project"),
+        ("", "None"),
+    ]
+
+    pipeline = models.ForeignKey(CustomWGSPipeline, on_delete=models.CASCADE, related_name="records")
+    upload_batch = models.ForeignKey(
+        CustomWGSPipelineUploadBatch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="records",
+    )
+    accession = models.CharField(max_length=255, db_index=True)
+    sample_name = models.CharField(max_length=255, blank=True)
+    matched_final_data = models.ForeignKey(
+        "home_final.Final_Data",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="custom_wgs_records",
+        to_field="f_AccessionNo",
+    )
+    matched_raw_data = models.ForeignKey(
+        "home.Referred_Data",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="custom_wgs_records",
+        to_field="AccessionNo",
+    )
+    match_status = models.CharField(max_length=20, choices=MATCH_STATUS_CHOICES, default="unmatched", db_index=True)
+    match_source = models.CharField(max_length=20, choices=MATCH_SOURCE_CHOICES, blank=True, default="")
+    values_json = models.JSONField(default=dict, blank=True)
+    raw_row_json = models.JSONField(default=dict, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="custom_wgs_records",
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "custom_wgs_pipeline_record"
+        ordering = ["pipeline", "accession", "-uploaded_at"]
+        indexes = [
+            models.Index(fields=["pipeline", "accession"]),
+            models.Index(fields=["pipeline", "match_status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.pipeline.name}: {self.accession}"
+
+
+class BuiltinWGSPipelineSetting(models.Model):
+    PIPELINE_CHOICES = [
+        ("sample_information", "Sample Information"),
+        ("bactscout", "BactScout"),
+        ("gtdbtk", "GTDB-Tk"),
+        ("gambit", "Gambit"),
+        ("mlst", "MLST"),
+        ("checkm2", "CheckM2"),
+        ("assembly", "Assembly Scan"),
+        ("amrfinder", "AMRFinderPlus"),
+    ]
+
+    pipeline_key = models.CharField(max_length=50, choices=PIPELINE_CHOICES, unique=True)
+    display_name = models.CharField(max_length=100)
+    show_in_upload_center = models.BooleanField(default=True)
+    show_in_overview = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "builtin_wgs_pipeline_setting"
+        ordering = ["sort_order", "display_name"]
+
+    def __str__(self):
+        return self.display_name
 
 
 # ──────────────────────────────────────────────

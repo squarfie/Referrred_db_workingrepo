@@ -606,13 +606,13 @@ tr {
       <td colspan="1"></td>
       <td colspan="2" style="font-size: 9px;"></td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Encoder|professional_caps }}<br>{% if page.0.isolate.f_arsp_Enc_Lic|lower != "none" %}Lic No: {{page.0.isolate.f_arsp_Enc_Lic}}{% else %}&nbsp;{% endif %}</td>
+      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Encoder|with_staff_credentials|professional_caps }}<br>{% if page.0.isolate.f_arsp_Enc_Lic|lower != "none" %}Lic No: {{page.0.isolate.f_arsp_Enc_Lic}}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Checker|professional_caps }}<br>{% if page.0.isolate.f_arsp_Chec_Lic%}Lic No: {{page.0.isolate.f_arsp_Chec_Lic|default:""}}{% else %}&nbsp;{% endif %}</td>
+      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Checker|with_staff_credentials|professional_caps }}<br>{% if page.0.isolate.f_arsp_Chec_Lic%}Lic No: {{page.0.isolate.f_arsp_Chec_Lic|default:""}}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="7" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Verifier|professional_caps }} / {{ page.0.isolate.f_arsp_LabManager|professional_caps }}<br>{% if page.0.isolate.f_arsp_Ver_Lic or page.0.isolate.f_arsp_Lab_Lic %}License No.:{% if page.0.isolate.f_arsp_Ver_Lic %} {{ page.0.isolate.f_arsp_Ver_Lic|default:"" }}{% endif %}{% if page.0.isolate.f_arsp_Ver_Lic and page.0.isolate.f_arsp_Lab_Lic %} / {% endif %}{% if page.0.isolate.f_arsp_Lab_Lic %}{{ page.0.isolate.f_arsp_Lab_Lic|default:"" }}{% endif %}{% else %}&nbsp;{% endif %}</td>
+      <td colspan="7" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Verifier|with_staff_credentials|professional_caps }} / {{ page.0.isolate.f_arsp_LabManager|with_staff_credentials|professional_caps }}<br>{% if page.0.isolate.f_arsp_Ver_Lic or page.0.isolate.f_arsp_Lab_Lic %}License No.:{% if page.0.isolate.f_arsp_Ver_Lic %} {{ page.0.isolate.f_arsp_Ver_Lic|default:"" }}{% endif %}{% if page.0.isolate.f_arsp_Ver_Lic and page.0.isolate.f_arsp_Lab_Lic %} / {% endif %}{% if page.0.isolate.f_arsp_Lab_Lic %}{{ page.0.isolate.f_arsp_Lab_Lic|default:"" }}{% endif %}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Head|professional_caps }}<br>{% if page.0.isolate.f_arsp_Head_Lic%}Lic No: {{page.0.isolate.f_arsp_Head_Lic|default:""}}{% else %}&nbsp;{% endif%}</td>
+      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Head|with_staff_credentials|professional_caps }}<br>{% if page.0.isolate.f_arsp_Head_Lic%}Lic No: {{page.0.isolate.f_arsp_Head_Lic|default:""}}{% else %}&nbsp;{% endif%}</td>
     </tr>
     <tr>
       <td colspan="30" style="font-size:10px; border: 1px solid black; padding: 2px;">

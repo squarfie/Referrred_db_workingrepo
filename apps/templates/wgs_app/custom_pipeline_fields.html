@@ -1,0 +1,100 @@
+{% extends 'layouts/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %} WGS Pipeline Fields {% endblock title %}
+
+{% block content %}
+<div class="header bg-primary pb-6 pt-5 pt-md-7">
+  <div class="container-fluid">
+    <div class="row align-items-center">
+      <div class="col">
+        <h1 class="text-white mb-0">{{ pipeline.name }} Fields</h1>
+      </div>
+      <div class="col text-right">
+        <a href="{% url 'custom_pipeline_upload' pipeline.slug %}" class="btn btn-sm btn-neutral">Upload</a>
+        <a href="{% url 'custom_pipeline_edit' pipeline.slug %}" class="btn btn-sm btn-neutral">Edit Pipeline</a>
+        <a href="{% url 'custom_pipeline_records' pipeline.slug %}" class="btn btn-sm btn-neutral">Records</a>
+        <a href="{% url 'custom_pipeline_list' %}" class="btn btn-sm btn-neutral">Pipelines</a>
+        {% if user_access.is_admin %}
+        <form method="post" action="{% url 'custom_pipeline_delete' pipeline.slug %}" class="d-inline">
+          {% csrf_token %}
+          <button
+            type="submit"
+            class="btn btn-sm btn-danger"
+            onclick="return confirm('Delete {{ pipeline.name }} permanently? This will also delete all custom WGS records, field mappings, and upload history for this pipeline. Use Edit Pipeline if you only need to rename it.')"
+          >
+            Delete Pipeline
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid mt--5">
+  <div class="row">
+    <div class="col-lg-5">
+      <div class="card shadow mb-4">
+        <div class="card-header"><h3 class="mb-0">Add Field Mapping</h3></div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+              <div class="mb-3">
+                {% if field.field.widget.input_type == 'checkbox' %}
+                  <div class="custom-control custom-checkbox">
+                    {{ field|add_class:"custom-control-input" }}
+                    <label class="custom-control-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  </div>
+                {% else %}
+                  <label class="form-control-label">{{ field.label }}</label>
+                  {{ field|add_class:"form-control" }}
+                {% endif %}
+                {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+              </div>
+            {% endfor %}
+            <button class="btn btn-primary" type="submit">Add Field</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="card shadow">
+        <div class="card-header"><h3 class="mb-0">Configured Fields</h3></div>
+        <div class="table-responsive">
+          <table class="table table-sm align-items-center mb-0">
+            <thead class="thead-light">
+              <tr>
+                <th>Order</th>
+                <th>Label</th>
+                <th>Source Column</th>
+                <th>Type</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for field in fields %}
+              <tr>
+                <td>{{ field.sort_order }}</td>
+                <td>{{ field.display_label }}</td>
+                <td>{{ field.source_column }}</td>
+                <td>{{ field.get_data_type_display }}</td>
+                <td class="text-right">
+                  <form method="post" action="{% url 'custom_pipeline_field_delete' pipeline.slug field.id %}" onsubmit="return confirm('Remove this field mapping?')">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-danger" type="submit">Delete</button>
+                  </form>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center py-4">No fields configured yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

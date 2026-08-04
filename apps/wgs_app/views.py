@@ -42,6 +42,7 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from datetime import datetime
 from django.utils.dateparse import parse_date
+from django.utils.text import slugify
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 import openpyxl
@@ -49,6 +50,39 @@ from datetime import date, datetime, timedelta
 
 WGS_WRITE_ALLOWED_ROLES = (ROLE_ADMIN, ROLE_CHECKER, ROLE_LAB_ENCODER)
 UPLOAD_CENTER_ALLOWED_ROLES = (ROLE_ADMIN, ROLE_CHECKER, ROLE_ENCODER, ROLE_LAB_ENCODER)
+BUILTIN_WGS_PIPELINES = [
+    {"key": "sample_information", "name": "Sample Information", "upload": True, "overview": False, "sort": 10},
+    {"key": "bactscout", "name": "BactScout", "upload": True, "overview": True, "sort": 20},
+    {"key": "gtdbtk", "name": "GTDB-Tk", "upload": True, "overview": False, "sort": 30},
+    {"key": "gambit", "name": "Gambit", "upload": True, "overview": True, "sort": 40},
+    {"key": "mlst", "name": "MLST", "upload": True, "overview": True, "sort": 50},
+    {"key": "checkm2", "name": "CheckM2", "upload": True, "overview": True, "sort": 60},
+    {"key": "assembly", "name": "Assembly Scan", "upload": True, "overview": True, "sort": 70},
+    {"key": "amrfinder", "name": "AMRFinderPlus", "upload": True, "overview": True, "sort": 80},
+]
+
+
+def ensure_builtin_wgs_pipeline_settings():
+    for item in BUILTIN_WGS_PIPELINES:
+        BuiltinWGSPipelineSetting.objects.get_or_create(
+            pipeline_key=item["key"],
+            defaults={
+                "display_name": item["name"],
+                "show_in_upload_center": item["upload"],
+                "show_in_overview": item["overview"],
+                "sort_order": item["sort"],
+            },
+        )
+
+
+def visible_builtin_wgs_keys(target):
+    ensure_builtin_wgs_pipeline_settings()
+    field_name = "show_in_upload_center" if target == "upload" else "show_in_overview"
+    return set(
+        BuiltinWGSPipelineSetting.objects
+        .filter(**{field_name: True})
+        .values_list("pipeline_key", flat=True)
+    )
 
 
 # helper to read uploaded file (csv or excel)
@@ -81,6 +115,256 @@ def read_uploaded_file(uploaded_file, sheet_name=None):
         return pd.read_excel(uploaded_file)
     else:
         raise ValueError("Unsupported file format. Please upload a CSV or Excel file.")
+
+
+def normalize_custom_column_name(value):
+    return str(value or "").strip().lower()
+
+
+def custom_row_value(row, column_options):
+    normalized_row = {
+        normalize_custom_column_name(key): value
+        for key, value in row.items()
+    }
+    for column in column_options:
+        key = normalize_custom_column_name(column)
+        if key in normalized_row:
+            value = normalized_row[key]
+            if pd.isna(value):
+                return ""
+            return value
+    return ""
+
+
+def json_safe_value(value):
+    if value is None:
+        return ""
+    try:
+        if pd.isna(value):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return str(value)
+    return value
+
+
+def coerce_custom_pipeline_value(value, data_type):
+    value = json_safe_value(value)
+    if value == "":
+        return ""
+    if data_type == "integer":
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            return str(value).strip()
+    if data_type == "decimal":
+        try:
+            return str(Decimal(str(value).strip()))
+        except (InvalidOperation, TypeError, ValueError):
+            return str(value).strip()
+    if data_type == "date":
+        parsed = pd.to_datetime(value, errors="coerce")
+        if pd.isna(parsed):
+            return str(value).strip()
+        return parsed.date().isoformat()
+    if data_type == "boolean":
+        return str(value).strip().lower() in {"true", "yes", "y", "1", "done", "passed"}
+    return str(value).strip()
+
+
+def custom_pipeline_accession_variants(value):
+    text = str(value or "").strip()
+    if not text:
+        return []
+
+    basename = os.path.basename(text)
+    without_ext = os.path.splitext(basename)[0].strip()
+    candidates = [text, basename, without_ext]
+    for candidate in list(candidates):
+        prefix_match = re.match(
+            r"^(\d{2}ARS[-_][A-Z]+[-_]?\d+)",
+            str(candidate or "").strip(),
+            flags=re.IGNORECASE,
+        )
+        if prefix_match:
+            candidates.append(prefix_match.group(1))
+    normalized_candidates = []
+
+    for candidate in candidates:
+        candidate = str(candidate or "").strip()
+        if not candidate:
+            continue
+        normalized_candidates.extend([
+            candidate,
+            candidate.replace("-", "_"),
+            candidate.replace("_", "-"),
+        ])
+
+    variants = []
+    seen = set()
+    for candidate in normalized_candidates:
+        key = candidate.upper()
+        if key not in seen:
+            seen.add(key)
+            variants.append(candidate)
+    return variants
+
+
+def find_custom_pipeline_match(accession):
+    accession_variants = custom_pipeline_accession_variants(accession)
+    if not accession_variants:
+        return None, None, "invalid"
+
+    final_filter = Q()
+    raw_filter = Q()
+    wgs_filter = Q()
+    for candidate in accession_variants:
+        final_filter |= Q(f_AccessionNo__iexact=candidate)
+        raw_filter |= Q(AccessionNo__iexact=candidate)
+        wgs_filter |= (
+            Q(WGS_SampleInfo_Acc__iexact=candidate)
+            | Q(WGS_BactScout_Acc__iexact=candidate)
+            | Q(WGS_GtdbTk_Acc__iexact=candidate)
+            | Q(WGS_Gambit_Acc__iexact=candidate)
+            | Q(WGS_Mlst_Acc__iexact=candidate)
+            | Q(WGS_Checkm2_Acc__iexact=candidate)
+            | Q(WGS_Assembly_Acc__iexact=candidate)
+            | Q(WGS_Amrfinder_Acc__iexact=candidate)
+        )
+
+    final_match = Final_Data.objects.filter(final_filter).first()
+    if final_match:
+        return final_match, None, "final"
+
+    raw_match = Referred_Data.objects.filter(raw_filter).first()
+    if raw_match:
+        return None, raw_match, "raw"
+
+    wgs_match = WGS_Project.objects.filter(wgs_filter).exists()
+    if wgs_match:
+        return None, None, "wgs_project"
+
+    return None, None, ""
+
+
+def custom_record_accession_keys(record_data):
+    """
+    Return display/search accession keys for a custom WGS row.
+    Uploaded files often contain names like 26ARS_ZMC0023.fna, while the
+    database row is keyed as 26ARS_ZMC0023.
+    """
+    keys = []
+    final_accession = record_data.get("matched_final_data_id")
+    raw_accession = record_data.get("matched_raw_data_id")
+    uploaded_accession = record_data.get("accession")
+
+    for value in (final_accession, raw_accession):
+        value = str(value or "").strip()
+        if value:
+            keys.append(value)
+
+    for value in custom_pipeline_accession_variants(uploaded_accession):
+        value = str(value or "").strip()
+        if value:
+            keys.append(value)
+
+    unique_keys = []
+    seen = set()
+    for key in keys:
+        normalized = key.upper()
+        if normalized not in seen:
+            seen.add(normalized)
+            unique_keys.append(key)
+    return unique_keys
+
+
+def custom_record_primary_accession(record_data):
+    keys = custom_record_accession_keys(record_data)
+    return keys[0] if keys else ""
+
+
+def custom_record_display_accession(record):
+    return (
+        (getattr(record, "matched_final_data_id", "") or "").strip()
+        or (getattr(record, "matched_raw_data_id", "") or "").strip()
+        or custom_record_primary_accession({"accession": getattr(record, "accession", "")})
+        or (getattr(record, "accession", "") or "").strip()
+    )
+
+
+def infer_custom_field_type(series):
+    non_empty = series.dropna()
+    non_empty = non_empty[non_empty.astype(str).str.strip() != ""]
+    if non_empty.empty:
+        return "text"
+    bool_values = {"true", "false", "yes", "no", "y", "n", "1", "0", "passed", "failed"}
+    normalized_values = {str(value).strip().lower() for value in non_empty.head(50)}
+    if normalized_values and normalized_values.issubset(bool_values):
+        return "boolean"
+    numeric_values = pd.to_numeric(non_empty, errors="coerce")
+    if numeric_values.notna().mean() >= 0.9:
+        if (numeric_values.dropna() % 1 == 0).all():
+            return "integer"
+        return "decimal"
+    parsed_dates = pd.to_datetime(non_empty, errors="coerce")
+    if parsed_dates.notna().mean() >= 0.9:
+        return "date"
+    return "text"
+
+
+def build_custom_pipeline_column_preview(df):
+    columns = [str(column).strip() for column in df.columns if str(column).strip()]
+    normalized_columns = {column: normalize_custom_column_name(column) for column in columns}
+
+    def score_column(column, keywords):
+        normalized = normalized_columns[column]
+        return max((keyword in normalized for keyword in keywords), default=False)
+
+    accession_keywords = ["accession", "accession no", "accession_no", "acc no", "acc_no", "ref no", "ref_no"]
+    sample_keywords = ["sample", "sample name", "sample_name", "isolate", "name"]
+    date_keywords = ["date", "uploaded", "run date", "run_date"]
+
+    accession_guess = next((column for column in columns if score_column(column, accession_keywords)), columns[0] if columns else "")
+    sample_guess = next((column for column in columns if score_column(column, sample_keywords) and column != accession_guess), "")
+    date_guess = next((column for column in columns if score_column(column, date_keywords)), "")
+
+    preview_columns = []
+    for index, column in enumerate(columns):
+        suggested_label = column.replace("_", " ").replace("-", " ").strip().title()
+        data_type = infer_custom_field_type(df[column])
+        preview_columns.append({
+            "index": index,
+            "name": column,
+            "label": suggested_label,
+            "data_type": data_type,
+            "include": column not in {accession_guess, sample_guess, date_guess},
+        })
+
+    return preview_columns, accession_guess, sample_guess, date_guess
+
+
+def build_custom_pipeline_column_preview_from_post(post_data):
+    indices = []
+    for key in post_data:
+        if key.startswith("column_name_"):
+            indices.append(key.replace("column_name_", "", 1))
+    preview_columns = []
+    selected_indices = set(post_data.getlist("selected_column_indices"))
+    for index in sorted(indices, key=lambda value: int(value) if value.isdigit() else value):
+        column = post_data.get(f"column_name_{index}", "").strip()
+        if not column:
+            continue
+        preview_columns.append({
+            "index": index,
+            "name": column,
+            "label": post_data.get(f"field_label_{index}", column).strip() or column,
+            "data_type": post_data.get(f"field_type_{index}", "text"),
+            "include": index in selected_indices,
+        })
+    return preview_columns
 
 
 def get_or_create_wgs_project_for_upload(
@@ -571,9 +855,500 @@ def upload_wgs_view(request):
             "checkm2_form": checkm2_form,
             "assembly_form": assembly_form,
             "amrfinder_form": amrfinder_form,
+            "custom_pipelines": CustomWGSPipeline.objects.filter(
+                is_active=True,
+                show_in_upload_center=True,
+            ).prefetch_related("fields").order_by("sequencing_type", "name"),
+            "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
             "editing": False,
         },
     )
+
+
+@login_required
+def custom_pipeline_list(request):
+    ensure_builtin_wgs_pipeline_settings()
+    if request.method == "POST":
+        if not role_flags(request.user).get("can_wgs_create"):
+            messages.error(request, "You do not have permission to manage WGS pipeline settings.")
+            return redirect("custom_pipeline_list")
+
+        upload_keys = set(request.POST.getlist("builtin_upload"))
+        overview_keys = set(request.POST.getlist("builtin_overview"))
+        for setting in BuiltinWGSPipelineSetting.objects.all():
+            setting.show_in_upload_center = setting.pipeline_key in upload_keys
+            setting.show_in_overview = setting.pipeline_key in overview_keys
+            setting.save(update_fields=["show_in_upload_center", "show_in_overview", "updated_at"])
+
+        custom_upload_keys = set(request.POST.getlist("custom_upload"))
+        custom_overview_keys = set(request.POST.getlist("custom_overview"))
+        for pipeline in CustomWGSPipeline.objects.all():
+            pipeline.show_in_upload_center = str(pipeline.id) in custom_upload_keys
+            pipeline.show_in_overview = str(pipeline.id) in custom_overview_keys
+            pipeline.save(update_fields=["show_in_upload_center", "show_in_overview", "updated_at"])
+
+        messages.success(request, "WGS pipeline visibility settings updated.")
+        next_url = request.POST.get("next") or ""
+        if next_url:
+            return redirect(next_url)
+        return redirect("custom_pipeline_list")
+
+    builtin_settings = BuiltinWGSPipelineSetting.objects.all()
+    pipelines = CustomWGSPipeline.objects.prefetch_related("fields").order_by("sequencing_type", "name")
+    pipeline_cards = []
+    for pipeline in pipelines:
+        records = pipeline.records.all()
+        pipeline_cards.append({
+            "pipeline": pipeline,
+            "field_count": pipeline.fields.count(),
+            "record_count": records.count(),
+            "matched_count": records.filter(match_status="matched").count(),
+            "unmatched_count": records.exclude(match_status="matched").count(),
+            "last_upload": pipeline.upload_batches.first(),
+        })
+    return render(
+        request,
+        "wgs_app/custom_pipeline_list.html",
+        {
+            "pipeline_cards": pipeline_cards,
+            "builtin_settings": builtin_settings,
+        },
+    )
+
+
+@login_required
+@role_required(*WGS_WRITE_ALLOWED_ROLES)
+def custom_pipeline_create(request):
+    if request.method == "POST":
+        action = request.POST.get("action")
+        form = CustomWGSPipelineForm(request.POST)
+
+        if action == "preview_sample":
+            sample_file = request.FILES.get("sample_file")
+            if not sample_file:
+                messages.error(request, "Please upload a sample CSV/XLSX file.")
+                return render(request, "wgs_app/custom_pipeline_form.html", {"form": form, "pipeline": None})
+            try:
+                df = read_uploaded_file(sample_file, sheet_name=request.POST.get("sheet_name") or None)
+                preview_columns, accession_guess, sample_guess, date_guess = build_custom_pipeline_column_preview(df)
+            except Exception as exc:
+                messages.error(request, f"Sample file could not be read: {exc}")
+                return render(request, "wgs_app/custom_pipeline_form.html", {"form": form, "pipeline": None})
+
+            if not preview_columns:
+                messages.error(request, "No columns were found in the sample file.")
+                return render(request, "wgs_app/custom_pipeline_form.html", {"form": form, "pipeline": None})
+
+            form_data = request.POST.copy()
+            form_data["accession_column"] = accession_guess
+            form_data["sample_name_column"] = sample_guess
+            form_data["date_column"] = date_guess
+            form = CustomWGSPipelineForm(form_data)
+            return render(
+                request,
+                "wgs_app/custom_pipeline_form.html",
+                {
+                    "form": form,
+                    "pipeline": None,
+                    "preview_columns": preview_columns,
+                    "accession_guess": accession_guess,
+                    "sample_guess": sample_guess,
+                    "date_guess": date_guess,
+                },
+            )
+
+        if form.is_valid():
+            pipeline = form.save(commit=False)
+            if not pipeline.slug:
+                pipeline.slug = slugify(pipeline.name)
+            pipeline.created_by = request.user
+            pipeline.save()
+            selected_indices = request.POST.getlist("selected_column_indices")
+            created_fields = 0
+            used_keys = set()
+            for order, column_index in enumerate(selected_indices, start=1):
+                column = request.POST.get(f"column_name_{column_index}", "").strip()
+                if not column:
+                    continue
+                label = request.POST.get(f"field_label_{column_index}", column).strip() or column
+                data_type = request.POST.get(f"field_type_{column_index}", "text")
+                field_key = slugify(label) or slugify(column) or f"field-{order}"
+                base_key = field_key
+                counter = 2
+                while field_key in used_keys:
+                    field_key = f"{base_key}-{counter}"
+                    counter += 1
+                used_keys.add(field_key)
+                CustomWGSPipelineField.objects.create(
+                    pipeline=pipeline,
+                    field_key=field_key,
+                    display_label=label,
+                    source_column=column,
+                    data_type=data_type,
+                    show_in_table=True,
+                    show_in_detail=True,
+                    show_in_export=True,
+                    sort_order=order,
+                )
+                created_fields += 1
+
+            if created_fields:
+                messages.success(request, f"{pipeline.name} pipeline created with {created_fields} mapped field(s).")
+                return redirect("custom_pipeline_upload", slug=pipeline.slug)
+            messages.success(request, f"{pipeline.name} pipeline created. Add its upload fields next.")
+            return redirect("custom_pipeline_fields", slug=pipeline.slug)
+        preview_columns = build_custom_pipeline_column_preview_from_post(request.POST)
+        if preview_columns:
+            return render(
+                request,
+                "wgs_app/custom_pipeline_form.html",
+                {
+                    "form": form,
+                    "pipeline": None,
+                    "preview_columns": preview_columns,
+                    "accession_guess": request.POST.get("accession_column", ""),
+                    "sample_guess": request.POST.get("sample_name_column", ""),
+                    "date_guess": request.POST.get("date_column", ""),
+                },
+            )
+    else:
+        form = CustomWGSPipelineForm()
+    return render(request, "wgs_app/custom_pipeline_form.html", {"form": form, "pipeline": None})
+
+
+@login_required
+@role_required(*WGS_WRITE_ALLOWED_ROLES)
+def custom_pipeline_edit(request, slug):
+    pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
+    if request.method == "POST":
+        form = CustomWGSPipelineForm(request.POST, instance=pipeline)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"{pipeline.name} pipeline updated.")
+            return redirect("custom_pipeline_list")
+    else:
+        form = CustomWGSPipelineForm(instance=pipeline)
+    return render(request, "wgs_app/custom_pipeline_form.html", {"form": form, "pipeline": pipeline})
+
+
+@login_required
+@role_required(*WGS_WRITE_ALLOWED_ROLES)
+@require_POST
+def custom_pipeline_deactivate(request, slug):
+    pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
+    pipeline.is_active = False
+    pipeline.show_in_upload_center = False
+    pipeline.show_in_overview = False
+    pipeline.save(update_fields=[
+        "is_active",
+        "show_in_upload_center",
+        "show_in_overview",
+        "updated_at",
+    ])
+    messages.success(
+        request,
+        f"{pipeline.name} was removed from active WGS pipeline options. Existing records were kept.",
+    )
+    next_url = request.POST.get("next") or ""
+    if next_url:
+        return redirect(next_url)
+    return redirect("custom_pipeline_list")
+
+
+@login_required
+@role_required(ROLE_ADMIN)
+@require_POST
+def custom_pipeline_delete(request, slug):
+    pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
+    pipeline_name = pipeline.name
+    record_count = pipeline.records.count()
+    field_count = pipeline.fields.count()
+    batch_count = pipeline.upload_batches.count()
+    pipeline.delete()
+    messages.success(
+        request,
+        f"{pipeline_name} pipeline was deleted with {record_count} record(s), {field_count} field(s), and {batch_count} upload batch(es).",
+    )
+    next_url = request.POST.get("next") or ""
+    if next_url:
+        return redirect(next_url)
+    return redirect("custom_pipeline_list")
+
+
+@login_required
+@role_required(*WGS_WRITE_ALLOWED_ROLES)
+def custom_pipeline_fields(request, slug):
+    pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
+    if request.method == "POST":
+        form = CustomWGSPipelineFieldForm(request.POST)
+        if form.is_valid():
+            field = form.save(commit=False)
+            field.pipeline = pipeline
+            if not field.field_key:
+                field.field_key = slugify(field.display_label)
+            field.save()
+            messages.success(request, f"{field.display_label} field added.")
+            return redirect("custom_pipeline_fields", slug=pipeline.slug)
+    else:
+        form = CustomWGSPipelineFieldForm()
+    return render(
+        request,
+        "wgs_app/custom_pipeline_fields.html",
+        {"pipeline": pipeline, "form": form, "fields": pipeline.fields.all()},
+    )
+
+
+@login_required
+@role_required(*WGS_WRITE_ALLOWED_ROLES)
+@require_POST
+def custom_pipeline_field_delete(request, slug, field_id):
+    pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
+    field = get_object_or_404(CustomWGSPipelineField, pk=field_id, pipeline=pipeline)
+    label = field.display_label
+    field.delete()
+    messages.success(request, f"{label} field removed.")
+    return redirect("custom_pipeline_fields", slug=pipeline.slug)
+
+
+@login_required
+@role_required(*WGS_WRITE_ALLOWED_ROLES)
+def custom_pipeline_upload(request, slug):
+    pipeline = get_object_or_404(CustomWGSPipeline, slug=slug, is_active=True)
+    fields = list(pipeline.fields.all())
+    if not fields:
+        messages.error(request, "Add at least one field mapping before uploading this pipeline.")
+        return redirect("custom_pipeline_fields", slug=pipeline.slug)
+
+    if request.method == "POST":
+        form = CustomPipelineUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            upload_file = form.cleaned_data["file"]
+            replace_existing = form.cleaned_data["replace_existing"]
+            try:
+                df = read_uploaded_file(upload_file, sheet_name=pipeline.sheet_name or None)
+                df = df.where(pd.notnull(df), "")
+                rows = df.to_dict("records")
+            except Exception as exc:
+                messages.error(request, f"Upload could not be read: {exc}")
+                return redirect("custom_pipeline_upload", slug=pipeline.slug)
+
+            created_count = 0
+            skipped_count = 0
+            matched_count = 0
+            unmatched_count = 0
+            warnings = []
+            replaced_accessions = set()
+
+            with transaction.atomic():
+                batch = CustomWGSPipelineUploadBatch.objects.create(
+                    pipeline=pipeline,
+                    file_name=upload_file.name,
+                    sheet_name=pipeline.sheet_name,
+                    row_count=len(rows),
+                    uploaded_by=request.user,
+                )
+                for index, row in enumerate(rows, start=2):
+                    accession = str(custom_row_value(row, [pipeline.accession_column])).strip()
+                    if not accession:
+                        skipped_count += 1
+                        warnings.append(f"Row {index}: missing accession.")
+                        continue
+
+                    values = {}
+                    row_valid = True
+                    for field in fields:
+                        value = custom_row_value(row, field.upload_column_options())
+                        if value == "" and field.default_value:
+                            value = field.default_value
+                        if value == "" and field.required:
+                            row_valid = False
+                            warnings.append(f"Row {index}: missing required field {field.display_label}.")
+                        values[field.field_key] = coerce_custom_pipeline_value(value, field.data_type)
+                    if not row_valid:
+                        skipped_count += 1
+                        continue
+
+                    if replace_existing and accession not in replaced_accessions:
+                        CustomWGSPipelineRecord.objects.filter(
+                            pipeline=pipeline,
+                            accession__iexact=accession,
+                        ).delete()
+                        replaced_accessions.add(accession)
+
+                    sample_name = ""
+                    if pipeline.sample_name_column:
+                        sample_name = str(custom_row_value(row, [pipeline.sample_name_column])).strip()
+
+                    final_match, raw_match, match_source = find_custom_pipeline_match(accession)
+                    match_status = "matched" if match_source else "unmatched"
+                    if match_status == "matched":
+                        matched_count += 1
+                    else:
+                        unmatched_count += 1
+
+                    CustomWGSPipelineRecord.objects.create(
+                        pipeline=pipeline,
+                        upload_batch=batch,
+                        accession=accession,
+                        sample_name=sample_name,
+                        matched_final_data=final_match,
+                        matched_raw_data=raw_match,
+                        match_status=match_status,
+                        match_source=match_source,
+                        values_json=values,
+                        raw_row_json={str(key): json_safe_value(value) for key, value in row.items()},
+                        uploaded_by=request.user,
+                    )
+                    created_count += 1
+
+                batch.created_count = created_count
+                batch.skipped_count = skipped_count
+                batch.matched_count = matched_count
+                batch.unmatched_count = unmatched_count
+                batch.status = "completed_with_warnings" if warnings else "completed"
+                batch.error_log = "\n".join(warnings[:100])
+                batch.save(update_fields=[
+                    "created_count", "skipped_count", "matched_count",
+                    "unmatched_count", "status", "error_log",
+                ])
+
+            messages.success(
+                request,
+                f"{pipeline.name} uploaded: {created_count} row(s), {matched_count} matched, {unmatched_count} unmatched.",
+            )
+            if warnings:
+                messages.warning(request, f"{len(warnings)} row warning(s). Check the upload batch details if needed.")
+            return redirect("custom_pipeline_records", slug=pipeline.slug)
+    else:
+        form = CustomPipelineUploadForm()
+
+    return render(
+        request,
+        "wgs_app/custom_pipeline_upload.html",
+        {"pipeline": pipeline, "form": form, "fields": fields},
+    )
+
+
+@login_required
+def custom_pipeline_records(request, slug):
+    pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
+    fields = list(pipeline.fields.filter(show_in_table=True))
+    q = request.GET.get("q", "").strip()
+    match_status = request.GET.get("match_status", "").strip()
+
+    records = pipeline.records.select_related("upload_batch", "matched_final_data", "matched_raw_data")
+    if q:
+        records = records.filter(
+            Q(accession__icontains=q)
+            | Q(sample_name__icontains=q)
+            | Q(matched_final_data__f_AccessionNo__icontains=q)
+            | Q(matched_raw_data__AccessionNo__icontains=q)
+        )
+    if match_status in {"matched", "unmatched", "invalid"}:
+        records = records.filter(match_status=match_status)
+
+    paginator = Paginator(records, 50)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    for record in page_obj.object_list:
+        record.display_accession = custom_record_display_accession(record)
+        record.show_uploaded_accession = (
+            (record.accession or "").strip()
+            and (record.accession or "").strip() != record.display_accession
+        )
+    params = request.GET.copy()
+    params.pop("page", None)
+
+    return render(
+        request,
+        "wgs_app/custom_pipeline_records.html",
+        {
+            "pipeline": pipeline,
+            "fields": fields,
+            "page_obj": page_obj,
+            "q": q,
+            "match_status": match_status,
+            "preserved_params": params.urlencode(),
+        },
+    )
+
+
+@login_required
+def custom_pipeline_export(request, slug):
+    pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
+    fields = list(pipeline.fields.filter(show_in_export=True))
+    match_status = request.GET.get("match_status", "").strip()
+    records = pipeline.records.all()
+    if match_status in {"matched", "unmatched", "invalid"}:
+        records = records.filter(match_status=match_status)
+
+    export_rows = []
+    for record in records.order_by("accession", "id"):
+        display_accession = custom_record_display_accession(record)
+        row = {
+            "pipeline": pipeline.name,
+            "sequencing_type": pipeline.get_sequencing_type_display(),
+            "platform": pipeline.get_platform_display(),
+            "accession": display_accession,
+            "uploaded_accession": record.accession,
+            "sample_name": record.sample_name,
+            "match_status": record.match_status,
+            "match_source": record.match_source,
+            "uploaded_at": record.uploaded_at.replace(tzinfo=None) if record.uploaded_at else "",
+        }
+        for field in fields:
+            row[field.display_label] = record.values_json.get(field.field_key, "")
+        export_rows.append(row)
+
+    output = io.BytesIO()
+    pd.DataFrame(export_rows).to_excel(output, index=False, sheet_name="custom_wgs")
+    output.seek(0)
+    filename = f"{pipeline.slug}_wgs_records.xlsx"
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+def export_builtin_wgs_pipeline(request, pipeline_key):
+    export_map = {
+        "sample_information": (SampleInformation, "Sample_Information"),
+        "bactscout": (BactScout, "BactScout"),
+        "gtdbtk": (GtdbTk, "GTDB_Tk"),
+        "gambit": (Gambit, "Gambit"),
+        "mlst": (Mlst, "MLST"),
+        "checkm2": (Checkm2, "CheckM2"),
+        "assembly": (AssemblyScan, "Assembly_Scan"),
+        "amrfinder": (Amrfinderplus, "AMRFinderPlus"),
+    }
+    if pipeline_key not in export_map:
+        messages.error(request, "Unknown WGS pipeline export.")
+        return redirect("upload_wgs_view")
+
+    model, label = export_map[pipeline_key]
+    rows = list(model.objects.all().values())
+    df = pd.DataFrame.from_records(rows)
+    if df.empty:
+        df = pd.DataFrame([{"message": f"No {label} records found."}])
+
+    for column in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[column]):
+            df[column] = pd.to_datetime(df[column], errors="coerce").dt.tz_localize(None)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name=label[:31])
+    output.seek(0)
+
+    filename = f"{label}_{pd.Timestamp.now().date()}.xlsx"
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @login_required
@@ -638,6 +1413,7 @@ def upload_gambit(request):
                     "gtdbtk_form": GtdbTkUploadForm(),
                     "raw_antibiotic_form": RawAntibioticUploadForm(),
                     "editing": editing,
+                    "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
                 })
 
             site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
@@ -755,6 +1531,7 @@ def upload_gambit(request):
         "gtdbtk_form": GtdbTkUploadForm(),
         "raw_antibiotic_form": RawAntibioticUploadForm(),
         "editing": editing,
+        "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
     })
 
 
@@ -902,6 +1679,7 @@ def upload_mlst(request):
                 "gtdbtk_form": GtdbTkUploadForm(),
                 "raw_antibiotic_form": RawAntibioticUploadForm(),
                 "editing": editing,
+                "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
             })
 
         # ✅ Load all valid site codes from the SiteData table
@@ -1036,7 +1814,8 @@ def upload_mlst(request):
         "bactscout_form": BactScoutUploadForm(),
         "gtdbtk_form": GtdbTkUploadForm(),
         "raw_antibiotic_form": RawAntibioticUploadForm(),
-        "editing": editing
+        "editing": editing,
+        "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
     })
 
 
@@ -1198,6 +1977,7 @@ def upload_checkm2(request):
                 "gtdbtk_form": GtdbTkUploadForm(),
                 "raw_antibiotic_form": RawAntibioticUploadForm(),
                 "editing": editing,
+                "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
             })
 
         site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
@@ -1310,6 +2090,7 @@ def upload_checkm2(request):
         "gtdbtk_form": GtdbTkUploadForm(),
         "raw_antibiotic_form": RawAntibioticUploadForm(),
         "editing": editing,
+        "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
     })
 
 
@@ -1473,6 +2254,7 @@ def upload_assembly(request):
                 "gtdbtk_form": GtdbTkUploadForm(),
                 "raw_antibiotic_form": RawAntibioticUploadForm(),
                 "editing": editing,
+                "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
             })
 
         site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
@@ -1593,6 +2375,7 @@ def upload_assembly(request):
         "gtdbtk_form": GtdbTkUploadForm(),
         "raw_antibiotic_form": RawAntibioticUploadForm(),
         "editing": editing,
+        "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
     })
 
 
@@ -1736,6 +2519,7 @@ def upload_amrfinder(request):
                 "gtdbtk_form": GtdbTkUploadForm(),
                 "raw_antibiotic_form": RawAntibioticUploadForm(),
                 "editing": editing,
+                "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
             })
 
         # Clean and standardize column names
@@ -1899,6 +2683,7 @@ def upload_amrfinder(request):
         "gtdbtk_form": GtdbTkUploadForm(),
         "raw_antibiotic_form": RawAntibioticUploadForm(),
         "editing": editing,
+        "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
     })
 
 
@@ -2058,6 +2843,7 @@ def upload_sample_information(request):
                 "gtdbtk_form": GtdbTkUploadForm(),
                 "raw_antibiotic_form": RawAntibioticUploadForm(),
                 "editing": editing,
+                "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
             })
 
         site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
@@ -2219,6 +3005,7 @@ def upload_sample_information(request):
         "antibiotic_form": FinalAntibioticUploadForm(),
         "raw_antibiotic_form": RawAntibioticUploadForm(),
         "editing": editing,
+        "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
     })
 
 
@@ -2390,6 +3177,7 @@ def upload_bactscout(request):
                 "antibiotic_form": FinalAntibioticUploadForm(),
                 "raw_antibiotic_form": RawAntibioticUploadForm(),
                 "editing": editing,
+                "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
             })
 
         site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
@@ -2576,6 +3364,7 @@ def upload_bactscout(request):
         "antibiotic_form": FinalAntibioticUploadForm(),
         "raw_antibiotic_form": RawAntibioticUploadForm(),
         "editing": editing,
+        "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
 
     })
 
@@ -2715,6 +3504,7 @@ def upload_gtdbtk(request):
             "antibiotic_form": FinalAntibioticUploadForm(),
             "raw_antibiotic_form": RawAntibioticUploadForm(),
             "editing": editing,
+            "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
 
             })
 
@@ -2844,6 +3634,7 @@ def upload_gtdbtk(request):
         "antibiotic_form": FinalAntibioticUploadForm(),
         "raw_antibiotic_form": RawAntibioticUploadForm(),
         "editing": editing,
+        "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
 
 
     })
@@ -2960,14 +3751,29 @@ def view_wgs_overview(request):
     """
     q = request.GET.get("q", "").strip()
     selected_year = request.GET.get("year", "").strip()
+    visible_builtin_overview_keys = visible_builtin_wgs_keys("overview")
 
+    overview_source_map = {
+        "bactscout": (BactScout, "BactScout_Accession", "Date_uploaded_bs"),
+        "mlst": (Mlst, "Mlst_Accession", "Date_uploaded_m"),
+        "checkm2": (Checkm2, "Checkm2_Accession", "Date_uploaded_c"),
+        "assembly": (AssemblyScan, "Assembly_Accession", "Date_uploaded_as"),
+        "gambit": (Gambit, "Gambit_Accession", "Date_uploaded_g"),
+        "amrfinder": (Amrfinderplus, "Amrfinder_Accession", "Date_uploaded_am"),
+    }
     wgs_sources = [
-        (BactScout, "BactScout_Accession", "Date_uploaded_bs"),
-        (Mlst, "Mlst_Accession", "Date_uploaded_m"),
-        (Checkm2, "Checkm2_Accession", "Date_uploaded_c"),
-        (AssemblyScan, "Assembly_Accession", "Date_uploaded_as"),
-        (Gambit, "Gambit_Accession", "Date_uploaded_g"),
-        (Amrfinderplus, "Amrfinder_Accession", "Date_uploaded_am"),
+        source
+        for key, source in overview_source_map.items()
+        if key in visible_builtin_overview_keys
+    ]
+    custom_overview_pipelines = list(
+        CustomWGSPipeline.objects.filter(is_active=True, show_in_overview=True).order_by("sequencing_type", "name")
+    )
+    selected_custom_slugs = request.GET.getlist("custom_tables") or [
+        pipeline.slug for pipeline in custom_overview_pipelines
+    ]
+    selected_custom_pipelines = [
+        pipeline for pipeline in custom_overview_pipelines if pipeline.slug in selected_custom_slugs
     ]
 
     def accession_year(value):
@@ -2997,21 +3803,35 @@ def view_wgs_overview(request):
     all_wgs_accessions = set().union(*[
         accession_set(model, accession_field)
         for model, accession_field, date_field in wgs_sources
-    ])
+    ]) if wgs_sources else set()
+    custom_wgs_accessions = set()
+    for row in (
+        CustomWGSPipelineRecord.objects
+        .filter(pipeline__in=custom_overview_pipelines, match_status="matched")
+        .values("accession", "matched_final_data_id", "matched_raw_data_id")
+        .distinct()
+    ):
+        custom_wgs_accessions.update(custom_record_accession_keys(row))
+    all_wgs_accessions |= custom_wgs_accessions
     available_years = sorted(
         {year for year in (accession_year(acc) for acc in all_wgs_accessions) if year},
         reverse=True,
     )
 
     wgs_sets = {
-        "bactscout": accession_set(BactScout, "BactScout_Accession"),
-        "mlst": accession_set(Mlst, "Mlst_Accession"),
-        "checkm2": accession_set(Checkm2, "Checkm2_Accession"),
-        "assembly": accession_set(AssemblyScan, "Assembly_Accession"),
-        "gambit": accession_set(Gambit, "Gambit_Accession"),
-        "amrfinder": accession_set(Amrfinderplus, "Amrfinder_Accession"),
+        key: accession_set(model, accession_field) if key in visible_builtin_overview_keys else set()
+        for key, (model, accession_field, date_field) in overview_source_map.items()
     }
-    wgs_accessions = set().union(*wgs_sets.values())
+    wgs_accessions = set().union(*wgs_sets.values()) if wgs_sets else set()
+    selected_custom_accessions = set()
+    for row in (
+        CustomWGSPipelineRecord.objects
+        .filter(pipeline__in=selected_custom_pipelines, match_status="matched")
+        .values("accession", "matched_final_data_id", "matched_raw_data_id")
+        .distinct()
+    ):
+        selected_custom_accessions.update(custom_record_accession_keys(row))
+    wgs_accessions |= selected_custom_accessions
     if selected_year:
         wgs_accessions = {
             accession
@@ -3092,6 +3912,27 @@ def view_wgs_overview(request):
             sampleinfo_map.setdefault(accession, sampleinfo)
 
     table_data = []
+    custom_counts_by_accession = defaultdict(lambda: defaultdict(int))
+    seen_custom_pipeline_pairs = set()
+    for row in (
+        CustomWGSPipelineRecord.objects
+        .filter(pipeline__in=selected_custom_pipelines, match_status="matched")
+        .filter(
+            Q(matched_final_data_id__in=page_accessions)
+            | Q(matched_raw_data_id__in=page_accessions)
+            | Q(accession__in=page_accessions)
+        )
+        .values("accession", "matched_final_data_id", "matched_raw_data_id", "pipeline_id")
+        .distinct()
+    ):
+        for custom_accession in custom_record_accession_keys(row):
+            if custom_accession not in page_accessions:
+                continue
+            pair_key = (custom_accession.upper(), row["pipeline_id"])
+            if pair_key in seen_custom_pipeline_pairs:
+                continue
+            seen_custom_pipeline_pairs.add(pair_key)
+            custom_counts_by_accession[custom_accession][row["pipeline_id"]] += 1
 
     for referred in page_obj.object_list:
         acc = referred.f_AccessionNo.strip() if referred.f_AccessionNo else None
@@ -3119,6 +3960,14 @@ def view_wgs_overview(request):
             "date_collected": referred.f_Spec_Date,
             "referral_date": referred.f_Referral_Date,
             "summary_flags": summary_flags,
+            "custom_pipeline_flags": [
+                {
+                    "pipeline": pipeline,
+                    "count": custom_counts_by_accession.get(acc, {}).get(pipeline.id, 0),
+                    "filter_key": f"custom{pipeline.id}",
+                }
+                for pipeline in selected_custom_pipelines
+            ],
             "antibiotics": abx_entries,
             "sample_information": sampleinfo_map.get(acc),
         })
@@ -3136,6 +3985,7 @@ def view_wgs_overview(request):
         "assembly": len(wgs_sets["assembly"] & filtered_accessions),
         "gambit": len(wgs_sets["gambit"] & filtered_accessions),
         "amrfinder": len(wgs_sets["amrfinder"] & filtered_accessions),
+        "custom": len(selected_custom_accessions & filtered_accessions),
         "with_antibiotics": Final_AntibioticEntry.objects.filter(
             ab_idNum_f_referred__f_AccessionNo__in=filtered_accessions
         ).values("ab_idNum_f_referred__f_AccessionNo").distinct().count(),
@@ -3153,6 +4003,11 @@ def view_wgs_overview(request):
         "available_years": available_years,
         "selected_year": selected_year,
         "preserved_params": preserved_params,
+        "custom_overview_pipelines": custom_overview_pipelines,
+        "selected_custom_pipelines": selected_custom_pipelines,
+        "selected_custom_slugs": selected_custom_slugs,
+        "visible_builtin_overview_keys": visible_builtin_overview_keys,
+        "detail_colspan": len(visible_builtin_overview_keys & set(overview_source_map.keys())) + len(selected_custom_pipelines) + 2,
     })
 
 
@@ -3236,6 +4091,12 @@ def get_wgs_details(request, accession):
     # ============================================================
     # WGS Related Data
     # ============================================================
+    visible_builtin_overview_keys = visible_builtin_wgs_keys("overview")
+    requested_builtin_keys = request.GET.getlist("builtin_tables")
+    if requested_builtin_keys:
+        selected_builtin_detail_keys = set(requested_builtin_keys) & set(visible_builtin_overview_keys)
+    else:
+        selected_builtin_detail_keys = set(visible_builtin_overview_keys)
     projects = WGS_Project.objects.filter(
         Q(WGS_BactScout_Acc=accession)
         | Q(WGS_Mlst_Acc=accession)
@@ -3265,6 +4126,34 @@ def get_wgs_details(request, accession):
             Q(amrfinder_project__in=projects) | Q(amrfinder_project__WGS_Amrfinder_Acc=accession)
         )),
     }
+    for key in list(related_data.keys()):
+        if key not in selected_builtin_detail_keys:
+            related_data[key] = []
+    requested_custom_slugs = request.GET.getlist("custom_tables")
+    custom_pipeline_filter = CustomWGSPipeline.objects.filter(is_active=True, show_in_overview=True)
+    if requested_custom_slugs:
+        custom_pipeline_filter = custom_pipeline_filter.filter(slug__in=requested_custom_slugs)
+    custom_related_data = []
+    accession_variants = custom_pipeline_accession_variants(accession)
+    custom_accession_filter = (
+        Q(matched_final_data__f_AccessionNo__iexact=accession)
+        | Q(matched_raw_data__AccessionNo__iexact=accession)
+    )
+    for accession_variant in accession_variants:
+        custom_accession_filter |= Q(accession__iexact=accession_variant)
+    for pipeline in custom_pipeline_filter.prefetch_related("fields").order_by("sequencing_type", "name"):
+        records = list(
+            CustomWGSPipelineRecord.objects
+            .filter(pipeline=pipeline, match_status="matched")
+            .filter(custom_accession_filter)
+            .order_by("-uploaded_at", "id")
+        )
+        if records:
+            custom_related_data.append({
+                "pipeline": pipeline,
+                "fields": list(pipeline.fields.filter(show_in_detail=True)),
+                "records": records,
+            })
 
     # ============================================================
     # Build context required by the template
@@ -3289,6 +4178,7 @@ def get_wgs_details(request, accession):
             "sample_information": sample_information,
             "antibiotics": antibiotics,  
             "related_data": related_data,
+            "custom_related_data": custom_related_data,
         }
     }
 
@@ -3351,13 +4241,19 @@ def download_matched_wgs_data(request):
         if normalize_accession(acc)
     }
 
+    visible_builtin_overview_keys = visible_builtin_wgs_keys("overview")
+    download_source_map = {
+        "bactscout": (BactScout, "BactScout_Accession", "Date_uploaded_bs"),
+        "mlst": (Mlst, "Mlst_Accession", "Date_uploaded_m"),
+        "checkm2": (Checkm2, "Checkm2_Accession", "Date_uploaded_c"),
+        "assembly": (AssemblyScan, "Assembly_Accession", "Date_uploaded_as"),
+        "amrfinder": (Amrfinderplus, "Amrfinder_Accession", "Date_uploaded_am"),
+        "gambit": (Gambit, "Gambit_Accession", "Date_uploaded_g"),
+    }
     wgs_sources = [
-        (BactScout, "BactScout_Accession", "Date_uploaded_bs"),
-        (Mlst, "Mlst_Accession", "Date_uploaded_m"),
-        (Checkm2, "Checkm2_Accession", "Date_uploaded_c"),
-        (AssemblyScan, "Assembly_Accession", "Date_uploaded_as"),
-        (Amrfinderplus, "Amrfinder_Accession", "Date_uploaded_am"),
-        (Gambit, "Gambit_Accession", "Date_uploaded_g"),
+        source
+        for key, source in download_source_map.items()
+        if key in visible_builtin_overview_keys
     ]
 
     def wgs_accession_set(model, accession_field, date_field, apply_date_filter=True):
@@ -3382,8 +4278,31 @@ def download_matched_wgs_data(request):
             for model, accession_field, date_field in wgs_sources
         ]
 
+    def custom_download_accession_set(apply_date_filter=True):
+        custom_filter = CustomWGSPipelineRecord.objects.filter(
+            pipeline__is_active=True,
+            pipeline__show_in_overview=True,
+            match_status="matched",
+        )
+        if apply_date_filter and (date_from or date_to):
+            if date_from:
+                custom_filter = custom_filter.filter(uploaded_at__date__gte=date_from)
+            if date_to:
+                custom_filter = custom_filter.filter(uploaded_at__date__lte=date_to)
+
+        accessions = set()
+        for row in custom_filter.values("accession", "matched_final_data_id", "matched_raw_data_id").distinct():
+            for key in custom_record_accession_keys(row):
+                normalized = normalize_accession(key)
+                if normalized in final_acc_map:
+                    accessions.add(normalized)
+        return accessions
+
     # ---- Step 1-2: Collect matching Final_Data/WGS accessions ----
     wgs_sets = collect_wgs_sets(apply_date_filter=True)
+    custom_wgs_set = custom_download_accession_set(apply_date_filter=True)
+    if custom_wgs_set and mode != "all":
+        wgs_sets.append(custom_wgs_set)
 
     # ---- Step 3: Combine or intersect ----
     if mode == "all":
@@ -3396,6 +4315,9 @@ def download_matched_wgs_data(request):
     date_filter_was_used = bool(date_from or date_to)
     if not matched_accessions and date_filter_was_used:
         wgs_sets = collect_wgs_sets(apply_date_filter=False)
+        custom_wgs_set = custom_download_accession_set(apply_date_filter=False)
+        if custom_wgs_set and mode != "all":
+            wgs_sets.append(custom_wgs_set)
         if mode == "all":
             matched_accessions = set.intersection(*wgs_sets) if wgs_sets else set()
         else:
@@ -3437,12 +4359,12 @@ def download_matched_wgs_data(request):
     sampleinfo_qs = SampleInformation.objects.filter(
         sample_accession__in=matched_accessions
     ).order_by("sample_accession", "-Date_uploaded_si", "-pk")
-    bactscout_qs = BactScout.objects.filter(BactScout_Accession__in=matched_accessions)
-    mlst_qs = Mlst.objects.filter(Mlst_Accession__in=matched_accessions)
-    checkm2_qs = Checkm2.objects.filter(Checkm2_Accession__in=matched_accessions)
-    assembly_qs = AssemblyScan.objects.filter(Assembly_Accession__in=matched_accessions)
-    amrfinder_qs = Amrfinderplus.objects.filter(Amrfinder_Accession__in=matched_accessions)
-    gambit_qs = Gambit.objects.filter(Gambit_Accession__in=matched_accessions)
+    bactscout_qs = BactScout.objects.filter(BactScout_Accession__in=matched_accessions) if "bactscout" in visible_builtin_overview_keys else BactScout.objects.none()
+    mlst_qs = Mlst.objects.filter(Mlst_Accession__in=matched_accessions) if "mlst" in visible_builtin_overview_keys else Mlst.objects.none()
+    checkm2_qs = Checkm2.objects.filter(Checkm2_Accession__in=matched_accessions) if "checkm2" in visible_builtin_overview_keys else Checkm2.objects.none()
+    assembly_qs = AssemblyScan.objects.filter(Assembly_Accession__in=matched_accessions) if "assembly" in visible_builtin_overview_keys else AssemblyScan.objects.none()
+    amrfinder_qs = Amrfinderplus.objects.filter(Amrfinder_Accession__in=matched_accessions) if "amrfinder" in visible_builtin_overview_keys else Amrfinderplus.objects.none()
+    gambit_qs = Gambit.objects.filter(Gambit_Accession__in=matched_accessions) if "gambit" in visible_builtin_overview_keys else Gambit.objects.none()
 
     # ---- Step 5: Convert querysets to DataFrames ----
     final_df = pd.DataFrame.from_records(final_qs.values())
@@ -3619,6 +4541,75 @@ def download_matched_wgs_data(request):
 
     combined_df = make_tz_naive(combined_df)
 
+    custom_pipeline_exports = []
+    custom_export_pipelines = (
+        CustomWGSPipeline.objects
+        .filter(is_active=True, show_in_overview=True)
+        .prefetch_related("fields")
+        .order_by("sequencing_type", "name")
+    )
+    matched_accession_lookup = {normalize_accession(accession): accession for accession in matched_accessions}
+    used_sheet_names = {
+        "Final_Data_With_Antibiotics",
+        "BactScout",
+        "MLST",
+        "CheckM2",
+        "Assembly",
+        "AMRFinder",
+        "Gambit",
+    }
+
+    def excel_sheet_name(value):
+        base = re.sub(r"[\[\]\:\*\?\/\\]", "_", str(value or "Custom")).strip() or "Custom"
+        base = base[:31]
+        candidate = base
+        counter = 2
+        while candidate in used_sheet_names:
+            suffix = f"_{counter}"
+            candidate = f"{base[:31 - len(suffix)]}{suffix}"
+            counter += 1
+        used_sheet_names.add(candidate)
+        return candidate
+
+    for pipeline in custom_export_pipelines:
+        fields = list(pipeline.fields.all())
+        records = list(
+            CustomWGSPipelineRecord.objects
+            .filter(pipeline=pipeline, match_status="matched")
+            .filter(
+                Q(matched_final_data_id__in=matched_accessions)
+                | Q(matched_raw_data_id__in=matched_accessions)
+                | Q(accession__in=matched_accessions)
+            )
+            .order_by("accession", "-uploaded_at", "id")
+        )
+        custom_rows = []
+        for record in records:
+            normalized_keys = [
+                normalize_accession(key)
+                for key in custom_record_accession_keys({
+                    "accession": record.accession,
+                    "matched_final_data_id": record.matched_final_data_id,
+                    "matched_raw_data_id": record.matched_raw_data_id,
+                })
+            ]
+            canonical_accession = next(
+                (matched_accession_lookup[key] for key in normalized_keys if key in matched_accession_lookup),
+                record.matched_final_data_id or record.matched_raw_data_id or record.accession,
+            )
+            export_row = {
+                "f_AccessionNo": canonical_accession,
+                "Uploaded accession": record.accession,
+                "Sample name": record.sample_name,
+                "Match source": record.match_source,
+                "Uploaded at": record.uploaded_at,
+            }
+            for field in fields:
+                export_row[field.display_label] = (record.values_json or {}).get(field.field_key, "")
+            custom_rows.append(export_row)
+        if custom_rows:
+            custom_pipeline_exports.append((excel_sheet_name(pipeline.name), pd.DataFrame(custom_rows)))
+
     # ---- Step 8: Write all to Excel ----
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -3629,6 +4620,9 @@ def download_matched_wgs_data(request):
         if not assembly_df.empty: assembly_df.to_excel(writer, index=False, sheet_name="Assembly")
         if not amrfinder_df.empty: amrfinder_df.to_excel(writer, index=False, sheet_name="AMRFinder")
         if not gambit_df.empty: gambit_df.to_excel(writer, index=False, sheet_name="Gambit")
+        for sheet_name, custom_df in custom_pipeline_exports:
+            custom_df = make_tz_naive(custom_df)
+            custom_df.to_excel(writer, index=False, sheet_name=sheet_name)
 
     output.seek(0)
     filename = f"FinalData_WGS_{filename_suffix}_{pd.Timestamp.now().date()}.xlsx"

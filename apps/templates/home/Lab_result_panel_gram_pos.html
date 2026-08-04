@@ -755,7 +755,7 @@ th, td {
 
                         <td colspan="5" style="border-left:0; border-right:0; border-top:0; text-align:center; font-size:10px;">
                             {% clean_firstof batch.bat_Encoder isolate.arsp_Encoder as encoder_name %}
-                            {{ encoder_name|professional_caps }}
+                            {{ encoder_name|with_staff_credentials|professional_caps }}
                         </td>
 
                         <td colspan="2" style="border-left:0; border-bottom:0; border-right:0; border-top:0;">
@@ -764,7 +764,7 @@ th, td {
 
                         <td colspan="6" style="border-left:0; border-right:0; border-top:0; text-align:center; font-size:10px;">
                             {% clean_firstof batch.bat_Checker isolate.arsp_Checker as checker_name %}
-                            {{ checker_name|professional_caps }}
+                            {{ checker_name|with_staff_credentials|professional_caps }}
                         </td>
 
                         <td colspan="2" style="border-left:0; border-bottom:0; border-right:0; border-top:0;">
@@ -775,11 +775,11 @@ th, td {
                             {% clean_firstof batch.bat_Verifier isolate.arsp_Verifier as verifier_name %}
                             {% clean_firstof batch.bat_LabManager isolate.arsp_LabManager as lab_manager_name %}
                             {% if verifier_name and lab_manager_name %}
-                                {{ verifier_name|professional_caps }} / {{ lab_manager_name|professional_caps }}
+                                {{ verifier_name|with_staff_credentials|professional_caps }} / {{ lab_manager_name|with_staff_credentials|professional_caps }}
                             {% elif verifier_name %}
-                                {{ verifier_name|professional_caps }}
+                                {{ verifier_name|with_staff_credentials|professional_caps }}
                             {% elif lab_manager_name %}
-                                {{ lab_manager_name|professional_caps }}
+                                {{ lab_manager_name|with_staff_credentials|professional_caps }}
                             {% endif %}
                         </td>
 
@@ -789,7 +789,7 @@ th, td {
 
                         <td colspan="7" style="border-left:0; border-right:0; border-top:0; text-align:center; font-size:10px;">
                             {% clean_firstof batch.bat_Head isolate.arsp_Head as head_name %}
-                            {{ head_name|professional_caps }}
+                            {{ head_name|with_staff_credentials|professional_caps }}
                         </td>
                     </tr>
                     <tr style="height:8px; text-align:center; line-height:1;">

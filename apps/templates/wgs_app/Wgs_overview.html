@@ -370,6 +370,68 @@
       border-color: rgba(15, 58, 95, 0.18) !important;
       color: #52697c !important;
     }
+
+/* added for scrollable */
+.wgs-toolbar-row-2 {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.wgs-filter-label {
+  display: block;
+  width: 100%;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.wgs-filter-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.4rem;
+  scrollbar-width: thin;
+}
+
+.wgs-filter-controls {
+  width: max-content;
+  min-width: 100%;
+  align-items: center;
+}
+
+.pipeline-control {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.pipeline-show-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.wgs-filter-scroll::-webkit-scrollbar {
+  height: 7px;
+}
+
+.wgs-filter-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 100, 0.35);
+  border-radius: 10px;
+}
+
+.wgs-filter-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 </style>
 
 {% endblock stylesheets%}
@@ -460,32 +522,209 @@
           </button>
         </div>
 
-        <div class="wgs-toolbar-row-2">
-          <span class="wgs-filter-label"><i class="ni ni-ui-04 mr-1"></i>Filter:</span>
+        <!-- <div class="wgs-toolbar-row-2">
+          <span class="wgs-filter-label"><i class="ni ni-ui-04 mr-1"></i>View / Filter:</span>
           <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-sm btn-outline-success filter-btn" data-filter="bactscout">
+            {% if "bactscout" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-success filter-btn" data-filter="bactscout">
               <i class="fas fa-bacteria mr-1"></i>BactScout
-            </button>
-            <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="gambit">
+            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="bactscout" checked> Show</label></div>{% endif %}
+            {% if "gambit" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-primary filter-btn" data-filter="gambit">
               <i class="ni ni-chart-bar-32 mr-1"></i>Gambit
-            </button>
-            <button class="btn btn-sm btn-outline-warning filter-btn" data-filter="mlst">
+            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="gambit" checked> Show</label></div>{% endif %}
+            {% if "mlst" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-warning filter-btn" data-filter="mlst">
               <i class="ni ni-atom mr-1"></i>MLST
-            </button>
-            <button class="btn btn-sm btn-outline-info filter-btn" data-filter="checkm2">
+            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="mlst" checked> Show</label></div>{% endif %}
+            {% if "checkm2" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-info filter-btn" data-filter="checkm2">
               <i class="ni ni-check-bold mr-1"></i>CheckM2
-            </button>
-            <button class="btn btn-sm btn-outline-danger filter-btn" data-filter="assembly">
+            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="checkm2" checked> Show</label></div>{% endif %}
+            {% if "assembly" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-danger filter-btn" data-filter="assembly">
               <i class="ni ni-settings mr-1"></i>Assembly
-            </button>
-            <button class="btn btn-sm btn-outline-purple filter-btn" data-filter="amrfinder">
+            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="assembly" checked> Show</label></div>{% endif %}
+            {% if "amrfinder" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-purple filter-btn" data-filter="amrfinder">
               <i class="ni ni-lock-circle-open mr-1"></i>AMRFinder
-            </button>
+            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="amrfinder" checked> Show</label></div>{% endif %}
+            {% for pipeline in selected_custom_pipelines %}
+            <div class="pipeline-control"><button class="btn btn-sm btn-outline-info filter-btn" data-filter="custom{{ pipeline.id }}">
+              <i class="ni ni-bullet-list-67 mr-1"></i>{{ pipeline.name }}
+            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle custom-pipeline-toggle" data-column="custom{{ pipeline.id }}" value="{{ pipeline.slug }}" checked> Show</label></div>
+            {% endfor %}
             <button class="btn btn-sm btn-secondary" id="clear-filter">
               <i class="ni ni-fat-remove mr-1"></i>Clear Filter
             </button>
           </div>
-        </div>
+        </div> -->
+
+        <!-- scrollable filters -->
+                <div class="wgs-toolbar-row-2">
+                  <span class="wgs-filter-label">
+                    <i class="ni ni-ui-04 mr-1"></i>View / Filter:
+                  </span>
+
+                  <div class="wgs-filter-scroll">
+                    <div class="d-flex gap-2 flex-nowrap wgs-filter-controls">
+
+                      {% if "bactscout" in visible_builtin_overview_keys %}
+                      <div class="pipeline-control">
+                        <button
+                          class="btn btn-sm btn-outline-success filter-btn"
+                          data-filter="bactscout"
+                        >
+                          <i class="fas fa-bacteria mr-1"></i>BactScout
+                        </button>
+
+                        <label class="pipeline-show-toggle">
+                          <input
+                            type="checkbox"
+                            class="pipeline-column-toggle"
+                            data-column="bactscout"
+                            checked
+                          >
+                          Show
+                        </label>
+                      </div>
+                      {% endif %}
+
+                      {% if "gambit" in visible_builtin_overview_keys %}
+                      <div class="pipeline-control">
+                        <button
+                          class="btn btn-sm btn-outline-primary filter-btn"
+                          data-filter="gambit"
+                        >
+                          <i class="ni ni-chart-bar-32 mr-1"></i>Gambit
+                        </button>
+
+                        <label class="pipeline-show-toggle">
+                          <input
+                            type="checkbox"
+                            class="pipeline-column-toggle"
+                            data-column="gambit"
+                            checked
+                          >
+                          Show
+                        </label>
+                      </div>
+                      {% endif %}
+
+                      {% if "mlst" in visible_builtin_overview_keys %}
+                      <div class="pipeline-control">
+                        <button
+                          class="btn btn-sm btn-outline-warning filter-btn"
+                          data-filter="mlst"
+                        >
+                          <i class="ni ni-atom mr-1"></i>MLST
+                        </button>
+
+                        <label class="pipeline-show-toggle">
+                          <input
+                            type="checkbox"
+                            class="pipeline-column-toggle"
+                            data-column="mlst"
+                            checked
+                          >
+                          Show
+                        </label>
+                      </div>
+                      {% endif %}
+
+                      {% if "checkm2" in visible_builtin_overview_keys %}
+                      <div class="pipeline-control">
+                        <button
+                          class="btn btn-sm btn-outline-info filter-btn"
+                          data-filter="checkm2"
+                        >
+                          <i class="ni ni-check-bold mr-1"></i>CheckM2
+                        </button>
+
+                        <label class="pipeline-show-toggle">
+                          <input
+                            type="checkbox"
+                            class="pipeline-column-toggle"
+                            data-column="checkm2"
+                            checked
+                          >
+                          Show
+                        </label>
+                      </div>
+                      {% endif %}
+
+                      {% if "assembly" in visible_builtin_overview_keys %}
+                      <div class="pipeline-control">
+                        <button
+                          class="btn btn-sm btn-outline-danger filter-btn"
+                          data-filter="assembly"
+                        >
+                          <i class="ni ni-settings mr-1"></i>Assembly
+                        </button>
+
+                        <label class="pipeline-show-toggle">
+                          <input
+                            type="checkbox"
+                            class="pipeline-column-toggle"
+                            data-column="assembly"
+                            checked
+                          >
+                          Show
+                        </label>
+                      </div>
+                      {% endif %}
+
+                      {% if "amrfinder" in visible_builtin_overview_keys %}
+                      <div class="pipeline-control">
+                        <button
+                          class="btn btn-sm btn-outline-purple filter-btn"
+                          data-filter="amrfinder"
+                        >
+                          <i class="ni ni-lock-circle-open mr-1"></i>AMRFinder
+                        </button>
+
+                        <label class="pipeline-show-toggle">
+                          <input
+                            type="checkbox"
+                            class="pipeline-column-toggle"
+                            data-column="amrfinder"
+                            checked
+                          >
+                          Show
+                        </label>
+                      </div>
+                      {% endif %}
+
+                      {% for pipeline in selected_custom_pipelines %}
+                      <div class="pipeline-control">
+                        <button
+                          class="btn btn-sm btn-outline-info filter-btn"
+                          data-filter="custom{{ pipeline.id }}"
+                        >
+                          <i class="ni ni-bullet-list-67 mr-1"></i>
+                          {{ pipeline.name }}
+                        </button>
+
+                        <label class="pipeline-show-toggle">
+                          <input
+                            type="checkbox"
+                            class="pipeline-column-toggle custom-pipeline-toggle"
+                            data-column="custom{{ pipeline.id }}"
+                            value="{{ pipeline.slug }}"
+                            checked
+                          >
+                          Show
+                        </label>
+                      </div>
+                      {% endfor %}
+
+                      <button
+                        class="btn btn-sm btn-secondary"
+                        id="clear-filter"
+                        type="button"
+                      >
+                        <i class="ni ni-fat-remove mr-1"></i>Clear Filter
+                      </button>
+
+                    </div>
+                  </div>
+                </div>
+
+
       </div>
     </div>
 
@@ -496,12 +735,15 @@
           <thead class="thead-light sticky-top">
             <tr class="text-center">
               <th class="text-left">Accession No</th>
-              <th><i class="fas fa-bacteria text-success"></i> BactScout</th>
-              <th><i class="ni ni-chart-bar-32 text-primary"></i> Gambit</th>
-              <th><i class="ni ni-atom text-warning"></i> MLST</th>
-              <th><i class="ni ni-check-bold text-info"></i> CheckM2</th>
-              <th><i class="ni ni-settings text-danger"></i> Assembly</th>
-              <th><i class="ni ni-lock-circle-open text-purple"></i> AMRFinder</th>
+              {% if "bactscout" in visible_builtin_overview_keys %}<th data-column="bactscout"><i class="fas fa-bacteria text-success"></i> BactScout</th>{% endif %}
+              {% if "gambit" in visible_builtin_overview_keys %}<th data-column="gambit"><i class="ni ni-chart-bar-32 text-primary"></i> Gambit</th>{% endif %}
+              {% if "mlst" in visible_builtin_overview_keys %}<th data-column="mlst"><i class="ni ni-atom text-warning"></i> MLST</th>{% endif %}
+              {% if "checkm2" in visible_builtin_overview_keys %}<th data-column="checkm2"><i class="ni ni-check-bold text-info"></i> CheckM2</th>{% endif %}
+              {% if "assembly" in visible_builtin_overview_keys %}<th data-column="assembly"><i class="ni ni-settings text-danger"></i> Assembly</th>{% endif %}
+              {% if "amrfinder" in visible_builtin_overview_keys %}<th data-column="amrfinder"><i class="ni ni-lock-circle-open text-purple"></i> AMRFinder</th>{% endif %}
+              {% for pipeline in selected_custom_pipelines %}
+              <th data-column="custom{{ pipeline.id }}"><i class="ni ni-bullet-list-67 text-info"></i> {{ pipeline.name }}</th>
+              {% endfor %}
               <th>Action</th>
             </tr>
           </thead>
@@ -513,14 +755,20 @@
                 data-mlst="{{ entry.summary_flags.mlst|yesno:'true,false' }}"
                 data-checkm2="{{ entry.summary_flags.checkm2|yesno:'true,false' }}"
                 data-assembly="{{ entry.summary_flags.assembly|yesno:'true,false' }}"
-                data-amrfinder="{{ entry.summary_flags.amrfinder|yesno:'true,false' }}">
+                data-amrfinder="{{ entry.summary_flags.amrfinder|yesno:'true,false' }}"
+                {% for custom_flag in entry.custom_pipeline_flags %}
+                data-{{ custom_flag.filter_key }}="{% if custom_flag.count %}true{% else %}false{% endif %}"
+                {% endfor %}>
               <td class="text-left"><strong class="text-primary wgs-accession-link">{{ entry.accession }}</strong></td>
-              <td>{% if entry.summary_flags.bactscout %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
-              <td>{% if entry.summary_flags.gambit %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
-              <td>{% if entry.summary_flags.mlst %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
-              <td>{% if entry.summary_flags.checkm2 %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
-              <td>{% if entry.summary_flags.assembly %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
-              <td>{% if entry.summary_flags.amrfinder %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
+              {% if "bactscout" in visible_builtin_overview_keys %}<td data-column="bactscout">{% if entry.summary_flags.bactscout %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>{% endif %}
+              {% if "gambit" in visible_builtin_overview_keys %}<td data-column="gambit">{% if entry.summary_flags.gambit %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>{% endif %}
+              {% if "mlst" in visible_builtin_overview_keys %}<td data-column="mlst">{% if entry.summary_flags.mlst %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>{% endif %}
+              {% if "checkm2" in visible_builtin_overview_keys %}<td data-column="checkm2">{% if entry.summary_flags.checkm2 %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>{% endif %}
+              {% if "assembly" in visible_builtin_overview_keys %}<td data-column="assembly">{% if entry.summary_flags.assembly %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>{% endif %}
+              {% if "amrfinder" in visible_builtin_overview_keys %}<td data-column="amrfinder">{% if entry.summary_flags.amrfinder %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>{% endif %}
+              {% for custom_flag in entry.custom_pipeline_flags %}
+              <td data-column="{{ custom_flag.filter_key }}">{% if custom_flag.count %}<span class="badge badge-success">✓</span>{% else %}<span class="badge badge-light">—</span>{% endif %}</td>
+              {% endfor %}
               <td>
                 <button class="btn btn-sm btn-primary toggle-view-btn" type="button" data-accession="{{ entry.accession }}">
                   <i class="ni ni-zoom-split-in"></i> <span class="btn-text">View</span>
@@ -594,7 +842,7 @@
               <ul>
                 <li><strong>Complete Sets:</strong> Found in <em>all</em> WGS tables</li>
                 <li><strong>Partial Sets:</strong> Found in <em>any</em> WGS table</li>
-                <li><strong>Included WGS tables:</strong> BactScout, MLST, CheckM2, Assembly, AMRFinder, and Gambit</li>
+                <li><strong>Included WGS tables:</strong> visible built-in tables selected in Manage Pipelines</li>
               </ul>
               <div class="wgs-download-filter-grid">
                 <div>
@@ -681,6 +929,38 @@
   border-color: #8965e0;
 }
 
+.filter-btn[data-filter^="custom"].active {
+  --btn-bg: #11cdef;
+}
+
+.pipeline-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.25rem;
+  border: 1px solid rgba(15, 58, 95, 0.12);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.pipeline-show-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #52697c;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pipeline-show-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
 /* Utilities */
 .gap-2 {
   gap: 0.5rem;
@@ -700,7 +980,30 @@ document.addEventListener('DOMContentLoaded', function() {
   const clearButton = document.getElementById('clear-filter');
   const dataRows = document.querySelectorAll('.data-row');
   const counterText = document.querySelector('.counter-text');
+  const columnToggles = document.querySelectorAll('.pipeline-column-toggle');
   const activeFilters = new Set();
+  const filterLabels = {};
+  filterButtons.forEach(btn => {
+    filterLabels[btn.dataset.filter] = btn.textContent.trim();
+  });
+
+  function currentDetailColspan() {
+    const visiblePipelineCount = Array.from(columnToggles).filter(input => input.checked).length;
+    return visiblePipelineCount + 2;
+  }
+
+  function syncDetailColspans() {
+    document.querySelectorAll('.wgs-detail-cell').forEach(cell => {
+      cell.colSpan = currentDetailColspan();
+    });
+  }
+
+  function setColumnVisibility(columnKey, visible) {
+    document.querySelectorAll(`[data-column="${columnKey}"]`).forEach(cell => {
+      cell.style.display = visible ? '' : 'none';
+    });
+    syncDetailColspans();
+  }
 
   function applyFilters() {
     const selectedFilters = Array.from(activeFilters);
@@ -730,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (counterText) {
       const selectedFilters = Array.from(activeFilters);
       const label = selectedFilters.length
-        ? `matching all: ${selectedFilters.map(filterType => filterType.toUpperCase()).join(', ')}`
+        ? `matching all: ${selectedFilters.map(filterType => filterLabels[filterType] || filterType.toUpperCase()).join(', ')}`
         : 'in Total';
       counterText.innerHTML = `<strong>${visibleCount}</strong> Accession(s) ${label}`;
     }
@@ -756,6 +1059,13 @@ document.addEventListener('DOMContentLoaded', function() {
     activeFilters.clear();
     filterButtons.forEach(b => b.classList.remove('active'));
     showAllRows();
+  });
+
+  columnToggles.forEach(toggle => {
+    setColumnVisibility(toggle.dataset.column, toggle.checked);
+    toggle.addEventListener('change', function() {
+      setColumnVisibility(this.dataset.column, this.checked);
+    });
   });
 
   // Toggle view button functionality
@@ -787,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', function() {
       newRow.id = `details-${accession}`;
       newRow.className = 'wgs-detail-row';
       newRow.innerHTML = `
-        <td colspan="8" class="wgs-detail-cell text-center py-5">
+        <td colspan="${currentDetailColspan()}" class="wgs-detail-cell text-center py-5">
           <div class="spinner-border text-primary" role="status">
             <span class="sr-only">Loading...</span>
           </div>
@@ -801,18 +1111,41 @@ document.addEventListener('DOMContentLoaded', function() {
       this.classList.add('btn-secondary');
 
       // Fetch WGS details dynamically
-      fetch(`/wgs/get-details/${accession}/`)
-        .then(res => res.json())
+      const detailParams = [];
+      const builtinToggles = Array.from(document.querySelectorAll('.pipeline-column-toggle:not(.custom-pipeline-toggle)'));
+      const selectedBuiltinTables = builtinToggles.filter(input => input.checked);
+      selectedBuiltinTables
+        .forEach(input => detailParams.push(`builtin_tables=${encodeURIComponent(input.dataset.column)}`));
+      if (builtinToggles.length && !selectedBuiltinTables.length) {
+        detailParams.push('builtin_tables=__none__');
+      }
+      const customToggles = Array.from(document.querySelectorAll('.custom-pipeline-toggle'));
+      const selectedCustomTables = customToggles.filter(input => input.checked);
+      selectedCustomTables
+        .forEach(input => detailParams.push(`custom_tables=${encodeURIComponent(input.value)}`));
+      if (customToggles.length && !selectedCustomTables.length) {
+        detailParams.push('custom_tables=__none__');
+      }
+      const detailsBaseUrl = "{% url 'get_wgs_details' '__ACCESSION__' %}";
+      const detailsUrl = detailsBaseUrl.replace('__ACCESSION__', encodeURIComponent(accession)) +
+        (detailParams.length ? `?${detailParams.join('&')}` : '');
+      fetch(detailsUrl)
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          return res.json();
+        })
         .then(data => {
           if (data.html) {
-            newRow.innerHTML = `<td colspan="8" class="wgs-detail-cell">${data.html}</td>`;
+            newRow.innerHTML = `<td colspan="${currentDetailColspan()}" class="wgs-detail-cell">${data.html}</td>`;
           } else {
-            newRow.innerHTML = `<td colspan="8" class="wgs-detail-cell text-center text-danger">Failed to load details.</td>`;
+            newRow.innerHTML = `<td colspan="${currentDetailColspan()}" class="wgs-detail-cell text-center text-danger">Failed to load details.</td>`;
           }
         })
         .catch(err => {
           console.error(err);
-          newRow.innerHTML = `<td colspan="8" class="wgs-detail-cell text-center text-danger">Error loading details.</td>`;
+          newRow.innerHTML = `<td colspan="${currentDetailColspan()}" class="wgs-detail-cell text-center text-danger">Error loading details (${err.message}).</td>`;
           // Revert button on error
           icon.className = 'ni ni-zoom-split-in';
           text.textContent = 'View';

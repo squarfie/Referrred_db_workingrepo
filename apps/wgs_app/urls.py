@@ -62,6 +62,17 @@ urlpatterns = [
 
     path('wgs/data-overview', views.view_wgs_overview, name='view_wgs_overview'),
     path('wgs/download_matched/', views.download_matched_wgs_data, name='download_matched_wgs_data'),
+    path("wgs/export/<str:pipeline_key>/", views.export_builtin_wgs_pipeline, name="export_builtin_wgs_pipeline"),
+    path("wgs/pipelines/", views.custom_pipeline_list, name="custom_pipeline_list"),
+    path("wgs/pipelines/new/", views.custom_pipeline_create, name="custom_pipeline_create"),
+    path("wgs/pipelines/<slug:slug>/edit/", views.custom_pipeline_edit, name="custom_pipeline_edit"),
+    path("wgs/pipelines/<slug:slug>/deactivate/", views.custom_pipeline_deactivate, name="custom_pipeline_deactivate"),
+    path("wgs/pipelines/<slug:slug>/delete/", views.custom_pipeline_delete, name="custom_pipeline_delete"),
+    path("wgs/pipelines/<slug:slug>/fields/", views.custom_pipeline_fields, name="custom_pipeline_fields"),
+    path("wgs/pipelines/<slug:slug>/fields/<int:field_id>/delete/", views.custom_pipeline_field_delete, name="custom_pipeline_field_delete"),
+    path("wgs/pipelines/<slug:slug>/upload/", views.custom_pipeline_upload, name="custom_pipeline_upload"),
+    path("wgs/pipelines/<slug:slug>/records/", views.custom_pipeline_records, name="custom_pipeline_records"),
+    path("wgs/pipelines/<slug:slug>/export/", views.custom_pipeline_export, name="custom_pipeline_export"),
 
     
     path("delete_by_date/gambit", views.delete_gambit_by_date, name="delete_gambit_by_date"),

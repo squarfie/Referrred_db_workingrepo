@@ -606,17 +606,17 @@ IP/IPI: <br> {{isolate.ars_ip_ipi|default:""}}
       <td colspan="2" style="font-size: 8px;">
 </td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 8px;">  {{ page.0.isolate.arsp_Encoder|professional_caps }}
+      <td colspan="4" style="font-size: 8px;">  {{ page.0.isolate.arsp_Encoder|with_staff_credentials|professional_caps }}
         <br>
         {% if page.0.isolate.arsp_Enc_Lic %}Lic No: {{page.0.isolate.arsp_Enc_Lic|default_if_none:""}}{% else %} <span>&nbsp;</span>{% endif %}
       </td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 8px;">{{ page.0.isolate.arsp_Checker|professional_caps }}
+      <td colspan="4" style="font-size: 8px;">{{ page.0.isolate.arsp_Checker|with_staff_credentials|professional_caps }}
         <br>
         {% if page.0.isolate.arsp_Chec_Lic%}Lic No: {{page.0.isolate.arsp_Chec_Lic|default_if_none:""}}{% else %}&nbsp;{% endif %}
       </td>
       <td colspan="2"></td>
-      <td colspan="7" style="font-size: 8px;">{{ page.0.isolate.arsp_Verifier|professional_caps }} / {{ page.0.isolate.arsp_LabManager|professional_caps }}
+      <td colspan="7" style="font-size: 8px;">{{ page.0.isolate.arsp_Verifier|with_staff_credentials|professional_caps }} / {{ page.0.isolate.arsp_LabManager|with_staff_credentials|professional_caps }}
         <br>
         {% if page.0.isolate.arsp_Ver_Lic or page.0.isolate.arsp_Lab_Lic %}
           License No.:{% if page.0.isolate.arsp_Ver_Lic %} {{ page.0.isolate.arsp_Ver_Lic|default_if_none:"" }}{% endif %}{% if page.0.isolate.arsp_Ver_Lic and page.0.isolate.arsp_Lab_Lic %} / {% endif %}{% if page.0.isolate.arsp_Lab_Lic %}{{ page.0.isolate.arsp_Lab_Lic|default_if_none:"" }}{% endif %}
@@ -625,7 +625,7 @@ IP/IPI: <br> {{isolate.ars_ip_ipi|default:""}}
         {% endif %}
     </td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 8px;">{{ page.0.isolate.arsp_Head|professional_caps }}
+      <td colspan="4" style="font-size: 8px;">{{ page.0.isolate.arsp_Head|with_staff_credentials|professional_caps }}
         <br>
         {% if page.0.isolate.arsp_Head_Lic%}Lic No: {{page.0.isolate.arsp_Head_Lic|default_if_none:""}}{% else %}&nbsp;{% endif%}
       </td>

@@ -371,13 +371,13 @@ tr
                     {% if isolate.Batch_id.bat_Date_Accomplished %}{{ isolate.Batch_id.bat_Date_Accomplished|date:"d-M-Y" }}{% elif isolate.Date_Accomplished_ARSP %}{{ isolate.Date_Accomplished_ARSP|date:"d-M-Y" }}{% endif %}
                 </td>
                 <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0; border-top: 0;"><strong>Encoded by:</strong></td>
-                <td colspan="5" style="border-left: 0; border-right: 0; border-top: 0;">{{ isolate.arsp_Encoder|professional_caps }}</td>
+                <td colspan="5" style="border-left: 0; border-right: 0; border-top: 0;">{{ isolate.arsp_Encoder|with_staff_credentials|professional_caps }}</td>
                 <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0; border-top: 0;"><strong>Checked by:</strong></td>
-                <td colspan="6" style="border-left: 0; border-right: 0; border-top: 0;"> {{ isolate.arsp_Checker|professional_caps }}</td>
+                <td colspan="6" style="border-left: 0; border-right: 0; border-top: 0;"> {{ isolate.arsp_Checker|with_staff_credentials|professional_caps }}</td>
                 <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0; border-top: 0;"><strong>Verified by:</strong></td>
-                <td colspan="10" style="border-left: 0; border-right: 0; border-top: 0;"> {{ isolate.arsp_Verifier|professional_caps }} / {{ isolate.arsp_LabManager|professional_caps }}</td>
+                <td colspan="10" style="border-left: 0; border-right: 0; border-top: 0;"> {{ isolate.arsp_Verifier|with_staff_credentials|professional_caps }} / {{ isolate.arsp_LabManager|with_staff_credentials|professional_caps }}</td>
                 <td colspan="2" style="border-left: 0; border-bottom: 0; border-right: 0; border-top: 0;"><strong>Noted by:</strong></td>
-                <td colspan="6" style="border-left: 0; border-right: 0; border-top: 0;">{{ isolate.arsp_Head|professional_caps }}</td>
+                <td colspan="6" style="border-left: 0; border-right: 0; border-top: 0;">{{ isolate.arsp_Head|with_staff_credentials|professional_caps }}</td>
             </tr>
             <tr style="height: 12px;">
                 <td colspan="2" style="border: none;"></td>

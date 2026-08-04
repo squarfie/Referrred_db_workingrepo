@@ -85,50 +85,33 @@ def _breakpoint_year_filter(bp_qs, specimen_year):
 
 def _raw_specific_panel_codes(specimen_year, org_code):
     org_code = (org_code or "").strip()
+    org_values = {org_code}
     organism = (
         Organism_List.objects
         .filter(Q(Whonet_Org_Code__iexact=org_code) | Q(Replaced_by__iexact=org_code))
-        .values("Family_Code", "Genus_Group", "Genus_Code", "Species_Group", "Whonet_Org_Code", "Replaced_by")
+        .values("Whonet_Org_Code", "Replaced_by")
         .first()
     )
 
-    if not organism:
-        candidate_levels = [{org_code}]
-    else:
-        candidate_levels = [
-            _raw_related_org_values("Family_Code", organism.get("Family_Code")),
-            _raw_related_org_values("Genus_Group", organism.get("Genus_Group")),
-            _raw_related_org_values("Genus_Code", organism.get("Genus_Code")),
-            _raw_related_org_values("Species_Group", organism.get("Species_Group")),
-            {
-                (organism.get("Whonet_Org_Code") or "").strip(),
-                (organism.get("Replaced_by") or "").strip(),
-                org_code,
-            },
-        ]
+    if organism:
+        org_values.add((organism.get("Whonet_Org_Code") or "").strip())
+        org_values.add((organism.get("Replaced_by") or "").strip())
+    org_values = {value for value in org_values if value}
 
-    year_bp_qs = _breakpoint_year_filter(BreakpointsTable.objects.all(), specimen_year)
+    org_bp_qs = BreakpointsTable.objects.filter(_org_value_filter(org_values))
+    bp_qs = _breakpoint_year_filter(org_bp_qs, specimen_year)
+    abx_codes = {
+        (code or "").strip().upper()
+        for code in bp_qs.values_list("Abx_code", flat=True).distinct()
+        if (code or "").strip()
+    }
+    whonet_codes = {
+        (code or "").strip().upper()
+        for code in bp_qs.values_list("Whonet_Abx", flat=True).distinct()
+        if (code or "").strip()
+    }
 
-    for org_values in candidate_levels:
-        org_values = {value for value in org_values if value}
-        if not org_values:
-            continue
-
-        bp_qs = year_bp_qs.filter(_org_value_filter(org_values))
-        abx_codes = {
-            (code or "").strip().upper()
-            for code in bp_qs.values_list("Abx_code", flat=True).distinct()
-            if (code or "").strip()
-        }
-        whonet_codes = {
-            (code or "").strip().upper()
-            for code in bp_qs.values_list("Whonet_Abx", flat=True).distinct()
-            if (code or "").strip()
-        }
-        if abx_codes or whonet_codes:
-            return abx_codes, whonet_codes
-
-    return set(), set()
+    return abx_codes, whonet_codes
 
 
 def _org_value_filter(values):
@@ -201,27 +184,7 @@ def _raw_antibiotics_for_panel(
         return qs.none()
     if not org_code:
         return qs.order_by("Antibiotic", "Whonet_Abx")
-    if specimen_year is None:
-        return qs.order_by("Antibiotic", "Whonet_Abx")
-
-    panel_abx_codes, panel_whonet_codes = _raw_specific_panel_codes(specimen_year, org_code)
-    existing_whonet_codes = {
-        (code or "").strip().upper()
-        for code in (existing_whonet_codes or [])
-        if (code or "").strip()
-    }
-
-    if not panel_abx_codes and not panel_whonet_codes:
-        return qs.order_by("Antibiotic", "Whonet_Abx")
-
-    return (
-        qs.filter(
-            _code_iexact_filter("Abx_code", panel_abx_codes) |
-            _code_iexact_filter("Whonet_Abx", panel_whonet_codes) |
-            _code_iexact_filter("Whonet_Abx", existing_whonet_codes)
-        )
-        .order_by("Antibiotic", "Whonet_Abx")
-    )
+    return qs.order_by("Antibiotic", "Whonet_Abx")
 from django.utils.http import urlencode, url_has_allowed_host_and_scheme
 import csv
 from django.utils.dateparse import parse_date
@@ -455,6 +418,20 @@ def settings_page(request):
             "resolved_roles": sorted(get_user_roles(account)),
         })
 
+    def build_wgs_pipeline_cards():
+        cards = []
+        for pipeline in CustomWGSPipeline.objects.prefetch_related("fields").order_by("sequencing_type", "name"):
+            records = pipeline.records.all()
+            cards.append({
+                "pipeline": pipeline,
+                "field_count": pipeline.fields.count(),
+                "record_count": records.count(),
+                "matched_count": records.filter(match_status="matched").count(),
+                "unmatched_count": records.exclude(match_status="matched").count(),
+                "last_upload": pipeline.upload_batches.first(),
+            })
+        return cards
+
     context = {
         "antibiotic_form": AntibioticsForm(),
         "org_form": OrganismForm(),
@@ -480,6 +457,8 @@ def settings_page(request):
         "non_working_form": NonWorkingDayForm(),
         "non_working_days": NonWorkingDay.objects.all(),
         "account_rows": account_rows,
+        "builtin_wgs_settings": BuiltinWGSPipelineSetting.objects.all(),
+        "wgs_pipeline_cards": build_wgs_pipeline_cards(),
         "user_access": role_flags(request.user),
 
 

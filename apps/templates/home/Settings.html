@@ -93,6 +93,10 @@
                             data-toggle="list" href="#non_working_tab" role="tab">
                             <i class="fas fa-clock mr-2"></i> TAT Non-working Days
                         </a>
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#wgs_pipeline_tab" role="tab">
+                            <i class="ni ni-atom mr-2"></i> WGS Pipelines
+                        </a>
 
                         </div>
 
@@ -174,6 +178,10 @@
                 <!-- TAT Non-working days -->
                 <div class="tab-pane fade" id="non_working_tab" role="tabpanel">
                     {% include "settings/tabs/non_working_days.html" %}
+                </div>
+                <!-- WGS Pipeline Visibility -->
+                <div class="tab-pane fade" id="wgs_pipeline_tab" role="tabpanel">
+                    {% include "settings/tabs/wgs_pipeline_tab.html" %}
                 </div>
 
 

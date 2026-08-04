@@ -174,7 +174,16 @@
 }
 .card-note ol { padding-left: 1rem; margin: 0; }
 
-.card-actions { display: flex; gap: 0.5rem; margin-top: auto; }
+.card-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: auto; }
+.pipeline-danger-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.pipeline-danger-actions .pipeline-action-form,
+.pipeline-danger-actions .btn-view {
+  width: 100%;
+}
 .btn-up {
   flex: 1; font-size: 0.79rem; font-weight: 700;
   padding: 0.52rem 0; border-radius: 7px; border: none;
@@ -513,6 +522,7 @@
   <div class="upload-card-grid">
 
     <!-- Sample Information -->
+    {% if "sample_information" in visible_builtin_upload_keys %}
     <div class="upload-card a-blue">
       <div class="card-top">
         <div class="ci ci-blue"><i class="ni ni-single-copy-04"></i></div>
@@ -537,10 +547,15 @@
         <a href="{% url 'show_sample_information' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
+        <a href="{% url 'export_builtin_wgs_pipeline' 'sample_information' %}" class="btn-view">
+          <i class="ni ni-cloud-download-95"></i> Export
+        </a>
       </div>
     </div>
+    {% endif %}
 
     <!-- BactScout -->
+    {% if "bactscout" in visible_builtin_upload_keys %}
     <div class="upload-card a-green">
       <div class="card-top">
         <div class="ci ci-green"><i class="fas fa-bacteria"></i></div>
@@ -558,10 +573,15 @@
         <a href="{% url 'show_bactscout' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
+        <a href="{% url 'export_builtin_wgs_pipeline' 'bactscout' %}" class="btn-view">
+          <i class="ni ni-cloud-download-95"></i> Export
+        </a>
       </div>
     </div>
+    {% endif %}
 
     <!-- GtdbTK -->
+    {% if "gtdbtk" in visible_builtin_upload_keys %}
     <div class="upload-card a-rose">
       <div class="card-top">
         <div class="ci ci-rose"><i class="fas fa-sitemap"></i></div>
@@ -579,10 +599,15 @@
         <a href="{% url 'show_gtdbtk' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
+        <a href="{% url 'export_builtin_wgs_pipeline' 'gtdbtk' %}" class="btn-view">
+          <i class="ni ni-cloud-download-95"></i> Export
+        </a>
       </div>
     </div>
+    {% endif %}
 
     <!-- Gambit -->
+    {% if "gambit" in visible_builtin_upload_keys %}
     <div class="upload-card a-indigo">
       <div class="card-top">
         <div class="ci ci-indigo"><i class="fas fa-microscope"></i></div>
@@ -600,10 +625,15 @@
         <a href="{% url 'show_gambit' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
+        <a href="{% url 'export_builtin_wgs_pipeline' 'gambit' %}" class="btn-view">
+          <i class="ni ni-cloud-download-95"></i> Export
+        </a>
       </div>
     </div>
+    {% endif %}
 
     <!-- MLST -->
+    {% if "mlst" in visible_builtin_upload_keys %}
     <div class="upload-card a-warn">
       <div class="card-top">
         <div class="ci ci-warn"><i class="ni ni-atom"></i></div>
@@ -621,10 +651,15 @@
         <a href="{% url 'show_mlst' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
+        <a href="{% url 'export_builtin_wgs_pipeline' 'mlst' %}" class="btn-view">
+          <i class="ni ni-cloud-download-95"></i> Export
+        </a>
       </div>
     </div>
+    {% endif %}
 
     <!-- CheckM2 -->
+    {% if "checkm2" in visible_builtin_upload_keys %}
     <div class="upload-card a-slate">
       <div class="card-top">
         <div class="ci ci-slate"><i class="ni ni-check-bold"></i></div>
@@ -642,10 +677,15 @@
         <a href="{% url 'show_checkm2' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
+        <a href="{% url 'export_builtin_wgs_pipeline' 'checkm2' %}" class="btn-view">
+          <i class="ni ni-cloud-download-95"></i> Export
+        </a>
       </div>
     </div>
+    {% endif %}
 
     <!-- Assembly Scan -->
+    {% if "assembly" in visible_builtin_upload_keys %}
     <div class="upload-card a-red">
       <div class="card-top">
         <div class="ci ci-red"><i class="ni ni-settings"></i></div>
@@ -663,10 +703,15 @@
         <a href="{% url 'show_assembly' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
+        <a href="{% url 'export_builtin_wgs_pipeline' 'assembly' %}" class="btn-view">
+          <i class="ni ni-cloud-download-95"></i> Export
+        </a>
       </div>
     </div>
+    {% endif %}
 
     <!-- AMRFinderPlus -->
+    {% if "amrfinder" in visible_builtin_upload_keys %}
     <div class="upload-card a-purple">
       <div class="card-top">
         <div class="ci ci-purple"><i class="ni ni-lock-circle-open"></i></div>
@@ -684,10 +729,102 @@
         <a href="{% url 'show_amrfinder' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
         </a>
+        <a href="{% url 'export_builtin_wgs_pipeline' 'amrfinder' %}" class="btn-view">
+          <i class="ni ni-cloud-download-95"></i> Export
+        </a>
       </div>
     </div>
+    {% endif %}
 
   </div><!-- /wgs grid -->
+
+  <div class="upload-section-divider" style="margin-top:2.5rem">
+    <i class="ni ni-bullet-list-67"></i>
+    <h3>Custom WGS Pipelines</h3>
+  </div>
+  <p class="section-intro">Upload configurable short-read, long-read, or hybrid pipeline outputs</p>
+
+  <div class="upload-card-grid">
+    {% for pipeline in custom_pipelines %}
+    <div class="upload-card a-slate">
+      <div class="card-top">
+        <div class="ci ci-slate"><i class="ni ni-bullet-list-67"></i></div>
+        <div class="card-text">
+          <h5>{{ pipeline.name }}</h5>
+          <p>{{ pipeline.get_sequencing_type_display }} / {{ pipeline.get_platform_display }}</p>
+        </div>
+      </div>
+      <div class="card-actions">
+        {% if user_access.can_wgs_create %}
+        <a href="{% url 'custom_pipeline_upload' pipeline.slug %}" class="btn-up g-slate">
+          <i class="ni ni-cloud-upload-96"></i> Upload
+        </a>
+        {% endif %}
+        <a href="{% url 'custom_pipeline_records' pipeline.slug %}" class="btn-view">
+          <i class="ni ni-folder-17"></i> View Data
+        </a>
+        <a href="{% url 'custom_pipeline_export' pipeline.slug %}" class="btn-view">
+          <i class="ni ni-cloud-download-95"></i> Export
+        </a>
+      </div>
+      {% if user_access.can_wgs_create %}
+      <div class="pipeline-danger-actions mt-2">
+        <form method="post" action="{% url 'custom_pipeline_deactivate' pipeline.slug %}" class="pipeline-action-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button
+            type="submit"
+            class="btn-view w-100 text-danger"
+            onclick="return confirm('Deactivate {{ pipeline.name }}? It will be hidden from active WGS pipeline options, but existing records will be kept.')"
+          >
+            <i class="ni ni-fat-remove"></i> Deactivate Pipeline
+          </button>
+        </form>
+        {% if user_access.is_admin %}
+        <form method="post" action="{% url 'custom_pipeline_delete' pipeline.slug %}" class="pipeline-action-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button
+            type="submit"
+            class="btn-view w-100 text-danger"
+            onclick="return confirm('Delete {{ pipeline.name }} permanently? This will also delete all custom WGS records, field mappings, and upload history for this pipeline. Use Deactivate if you only need to hide it from active options.')"
+          >
+            <i class="ni ni-fat-remove"></i> Delete Pipeline
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="upload-card a-slate">
+      <div class="card-top">
+        <div class="ci ci-slate"><i class="ni ni-bullet-list-67"></i></div>
+        <div class="card-text">
+          <h5>No custom pipelines</h5>
+          <p>Create one for new short-read or long-read outputs</p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    {% if user_access.can_wgs_create %}
+    <div class="upload-card a-slate">
+      <div class="card-top">
+        <div class="ci ci-slate"><i class="ni ni-fat-add"></i></div>
+        <div class="card-text">
+          <h5>Add Custom Pipeline</h5>
+          <p>Create another short-read, long-read, or hybrid output</p>
+        </div>
+      </div>
+      <div class="card-actions">
+        <a href="{% url 'custom_pipeline_create' %}" class="btn-up g-slate">
+          <i class="ni ni-fat-add"></i> Create Pipeline
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
 </div><!-- /upload-main -->
 </div><!-- /upload-page -->
 

@@ -1,0 +1,100 @@
+<div class="settings-panel">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="mb-1">WGS Pipelines</h3>
+      <p class="text-muted mb-0">Control which sequencing pipelines appear in Upload Data and WGS Overview.</p>
+    </div>
+    <a href="{% url 'custom_pipeline_create' %}" class="btn btn-sm btn-primary">
+      <i class="ni ni-fat-add"></i> New Custom Pipeline
+    </a>
+  </div>
+
+  <form method="post" action="{% url 'custom_pipeline_list' %}" class="card shadow-sm mb-4">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{% url 'settings_page' %}?tab=wgs_pipeline">
+    <div class="card-header">
+      <h4 class="mb-0">Built-in Pipeline Visibility</h4>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-items-center mb-0">
+        <thead class="thead-light">
+          <tr>
+            <th>Pipeline</th>
+            <th>Upload Data Center</th>
+            <th>WGS Overview</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for setting in builtin_wgs_settings %}
+          <tr>
+            <td><strong>{{ setting.display_name }}</strong></td>
+            <td>
+              <label class="custom-toggle mb-0">
+                <input type="checkbox" name="builtin_upload" value="{{ setting.pipeline_key }}" {% if setting.show_in_upload_center %}checked{% endif %}>
+                <span class="custom-toggle-slider rounded-circle"></span>
+              </label>
+            </td>
+            <td>
+              <label class="custom-toggle mb-0">
+                <input type="checkbox" name="builtin_overview" value="{{ setting.pipeline_key }}" {% if setting.show_in_overview %}checked{% endif %}>
+                <span class="custom-toggle-slider rounded-circle"></span>
+              </label>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-header border-top">
+      <h4 class="mb-0">Custom Pipeline Visibility</h4>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-items-center mb-0">
+        <thead class="thead-light">
+          <tr>
+            <th>Pipeline</th>
+            <th>Records</th>
+            <th>Upload Data Center</th>
+            <th>WGS Overview</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in wgs_pipeline_cards %}
+          <tr>
+            <td>
+              <strong>{{ item.pipeline.name }}</strong>
+              <div class="text-muted small">{{ item.pipeline.get_sequencing_type_display }} / {{ item.pipeline.get_platform_display }}</div>
+            </td>
+            <td>{{ item.record_count }}</td>
+            <td>
+              <label class="custom-toggle mb-0">
+                <input type="checkbox" name="custom_upload" value="{{ item.pipeline.id }}" {% if item.pipeline.show_in_upload_center %}checked{% endif %}>
+                <span class="custom-toggle-slider rounded-circle"></span>
+              </label>
+            </td>
+            <td>
+              <label class="custom-toggle mb-0">
+                <input type="checkbox" name="custom_overview" value="{{ item.pipeline.id }}" {% if item.pipeline.show_in_overview %}checked{% endif %}>
+                <span class="custom-toggle-slider rounded-circle"></span>
+              </label>
+            </td>
+            <td class="text-right">
+              <a href="{% url 'custom_pipeline_fields' item.pipeline.slug %}" class="btn btn-sm btn-secondary text-white">Fields</a>
+              <a href="{% url 'custom_pipeline_records' item.pipeline.slug %}" class="btn btn-sm btn-neutral">Records</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="text-center py-4">No custom pipelines have been created yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer text-right">
+      <button class="btn btn-primary" type="submit">Save WGS Pipeline Settings</button>
+    </div>
+  </form>
+</div>
