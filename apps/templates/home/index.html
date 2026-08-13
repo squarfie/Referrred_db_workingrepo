@@ -10,17 +10,21 @@
 <link rel="stylesheet" href="{% static 'assets/css/header.css' %}"> 
 <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
 <style>
-.tat-dashboard-card {
-  border: 0;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 12px 32px rgba(15, 39, 68, .16);
-  margin-bottom: 0 !important;
+:root {
+  --dashboard-overlay-head: #13263f;
+  --dashboard-overlay-head-deep: #0f2638;
+  --dashboard-overlay-border: rgba(0, 207, 232, 0.42);
 }
+
+/* =========================================================
+   PAGE LAYOUT
+   ========================================================= */
 
 html,
 body {
   background: #eef9fd !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 #panel,
@@ -32,12 +36,17 @@ body {
   margin-bottom: 0 !important;
 }
 
-.header-container {
-  min-height: 188px;
+.footer {
+  display: none !important;
 }
 
-.header-index h1 {
-  font-size: 38px;
+
+/* =========================================================
+   TOP HEADER
+   ========================================================= */
+
+.header-container {
+  min-height: 188px;
 }
 
 .header-index {
@@ -45,18 +54,8 @@ body {
   max-width: 1120px;
 }
 
-.header-stats {
-  position: absolute;
-  top: 88px;
-  right: 34px;
-  margin-left: 0 !important;
-  margin-right: 0;
-  gap: 30px;
-  padding-top: 0;
-}
-
-.header-index .badge-group {
-  align-items: center;
+.header-index h1 {
+  font-size: 38px;
 }
 
 .header-title-row {
@@ -70,6 +69,16 @@ body {
   min-width: 0;
 }
 
+.header-stats {
+  position: absolute;
+  top: 88px;
+  right: 34px;
+  margin-left: 0 !important;
+  margin-right: 0;
+  gap: 30px;
+  padding-top: 0;
+}
+
 .header-index .header-action-row {
   display: flex;
   align-items: center;
@@ -78,7 +87,10 @@ body {
 }
 
 .header-index .badge-group {
+  display: flex;
+  align-items: center;
   gap: 0.55rem;
+  flex-wrap: wrap;
 }
 
 .header-index .btn-new-crf {
@@ -102,42 +114,184 @@ body {
   transform: translateY(-2px);
 }
 
-@media (max-width: 1200px) {
-  .header-index {
-    width: 100%;
-    max-width: none;
-  }
-
-  .header-title-row {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.85rem;
-  }
+.header-year-scope {
+  color: rgba(230, 245, 255, 0.78);
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-align: right;
+  text-transform: uppercase;
 }
+
+
+/* =========================================================
+   SLIDESHOW / PREVIEW CARD HEADER
+   ========================================================= */
+
+#slideshow-header {
+  min-height: 0 !important;
+  padding-bottom: 1.35rem !important;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(10, 18, 38, 0.72),
+      rgba(10, 55, 82, 0.5)
+    ),
+    url("{% static 'assets/img/theme/micros_2.png' %}")
+      center 58% / cover no-repeat !important;
+}
+
+#slideshow-header .mask {
+  background: rgba(10, 18, 38, 0.18) !important;
+  opacity: 1 !important;
+}
+
+#slideshow-header::after {
+  opacity: 0.08 !important;
+}
+
+#slideshow-header .row.align-items-center.py-4 {
+  padding-top: 1.05rem !important;
+  padding-bottom: 0.7rem !important;
+}
+
+#slideshow-header .row.g-3.mb-6 {
+  margin-bottom: 1.05rem !important;
+}
+
+#slideshow-header .preview-card {
+  height: 170px;
+}
+
+#slideshow-header .card-content {
+  padding: 1.35rem 1.45rem;
+}
+
+#slideshow-header .card-icon {
+  font-size: 2.15rem;
+}
+
+#slideshow-header .card-title {
+  font-size: 1.12rem;
+}
+
+#slideshow-header .card-description {
+  font-size: 0.875rem;
+}
+
+
+/* =========================================================
+   LOWER DASHBOARD CONTAINER
+   Removes spaces on the left, right, and bottom
+   ========================================================= */
 
 .index-content-panel {
-  background: linear-gradient(180deg, rgba(224, 246, 251, 0.2) 0%, rgba(245, 251, 253, 0.92) 78%);
-  padding-bottom: .9rem !important;
-  margin-bottom: 0 !important;
   position: relative;
-  overflow: hidden;
+
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  min-width: 0;
   min-height: clamp(300px, 36vh, 430px);
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  background: linear-gradient(
+    180deg,
+    rgba(224, 246, 251, 0.2) 0%,
+    rgba(245, 251, 253, 0.92) 78%
+  );
+
+  overflow: hidden;
 }
 
-.footer {
-  display: none !important;
+.main-content > .container-fluid.index-content-panel {
+  max-width: none !important;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
 }
+
+/* Remove Bootstrap row margin */
+.index-content-panel > .row,
+.index-content-panel > .tat-dashboard-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1 1 auto;
+
+  width: 100%;
+  min-width: 0;
+  min-height: clamp(300px, 36vh, 430px);
+
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Remove Bootstrap column padding */
+.tat-dashboard-column {
+  display: flex;
+  flex: 1 1 auto;
+
+  width: 100%;
+  min-width: 0;
+  min-height: inherit;
+
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Supports either the old card class or the new section class */
+.tat-dashboard-card,
+.tat-dashboard-section {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  
+  width: 100%;
+  min-width: 0;
+  min-height: clamp(300px, 36vh, 430px);
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(9, 20, 36, 0.82) 0%,
+      rgba(9, 24, 40, 0.68) 45%,
+      rgba(9, 20, 36, 0.9) 100%
+    ),
+    url("{% static 'assets/img/theme/micros_2.png' %}") center 30% / cover no-repeat fixed;
+  overflow: hidden;
+}
+
+
+/* =========================================================
+   OPTIONAL BACKGROUND ANIMATION
+   ========================================================= */
 
 .index-content-panel .dashboard-animation-wrapper {
   position: absolute;
   top: 0;
-  left: 0;
   right: 0;
+  bottom: 0;
+  left: 0;
+
+  width: 100%;
   min-height: 100%;
-  height: 100%;
+
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
+  transparent !important;
 }
 
 .index-content-panel .grid-bg,
@@ -166,18 +320,33 @@ body {
 }
 
 .index-content-panel .overlay {
-  background: linear-gradient(180deg, rgba(16, 26, 52, 0.2) 0%, rgba(224, 246, 251, 0.5) 45%, rgba(245, 251, 253, 0.88) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(16, 26, 52, 0.2) 0%,
+    rgba(224, 246, 251, 0.5) 45%,
+    rgba(245, 251, 253, 0.88) 100%
+  );
 }
 
-.index-content-panel > .row {
-  position: relative;
-  z-index: 2;
-}
+
+/* =========================================================
+   TAT DASHBOARD HEADER
+   ========================================================= */
 
 .tat-dashboard-header {
-  background: linear-gradient(135deg, #0f5568 0%, #07889a 100%);
-  color: #fff;
-  padding: .8rem 1rem;
+  flex: 0 0 auto;
+
+  width: 100%;
+  margin: 0;
+  padding: 0.8rem 1rem;
+  height: 89px;
+  color: #ffffff;
+  background: rgba(19, 38, 63, 0.5);
+  background-image: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(0, 207, 232, 0.42);
+  border-bottom: 1px solid var(--dashboard-overlay-border);
 }
 
 .tat-dashboard-header h3 {
@@ -185,319 +354,533 @@ body {
 }
 
 .tat-dashboard-header small {
-  font-size: .75rem;
+  font-size: 0.75rem;
 }
 
+.tat-dashboard-header .btn {
+  padding: 0.38rem 0.75rem;
+  font-size: 0.78rem;
+}
+
+
+/* =========================================================
+   TAT FILTER PANEL
+   ========================================================= */
+
 .tat-filter-panel {
-  background: #fff;
+  flex: 0 0 auto;
+  height: 95px;
+  width: 100%;
+  margin: 0;
+  padding: 0.78rem 1rem;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-bottom: 1px solid #dbe4f0;
-  padding: .8rem 1rem;
+}
+
+.tat-filter-panel .row {
+  margin-left: -15px;
+  margin-right: -15px;
 }
 
 .tat-filter-panel label {
   color: #24466f;
-  font-size: .64rem;
+  font-size: 0.64rem;
   font-weight: 800;
-  letter-spacing: .04em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.header-year-scope {
-  color: rgba(230, 245, 255, .78);
-  font-size: .64rem;
-  font-weight: 700;
-  text-align: right;
-  text-transform: uppercase;
+.tat-filter-panel .form-control {
+  height: 35px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
 }
 
-/* ── Status Strip ────────────────────────────────────────── */
+.tat-filter-panel .btn {
+  padding: 0.38rem 0.75rem;
+  font-size: 0.78rem;
+}
+
+
+/* =========================================================
+   STATUS STRIP
+   ========================================================= */
+
 .tat-status-strip {
+  flex: 0 0 auto;
+
   display: grid;
   grid-template-columns: repeat(5, minmax(120px, 1fr));
-  gap: .65rem;
-  padding: .75rem 1rem;
-  background: linear-gradient(135deg, #f0f6ff 0%, #e8f4fb 100%);
-  border-bottom: 1px solid #dbe4f0;
   align-items: stretch;
+  gap: 0.65rem;
+  height: 150px;
+  width: 100%;
+  margin: 0;
+  padding: 0.72rem 1rem;
+
+  background: linear-gradient(
+    135deg,
+    rgba(19, 38, 63, 0.55) 0%,
+    rgba(15, 38, 56, 0.55) 100%
+  );
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+
+  border-bottom: 1px solid #dbe4f0;
 }
 
 .tat-status-tile {
-  background: #fff;
-  border: 1px solid #dbe4f0;
-  border-radius: 8px;
-  padding: .65rem .82rem .58rem;
+  position: relative;
+  min-height: 89px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 0.15rem;
-  position: relative;
+
+  min-width: 0;
+  min-height: 88px;
+  padding: 0.75rem 0.9rem 0.7rem;
+
+  background: linear-gradient(
+    135deg,
+    rgba(70, 108, 156, 0.55) 0%,
+    rgba(50, 84, 128, 0.55) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 3px solid var(--tile-color, #64c8ff);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 2px 8px rgba(15,39,68,.06);
+
+  box-shadow: 0 4px 14px rgba(6, 20, 36, 0.22);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .tat-status-tile:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(15,39,68,.12);
+  box-shadow: 0 8px 22px rgba(6, 20, 36, 0.3);
 }
 
-/* Colored top accent bar per tile */
 .tat-status-tile::before {
-  content: '';
+  content: "";
+
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: var(--tile-accent, #00bcd4);
-  border-radius: 12px 12px 0 0;
+  inset: 0;
+
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0) 45%
+  );
+  pointer-events: none;
 }
 
-/* Subtle background watermark icon */
 .tat-status-tile::after {
-  content: var(--tile-icon, '');
+  content: var(--tile-icon, "");
+
   position: absolute;
-  bottom: -4px; right: 8px;
-  font-size: 2rem;
-  opacity: 0.06;
-  font-family: 'Font Awesome 5 Free';
+  right: 6px;
+  bottom: -6px;
+
+  color: var(--tile-color, #64c8ff);
+  font-family: "Font Awesome 5 Free";
+  font-size: 2.1rem;
   font-weight: 900;
-  color: var(--tile-accent, #00bcd4);
+
+  opacity: 0.12;
   pointer-events: none;
 }
 
 .tat-status-tile strong {
   display: block;
-  font-size: 1.35rem;
+
+  color: var(--tile-color, #ffffff);
+  font-size: 1.4rem;
   font-weight: 900;
   line-height: 1;
-  color: var(--tile-accent, #123a63);
   letter-spacing: -0.5px;
 }
 
 .tat-status-tile span {
-  color: #718096;
-  font-size: .62rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.62rem;
   font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: .06em;
 }
 
-/* Per-tile accent colors */
-.tat-tile-total   { --tile-accent: #1e5a96; }
-.tat-tile-ongoing { --tile-accent: #f5a623; }
-.tat-tile-near    { --tile-accent: #11cdef; }
-.tat-tile-overdue { --tile-accent: #fb6340; }
-.tat-tile-released{ --tile-accent: #2dce89; }
+.tat-status-tile small {
+  color: rgba(255, 255, 255, 0.55) !important;
+  font-weight: 600;
+}
 
-/* ── Table toggle bar ────────────────────────────────────── */
+.tat-tile-total {
+  --tile-color: #64c8ff;
+}
+
+.tat-tile-ongoing {
+  --tile-color: #f5a623;
+}
+
+.tat-tile-near {
+  --tile-color: #ffd166;
+}
+
+.tat-tile-overdue {
+  --tile-color: #fb6340;
+}
+
+.tat-tile-released {
+  --tile-color: #2dce89;
+}
+
+
+/* =========================================================
+   TABLE TOGGLE BAR
+   ========================================================= */
+
 .tat-table-toggle-bar {
+  flex: 0 0 auto;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: .55rem 1rem;
-  background: linear-gradient(90deg, rgba(232, 248, 252, 0.96) 0%, rgba(247, 253, 255, 0.98) 58%, rgba(226, 246, 251, 0.96) 100%);
-  border-top: 1px solid rgba(0, 188, 212, .18);
-  border-bottom: 1px solid rgba(0, 188, 212, .22);
+  gap: 1rem;
+
+  width: 100%;
+  margin: 0;
+  padding: 0.58rem 1rem;
+
+  background: linear-gradient(
+    90deg,
+    rgba(232, 248, 252, 0.96) 0%,
+    rgba(247, 253, 255, 0.98) 58%,
+    rgba(226, 246, 251, 0.96) 100%
+  );
+
+  border-top: 1px solid rgba(0, 188, 212, 0.18);
+  border-bottom: 1px solid rgba(0, 188, 212, 0.22);
+
   box-shadow: inset 4px 0 0 #00bcd4;
 }
 
 .tat-table-toggle-bar span {
-  font-size: .68rem;
-  font-weight: 800;
   color: #0f3a5f;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: .08em;
 }
 
 .tat-table-toggle-bar small {
   color: #64819a !important;
-  font-size: .62rem;
+  font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: .04em;
+  letter-spacing: 0.04em;
 }
 
 .btn-toggle-table {
   display: inline-flex;
   align-items: center;
-  gap: .45rem;
-  background: linear-gradient(135deg, #0f5568 0%, #07889a 100%);
-  color: #fff;
-  border: 1px solid rgba(0, 188, 212, .45);
-  border-radius: 999px;
-  padding: .3rem .85rem;
-  font-size: .68rem;
+  justify-content: center;
+  gap: 0.45rem;
+
+  flex: 0 0 auto;
+
+  padding: 0.3rem 0.85rem;
+
+  color: #ffffff;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: .05em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  white-space: nowrap;
+
+  background: linear-gradient(
+    135deg,
+    #0f5568 0%,
+    #07889a 100%
+  );
+
+  border: 1px solid rgba(0, 188, 212, 0.45);
+  border-radius: 999px;
+
   cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 5px 14px rgba(15, 85, 104, .18);
+
+  box-shadow: 0 5px 14px rgba(15, 85, 104, 0.18);
+
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .btn-toggle-table:hover {
-  background: linear-gradient(135deg, #0d4960 0%, #0697a8 100%);
-  border-color: rgba(0, 188, 212, .75);
+  color: #ffffff;
+
+  background: linear-gradient(
+    135deg,
+    #0d4960 0%,
+    #0697a8 100%
+  );
+
+  border-color: rgba(0, 188, 212, 0.75);
+
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(15, 85, 104, .24);
+
+  box-shadow: 0 8px 18px rgba(15, 85, 104, 0.24);
 }
 
 .btn-toggle-table .toggle-icon {
-  transition: transform 0.3s ease;
   display: inline-block;
-  font-size: .7rem;
+  font-size: 0.7rem;
+  transition: transform 0.3s ease;
 }
 
 .btn-toggle-table.collapsed .toggle-icon {
   transform: rotate(-90deg);
 }
 
-/* ── Main table wrap ─────────────────────────────────────── */
+
+/* =========================================================
+   MAIN TAT TABLE
+   Expands into all remaining vertical space
+   ========================================================= */
+
 .tat-main-table-wrap {
-  max-height: 44vh;
+  flex: 1 1 auto;
+
+  width: 100%;
+  min-width: 0;
+  height: clamp(420px, calc(100vh - 385px), 900px);
+  min-height: 420px;
+  max-height: 900px;
+
+  margin: 0;
+  padding: 0;
+
   overflow: auto;
+
   background: #f8fcfd;
-  border-top: 1px solid rgba(15, 58, 95, .12);
-  transition: max-height 0.4s ease, opacity 0.3s ease;
+
+  border-top: 1px solid rgba(15, 58, 95, 0.12);
+
+  transition:
+    max-height 0.4s ease,
+    opacity 0.3s ease;
 }
 
+/* Collapsed state */
 .tat-main-table-wrap.table-hidden {
+  flex: 0 0 0;
+
+  width: 100%;
+  min-height: 0;
   max-height: 0;
+
   opacity: 0;
   overflow: hidden;
-  border: none;
+
+  border: 0;
 }
 
+/* Table uses full available width */
 .tat-main-table {
+  width: 100%;
   min-width: 1550px;
-  margin: 0;
-  font-size: .76rem;
+
+  margin: 0 !important;
+
+  font-size: 0.76rem;
+  background: #ffffff;
 }
 
-.tat-main-table thead {
-  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+.tat-main-table > thead {
+  background: var(--dashboard-overlay-head-deep) !important;
+  background-image: none !important;
+
   backdrop-filter: blur(14px) saturate(125%);
   -webkit-backdrop-filter: blur(14px) saturate(125%);
 }
 
-.tat-main-table thead th {
+.tat-main-table > thead > tr > th {
   position: sticky;
   top: 0;
   z-index: 4;
-  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+
+  padding: 0.78rem 0.65rem;
+
   color: #ffffff;
-  border: 0;
-  white-space: nowrap;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
   text-align: center;
-  font-size: .66rem;
-  letter-spacing: .06em;
   text-transform: uppercase;
-  padding: .55rem .5rem;
-  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+  white-space: nowrap;
+
+  background: var(--dashboard-overlay-head-deep) !important;
+  background-image: none !important;
+
+  border: 0;
+  border-bottom: 1px solid var(--dashboard-overlay-border);
+
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+
   backdrop-filter: blur(14px) saturate(125%);
   -webkit-backdrop-filter: blur(14px) saturate(125%);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.34);
 }
 
 .tat-main-table td {
+  padding: 0.9rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
   vertical-align: middle;
   white-space: nowrap;
 }
 
-.tat-main-table tbody tr:hover {
-  background: linear-gradient(90deg, rgba(9,184,198,.06), rgba(18,58,99,.04));
+.tat-main-table > thead > tr > th:nth-child(n+14) {
+  background: var(--dashboard-overlay-head-deep) !important;
+  background-image: none !important;
+  border-left: 1px solid rgba(0, 207, 232, 0.28);
 }
+
+.tat-main-table > tbody > tr > td:nth-child(n+14) {
+  background: inherit;
+  border-left: 1px solid rgba(17, 205, 239, 0.16);
+}
+
+.tat-main-table tbody tr:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(9, 184, 198, 0.06),
+    rgba(18, 58, 99, 0.04)
+  );
+}
+
+
+/* =========================================================
+   STATUS PILLS
+   ========================================================= */
 
 .tat-pill {
-  border-radius: 999px;
   display: inline-block;
-  font-size: .66rem;
+
+  padding: 0.24rem 0.55rem;
+
+  font-size: 0.66rem;
   font-weight: 800;
-  padding: .24rem .55rem;
   text-transform: uppercase;
+
+  border-radius: 999px;
 }
 
-.tat-pill-running  { background: #bdf3d5; color: #075f43; border: 1px solid #27c78c; }
-.tat-pill-ongoing  { background: #fff0c7; color: #7d4e00; border: 1px solid #f5a623; }
-.tat-pill-released { background: #d4f4dd; color: #0f5132; border: 1px solid #2dce89; }
-.tat-pill-overdue  { background: #ffd7d7; color: #8a1f16; border: 1px solid #fb6340; }
-.tat-pill-near     { background: #d8f4fb; color: #035f70; border: 1px solid #11cdef; }
+.tat-pill-running {
+  color: #075f43;
+  background: #bdf3d5;
+  border: 1px solid #27c78c;
+}
+
+.tat-pill-ongoing {
+  color: #7d4e00;
+  background: #fff0c7;
+  border: 1px solid #f5a623;
+}
+
+.tat-pill-released {
+  color: #0f5132;
+  background: #d4f4dd;
+  border: 1px solid #2dce89;
+}
+
+.tat-pill-overdue {
+  color: #8a1f16;
+  background: #ffd7d7;
+  border: 1px solid #fb6340;
+}
+
+.tat-pill-near {
+  color: #035f70;
+  background: #d8f4fb;
+  border: 1px solid #11cdef;
+}
+
+
+/* =========================================================
+   RESPONSIVE LAYOUT
+   ========================================================= */
+
+@media (max-width: 1200px) {
+  .header-index {
+    width: 100%;
+    max-width: none;
+  }
+
+  .header-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+}
 
 @media (max-width: 992px) {
-  .tat-status-strip { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .tat-status-strip {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .tat-dashboard-header {
+    gap: 0.75rem;
+  }
 }
+
+@media (max-width: 767px) {
+  .index-content-panel,
+  .index-content-panel > .row,
+  .index-content-panel > .tat-dashboard-row,
+  .tat-dashboard-column,
+  .tat-dashboard-card,
+  .tat-dashboard-section {
+    min-height: 0;
+  }
+
+  .tat-dashboard-header,
+  .tat-filter-panel,
+  .tat-status-strip,
+  .tat-table-toggle-bar {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .tat-table-toggle-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .btn-toggle-table {
+    align-self: flex-end;
+  }
+}
+
 @media (max-width: 576px) {
-  .tat-status-strip { grid-template-columns: 1fr 1fr; }
-}
+  .tat-status-strip {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
 
-#slideshow-header {
-  min-height: 0 !important;
-  padding-bottom: 1.35rem !important;
-  background:
-    linear-gradient(90deg, rgba(10, 18, 38, 0.72), rgba(10, 55, 82, 0.5)),
-    url("{% static 'assets/img/theme/microbial.jpg' %}") center 58% / cover no-repeat !important;
-}
+  .tat-status-tile {
+    padding: 0.6rem;
+  }
 
-
-
-
-#slideshow-header .mask {
-  background: transparent !important;
-  opacity: 1 !important;
-}
-
-#slideshow-header::after {
-  opacity: 0.08 !important;
-}
-
-#slideshow-header .mask {
-  background: rgba(10, 18, 38, 0.18) !important;
-  opacity: 1 !important;
-}
-
-#slideshow-header .row.align-items-center.py-4 {
-  padding-top: 1.05rem !important;
-  padding-bottom: .7rem !important;
-}
-
-#slideshow-header .row.g-3.mb-6 {
-  margin-bottom: 1.05rem !important;
-}
-
-#slideshow-header .preview-card {
-  height: 170px;
-}
-
-#slideshow-header .card-content {
-  padding: 1.35rem 1.45rem;
-}
-
-#slideshow-header .card-icon {
-  font-size: 2.15rem;
-}
-
-#slideshow-header .card-title {
-  font-size: 1.12rem;
-}
-
-#slideshow-header .card-description {
-  font-size: .875rem;
-}
-
-.tat-filter-panel .form-control {
-  height: 34px;
-  padding: .45rem .7rem;
-  font-size: .82rem;
-}
-
-.tat-filter-panel .btn,
-.tat-dashboard-header .btn {
-  padding: .38rem .75rem;
-  font-size: .78rem;
-}
-.header-title-row {
-  display: flex;
-  align-items: center;      /* vertically centers button against the title block */
-  justify-content: space-between;
-  gap: 1.5rem;
+  .tat-status-tile strong {
+    font-size: 1.15rem;
+  }
 }
 </style>
 
@@ -666,9 +1049,8 @@ body {
       </div>
     </div>
 
-    <!-- Page content -->
-    <div class="container-fluid mt--4 index-font index-content-panel">
-      <div class="dashboard-animation-wrapper" aria-hidden="true">
+<div class="container-fluid index-font index-content-panel">
+      <!-- <div class="dashboard-animation-wrapper" aria-hidden="true">
         <div class="grid-bg"></div>
         <div class="particles">
           <div class="particle"></div>
@@ -687,10 +1069,10 @@ body {
         <div class="glow-orb"></div>
         <div class="glow-orb"></div>
         <div class="overlay"></div>
-      </div>
-      <div class="row">
-        <div class="col-xl-12">
-          <div class="card tat-dashboard-card">
+      </div> -->
+  <div class="row no-gutters tat-dashboard-row">
+    <div class="col-12 tat-dashboard-column">
+      <div class="tat-dashboard-section">
 
             <!-- ── Card header ── -->
             <div class="tat-dashboard-header d-flex justify-content-between align-items-center flex-wrap">
@@ -762,32 +1144,32 @@ body {
 
               <div class="tat-status-tile tat-tile-total">
                 <span>Total</span>
-                <strong>{{ tat_status_counts.total }}</strong>
-                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">All batches</small>
+                <strong style="font-size: 1.78rem;">{{ tat_status_counts.total }}</strong>
+                <small style="font-size:.90rem;margin-top:.15rem;">All batches</small>
               </div>
 
               <div class="tat-status-tile tat-tile-ongoing">
                 <span>Ongoing</span>
-                <strong>{{ tat_status_counts.ongoing }}</strong>
-                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">In progress</small>
+                <strong style="font-size: 1.78rem;">{{ tat_status_counts.ongoing }}</strong>
+                <small style="font-size:.90rem;margin-top:.15rem;">In progress</small>
               </div>
 
               <div class="tat-status-tile tat-tile-near">
                 <span>Near Due</span>
-                <strong>{{ tat_status_counts.near_due }}</strong>
-                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">Approaching deadline</small>
+                <strong style="font-size:1.78rem;">{{ tat_status_counts.near_due }}</strong>
+                <small style="font-size:.90rem;margin-top:.15rem;">Approaching deadline</small>
               </div>
 
               <div class="tat-status-tile tat-tile-overdue">
                 <span>Overdue</span>
-                <strong>{{ tat_status_counts.overdue }}</strong>
-                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">Past deadline</small>
+                <strong style="font-size:1.78rem;">{{ tat_status_counts.overdue }}</strong>
+                <small style="font-size:.90rem;margin-top:.15rem;">Past deadline</small>
               </div>
 
               <div class="tat-status-tile tat-tile-released">
                 <span>Released</span>
-                <strong>{{ tat_status_counts.released }}</strong>
-                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">Completed</small>
+                <strong style="font-size:1.78rem;">{{ tat_status_counts.released }}</strong>
+                <small style="font-size:.90rem;margin-top:.15rem;">Completed</small>
               </div>
 
             </div>
@@ -801,8 +1183,8 @@ body {
                 </small>
               </span>
               <button class="btn-toggle-table collapsed" id="tatTableToggle" type="button" onclick="toggleTatTable()">
-                <span class="toggle-icon">&#9654;</span>
-                <span class="toggle-label">View TAT Table</span>
+                <span class="toggle-icon text-white">&#9654;</span>
+                <span class="toggle-label text-white">View TAT Table</span>
               </button>
             </div>
 

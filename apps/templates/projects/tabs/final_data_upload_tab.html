@@ -5,7 +5,7 @@
   <div class="card-header d-flex align-items-center justify-content-between"
        style="background:linear-gradient(135deg,#e8f5f7 0%,#d1e8ed 100%);border-bottom:2px solid #b2d8df;">
     <h5 class="mb-0">
-      <i class="fas fa-file-excel mr-2 text-success"></i> Upload Final Data (Excel)
+      <i class="fas fa-file-excel mr-2 text-success"></i> Upload Final Data
     </h5>
     <span class="badge badge-info px-3 py-2">
       <i class="fas fa-database mr-1"></i> Final Data & Antibiotic Entries
@@ -18,7 +18,7 @@
     <div class="alert alert-light border mb-4" role="alert">
       <h6 class="alert-heading"><i class="fas fa-info-circle mr-1 text-info"></i> How to use</h6>
       <ul class="mb-1 pl-4 small">
-        <li>Upload an <strong>.xlsx</strong> file matching the ARSRL referral database format.</li>
+        <li>Upload a CSV, TSV, XLSX, or XLS file matching the ARSRL referral database format.</li>
         <li>Each sheet is processed independently — any sheet without an <code>accession_no</code> column is skipped.</li>
         <li>Antibiotic columns are auto-detected (<code>&lt;code&gt;_nd&lt;disk&gt;</code>, <code>&lt;code&gt;_nm</code>, and matching <code>_ris</code> columns).</li>
         <li>Enable <strong>Overwrite existing records</strong> to update records that already exist in the database.</li>
@@ -33,10 +33,10 @@
           <i class="fas fa-upload mr-1"></i> Select Excel File
         </label>
         <div class="custom-file">
-          <input type="file" class="custom-file-input" id="fdFileInput" accept=".xlsx,.xls">
+          <input type="file" class="custom-file-input" id="fdFileInput" accept=".csv,.tsv,.xlsx,.xls">
           <label class="custom-file-label" for="fdFileInput" id="fdFileLabel">Choose file…</label>
         </div>
-        <small class="form-text text-muted mt-1">Accepted: <code>.xlsx</code> / <code>.xls</code></small>
+        <small class="form-text text-muted mt-1">Accepted: <code>.csv</code> / <code>.tsv</code> / <code>.xlsx</code> / <code>.xls</code></small>
       </div>
 
       <div class="form-group form-check mt-3">

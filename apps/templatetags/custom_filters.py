@@ -1,5 +1,6 @@
 from django import template
 from operator import attrgetter
+import builtins
 
 register = template.Library()
 
@@ -107,7 +108,7 @@ def multi_sort(queryset, fields):
 @register.filter 
 def getattr(obj, attr_name):
     """Template filter to dynamically get object attribute."""
-    return getattr(obj, attr_name, "")
+    return builtins.getattr(obj, attr_name, "")
 
 
 @register.filter

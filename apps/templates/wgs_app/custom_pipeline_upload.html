@@ -18,7 +18,7 @@
           <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="mb-3">
-              <label class="form-control-label">CSV/XLSX File</label>
+              <label class="form-control-label">CSV/TSV/XLSX File</label>
               {{ form.file|add_class:"form-control" }}
             </div>
             <div class="custom-control custom-checkbox mb-4">

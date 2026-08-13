@@ -1,4 +1,5 @@
 {% extends 'layouts/base.html' %}
+{% load custom_tags %}
 {% block title %}AMRFinder Plus{% endblock %}
 
 {% block content %}
@@ -92,10 +93,10 @@
           <tr>
             <th style="width: 100px;">Actions</th>
             <th style="width: 130px;">Date Uploaded</th>
-            <th>Name</th>
             <th>AMRFinder Accession</th>
-            <th>Protein ID</th>
-            <th>Contig ID</th>
+            {% for field, label in amrfinder_fields %}
+              <th>{{ label }}</th>
+            {% endfor %}
           </tr>
         </thead>
         <tbody class="list">
@@ -114,33 +115,27 @@
               <span class="text-muted">{{ amrfinder.Date_uploaded_am|date:"M d, Y" }}</span>
             </td>
             <td>
-              <strong class="text-primary">{{ amrfinder.name }}</strong>
-            </td>
-            <td>
               {% if amrfinder.Amrfinder_Accession %}
                 <span>{{ amrfinder.Amrfinder_Accession }}</span>
               {% else %}
                 <span class="badge badge-light">Not Assigned</span>
               {% endif %}
             </td>
+            {% for field, label in amrfinder_fields %}
             <td>
-              {% if amrfinder.protein_id %}
-                <span class="text-muted">{{ amrfinder.protein_id }}</span>
+              {% with value=amrfinder|getattr:field %}
+              {% if value %}
+                <span>{{ value }}</span>
               {% else %}
                 <span class="badge badge-light">N/A</span>
               {% endif %}
+              {% endwith %}
             </td>
-            <td>
-              {% if amrfinder.contig_id %}
-                <span class="text-muted">{{ amrfinder.contig_id }}</span>
-              {% else %}
-                <span class="badge badge-light">N/A</span>
-              {% endif %}
-            </td>
+            {% endfor %}
           </tr>
           {% empty %}
           <tr>
-            <td colspan="6" class="text-center py-5">
+            <td colspan="28" class="text-center py-5">
               <i class="ni ni-folder-17 text-muted" style="font-size: 3rem;"></i>
               <p class="text-muted mt-3 mb-0">No AMRFinder records found</p>
             </td>
@@ -339,14 +334,9 @@ function searchTable() {
 
   rows.forEach(row => {
     if (row.cells.length > 1) {
-      var date = row.cells[1].textContent.toLowerCase();
-      var name = row.cells[2].textContent.toLowerCase();
-      var accession = row.cells[3].textContent.toLowerCase();
-      var proteinId = row.cells[4].textContent.toLowerCase();
-      var contigId = row.cells[5].textContent.toLowerCase();
+      var rowText = row.textContent.toLowerCase();
 
-      if (date.includes(filter) || name.includes(filter) || accession.includes(filter) || 
-          proteinId.includes(filter) || contigId.includes(filter)) {
+      if (rowText.includes(filter)) {
         row.style.display = "";
       } else {
         row.style.display = "none";

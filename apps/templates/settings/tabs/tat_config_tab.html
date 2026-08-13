@@ -20,7 +20,7 @@
 
   <h5 class="card-title mb-0">
     <i class="fas fa-clock mr-2 text-primary"></i>
-    Add TAT Step Configuration
+    {% if tat_config_editing %}Edit{% else %}Add{% endif %} TAT Step Configuration
   </h5>
 
   <div class="d-flex align-items-center gap-2">
@@ -51,8 +51,8 @@
   <div class="card-body">
 
     <form method="POST"
-          action="{% if editing %}
-                    {% url 'edit_tat_step_config' config.id %}
+          action="{% if tat_config_editing %}
+                    {% url 'edit_tat_step_config' edit_tat_config.id %}
                   {% else %}
                     {% url 'add_tat_step_config' %}
                   {% endif %}"
@@ -115,14 +115,21 @@
       <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
 
         <button type="submit" class="btn btn-primary px-4">
-          <i class="fas fa-save mr-2"></i> Save Configuration
+          <i class="fas fa-save mr-2"></i>
+          {% if tat_config_editing %}Update{% else %}Save{% endif %} Configuration
         </button>
 
-        <button type="button"
-                class="btn btn-success px-4"
-                onclick="refreshForm()">
-          <i class="fas fa-eraser mr-2"></i> Clear
-        </button>
+        {% if tat_config_editing %}
+          <a href="/settings/?tab=tat_config" class="btn btn-success px-4">
+            <i class="fas fa-plus mr-2"></i> Add New
+          </a>
+        {% else %}
+          <button type="button"
+                  class="btn btn-success px-4"
+                  onclick="refreshForm()">
+            <i class="fas fa-eraser mr-2"></i> Clear
+          </button>
+        {% endif %}
 
         <button type="button"
                 class="btn btn-secondary px-4"

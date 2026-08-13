@@ -5,6 +5,8 @@ from apps.home.models import *
 from apps.home_final.models import *
 
 
+WGS_UPLOAD_ACCEPT = ".csv,.tsv,.xlsx,.xls"
+
 
 # WGS Projects
 class WGSProjectForm(forms.ModelForm):
@@ -58,6 +60,9 @@ class SampleInfoUploadForm(forms.ModelForm):
      class Meta:
           model = SampleInfoUpload
           fields = ['sampleinfo']
+          widgets = {
+               "sampleinfo": forms.FileInput(attrs={"accept": WGS_UPLOAD_ACCEPT}),
+          }
 
 
 
@@ -70,6 +75,9 @@ class BactScoutUploadForm(forms.ModelForm):
      class Meta:
           model = BactScoutUpload
           fields = ['bactscoutfile']
+          widgets = {
+               "bactscoutfile": forms.FileInput(attrs={"accept": WGS_UPLOAD_ACCEPT}),
+          }
 
 
 
@@ -84,12 +92,18 @@ class GtdbTkUploadForm(forms.ModelForm):
      class Meta:
           model = GtdbTkUpload
           fields = ['GtdbTkFile']
+          widgets = {
+               "GtdbTkFile": forms.FileInput(attrs={"accept": WGS_UPLOAD_ACCEPT}),
+          }
 
 
 class GambitUploadForm(forms.ModelForm):
      class Meta:
           model = GambitUpload
           fields = ['GambitFile']
+          widgets = {
+               "GambitFile": forms.FileInput(attrs={"accept": WGS_UPLOAD_ACCEPT}),
+          }
 
 
 class GambitForm(forms.ModelForm):
@@ -102,6 +116,9 @@ class MlstUploadForm(forms.ModelForm):
      class Meta:
           model = MlstUpload
           fields = ['Mlstfile']
+          widgets = {
+               "Mlstfile": forms.FileInput(attrs={"accept": WGS_UPLOAD_ACCEPT}),
+          }
 
 
 class MlstForm(forms.ModelForm):
@@ -113,6 +130,9 @@ class Checkm2UploadForm(forms.ModelForm):
      class Meta:
           model = Checkm2Upload
           fields = ['Checkm2file']
+          widgets = {
+               "Checkm2file": forms.FileInput(attrs={"accept": WGS_UPLOAD_ACCEPT}),
+          }
 
 
 class Checkm2Form(forms.ModelForm):
@@ -126,6 +146,9 @@ class AssemblyUploadForm(forms.ModelForm):
      class Meta:
           model = AssemblyUpload
           fields = ['Assemblyfile']
+          widgets = {
+               "Assemblyfile": forms.FileInput(attrs={"accept": WGS_UPLOAD_ACCEPT}),
+          }
 
 
 class AssemblyForm(forms.ModelForm):
@@ -138,6 +161,9 @@ class AmrUploadForm(forms.ModelForm):
      class Meta:
           model = AmrfinderUpload
           fields = ['Amrfinderfile']
+          widgets = {
+               "Amrfinderfile": forms.FileInput(attrs={"accept": WGS_UPLOAD_ACCEPT}),
+          }
 
 
 class AmrfinderForm(forms.ModelForm):
@@ -151,6 +177,14 @@ class DeleteRangeForm(forms.Form):
 
 
 class CustomWGSPipelineForm(forms.ModelForm):
+     PLATFORM_CHOICES = [
+          ("Illumina", "Illumina"),
+          ("Nanopore", "Nanopore"),
+          ("PacBio", "PacBio"),
+          ("Hybrid", "Hybrid"),
+          ("Other", "Other"),
+     ]
+
      category = forms.MultipleChoiceField(
           label="Categories",
           choices=CustomWGSPipeline.CATEGORY_CHOICES,
@@ -161,6 +195,16 @@ class CustomWGSPipelineForm(forms.ModelForm):
      def __init__(self, *args, **kwargs):
           super().__init__(*args, **kwargs)
           self.fields["slug"].required = False
+          platform_choices = list(self.PLATFORM_CHOICES)
+          current_platform = (
+               self.initial.get("platform")
+               or getattr(self.instance, "platform", "")
+               or ""
+          ).strip()
+          if current_platform and current_platform not in {value for value, _label in platform_choices}:
+               platform_choices.append((current_platform, current_platform))
+          self.fields["platform"].widget = forms.Select(choices=platform_choices)
+          self.fields["platform"].choices = platform_choices
           if self.instance and self.instance.pk:
                current_category = self.instance.category
                if isinstance(current_category, list):
@@ -184,7 +228,6 @@ class CustomWGSPipelineForm(forms.ModelForm):
           widgets = {
                "description": forms.Textarea(attrs={"rows": 3}),
                "slug": forms.TextInput(attrs={"placeholder": "auto-filled from name if blank"}),
-               "platform": forms.TextInput(attrs={"placeholder": "ex. Illumina, Oxford Nanopore, PacBio Revio"}),
                "sheet_name": forms.TextInput(attrs={"placeholder": "Optional Excel sheet name"}),
                "accession_column": forms.TextInput(attrs={"placeholder": "ex. Accession No"}),
                "sample_name_column": forms.TextInput(attrs={"placeholder": "ex. sample"}),
@@ -213,7 +256,7 @@ class CustomWGSPipelineFieldForm(forms.ModelForm):
 
 
 class CustomPipelineUploadForm(forms.Form):
-     file = forms.FileField()
+     file = forms.FileField(widget=forms.FileInput(attrs={"accept": WGS_UPLOAD_ACCEPT}))
      replace_existing = forms.BooleanField(
           required=False,
           initial=True,

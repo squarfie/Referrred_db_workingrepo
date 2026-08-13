@@ -1,4 +1,5 @@
 {% extends 'layouts/base.html' %}
+{% load custom_tags %}
 {% block title %}Gambit Summary{% endblock %}
 
 {% block content %}
@@ -92,11 +93,10 @@
           <tr>
             <th style="width: 100px;">Actions</th>
             <th>Date Uploaded</th>
-            <th>Sample</th>
             <th>Gambit Accession</th>
-            <th>Predicted Name</th>
-            <th>Predicted Rank</th>
-            <th>Predicted NCBI ID</th>
+            {% for field, label in gambit_fields %}
+              <th>{{ label }}</th>
+            {% endfor %}
           </tr>
         </thead>
         <tbody class="list">
@@ -111,9 +111,6 @@
                 <i class="fa fa-trash"></i>
               </a>
             </td>
-            <td>
-              <strong class="text-primary">{{ gambit.sample }}</strong>
-            </td>
             <td><span class="text-muted">{{ gambit.Date_uploaded_g }}</span></td>
             <td>
               {% if gambit.Gambit_Accession %}
@@ -122,19 +119,13 @@
                 <span class="badge badge-light">Not Assigned</span>
               {% endif %}
             </td>
-            <td>
-              <span class="text-dark">{{ gambit.predicted_name }}</span>
-            </td>
-            <td>
-              <span class="badge badge-info">{{ gambit.predicted_rank }}</span>
-            </td>
-            <td>
-              <span class="text-muted">{{ gambit.predicted_ncbi_id }}</span>
-            </td>
+            {% for field, label in gambit_fields %}
+              <td>{{ gambit|getattr:field|default:"N/A" }}</td>
+            {% endfor %}
           </tr>
           {% empty %}
           <tr>
-            <td colspan="6" class="text-center py-5">
+            <td colspan="{{ gambit_colspan }}" class="text-center py-5">
               <i class="ni ni-folder-17 text-muted" style="font-size: 3rem;"></i>
               <p class="text-muted mt-3 mb-0">No Gambit records found</p>
             </td>
@@ -341,19 +332,8 @@ function searchTable() {
 
   rows.forEach(row => {
     if (row.cells.length > 1) {
-      var sample = row.cells[1].textContent.toLowerCase();
-      var accession = row.cells[2].textContent.toLowerCase();
-      var predictedName = row.cells[3].textContent.toLowerCase();
-      var predictedRank = row.cells[4].textContent.toLowerCase();
-      var ncbiId = row.cells[5].textContent.toLowerCase();
-
-      if (sample.includes(filter) || accession.includes(filter) || 
-          predictedName.includes(filter) || predictedRank.includes(filter) || 
-          ncbiId.includes(filter)) {
-        row.style.display = "";
-      } else {
-        row.style.display = "none";
-      }
+      var searchable = Array.from(row.cells).slice(1).map(cell => cell.textContent.toLowerCase()).join(" ");
+      row.style.display = searchable.includes(filter) ? "" : "none";
     }
   });
 }

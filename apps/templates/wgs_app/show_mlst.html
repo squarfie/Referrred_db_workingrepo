@@ -1,4 +1,5 @@
 {% extends 'layouts/base.html' %}
+{% load custom_tags %}
 {% block title %}MLST Summary{% endblock %}
 
 {% block content %}
@@ -94,10 +95,10 @@
           <tr>
             <th style="width: 100px;">Actions</th>
             <th>Date Uploaded</th>
-            <th>Name</th>
             <th>MLST Accession</th>
-            <th>Scheme</th>
-            <th>MLST</th>
+            {% for field, label in mlst_fields %}
+              <th>{{ label }}</th>
+            {% endfor %}
           </tr>
         </thead>
         <tbody class="list">
@@ -116,25 +117,27 @@
               <span class="text-muted">{{ mlst.Date_uploaded_m }}</span>
             </td>
             <td>
-              <strong class="text-primary">{{ mlst.name }}</strong>
-            </td>
-            <td>
               {% if mlst.Mlst_Accession %}
                 <span>{{ mlst.Mlst_Accession }}</span>
               {% else %}
                 <span class="badge badge-light">Not Assigned</span>
               {% endif %}
             </td>
+            {% for field, label in mlst_fields %}
             <td>
-              <span class="text-muted">{{ mlst.scheme }}</span>
+              {% with value=mlst|getattr:field %}
+              {% if value %}
+                <span>{{ value }}</span>
+              {% else %}
+                <span class="badge badge-light">N/A</span>
+              {% endif %}
+              {% endwith %}
             </td>
-            <td>
-              {{ mlst.mlst }}
-            </td>
+            {% endfor %}
           </tr>
           {% empty %}
           <tr>
-            <td colspan="5" class="text-center py-5">
+            <td colspan="9" class="text-center py-5">
               <i class="ni ni-folder-17 text-muted" style="font-size: 3rem;"></i>
               <p class="text-muted mt-3 mb-0">No MLST records found</p>
             </td>
@@ -341,12 +344,9 @@ function searchTable() {
 
   rows.forEach(row => {
     if (row.cells.length > 1) {
-      var name = row.cells[1].textContent.toLowerCase();
-      var accession = row.cells[2].textContent.toLowerCase();
-      var scheme = row.cells[3].textContent.toLowerCase();
-      var mlst = row.cells[4].textContent.toLowerCase();
+      var rowText = row.textContent.toLowerCase();
 
-      if (name.includes(filter) || accession.includes(filter) || scheme.includes(filter) || mlst.includes(filter)) {
+      if (rowText.includes(filter)) {
         row.style.display = "";
       } else {
         row.style.display = "none";

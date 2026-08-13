@@ -13,7 +13,8 @@ register = template.Library()
 
 FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS = {
     "ABI", "GCT", "AGT", "BD-", "BR-", "CAM", "CAR", "EIK", "FRA",
-    "HA-", "HEL", "KIN", "LEG", "MOR", "NE-",
+    "HA-", "HEL", "KIN", "LEG", "MOR", "NE-", "NV", "N/A", "NA",
+    "N.A.", "NONE", "NULL", "NAN",
 }
 
 
@@ -33,10 +34,14 @@ def _uses_fastidious_plus_layout(organism):
     if codes & FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS:
         return True
 
-    organism_name = str(organism.get("Organism") or "").strip().lower()
-    return "HA-" in FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS and (
-        "HIN" in codes or organism_name.startswith("haemophilus ")
+    return _organism_name_uses_fastidious_plus_layout(organism.get("Organism")) or bool(
+        {"HIN", "NME"} & codes
     )
+
+
+def _organism_name_uses_fastidious_plus_layout(organism_name):
+    name = str(organism_name or "").strip().lower()
+    return name.startswith(("haemophilus ", "neisseria "))
 
 
 @register.filter
@@ -386,6 +391,36 @@ def with_staff_credentials(value):
 
 
 @register.filter
+def staff_license(value):
+    name = re.sub(r"\s+", " ", str(value or "").strip())
+    if not name:
+        return ""
+
+    credential_pattern = r"(?:,\s*|\s+)(MD|RMT|RN|MT|MLS|PHD|MPH|MSC|MS|MA|DRPH|FPSP|FPCP|OIC|PRC|RPMT)$"
+    candidates = [
+        name,
+        re.sub(credential_pattern, "", name, flags=re.IGNORECASE).strip(),
+    ]
+
+    from apps.home.models import arsStaff_Details
+
+    for candidate in dict.fromkeys(candidates):
+        if not candidate:
+            continue
+        staff = (
+            arsStaff_Details.objects
+            .filter(Staff_Name__iexact=candidate)
+            .values("Staff_License")
+            .first()
+        )
+        license_no = str((staff or {}).get("Staff_License") or "").strip()
+        if license_no:
+            return license_no
+
+    return ""
+
+
+@register.filter
 def break_long_words(value, width=20):
     if not value:
         return value
@@ -502,13 +537,15 @@ def prefer_text(value, fallback=""):
 @register.filter
 def organism_type_is_plus(org_code):
     code = str(org_code or "").strip()
+    if _organism_name_uses_fastidious_plus_layout(code):
+        return True
     if not code:
         return False
 
     organism = (
         Organism_List.objects
-        .filter(Q(Whonet_Org_Code__iexact=code) | Q(Replaced_by__iexact=code))
-        .values("Whonet_Org_Code", "Replaced_by", "Organism_Type", "Species_Group", "Genus_Group", "Organism")
+        .filter(Q(Whonet_Org_Code__iexact=code) | Q(Replaced_by__iexact=code) | Q(Organism__iexact=code))
+        .values("Whonet_Org_Code", "Replaced_by", "Organism_Type", "Species_Group", "Genus_Group", "Genus_Code", "Organism")
         .first()
     )
     return _uses_fastidious_plus_layout(organism)

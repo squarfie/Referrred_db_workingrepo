@@ -118,6 +118,24 @@
 .tat-field-select { flex: 0 0 120px; }
 .tat-field-buttons { flex: 0 0 170px; }
 .tat-field-file { flex: 1 1 200px; }
+
+.tat-location-select {
+  min-width: 160px;
+  height: 30px;
+  padding: 3px 26px 3px 8px;
+  border: 1px solid #cfe3f1;
+  border-radius: 999px;
+  background-color: #f8fcff;
+  color: #24466f;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.tat-location-select:disabled,
+.tat-location-select.is-saving {
+  opacity: 0.65;
+  cursor: wait;
+}
 .tat-field-date { flex: 0 0 108px; }
 .tat-field-export-buttons { flex: 0 0 200px; }
 
@@ -174,6 +192,63 @@
 
 .tat-running-table tbody tr:hover {
   background: #eefaff;
+}
+
+.tat-running-value {
+  text-align: center;
+  font-weight: 900;
+  color: #123f4e;
+}
+
+.tat-running-value span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+
+.tat-running-safe span {
+  background: #d8f3c8;
+  border-color: #9fd58a;
+  color: #1f5d2b;
+}
+
+.tat-running-safe {
+  background: rgba(216, 243, 200, 0.45);
+}
+
+.tat-running-watch span {
+  background: #fff1a8;
+  border-color: #f0cf51;
+  color: #755400;
+}
+
+.tat-running-watch {
+  background: rgba(255, 241, 168, 0.55);
+}
+
+.tat-running-near span {
+  background: #ffc078;
+  border-color: #f59d3d;
+  color: #6b3400;
+}
+
+.tat-running-near {
+  background: rgba(255, 192, 120, 0.62);
+}
+
+.tat-running-overdue span {
+  background: #e67f68;
+  border-color: #d85d45;
+  color: #4f120b;
+}
+
+.tat-running-overdue {
+  background: rgba(230, 127, 104, 0.68);
 }
 
 .status-pill {
@@ -277,6 +352,10 @@
         <a href="{% url 'tat_analysis' %}" class="btn btn-outline-light btn-sm">
           <i class="fas fa-chart-pie me-1"></i> Analysis
         </a>
+        <a href="{% url 'tat_running_process_list' %}?{% if q %}q={{ q|urlencode }}&{% endif %}{% if status %}status={{ status|urlencode }}&{% endif %}{% if year %}year={{ year|urlencode }}{% endif %}"
+           class="btn btn-outline-light btn-sm">
+          <i class="fas fa-columns me-1"></i> Process Columns
+        </a>
         <!-- <form method="get" action="{% url 'export_tat_excel' %}" class="d-flex align-items-center flex-wrap justify-content-end" style="gap:0.35rem;">
           <input type="hidden" name="q" value="{{ q }}">
           <input type="hidden" name="status" value="{{ status }}">
@@ -348,7 +427,7 @@
               {% csrf_token %}
               <div class="tat-control-field tat-field-file">
                 <label>Import</label>
-                <input type="file" name="tat_file" accept=".xlsx,.xls" class="form-control" required>
+                <input type="file" name="tat_file" accept=".xlsx,.xls,.csv,.tsv" class="form-control" required>
               </div>
               <div class="tat-control-field">
                 <label>&nbsp;</label>
@@ -392,6 +471,10 @@
     <div class="tat-card">
       <div class="d-flex justify-content-between align-items-center flex-wrap px-3 py-3 border-bottom" style="gap:0.75rem; overflow:visible;">
         <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-list me-2"></i>&nbsp;Running Batch List</h5>
+        <!-- <a href="{% url 'tat_running_process_list' %}?{% if q %}q={{ q|urlencode }}&{% endif %}{% if status %}status={{ status|urlencode }}&{% endif %}{% if year %}year={{ year|urlencode }}{% endif %}"
+           class="btn btn-sm btn-primary">
+          <i class="fas fa-columns me-1"></i> View Process Columns
+        </a> -->
 
       <div class="row" style="align-items: right; justify-content: space-between; padding: 0.5rem 1rem;">
 
@@ -411,6 +494,7 @@
         <table class="table table-hover tat-running-table">
           <thead>
             <tr>
+              <th>Action</th>
               <th>BatchCode</th>
               <th>SiteCode</th>
               <th>RefDate</th>
@@ -420,35 +504,51 @@
               <th>Running TAT</th>
               <th>Location</th>
               <th>Date Received</th>
-              <th>Status</th>
-              <th>Action Taken</th>
+              <th>TAT Status</th>
               <th>Scanning Raw</th>
               <th>Scanning Worksheet</th>
               <th>Scanning Final</th>
+              <th>Action Taken</th>
               <th>Assigned To</th>
               <th>Date Released</th>
               <th>Final TAT</th>
-              <th>Status/Release</th>
+              <th>Release Status</th>
               <th>Remarks</th>
               <th>Last Update</th>
-              <th>Action</th>
-              {% for config in configs %}
-                <th>{{ config.step_type }} Days</th>
-                <th>{{ config.step_type }} Status</th>
-              {% endfor %}
+
             </tr>
           </thead>
           <tbody>
             {% for row in running_rows %}
             <tr>
+            <td>
+                {% if row.batch %}
+                  <a href="{% url 'tat_monitoring_view' row.batch.id %}" class="btn btn-sm btn-primary" style="color: #c8d7ea;">
+                    <i class="fas fa-tasks me-1"></i> Update Process
+                  </a>
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
               <td class="fw-bold text-primary">{{ row.batch_name|default:"-" }}</td>
               <td>{{ row.site_code|default:"-" }}</td>
               <td>{{ row.referral_date|date:"M d, Y"|default:"-" }}</td>
               <td>{{ row.num_isolates|default:"-" }}</td>
               <td>{{ row.batch_number|default:"-" }}</td>
               <td>{{ row.total_batch|default:"-" }}</td>
-              <td class="fw-bold">{{ row.tat.tat_Running_TAT|default:"-" }}</td>
-              <td>{{ row.location|default:"-" }}</td>
+              <td class="tat-running-value tat-running-{{ row.tat_pressure }}"
+                  title="{% if row.tat_pressure == 'overdue' %}Past display target by {{ row.days_past_target }} day(s){% elif row.tat_pressure == 'near' %}Near deadline: {{ row.display_remaining_days }} day(s) remaining{% elif row.tat_pressure == 'watch' %}Approaching deadline{% elif row.tat_pressure == 'safe' %}Within display target{% else %}No running TAT{% endif %}">
+                <span>{{ row.tat.tat_Running_TAT|default:"-" }}</span>
+              </td>
+              <td>
+                <select class="tat-location-select"
+                        data-url="{% url 'update_tat_location' row.tat.id %}"
+                        title="Update TAT Location">
+                  {% for location in tat_location_choices %}
+                    <option value="{{ location }}" {% if row.location == location %}selected{% endif %}>{{ location }}</option>
+                  {% endfor %}
+                </select>
+              </td>
               <td>{{ row.date_received|date:"M d, Y"|default:"-" }}</td>
               <td>
                 {% if row.is_overdue %}
@@ -459,7 +559,7 @@
                   <span class="status-pill status-ongoing">{{ row.tat.tat_Status_Release }}</span>
                 {% endif %}
               </td>
-              <td>{{ row.action_taken|default:"-" }}</td>
+
               <td class="scan-check-cell">
                 <input type="checkbox"
                        class="scan-check"
@@ -484,6 +584,7 @@
                        {% if row.tat.tat_Scanning_final %}checked{% endif %}
                        title="Scanning Final">
               </td>
+              <td>{{ row.action_taken|default:"-" }}</td>
               <td>{{ row.assigned_to|default:"-" }}</td>
               <td>{{ row.tat.tat_Date_Released|date:"M d, Y"|default:"-" }}</td>
               <td>{{ row.tat.tat_Final_TAT|default:"-" }}</td>
@@ -494,27 +595,7 @@
               </td>
               <td>{{ row.tat.tat_Remarks|default:"" }}</td>
               <td>{{ row.tat.tat_Date_Last_Update|date:"M d, Y"|default:"-" }}</td>
-              <td>
-                {% if row.batch %}
-                  <a href="{% url 'tat_monitoring_view' row.batch.id %}" class="btn btn-sm btn-primary" style="color: #c8d7ea;">
-                    <i class="fas fa-tasks me-1"></i> Update Process
-                  </a>
-                {% else %}
-                  <span class="text-muted">-</span>
-                {% endif %}
-              </td>
-              {% for cell in row.step_cells %}
-                <td>{{ cell.step.step_days_count|default:"-" }}</td>
-                <td>
-                  {% if cell.step.within_tat %}
-                    <span class="step-ok">Within</span>
-                  {% elif cell.step.within_tat == False %}
-                    <span class="step-bad">Outside</span>
-                  {% else %}
-                    <span class="step-muted">-</span>
-                  {% endif %}
-                </td>
-              {% endfor %}
+
 
             </tr>
             {% empty %}
@@ -605,6 +686,50 @@ document.addEventListener('DOMContentLoaded', function() {
       .finally(function() {
         input.disabled = false;
         input.classList.remove('is-saving');
+      });
+    });
+  });
+
+  document.querySelectorAll('.tat-location-select').forEach(function(select) {
+    select.addEventListener('focus', function() {
+      select.dataset.previousValue = select.value;
+    });
+
+    select.addEventListener('change', function() {
+      const previousValue = select.dataset.previousValue || select.value;
+      const body = new URLSearchParams();
+      body.append('location', select.value);
+
+      select.classList.add('is-saving');
+      select.disabled = true;
+
+      fetch(select.dataset.url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrfToken,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: body.toString()
+      })
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('Failed to update TAT location.');
+        }
+        return response.json();
+      })
+      .then(function(data) {
+        if (!data.ok) {
+          throw new Error(data.error || 'Failed to update TAT location.');
+        }
+        select.dataset.previousValue = data.location || select.value;
+      })
+      .catch(function() {
+        select.value = previousValue;
+        alert('Could not update the TAT location. Please try again.');
+      })
+      .finally(function() {
+        select.disabled = false;
+        select.classList.remove('is-saving');
       });
     });
   });

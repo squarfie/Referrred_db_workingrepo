@@ -1,4 +1,5 @@
 <div class="settings-panel">
+  {% if user_access.is_admin %}
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
       <h3 class="mb-1">WGS Pipelines</h3>
@@ -97,4 +98,12 @@
       <button class="btn btn-primary" type="submit">Save WGS Pipeline Settings</button>
     </div>
   </form>
+  {% else %}
+  <div class="card shadow-sm">
+    <div class="card-body text-center py-4">
+      <h4 class="mb-2">Admin access required</h4>
+      <p class="text-muted mb-0">WGS pipeline configuration is available to admin accounts only.</p>
+    </div>
+  </div>
+  {% endif %}
 </div>

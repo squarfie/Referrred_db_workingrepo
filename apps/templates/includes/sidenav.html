@@ -42,6 +42,25 @@
     max-height: 70px !important;
     object-fit: contain;
   }
+
+
+  /* CURRENT / ACTIVE SIDEBAR PAGE */
+#sidenav-main .nav-link.active {
+    background-color: #e8f4ff !important;
+    color: #1f5f99 !important;
+    font-weight: 600;
+    border-left: 4px solid #1f6fb2;
+    border-radius: 5px;
+}
+
+#sidenav-main .nav-link.active .nav-link-text {
+    color: #1f5f99 !important;
+    font-weight: 600;
+}
+
+#sidenav-main .nav-link.active i {
+    color: #1f6fb2 !important;
+}
  
 </style>
 <nav class="sidenav navbar navbar-vertical  fixed-left  navbar-expand-xs navbar-light bg-white sidenav-font" id="sidenav-main" style="z-index: 99999;">
@@ -56,9 +75,11 @@
       <!-- Collapse -->
       <div class="collapse navbar-collapse" id="sidenav-collapse-main">
         <!-- Nav items -->
+         {% with current_url=request.resolver_match.url_name %}
         <ul class="navbar-nav">
           <li class="nav-item">
-            <a class="nav-link {% if 'index' in segment %} active {% endif %}" href="/">
+            <!-- <a class="nav-link {% if 'index' in segment %} active {% endif %}" href="/"> -->
+              <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
               <i class="ni ni-album-2 text-primary"></i>
               <span class="nav-link-text">Dashboard</span>
             </a>
@@ -76,47 +97,85 @@
             </a>
           </li> -->
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'batch_create_view' %}">
+            <!-- <a class="nav-link" href="{% url 'batch_create_view' %}"> -->
+              <a class="nav-link {% if current_url == 'batch_create_view' %}active{% endif %}"
+            href="{% url 'batch_create_view' %}">
               <i class="fa fa-plus text-primary"></i>
               <span class="nav-link-text">Add Batch</span>
             </a>
+
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'tables' in segment %} active {% endif %}" href="{% url 'show_data' %}">
+            <!-- <a class="nav-link {% if 'tables' in segment %} active {% endif %}" href="{% url 'show_data' %}">
               <i class="ni ni-bullet-list-67 text-primary"></i>
               <span class="nav-link-text">View Raw Data</span>
-            </a>
+            </a> -->
+
+            <a class="nav-link {% if current_url == 'show_data' %}active{% endif %}"
+                href="{% url 'show_data' %}">
+                  <i class="ni ni-bullet-list-67 text-primary"></i>
+                  <span class="nav-link-text">View Raw Data</span>
+              </a>
+
+
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'tables' in segment %} active {% endif %}" href="{% url 'show_final_table' %}">
+            <!-- <a class="nav-link {% if 'tables' in segment %} active {% endif %}" href="{% url 'show_final_table' %}">
               <i class="fa fa-suitcase text-primary"></i>
               <span class="nav-link-text">View Final Data</span>
-            </a>
+            </a> -->
+
+              <a class="nav-link {% if current_url == 'show_final_table' %}active{% endif %}"
+                href="{% url 'show_final_table' %}">
+                  <i class="fa fa-suitcase text-primary"></i>
+                  <span class="nav-link-text">View Final Data</span>
+              </a>
+
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'view_wgs_overview' %}">
+            <!-- <a class="nav-link" href="{% url 'view_wgs_overview' %}">
               <i class="ni ni-atom text-primary"></i>
               <span class="nav-link-text">WGS Data</span>
+            </a> -->
+            <a class="nav-link {% if current_url == 'view_wgs_overview' %}active{% endif %}"
+              href="{% url 'view_wgs_overview' %}">
+                <i class="ni ni-atom text-primary"></i>
+                <span class="nav-link-text">WGS Data</span>
             </a>
           </li>
        
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'upload_wgs_view' %}">
+            <!-- <a class="nav-link" href="{% url 'upload_wgs_view' %}">
               <i class="fa fa-paperclip text-primary"></i>
               <span class="nav-link-text">Upload Data</span>
-            </a>
+            </a> -->
+            <a class="nav-link {% if current_url == 'upload_wgs_view' %}active{% endif %}"
+            href="{% url 'upload_wgs_view' %}">
+              <i class="fa fa-paperclip text-primary"></i>
+              <span class="nav-link-text">Upload Data</span>
+          </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'tat_running_list' %}">
+            <!-- <a class="nav-link" href="{% url 'tat_running_list' %}">
               <i class="fas fa-chart-line text-primary"></i>
               <span class="nav-link-text">Running TAT</span>
+            </a> -->
+            <a class="nav-link {% if current_url == 'tat_running_list' %}active{% endif %}"
+              href="{% url 'tat_running_list' %}">
+                <i class="fas fa-chart-line text-primary"></i>
+                <span class="nav-link-text">Running TAT</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'concordance_history' %}">
+            <!-- <a class="nav-link" href="{% url 'concordance_history' %}">
               <i class="fas fa-chart-bar text-primary"></i>
               <span class="nav-link-text">Concordance</span>
-            </a>
+            </a> -->
+            <a class="nav-link {% if current_url == 'concordance_history' %}active{% endif %}"
+            href="{% url 'concordance_history' %}">
+              <i class="fas fa-chart-bar text-primary"></i>
+              <span class="nav-link-text">Concordance</span>
+          </a>
           </li>
 <!--          
           <li class="nav-item">
@@ -138,19 +197,31 @@
         <ul class="navbar-nav mb-md-3">
 
           <li class="nav-item">
-            <a class="nav-link" 
+            <!-- <a class="nav-link"
                target="_blank" 
                href="#" data-toggle="modal" data-target="#ageModal">
               <i class="ni ni-calendar-grid-58 text-success"></i>
               <span class="nav-link-text ">Age verifier</span>
-            </a>
-
+            </a> -->
+              <a class="nav-link"
+                id="ageVerifierNav"
+                href="#"
+                data-toggle="modal"
+                data-target="#ageModal">
+                  <i class="ni ni-calendar-grid-58 text-success"></i>
+                  <span class="nav-link-text">Age verifier</span>
+              </a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'field_mapper_tool' %}">
+            <!-- <a class="nav-link" href="{% url 'field_mapper_tool' %}">
               <i class="ni ni-compass-04 text-success"></i>
               <span class="nav-link-text">Field Mapping Tool</span>
+            </a> -->
+            <a class="nav-link {% if current_url == 'field_mapper_tool' %}active{% endif %}"
+              href="{% url 'field_mapper_tool' %}">
+                <i class="ni ni-compass-04 text-success"></i>
+                <span class="nav-link-text">Field Mapping Tool</span>
             </a>
           </li>
            <!-- <li class="nav-item">
@@ -172,10 +243,15 @@
 
             <ul class="navbar-nav mb-md-3">
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'settings_page' %}">
+                    <!-- <a class="nav-link" href="{% url 'settings_page' %}">
                         <i class="fa fa-cogs text-info"></i>
                         <span class="nav-link-text">Settings</span>
-                    </a>
+                    </a> -->
+                    <a class="nav-link {% if current_url == 'settings_page' %}active{% endif %}"
+                  href="{% url 'settings_page' %}">
+                    <i class="fa fa-cogs text-info"></i>
+                    <span class="nav-link-text">Settings</span>
+                </a>
                 </li>
                                 <!-- <li class="nav-item">
                     <a class="nav-link" href="{% url 'add_breakpoints' %}">
@@ -188,7 +264,7 @@
                     </a>
                 </li> -->
             </ul>
-
+{% endwith %}
       </div>
     </div>
   </div>
@@ -335,5 +411,62 @@
       document.getElementById('age2').innerHTML = '';
   }
   </script>
+
+<script>
+  (function () {
+    const ageVerifierNav = document.getElementById('ageVerifierNav');
+    const ageModal = document.getElementById('ageModal');
+    let previousActiveLinks = [];
+    let ageVerifierIsActive = false;
+
+    function activateAgeVerifierNav() {
+      if (!ageVerifierNav || ageVerifierIsActive) {
+        return;
+      }
+
+      previousActiveLinks = Array.from(document.querySelectorAll('#sidenav-main .nav-link.active'))
+        .filter(function (link) {
+          return link !== ageVerifierNav;
+        });
+
+      previousActiveLinks.forEach(function (link) {
+        link.classList.remove('active');
+      });
+
+      ageVerifierNav.classList.add('active');
+      ageVerifierIsActive = true;
+    }
+
+    function restorePreviousActiveNav() {
+      if (!ageVerifierNav || !ageVerifierIsActive) {
+        return;
+      }
+
+      ageVerifierNav.classList.remove('active');
+      previousActiveLinks.forEach(function (link) {
+        link.classList.add('active');
+      });
+      previousActiveLinks = [];
+      ageVerifierIsActive = false;
+    }
+
+    if (ageVerifierNav) {
+      ageVerifierNav.addEventListener('click', activateAgeVerifierNav);
+    }
+
+    if (ageModal) {
+      ageModal.addEventListener('shown.bs.modal', activateAgeVerifierNav);
+      ageModal.addEventListener('hidden.bs.modal', restorePreviousActiveNav);
+    }
+
+    if (window.jQuery) {
+      $('#ageModal')
+        .on('shown.bs.modal', activateAgeVerifierNav)
+        .on('hidden.bs.modal', restorePreviousActiveNav);
+    }
+  })();
+</script>
+
+
 </nav>
 

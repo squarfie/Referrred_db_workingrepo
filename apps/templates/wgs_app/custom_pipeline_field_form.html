@@ -1,0 +1,76 @@
+{% extends 'layouts/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %} Edit WGS Pipeline Field {% endblock title %}
+
+{% block content %}
+<div class="header bg-primary pb-6 pt-5 pt-md-7">
+  <div class="container-fluid">
+    <div class="row align-items-center">
+      <div class="col">
+        <h1 class="text-white mb-0">Edit {{ field.display_label }}</h1>
+      </div>
+      <div class="col text-right">
+        <a href="{% url 'custom_pipeline_fields' pipeline.slug %}" class="btn btn-sm btn-neutral">
+          <i class="ni ni-bold-left"></i> Back
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid mt--5">
+  <div class="row">
+    <div class="col-lg-7">
+      <div class="card shadow mb-4">
+        <div class="card-header"><h3 class="mb-0">Field Mapping</h3></div>
+        <div class="card-body">
+          {% if record_count %}
+          <div class="alert alert-warning" role="alert">
+            This pipeline already has {{ record_count }} uploaded record{{ record_count|pluralize }}. Changing the data type affects future uploads only; existing record values will not be converted.
+          </div>
+          {% endif %}
+          <form method="post" {% if record_count %}onsubmit="return confirm('Save changes to this field? If you changed the data type, existing uploaded records will not be converted.')" {% endif %}>
+            {% csrf_token %}
+            {% for form_field in form %}
+              <div class="mb-3">
+                {% if form_field.field.widget.input_type == 'checkbox' %}
+                  <div class="custom-control custom-checkbox">
+                    {{ form_field|add_class:"custom-control-input" }}
+                    <label class="custom-control-label" for="{{ form_field.id_for_label }}">{{ form_field.label }}</label>
+                  </div>
+                {% else %}
+                  <label class="form-control-label">{{ form_field.label }}</label>
+                  {{ form_field|add_class:"form-control" }}
+                {% endif %}
+                {% for error in form_field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+              </div>
+            {% endfor %}
+            <div class="text-right">
+              <a href="{% url 'custom_pipeline_fields' pipeline.slug %}" class="btn btn-secondary">Cancel</a>
+              <button class="btn btn-primary" type="submit">Save Field</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow">
+        <div class="card-header"><h3 class="mb-0">Current Field</h3></div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-5">Pipeline</dt>
+            <dd class="col-sm-7">{{ pipeline.name }}</dd>
+            <dt class="col-sm-5">Current type</dt>
+            <dd class="col-sm-7">{{ field.get_data_type_display }}</dd>
+            <dt class="col-sm-5">Source column</dt>
+            <dd class="col-sm-7">{{ field.source_column }}</dd>
+            <dt class="col-sm-5">Records</dt>
+            <dd class="col-sm-7">{{ record_count }}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

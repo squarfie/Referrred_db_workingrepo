@@ -11,12 +11,21 @@
           <h1 class="text-white mb-0">WGS Pipelines</h1>
         </div>
         <div class="col text-right">
+          <!-- <a href="{% url 'upload_wgs_view' %}" class="btn btn-sm btn-neutral">
+            <i class="ni ni-bold-left"></i> Back
+          </a> -->
+
+            <button type="button"
+                      class="btn btn-secondary btn-sm"
+                      onclick="history.back()">
+                <i class="fas fa-arrow-left mr-2"></i> Back
+              </button>
+
           {% if user_access.can_wgs_create %}
           <a href="{% url 'custom_pipeline_create' %}" class="btn btn-sm btn-neutral">
             <i class="ni ni-fat-add"></i> New Pipeline
           </a>
           {% endif %}
-          <a href="{% url 'upload_wgs_view' %}" class="btn btn-sm btn-neutral">Upload Center</a>
         </div>
       </div>
     </div>
@@ -37,7 +46,6 @@
             <th>Pipeline</th>
             <th>Upload Data Center</th>
             <th>WGS Overview</th>
-            <th class="text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -68,19 +76,20 @@
     </div>
     <div class="table-responsive">
       <table class="table table-sm align-items-center mb-0">
-        <thead class="thead-light">
+        <thead class="thead-light" style="border-top: 1px solid #dee2e6; text-align: center;">
           <tr>
             <th>Pipeline</th>
             <th>Upload Data Center</th>
             <th>WGS Overview</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for item in pipeline_cards %}
           <tr>
             <td><strong>{{ item.pipeline.name }}</strong></td>
-            <td>
-              <label class="custom-toggle mb-0">
+            <td >
+              <label class="custom-toggle mb-0" style="text-align: center; vertical-align: middle;">
                 <input type="checkbox" name="custom_upload" value="{{ item.pipeline.id }}" {% if item.pipeline.show_in_upload_center %}checked{% endif %}>
                 <span class="custom-toggle-slider rounded-circle"></span>
               </label>
@@ -92,26 +101,32 @@
               </label>
             </td>
             <td class="text-right">
-              <a href="{% url 'custom_pipeline_edit' item.pipeline.slug %}" class="btn btn-sm btn-secondary">
-                Edit
+              {% if user_access.can_wgs_create %}
+              <a href="{% url 'custom_pipeline_upload' item.pipeline.slug %}" class="btn btn-sm btn-primary text-white">
+                <i class="ni ni-cloud-upload-96"></i> Upload
               </a>
               <a href="{% url 'custom_pipeline_fields' item.pipeline.slug %}" class="btn btn-sm btn-info">
-                Fields
+                <i class="ni ni-settings"></i> Fields
               </a>
-              <a href="{% url 'custom_pipeline_records' item.pipeline.slug %}" class="btn btn-sm btn-neutral">
-                Records
+              <a href="{% url 'custom_pipeline_edit' item.pipeline.slug %}" class="btn btn-sm btn-secondary text-white">
+                <i class="ni ni-ruler-pencil"></i> Edit
+              </a>
+              {% endif %}
+              <a href="{% url 'custom_pipeline_records' item.pipeline.slug %}" class="btn btn-sm btn-success">
+                <i class="ni ni-folder-17"></i> Records
+              </a>
+              <a href="{% url 'custom_pipeline_export' item.pipeline.slug %}" class="btn btn-sm btn-neutral">
+                <i class="ni ni-cloud-download-95"></i> Export
               </a>
               {% if user_access.is_admin %}
-              <form method="post" action="{% url 'custom_pipeline_delete' item.pipeline.slug %}" class="d-inline">
-                {% csrf_token %}
-                <button
-                  type="submit"
-                  class="btn btn-sm btn-danger"
-                  onclick="return confirm('Delete {{ item.pipeline.name }} permanently? This will also delete its {{ item.record_count }} custom WGS record(s), {{ item.field_count }} field(s), and upload history. Use Edit if you only need to rename it.')"
-                >
-                  Delete
-                </button>
-              </form>
+              <button
+                type="submit"
+                form="delete-pipeline-{{ item.pipeline.id }}"
+                class="btn btn-sm btn-outline-danger"
+                onclick="return confirm('Delete {{ item.pipeline.name }} permanently? This will also delete its {{ item.record_count }} custom WGS record(s), {{ item.field_count }} field(s), and upload history. Use Edit if you only need to rename it.')"
+              >
+                <i class="ni ni-fat-remove"></i> Delete
+              </button>
               {% endif %}
             </td>
           </tr>
@@ -125,6 +140,13 @@
       <button class="btn btn-primary" type="submit">Save Visibility Settings</button>
     </div>
   </form>
+  {% if user_access.is_admin %}
+    {% for item in pipeline_cards %}
+    <form id="delete-pipeline-{{ item.pipeline.id }}" method="post" action="{% url 'custom_pipeline_delete' item.pipeline.slug %}" class="d-none">
+      {% csrf_token %}
+    </form>
+    {% endfor %}
+  {% endif %}
   {% endif %}
 
   <div class="row">
@@ -152,49 +174,16 @@
             <div class="col"><strong>{{ item.record_count }}</strong><br><small>Rows</small></div>
             <div class="col"><strong>{{ item.matched_count }}</strong><br><small>Matched</small></div>
           </div>
+          {% if not user_access.can_wgs_create %}
           <div class="d-flex flex-wrap" style="gap:.5rem">
-            {% if user_access.can_wgs_create %}
-            <a href="{% url 'custom_pipeline_upload' item.pipeline.slug %}" class="btn btn-sm btn-primary">
-              <i class="ni ni-cloud-upload-96"></i> Upload
-            </a>
-            <a href="{% url 'custom_pipeline_fields' item.pipeline.slug %}" class="btn btn-sm btn-info">
-              <i class="ni ni-settings"></i> Fields
-            </a>
-            <a href="{% url 'custom_pipeline_edit' item.pipeline.slug %}" class="btn btn-sm btn-secondary">
-              <i class="ni ni-ruler-pencil"></i> Edit
-            </a>
-            {% endif %}
             <a href="{% url 'custom_pipeline_records' item.pipeline.slug %}" class="btn btn-sm btn-success">
               <i class="ni ni-folder-17"></i> Records
             </a>
             <a href="{% url 'custom_pipeline_export' item.pipeline.slug %}" class="btn btn-sm btn-neutral">
               <i class="ni ni-cloud-download-95"></i> Export
             </a>
-            <!-- {% if user_access.can_wgs_create and item.pipeline.is_active %}
-            <form method="post" action="{% url 'custom_pipeline_deactivate' item.pipeline.slug %}" class="d-inline">
-              {% csrf_token %}
-              <button
-                type="submit"
-                class="btn btn-sm btn-danger"
-                onclick="return confirm('Deactivate {{ item.pipeline.name }}? It will be hidden from active WGS pipeline options, but existing records will be kept.')"
-              >
-                <i class="ni ni-fat-remove"></i> Deactivate
-              </button>
-            </form>
-            {% endif %}
-            {% if user_access.is_admin %}
-            <form method="post" action="{% url 'custom_pipeline_delete' item.pipeline.slug %}" class="d-inline">
-              {% csrf_token %}
-              <button
-                type="submit"
-                class="btn btn-sm btn-outline-danger"
-                onclick="return confirm('Delete {{ item.pipeline.name }} permanently? This will also delete its {{ item.record_count }} custom WGS record(s), {{ item.field_count }} field(s), and upload history. Use Edit if you only need to rename it.')"
-              >
-                <i class="ni ni-fat-remove"></i> Delete
-              </button>
-            </form>
-            {% endif %} -->
           </div>
+          {% endif %}
         </div>
       </div>
     </div>

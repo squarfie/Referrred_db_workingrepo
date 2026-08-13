@@ -11,6 +11,9 @@
         <h1 class="text-white mb-0">{{ pipeline.name }} Fields</h1>
       </div>
       <div class="col text-right">
+        <a href="{% url 'custom_pipeline_list' %}" class="btn btn-sm btn-neutral">
+          <i class="ni ni-bold-left"></i> Back
+        </a>
         <a href="{% url 'custom_pipeline_upload' pipeline.slug %}" class="btn btn-sm btn-neutral">Upload</a>
         <a href="{% url 'custom_pipeline_edit' pipeline.slug %}" class="btn btn-sm btn-neutral">Edit Pipeline</a>
         <a href="{% url 'custom_pipeline_records' pipeline.slug %}" class="btn btn-sm btn-neutral">Records</a>
@@ -81,7 +84,10 @@
                 <td>{{ field.source_column }}</td>
                 <td>{{ field.get_data_type_display }}</td>
                 <td class="text-right">
-                  <form method="post" action="{% url 'custom_pipeline_field_delete' pipeline.slug field.id %}" onsubmit="return confirm('Remove this field mapping?')">
+                  {% if user_access.is_admin %}
+                  <a href="{% url 'custom_pipeline_field_edit' pipeline.slug field.id %}" class="btn btn-sm btn-info">Edit</a>
+                  {% endif %}
+                  <form method="post" action="{% url 'custom_pipeline_field_delete' pipeline.slug field.id %}" class="d-inline" onsubmit="return confirm('Remove this field mapping?')">
                     {% csrf_token %}
                     <button class="btn btn-sm btn-danger" type="submit">Delete</button>
                   </form>

@@ -19,6 +19,12 @@ urlpatterns = [
     path('final/', include('apps.home_final.urls')),
     path("settings/", views.settings_page, name="settings_page"),
     path("settings/check-duplicate/", views.check_setting_duplicate, name="check_setting_duplicate"),
+    path("settings/accounts/approve/<int:approval_id>/", views.approve_account, name="approve_account"),
+    path("settings/accounts/decline/<int:approval_id>/", views.decline_account, name="decline_account"),
+    path("settings/accounts/delete-registration/<int:approval_id>/", views.delete_account_registration, name="delete_account_registration"),
+    path("settings/accounts/link/<int:user_id>/", views.link_account_staff, name="link_account_staff"),
+    path("settings/accounts/status/<int:user_id>/", views.set_account_active_status, name="set_account_active_status"),
+    path("settings/accounts/delete-unlinked/<int:user_id>/", views.delete_unlinked_account, name="delete_unlinked_account"),
 
 
     #the forms
@@ -163,6 +169,9 @@ urlpatterns = [
     path("tat/<int:batch_id>/", views.tat_monitoring_view, name="tat_monitoring_view"),
     path("tat/config/", settings_write_required(views.add_tat_step_config), name="add_tat_step_config"),
     path("tat/config/edit/<int:pk>/", settings_write_required(views.edit_tat_step_config), name="edit_tat_step_config"),
+    path("tat/location/add/", settings_write_required(views.add_tat_location), name="add_tat_location"),
+    path("tat/location/edit/<int:pk>/", settings_write_required(views.edit_tat_location), name="edit_tat_location"),
+    path("tat/location/delete/<int:pk>/", settings_write_required(views.delete_tat_location), name="delete_tat_location"),
     path("tat/config/list/", views.tat_step_config_list, name="tat_step_config_list"),
     path("tat/upload/", settings_write_required(views.upload_tat_step_config), name="upload_tat_step_config"),
     path("tat/config/export/", settings_write_required(views.export_tat_step_config), name="export_tat_step_config"),
@@ -173,7 +182,9 @@ urlpatterns = [
     path("export/tat-ipcr-template/", views.download_tat_ipcr_template, name="download_tat_ipcr_template"),
     path("tat/review/", views.tat_review_view, name="tat_review_view"),
     path("tat/running/", views.tat_running_list, name="tat_running_list"),
+    path("tat/running/processes/", views.tat_running_process_list, name="tat_running_process_list"),
     path("tat/running/upload/", settings_write_required(views.upload_running_tat), name="upload_running_tat"),
+    path("tat/location/update/<int:pk>/", settings_write_required(views.update_tat_location), name="update_tat_location"),
     path("tat/scanning/<int:pk>/", views.update_tat_scanning_flags, name="update_tat_scanning_flags"),
     path("tat/analysis/", views.tat_analysis, name="tat_analysis"),
     path("settings/non-working/add/", settings_write_required(views.add_non_working_day), name="add_non_working_day"),

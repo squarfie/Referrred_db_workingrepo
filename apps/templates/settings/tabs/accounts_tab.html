@@ -21,6 +21,11 @@
       Django superusers/staff are treated as Admin. Normal users need a linked ARSP Staff record,
       or Django groups named Admin, Verifier, DMU Encoder, LAB Encoder, Checker, or Manager.
       Staff records may have multiple roles.
+      {% if approval_require_staff_link %}
+        <br><strong>Login rule:</strong> active ordinary users must also be linked to ARSP Staff.
+      {% else %}
+        <br><strong>Rollout mode:</strong> staff-link login enforcement is not yet enabled, so legacy accounts can be linked first.
+      {% endif %}
     </div>
 
     <div class="table-responsive" style="max-height: 560px; overflow: auto;">
@@ -35,6 +40,8 @@
             <th>Linked ARSP Staff</th>
             <th>Role</th>
             <th>Status</th>
+            <th>Approval</th>
+            {% if user_access.is_admin %}<th>Actions</th>{% endif %}
           </tr>
         </thead>
         <tbody>
@@ -78,16 +85,108 @@
                   <span class="badge badge-warning">Superuser</span>
                 {% elif row.user.is_staff %}
                   <span class="badge badge-info">Django staff</span>
+                {% elif not row.user.is_active %}
+                  <span class="badge badge-danger">Inactive</span>
                 {% elif row.staff %}
                   <span class="badge badge-success">Linked</span>
                 {% else %}
                   <span class="badge badge-light">Basic account</span>
                 {% endif %}
+                {% if row.needs_staff_link %}
+                  <span class="badge badge-warning ml-1" title="This active account should be linked to ARSP Staff before strict login enforcement.">
+                    Needs link
+                  </span>
+                {% endif %}
               </td>
+              <td>
+                {% if row.approval %}
+                  {% if row.approval.status == "pending" %}
+                    <span class="badge badge-warning">Pending</span>
+                  {% elif row.approval.status == "approved" %}
+                    <span class="badge badge-success">Approved</span>
+                  {% elif row.approval.status == "declined" %}
+                    <span class="badge badge-danger">Declined</span>
+                  {% endif %}
+                  {% if row.approval.reviewed_by %}
+                    <div class="small text-muted mt-1">
+                      by {{ row.approval.reviewed_by.username }}
+                    </div>
+                  {% endif %}
+                {% else %}
+                  <span class="badge badge-light">Legacy</span>
+                {% endif %}
+              </td>
+              {% if user_access.is_admin %}
+              <td style="min-width: 360px;">
+                {% if row.approval and row.approval.status == "pending" %}
+                  <form method="post" action="{% url 'approve_account' row.approval.id %}" class="d-flex align-items-center mb-2">
+                    {% csrf_token %}
+                    <select name="staff_id" class="form-control form-control-sm mr-2" required>
+                      <option value="">Select staff to link</option>
+                      {% for staff in available_staff %}
+                        <option value="{{ staff.id }}">{{ staff.display_name }}</option>
+                      {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                  </form>
+                  <div class="d-flex">
+                    <form method="post" action="{% url 'decline_account' row.approval.id %}" class="mr-2" onsubmit="return confirm('Decline this registration? ARSP staff records will not be changed.');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-warning">Decline</button>
+                    </form>
+                    <form method="post" action="{% url 'delete_account_registration' row.approval.id %}" onsubmit="return confirm('Delete this pending registration? This will delete only the Django account, not ARSP staff.');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                  </div>
+                {% elif row.approval and row.approval.status == "declined" %}
+                  <form method="post" action="{% url 'delete_account_registration' row.approval.id %}" onsubmit="return confirm('Delete this declined registration? This will delete only the Django account, not ARSP staff.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete Registration</button>
+                  </form>
+                {% else %}
+                  {% if not row.staff and not row.user.is_superuser %}
+                  <form method="post" action="{% url 'link_account_staff' row.user.id %}" class="d-flex align-items-center mb-2">
+                    {% csrf_token %}
+                    <select name="staff_id" class="form-control form-control-sm mr-2" required>
+                      <option value="">Link legacy account to staff</option>
+                      {% for staff in available_staff %}
+                        <option value="{{ staff.id }}">{{ staff.display_name }}</option>
+                      {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-primary">Link</button>
+                  </form>
+                  {% if row.user != request.user %}
+                    <form method="post" action="{% url 'delete_unlinked_account' row.user.id %}" class="mb-2" onsubmit="return confirm('Delete this unlinked account permanently? ARSP staff records will not be changed.');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger">Delete Account</button>
+                    </form>
+                  {% endif %}
+                  {% endif %}
+                  {% if row.user.is_superuser %}
+                    <span class="text-muted">Manage in Django Admin</span>
+                  {% elif row.user == request.user %}
+                    <span class="text-muted">Current account</span>
+                  {% elif row.user.is_active %}
+                    <form method="post" action="{% url 'set_account_active_status' row.user.id %}" onsubmit="return confirm('Deactivate this account? The user will no longer be able to log in. ARSP staff records will not be changed.');">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="deactivate">
+                      <button type="submit" class="btn btn-sm btn-outline-warning">Deactivate</button>
+                    </form>
+                  {% else %}
+                    <form method="post" action="{% url 'set_account_active_status' row.user.id %}" onsubmit="return confirm('Reactivate this account?');">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="activate">
+                      <button type="submit" class="btn btn-sm btn-outline-success">Reactivate</button>
+                    </form>
+                  {% endif %}
+                {% endif %}
+              </td>
+              {% endif %}
             </tr>
           {% empty %}
             <tr>
-              <td colspan="8" class="text-center text-muted py-4">No registered accounts found.</td>
+              <td colspan="{% if user_access.is_admin %}10{% else %}9{% endif %}" class="text-center text-muted py-4">No registered accounts found.</td>
             </tr>
           {% endfor %}
         </tbody>

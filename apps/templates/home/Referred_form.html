@@ -18,12 +18,12 @@
 <!-- style for back to top button -->
 <style>
 
-#myBtn {
-  display: none;
-  position: fixed;
-  bottom: 20px;
-  right: 30px;
-  z-index: 99;
+#scrollTopButton {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
   font-size: 12px;
   border: none;
   outline: none;
@@ -31,7 +31,89 @@
   padding: 10px;
   border-radius: 4px;
   height: 50px;
+}
 
+.scroll-top-accession {
+  display: block;
+  max-width: 180px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  opacity: 0.82;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scroll-top-control {
+  position: fixed !important;
+  right: 28px !important;
+  bottom: 28px !important;
+  display: flex;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity 160ms ease, visibility 160ms ease, transform 160ms ease;
+  z-index: 99999;
+}
+
+.scroll-top-control.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.antibiotic-toolbar {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12px;
+  width: auto;
+}
+
+.antibiotic-toolbar .input-group {
+  flex: 0 0 300px;
+  width: 300px;
+  max-width: 300px;
+}
+
+.antibiotic-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.antibiotic-view-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f4f61;
+}
+
+.antibiotic-view-toggle input {
+  width: 14px;
+  height: 14px;
+}
+
+@media (max-width: 576px) {
+  .antibiotic-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .antibiotic-toolbar .input-group {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+  }
 }
 
 #myform{
@@ -513,7 +595,8 @@ label.form-control-label{
 <div id="antibiotic-container">
   <div class="col-lg-12">
     <div class="row">
-      <div class="mb-3">
+      <div class="mb-3 antibiotic-toolbar">
+        <input type="hidden" name="antibiotic_view" id="antibioticViewMode" value="{{ antibiotic_view|default:'all' }}">
         <div class="input-group" style="max-width: 300px;">
           <div class="input-group-prepend">
             <span class="input-group-text">
@@ -526,6 +609,10 @@ label.form-control-label{
        placeholder="Search antibiotic..."
        onkeyup="filterAntibiotics()">
 
+        </div>
+        <div class="antibiotic-view-toggle" aria-label="Antibiotic view mode">
+          <label><input type="checkbox" class="antibiotic-view-mode" value="all" {% if antibiotic_view != 'panel' %}checked{% endif %}> Show All</label>
+          <label><input type="checkbox" class="antibiotic-view-mode" value="panel" {% if antibiotic_view == 'panel' %}checked{% endif %}> Show Panel</label>
         </div>
     </div>
     </div>
@@ -770,7 +857,7 @@ label.form-control-label{
 <div id="retest-container">
 <div class="col-lg-12">
       <div class="row">
-      <div class="mb-3">
+      <div class="mb-3 antibiotic-toolbar">
         <div class="input-group" style="max-width: 300px;">
           <div class="input-group-prepend">
             <span class="input-group-text">
@@ -783,6 +870,10 @@ label.form-control-label{
        placeholder="Search retest antibiotic..."
        onkeyup="filterRetestAntibiotics()">
 
+        </div>
+        <div class="antibiotic-view-toggle" aria-label="Retest antibiotic view mode">
+          <label><input type="checkbox" class="antibiotic-view-mode" value="all" {% if antibiotic_view != 'panel' %}checked{% endif %}> Show All</label>
+          <label><input type="checkbox" class="antibiotic-view-mode" value="panel" {% if antibiotic_view == 'panel' %}checked{% endif %}> Show Panel</label>
         </div>
     </div>
     </div>
@@ -1049,17 +1140,15 @@ label.form-control-label{
 
         </form> <!---end of form with post method-->
       </div> <!--card-->
-        <div class="col-12 text-left">
-          <div class="col-6">
-          <!-- <button class="btn btn-sm btn-primary" onclick="topFunction()" id="myBtn" title="Go to top">Go to Top</button> -->
-           <!-- <a href="#mytop" class="btn btn-sm btn-primary">Back to top</a> -->
-           <button type="button" onclick="topFunction()" id="myBtn" title="gototop" class="btn btn-sm btn-primary"> Back to top</button>
-          </div>
+        <div class="scroll-top-control" id="scrollTopControl" aria-live="polite">
+          <button type="button" id="scrollTopButton" title="Go to top" class="btn btn-sm btn-primary">
+            <span>Back to top</span>
+            <span class="scroll-top-accession" id="scrollTopAccession">Acc: --</span>
+          </button>
         </div>
       </div>
     </div>
     </div>
-    {% include "includes/footer.html" %}
   </div>
 
 {% endblock content %}
@@ -1073,17 +1162,62 @@ document.addEventListener("DOMContentLoaded", function () {
   /* =====================================================
      1. BACK TO TOP BUTTON
   ===================================================== */
-  const backToTopBtn = document.getElementById("myBtn");
+  const scrollTopControl = document.getElementById("scrollTopControl");
+  const backToTopBtn = document.getElementById("scrollTopButton");
+  const scrollTopAccession = document.getElementById("scrollTopAccession");
+  const accessionInput = document.getElementById("id_AccessionNo");
 
-  if (backToTopBtn) {
-    window.addEventListener("scroll", () => {
-      backToTopBtn.style.display =
-        document.documentElement.scrollTop > 50 ? "block" : "none";
-    });
+  if (scrollTopControl && backToTopBtn) {
+    if (scrollTopControl.parentElement !== document.body) {
+      document.body.appendChild(scrollTopControl);
+    }
+    scrollTopControl.style.position = "fixed";
+    scrollTopControl.style.right = "28px";
+    scrollTopControl.style.bottom = "28px";
+    scrollTopControl.style.zIndex = "99999";
+
+    function getPageScrollMetrics() {
+      const doc = document.documentElement;
+      const body = document.body;
+      const scrollingElement = document.scrollingElement || doc;
+      const scrollTop = window.pageYOffset || scrollingElement.scrollTop || doc.scrollTop || body.scrollTop || 0;
+      const scrollHeight = Math.max(
+        body.scrollHeight,
+        body.offsetHeight,
+        doc.clientHeight,
+        doc.scrollHeight,
+        doc.offsetHeight
+      );
+      return {
+        scrollTop,
+        scrollHeight,
+        clientHeight: window.innerHeight || doc.clientHeight,
+      };
+    }
+
+    function toggleBackToTopBtn() {
+      const metrics = getPageScrollMetrics();
+      const maxScroll = Math.max(metrics.scrollHeight - metrics.clientHeight, 1);
+      const progress = metrics.scrollTop / maxScroll;
+      scrollTopControl.classList.toggle("is-visible", progress >= 0.5);
+      updateScrollAccession();
+    }
+
+    function updateScrollAccession() {
+      if (!scrollTopAccession) return;
+      const accession = (accessionInput?.value || "").trim();
+      scrollTopAccession.textContent = accession ? `Acc: ${accession}` : "Acc: --";
+    }
+
+    window.addEventListener("scroll", toggleBackToTopBtn, { passive: true });
+    window.addEventListener("resize", toggleBackToTopBtn);
+    accessionInput?.addEventListener("input", updateScrollAccession);
 
     backToTopBtn.addEventListener("click", () => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
+    updateScrollAccession();
+    toggleBackToTopBtn();
   }
 
   /* =====================================================
@@ -1192,11 +1326,45 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 
+  function getAntibioticViewMode() {
+    const hidden = document.getElementById("antibioticViewMode");
+    return hidden && hidden.value === "panel" ? "panel" : "all";
+  }
+
+  function setAntibioticViewMode(mode) {
+    const normalizedMode = mode === "panel" ? "panel" : "all";
+    const hidden = document.getElementById("antibioticViewMode");
+    if (hidden) hidden.value = normalizedMode;
+    document.querySelectorAll(".antibiotic-view-mode").forEach(function (checkbox) {
+      checkbox.checked = checkbox.value === normalizedMode;
+    });
+  }
+
+  function refreshAntibioticViewTables() {
+    const siteOrg = document.getElementById("id_Site_Org")?.value || "";
+    const arsOrg = document.getElementById("id_ars_OrgCode")?.value || "";
+    if (siteOrg) loadAntibiotics(siteOrg, false);
+    if (arsOrg) loadAntibiotics(arsOrg, true);
+  }
+
+  document.querySelectorAll(".antibiotic-view-mode").forEach(function (checkbox) {
+    checkbox.addEventListener("change", function () {
+      if (!this.checked) {
+        this.checked = true;
+        return;
+      }
+      const mode = this.value === "panel" ? "panel" : "all";
+      setAntibioticViewMode(mode);
+      refreshAntibioticViewTables();
+    });
+  });
+  setAntibioticViewMode(getAntibioticViewMode());
+
   // Dynamic Antibiotic Loading
 function loadAntibiotics(org, retest = false) {
   if (!org) return;
 
-  fetch(`/ajax/filter-antibiotics/?isolate_id={{ isolates.id }}&org=${encodeURIComponent(org)}&retest=${retest ? 1 : 0}&_=${Date.now()}`)
+  fetch(`/ajax/filter-antibiotics/?isolate_id={{ isolates.id }}&org=${encodeURIComponent(org)}&retest=${retest ? 1 : 0}&antibiotic_view=${encodeURIComponent(getAntibioticViewMode())}&_=${Date.now()}`)
     .then(res => res.json())
     .then(data => {
 

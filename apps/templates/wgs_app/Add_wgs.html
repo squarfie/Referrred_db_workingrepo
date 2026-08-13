@@ -138,6 +138,7 @@
 .a-rose::before   { background: linear-gradient(90deg,#e11d48,#fb7185); }
 .a-red::before    { background: linear-gradient(90deg,#e74c3c,#ff7043); }
 .a-slate::before  { background: linear-gradient(90deg,#475569,#0f766e); }
+.a-custom::before { background: linear-gradient(90deg,#1e5a96,#0f766e); }
 .a-warn::before   { background: linear-gradient(90deg,#f39c12,#e67e22); }
 
 .card-top { display: flex; align-items: flex-start; gap: 0.8rem; }
@@ -155,6 +156,7 @@
 .ci-rose   { background:rgba(225,29,72,.1);    color:#e11d48; }
 .ci-red    { background:rgba(231,76,60,.1);    color:#e74c3c; }
 .ci-slate  { background:rgba(71,85,105,.1);    color:#475569; }
+.ci-custom { background:rgba(30,90,150,.1);    color:#1e5a96; }
 .ci-warn   { background:rgba(243,156,18,.1);   color:#f39c12; }
 
 .card-text h5 { font-size: 0.9rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 0.18rem; }
@@ -189,6 +191,12 @@
   padding: 0.52rem 0; border-radius: 7px; border: none;
   color: #fff; cursor: pointer; transition: all 0.2s;
   display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+  text-decoration: none;
+}
+.btn-up:hover,
+.btn-up:hover i {
+  color: var(--secondary-color) !important;
+  text-decoration: none;
 }
 .btn-view {
   flex: 1; font-size: 0.79rem; font-weight: 600;
@@ -222,6 +230,8 @@
 .g-red:hover     { background: linear-gradient(135deg,#c0392b,#a93226); }
 .g-slate   { background: linear-gradient(135deg,#475569,#0f766e); }
 .g-slate:hover   { background: linear-gradient(135deg,#334155,#115e59); }
+.g-custom  { background: linear-gradient(135deg,#1e5a96,#0f766e); }
+.g-custom:hover  { background: linear-gradient(135deg,#174672,#115e59); }
 .g-warn    { background: linear-gradient(135deg,#f39c12,#e67e22); }
 .g-warn:hover    { background: linear-gradient(135deg,#e67e22,#ca6f1e); }
 
@@ -738,6 +748,7 @@
 
   </div><!-- /wgs grid -->
 
+  {% if user_access.is_admin %}
   <div class="upload-section-divider" style="margin-top:2.5rem">
     <i class="ni ni-bullet-list-67"></i>
     <h3>Custom WGS Pipelines</h3>
@@ -746,9 +757,9 @@
 
   <div class="upload-card-grid">
     {% for pipeline in custom_pipelines %}
-    <div class="upload-card a-slate">
+    <div class="upload-card a-custom">
       <div class="card-top">
-        <div class="ci ci-slate"><i class="ni ni-bullet-list-67"></i></div>
+        <div class="ci ci-custom"><i class="ni ni-bullet-list-67"></i></div>
         <div class="card-text">
           <h5>{{ pipeline.name }}</h5>
           <p>{{ pipeline.get_sequencing_type_display }} / {{ pipeline.get_platform_display }}</p>
@@ -756,7 +767,7 @@
       </div>
       <div class="card-actions">
         {% if user_access.can_wgs_create %}
-        <a href="{% url 'custom_pipeline_upload' pipeline.slug %}" class="btn-up g-slate">
+        <a href="{% url 'custom_pipeline_upload' pipeline.slug %}" class="btn-up g-custom">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </a>
         {% endif %}
@@ -797,9 +808,9 @@
       {% endif %}
     </div>
     {% empty %}
-    <div class="upload-card a-slate">
+    <div class="upload-card a-custom">
       <div class="card-top">
-        <div class="ci ci-slate"><i class="ni ni-bullet-list-67"></i></div>
+        <div class="ci ci-custom"><i class="ni ni-bullet-list-67"></i></div>
         <div class="card-text">
           <h5>No custom pipelines</h5>
           <p>Create one for new short-read or long-read outputs</p>
@@ -809,22 +820,23 @@
     {% endfor %}
 
     {% if user_access.can_wgs_create %}
-    <div class="upload-card a-slate">
+    <div class="upload-card a-custom">
       <div class="card-top">
-        <div class="ci ci-slate"><i class="ni ni-fat-add"></i></div>
+        <div class="ci ci-custom"><i class="ni ni-fat-add"></i></div>
         <div class="card-text">
           <h5>Add Custom Pipeline</h5>
           <p>Create another short-read, long-read, or hybrid output</p>
         </div>
       </div>
       <div class="card-actions">
-        <a href="{% url 'custom_pipeline_create' %}" class="btn-up g-slate">
+        <a href="{% url 'custom_pipeline_create' %}" class="btn-up g-custom">
           <i class="ni ni-fat-add"></i> Create Pipeline
         </a>
       </div>
     </div>
     {% endif %}
   </div>
+  {% endif %}
 </div><!-- /upload-main -->
 </div><!-- /upload-page -->
 
@@ -846,7 +858,7 @@
         <button type="button" class="mclose" onclick="closeM('mDemographic')">×</button>
       </div>
       <div class="mbody">
-        <div class="minfo"><i class="ni ni-notification-70"></i> <strong>Accepted formats:</strong>&nbsp;CSV, XLSX, XLS</div>
+        <div class="minfo"><i class="ni ni-notification-70"></i> <strong>Accepted formats:</strong>&nbsp;CSV, TSV, XLSX, XLS</div>
         <div class="drop-zone" onclick="trig('fDemographic')">
           <div class="dicon"><i class="ni ni-cloud-upload-96"></i></div>
           <strong>Click to choose a file</strong>
@@ -855,6 +867,7 @@
           <input type="file"
               name="DemogsDataFile"
               id="fDemographic"
+              accept=".csv,.tsv,.xlsx,.xls"
               class="form-control-file">
         </div>
         <label class="overwrite-choice">
@@ -888,7 +901,7 @@
         <button type="button" class="mclose" onclick="closeM('mSentinel')">×</button>
       </div>
       <div class="mbody">
-        <div class="minfo"><i class="ni ni-notification-70"></i> <strong>Accepted formats:</strong>&nbsp;CSV, XLSX, XLS</div>
+        <div class="minfo"><i class="ni ni-notification-70"></i> <strong>Accepted formats:</strong>&nbsp;CSV, TSV, XLSX, XLS</div>
         <div class="drop-zone" onclick="trig('fSentinel')">
           <div class="dicon"><i class="ni ni-cloud-upload-96"></i></div>
           <strong>Click to choose a file</strong>
@@ -897,6 +910,7 @@
           <input type="file"
               name="RawAntibioticFile"
               id="fSentinel"
+              accept=".csv,.tsv,.xlsx,.xls"
               class="form-control-file">
         </div>
         <label class="overwrite-choice">
@@ -928,7 +942,7 @@
         <button type="button" class="mclose" onclick="closeM('mARS')">×</button>
       </div>
       <div class="mbody">
-        <div class="minfo"><i class="ni ni-notification-70"></i> <strong>Accepted formats:</strong>&nbsp;CSV, XLSX, XLS</div>
+        <div class="minfo"><i class="ni ni-notification-70"></i> <strong>Accepted formats:</strong>&nbsp;CSV, TSV, XLSX, XLS</div>
         <div class="drop-zone" onclick="trig('fARS')">
           <div class="dicon"><i class="ni ni-cloud-upload-96"></i></div>
           <strong>Click to choose a file</strong>
@@ -937,6 +951,7 @@
           <input type="file"
               name="FinalAntibioticFile"
               id="fARS"
+              accept=".csv,.tsv,.xlsx,.xls"
               class="form-control-file">
         </div>
         <label class="overwrite-choice">
@@ -972,7 +987,7 @@
       <div class="mbody">
         <div class="minfo">
           <i class="ni ni-notification-70"></i>
-          <strong>Accepted formats:</strong> CSV, XLSX, XLS
+          <strong>Accepted formats:</strong> CSV, TSV, XLSX, XLS
         </div>
         <div class="drop-zone" onclick="trig('fSampleInfo')">
           <div class="dicon">
@@ -981,7 +996,7 @@
           <strong>Click to choose a file</strong>
           <p>or drag &amp; drop here</p>
           <div class="fname" id="nSampleInfo"></div>
-          {{ sampleinfo_form.sampleinfo|add_class:"form-control-file"|attr:"id:fSampleInfo" }}
+          {{ sampleinfo_form.sampleinfo|add_class:"form-control-file"|attr:"id:fSampleInfo"|attr:"accept:.csv,.tsv,.xlsx,.xls" }}
         </div>
         <label class="overwrite-choice">
           <input type="checkbox" name="overwrite" value="true">
@@ -1014,7 +1029,7 @@
       <div class="mbody">
         <div class="minfo">
           <i class="ni ni-notification-70"></i>
-          <strong>Accepted formats:</strong> CSV, XLSX, XLS
+          <strong>Accepted formats:</strong> CSV, TSV, XLSX, XLS
         </div>
         <div class="drop-zone" onclick="trig('fBactscout')">
           <div class="dicon">
@@ -1023,7 +1038,7 @@
           <strong>Click to choose a file</strong>
           <p>or drag &amp; drop here</p>
           <div class="fname" id="nBactscout"></div>
-          {{ bactscout_form.bactscoutfile|add_class:"form-control-file"|attr:"id:fBactscout" }}
+          {{ bactscout_form.bactscoutfile|add_class:"form-control-file"|attr:"id:fBactscout"|attr:"accept:.csv,.tsv,.xlsx,.xls" }}
         </div>
         <label class="overwrite-choice">
           <input type="checkbox" name="overwrite" value="true">
@@ -1061,7 +1076,7 @@
           <strong>Click to choose a file</strong>
           <p>or drag &amp; drop here</p>
           <div class="fname" id="nGtdbtk"></div>
-          {{ gtdbtk_form.GtdbTkFile|add_class:"form-control-file"|attr:"id:fGtdbtk" }}
+          {{ gtdbtk_form.GtdbTkFile|add_class:"form-control-file"|attr:"id:fGtdbtk"|attr:"accept:.csv,.tsv,.xlsx,.xls" }}
         </div>
         <label class="overwrite-choice">
           <input type="checkbox" name="overwrite" value="true">
@@ -1091,7 +1106,7 @@
           <strong>Click to choose a file</strong>
           <p>or drag &amp; drop here</p>
           <div class="fname" id="nGambit"></div>
-          {{ gambit_form.GambitFile|add_class:"form-control-file"|attr:"id:fGambit" }}
+          {{ gambit_form.GambitFile|add_class:"form-control-file"|attr:"id:fGambit"|attr:"accept:.csv,.tsv,.xlsx,.xls" }}
         </div>
         <label class="overwrite-choice">
           <input type="checkbox" name="overwrite" value="true">
@@ -1121,7 +1136,7 @@
           <strong>Click to choose a file</strong>
           <p>or drag &amp; drop here</p>
           <div class="fname" id="nMlst"></div>
-          {{ mlst_form.Mlstfile|add_class:"form-control-file"|attr:"id:fMlst" }}
+          {{ mlst_form.Mlstfile|add_class:"form-control-file"|attr:"id:fMlst"|attr:"accept:.csv,.tsv,.xlsx,.xls" }}
         </div>
         <label class="overwrite-choice">
           <input type="checkbox" name="overwrite" value="true">
@@ -1151,7 +1166,7 @@
           <strong>Click to choose a file</strong>
           <p>or drag &amp; drop here</p>
           <div class="fname" id="nCheckm2"></div>
-          {{ checkm2_form.Checkm2file|add_class:"form-control-file"|attr:"id:fCheckm2" }}
+          {{ checkm2_form.Checkm2file|add_class:"form-control-file"|attr:"id:fCheckm2"|attr:"accept:.csv,.tsv,.xlsx,.xls" }}
         </div>
         <label class="overwrite-choice">
           <input type="checkbox" name="overwrite" value="true">
@@ -1181,7 +1196,7 @@
           <strong>Click to choose a file</strong>
           <p>or drag &amp; drop here</p>
           <div class="fname" id="nAssembly"></div>
-          {{ assembly_form.Assemblyfile|add_class:"form-control-file"|attr:"id:fAssembly" }}
+          {{ assembly_form.Assemblyfile|add_class:"form-control-file"|attr:"id:fAssembly"|attr:"accept:.csv,.tsv,.xlsx,.xls" }}
         </div>
         <label class="overwrite-choice">
           <input type="checkbox" name="overwrite" value="true">
@@ -1211,7 +1226,7 @@
           <strong>Click to choose a file</strong>
           <p>or drag &amp; drop here</p>
           <div class="fname" id="nAmrfinder"></div>
-          {{ amrfinder_form.Amrfinderfile|add_class:"form-control-file"|attr:"id:fAmrfinder" }}
+          {{ amrfinder_form.Amrfinderfile|add_class:"form-control-file"|attr:"id:fAmrfinder"|attr:"accept:.csv,.tsv,.xlsx,.xls" }}
         </div>
         <label class="overwrite-choice">
           <input type="checkbox" name="overwrite" value="true">

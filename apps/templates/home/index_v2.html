@@ -1,0 +1,1160 @@
+{% extends 'layouts/base.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block title %} Dashboard {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/header.css' %}"> 
+<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   ARSP — SURVEILLANCE CONSOLE THEME
+   Palette: near-black bg, cyan signal, amber/green/red status
+   Type: monospace utility face for data, tracked-wide sans for display
+   Signature: corner-bracket "viewfinder" frames + scanline texture
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --sv-bg:        #0c1520;
+  --sv-bg-grid:   rgba(0, 224, 255, .045);
+  --sv-panel:     #16232f;
+  --sv-panel-alt: #1a2c3c;
+  --sv-panel-hi:  #203548;
+  --sv-border:    rgba(0, 224, 255, .22);
+  --sv-border-hi: rgba(0, 224, 255, .5);
+  --sv-cyan:      #00e0ff;
+  --sv-cyan-dim:  #0891a8;
+  --sv-green:     #35e28a;
+  --sv-amber:     #ffb020;
+  --sv-red:       #ff4d5e;
+  --sv-text:      #d9edf5;
+  --sv-text-dim:  #82a6ba;
+  --sv-mono: 'JetBrains Mono', 'IBM Plex Mono', 'Courier New', monospace;
+}
+
+html, body {
+  background-color: var(--sv-bg) !important;
+  background-image:
+    linear-gradient(var(--sv-bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--sv-bg-grid) 1px, transparent 1px) !important;
+  background-size: 38px 38px !important;
+}
+
+.index-font :not(i):not([class*="fa-"]):not([class*="ni-"]),
+.header-container :not(i):not([class*="fa-"]):not([class*="ni-"]),
+.tat-dashboard-card :not(i):not([class*="fa-"]):not([class*="ni-"]) {
+  font-family: var(--sv-mono);
+}
+
+#panel,
+.main-content {
+  background: var(--sv-bg) !important;
+  min-height: 100vh !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.index-font, .index-font * {
+  color: var(--sv-text);
+}
+
+.footer { display: none !important; }
+
+/* ── Corner-bracket "viewfinder" frame — signature element ──────── */
+.hud-frame {
+  position: relative;
+}
+.hud-frame::before,
+.hud-frame::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--sv-cyan);
+  opacity: .55;
+  z-index: 3;
+  pointer-events: none;
+}
+.hud-frame::before {
+  top: -1px; left: -1px;
+  border-right: 0; border-bottom: 0;
+}
+.hud-frame::after {
+  bottom: -1px; right: -1px;
+  border-left: 0; border-top: 0;
+}
+
+/* ── Scanline texture overlay ────────────────────────────────────── */
+.scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 224, 255, .035) 0px,
+    rgba(0, 224, 255, .035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: screen;
+}
+
+/* ── Live pulse dot ───────────────────────────────────────────────── */
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sv-green);
+  box-shadow: 0 0 0 0 rgba(53,226,138,.7);
+  animation: sv-pulse 1.8s infinite;
+  margin-right: .4em;
+  vertical-align: middle;
+}
+@keyframes sv-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(53,226,138,.55); }
+  70%  { box-shadow: 0 0 0 6px rgba(53,226,138,0); }
+  100% { box-shadow: 0 0 0 0 rgba(53,226,138,0); }
+}
+
+.sv-eyebrow {
+  font-family: var(--sv-mono);
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--sv-cyan-dim);
+}
+
+/* ── Header container ────────────────────────────────────────────── */
+.header-container {
+  min-height: 188px;
+  background: linear-gradient(180deg, #081019 0%, #050a10 100%);
+  border-bottom: 1px solid var(--sv-border);
+  position: relative;
+}
+
+.header-container .grid-bg {
+  opacity: .5 !important;
+  filter: hue-rotate(0deg);
+}
+.header-container .particles { opacity: .35 !important; }
+.header-container .scanner {
+  border-color: rgba(0, 224, 255, .22) !important;
+  opacity: .5 !important;
+}
+.header-container .glow-orb { opacity: .22 !important; }
+.header-container .overlay {
+  background: linear-gradient(180deg, rgba(12,21,32,.1) 0%, rgba(12,21,32,.5) 100%) !important;
+}
+
+.header-index h1 {
+  font-family: var(--sv-mono);
+  font-size: 29px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #f2fbff;
+  text-shadow: 0 0 24px rgba(0, 224, 255, .25);
+}
+
+.header-index {
+  width: calc(100% - 360px);
+  max-width: 1120px;
+  position: relative;
+  z-index: 2;
+}
+
+.header-stats {
+  position: absolute;
+  top: 88px;
+  right: 34px;
+  margin-left: 0 !important;
+  margin-right: 0;
+  gap: 30px;
+  padding-top: 0;
+  z-index: 2;
+}
+
+.header-stats .stat-item {
+  text-align: right;
+  border-right: 1px solid var(--sv-border);
+  padding-right: 22px;
+}
+.header-stats .stat-item:last-child { border-right: 0; padding-right: 0; }
+
+.header-stats .stat-number {
+  font-family: var(--sv-mono);
+  font-weight: 700;
+  color: var(--sv-cyan);
+  text-shadow: 0 0 14px rgba(0, 224, 255, .45);
+}
+
+.header-stats .stat-label {
+  font-family: var(--sv-mono);
+  font-size: .62rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--sv-text-dim);
+}
+
+.header-index .badge-group { align-items: center; }
+
+.header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.header-title-copy { min-width: 0; }
+.header-title-copy p { color: var(--sv-text-dim) !important; }
+
+.header-index .header-action-row {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+
+.header-index .badge-group { gap: .5rem; }
+
+/* Console-chip badges (replace soft filled pills) */
+.header-index .badge {
+  font-family: var(--sv-mono);
+  font-size: .64rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  background: var(--sv-panel-alt) !important;
+  border: 1px solid var(--sv-border-hi);
+  color: var(--sv-text) !important;
+  border-radius: 3px;
+  padding: .4rem .75rem;
+  transition: all .2s ease;
+}
+.header-index .badge:hover {
+  background: rgba(0, 224, 255, .1) !important;
+  box-shadow: 0 0 12px rgba(0, 224, 255, .25);
+  transform: translateY(-1px);
+}
+.header-index .badge.badge-success {
+  border-color: rgba(53, 226, 138, .55);
+}
+.header-index .badge.badge-secondary {
+  border-color: var(--sv-amber);
+  color: var(--sv-amber) !important;
+}
+
+.header-index .btn-new-crf {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 8px 20px;
+  border-radius: 3px;
+  color: #0a0e1a;
+  text-decoration: none;
+  white-space: nowrap;
+  transform: none;
+  flex: 0 0 auto;
+  margin-left: .25rem;
+}
+.header-index .btn-new-crf:hover { color: #0a0e1a; transform: translateY(-2px); }
+
+@media (max-width: 1200px) {
+  .header-index { width: 100%; max-width: none; }
+  .header-title-row { align-items: flex-start; flex-direction: column; gap: .85rem; }
+}
+
+/* ── Content panel ───────────────────────────────────────────────── */
+.index-content-panel {
+  background: linear-gradient(180deg, #0e1a26 0%, #0c1520 100%);
+  padding-bottom: .9rem !important;
+  margin-bottom: 0 !important;
+  position: relative;
+  overflow: hidden;
+  min-height: clamp(220px, 26vh, 340px);
+}
+
+.index-content-panel .dashboard-animation-wrapper {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.index-content-panel .grid-bg,
+.index-content-panel .particles,
+.index-content-panel .scanner,
+.index-content-panel .glow-orb,
+.index-content-panel .overlay {
+  z-index: 0 !important;
+}
+.index-content-panel .grid-bg { opacity: .22; }
+.index-content-panel .particles { opacity: .16; }
+.index-content-panel .scanner {
+  border-color: rgba(0, 224, 255, .12);
+  opacity: .3;
+}
+.index-content-panel .glow-orb { opacity: .14; }
+.index-content-panel .overlay {
+  background: linear-gradient(180deg, rgba(12,21,32,.12) 0%, rgba(12,21,32,.55) 45%, #0c1520 100%);
+}
+
+.index-content-panel > .row { position: relative; z-index: 2; }
+
+/* ── TAT dashboard card (main console panel) ────────────────────── */
+.tat-dashboard-card {
+  border: 1px solid var(--sv-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--sv-panel) !important;
+  box-shadow: 0 0 0 1px rgba(0,224,255,.04), 0 24px 60px rgba(0,0,0,.55);
+  margin-bottom: 0 !important;
+}
+
+.tat-dashboard-header {
+  background: linear-gradient(135deg, #0a1720 0%, #0d2530 100%);
+  color: #fff;
+  padding: .8rem 1rem;
+  border-bottom: 1px solid var(--sv-border-hi);
+}
+
+.tat-dashboard-header h3 {
+  font-family: var(--sv-mono);
+  font-size: .92rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--sv-cyan);
+}
+.tat-dashboard-header h3 i { color: var(--sv-cyan); }
+
+.tat-dashboard-header small {
+  font-family: var(--sv-mono);
+  font-size: .68rem;
+  color: var(--sv-text-dim);
+}
+
+.header-year-scope {
+  font-family: var(--sv-mono);
+  color: var(--sv-cyan-dim);
+  font-size: .64rem;
+  font-weight: 700;
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+/* ── Filter panel ─────────────────────────────────────────────────── */
+.tat-filter-panel {
+  background: var(--sv-panel-alt);
+  border-bottom: 1px solid var(--sv-border);
+  padding: .8rem 1rem;
+}
+
+.tat-filter-panel label {
+  color: var(--sv-cyan-dim);
+  font-family: var(--sv-mono);
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.tat-filter-panel .form-control {
+  height: 34px;
+  padding: .45rem .7rem;
+  font-size: .82rem;
+  font-family: var(--sv-mono);
+  background: var(--sv-panel);
+  border: 1px solid var(--sv-border);
+  color: var(--sv-text);
+  border-radius: 3px;
+}
+.tat-filter-panel .form-control::placeholder { color: var(--sv-text-dim); }
+.tat-filter-panel .form-control:focus {
+  background: var(--sv-panel);
+  border-color: var(--sv-cyan);
+  box-shadow: 0 0 0 3px rgba(0,224,255,.14);
+  color: var(--sv-text);
+}
+.tat-filter-panel select.form-control option { background: var(--sv-panel); color: var(--sv-text); }
+
+.tat-filter-panel .btn,
+.tat-dashboard-header .btn {
+  padding: .38rem .75rem;
+  font-size: .74rem;
+  font-family: var(--sv-mono);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-radius: 3px;
+}
+
+/* ── Status strip ─────────────────────────────────────────────────── */
+.tat-status-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: .65rem;
+  padding: .75rem 1rem;
+  background: var(--sv-bg);
+  border-bottom: 1px solid var(--sv-border);
+  align-items: stretch;
+}
+
+.tat-status-tile {
+  background: var(--sv-panel-alt);
+  border: 1px solid var(--sv-border);
+  border-radius: 4px;
+  padding: .65rem .82rem .58rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .15rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.tat-status-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--tile-accent, var(--sv-cyan));
+  box-shadow: 0 6px 20px rgba(0,0,0,.4), 0 0 14px -4px var(--tile-accent, var(--sv-cyan));
+}
+
+.tat-status-tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--tile-accent, var(--sv-cyan));
+  box-shadow: 0 0 8px var(--tile-accent, var(--sv-cyan));
+}
+
+.tat-status-tile::after {
+  content: var(--tile-icon, '');
+  position: absolute;
+  bottom: -6px; right: 6px;
+  font-size: 2rem;
+  opacity: .07;
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  color: var(--tile-accent, var(--sv-cyan));
+  pointer-events: none;
+}
+
+.tat-status-tile strong {
+  display: block;
+  font-family: var(--sv-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--tile-accent, var(--sv-cyan));
+  letter-spacing: -.5px;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--tile-accent, var(--sv-cyan)) 55%, transparent);
+}
+
+.tat-status-tile span {
+  color: var(--sv-text-dim);
+  font-family: var(--sv-mono);
+  font-size: .6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.tat-status-tile small {
+  font-family: var(--sv-mono);
+  color: var(--sv-text-dim) !important;
+}
+
+.tat-tile-total    { --tile-accent: #4fb2e8; --tile-icon: '\f0ce'; }
+.tat-tile-ongoing  { --tile-accent: var(--sv-amber); --tile-icon: '\f254'; }
+.tat-tile-near     { --tile-accent: var(--sv-cyan); --tile-icon: '\f017'; }
+.tat-tile-overdue  { --tile-accent: var(--sv-red); --tile-icon: '\f071'; }
+.tat-tile-released { --tile-accent: var(--sv-green); --tile-icon: '\f058'; }
+
+/* ── Toggle bar ───────────────────────────────────────────────────── */
+.tat-table-toggle-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .55rem 1rem;
+  background: var(--sv-panel-alt);
+  border-top: 1px solid var(--sv-border);
+  border-bottom: 1px solid var(--sv-border);
+  box-shadow: inset 3px 0 0 var(--sv-cyan);
+}
+
+.tat-table-toggle-bar span {
+  font-family: var(--sv-mono);
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--sv-cyan);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.tat-table-toggle-bar small {
+  font-family: var(--sv-mono);
+  color: var(--sv-text-dim) !important;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.btn-toggle-table {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  background: transparent;
+  color: var(--sv-cyan);
+  border: 1px solid var(--sv-border-hi);
+  border-radius: 3px;
+  padding: .3rem .85rem;
+  font-family: var(--sv-mono);
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .25s ease;
+}
+.btn-toggle-table:hover {
+  background: rgba(0, 224, 255, .1);
+  border-color: var(--sv-cyan);
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(0, 224, 255, .2);
+}
+.btn-toggle-table .toggle-icon {
+  transition: transform .3s ease;
+  display: inline-block;
+  font-size: .7rem;
+}
+.btn-toggle-table.collapsed .toggle-icon { transform: rotate(-90deg); }
+
+/* ── Main table (log / terminal view) ────────────────────────────── */
+.tat-main-table-wrap {
+  max-height: 62vh;
+  overflow: auto;
+  background: var(--sv-panel);
+  border-top: 1px solid var(--sv-border);
+  transition: max-height .4s ease, opacity .3s ease;
+}
+.tat-main-table-wrap.table-hidden {
+  max-height: 0; opacity: 0; overflow: hidden; border: none;
+}
+.tat-main-table-wrap::-webkit-scrollbar { width: 9px; height: 9px; }
+.tat-main-table-wrap::-webkit-scrollbar-track { background: var(--sv-panel); }
+.tat-main-table-wrap::-webkit-scrollbar-thumb {
+  background: var(--sv-cyan-dim);
+  border-radius: 5px;
+}
+
+.tat-main-table {
+  min-width: 1550px;
+  margin: 0;
+  font-size: .76rem;
+  font-family: var(--sv-mono);
+  color: var(--sv-text);
+}
+
+.tat-main-table thead {
+  background: #0a141c !important;
+}
+
+.tat-main-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: #0a141c !important;
+  color: var(--sv-cyan);
+  border: 0;
+  white-space: nowrap;
+  text-align: center;
+  font-size: .63rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: .55rem .5rem;
+  border-bottom: 1px solid var(--sv-border-hi);
+}
+
+.tat-main-table td {
+  vertical-align: middle;
+  white-space: nowrap;
+  border-color: rgba(0, 224, 255, .08) !important;
+  color: var(--sv-text);
+}
+
+.tat-main-table tbody tr:nth-child(even) { background: rgba(255,255,255,.015); }
+
+.tat-main-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(0,224,255,.09), rgba(0,224,255,.02)) !important;
+}
+
+.tat-main-table .text-primary { color: var(--sv-cyan) !important; }
+.tat-main-table .text-muted { color: var(--sv-text-dim) !important; }
+.tat-main-table .text-success { color: var(--sv-green) !important; }
+.tat-main-table .text-danger { color: var(--sv-red) !important; }
+
+/* Angular status chips (not soft pills) */
+.tat-pill {
+  border-radius: 2px;
+  display: inline-block;
+  font-family: var(--sv-mono);
+  font-size: .64rem;
+  font-weight: 700;
+  padding: .24rem .55rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
+.tat-pill-running  { background: rgba(53,226,138,.12);  color: var(--sv-green); border: 1px solid var(--sv-green); }
+.tat-pill-ongoing  { background: rgba(255,176,32,.12);  color: var(--sv-amber); border: 1px solid var(--sv-amber); }
+.tat-pill-released { background: rgba(53,226,138,.12);  color: var(--sv-green); border: 1px solid var(--sv-green); }
+.tat-pill-overdue  { background: rgba(255,77,94,.14);   color: var(--sv-red);   border: 1px solid var(--sv-red); }
+.tat-pill-near     { background: rgba(0,224,255,.12);   color: var(--sv-cyan);  border: 1px solid var(--sv-cyan); }
+
+@media (max-width: 992px) {
+  .tat-status-strip { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+}
+@media (max-width: 576px) {
+  .tat-status-strip { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Hero / preview cards section ────────────────────────────────── */
+#slideshow-header {
+  min-height: 0 !important;
+  padding-bottom: 1.35rem !important;
+  background:
+    linear-gradient(180deg, rgba(12, 21, 32, .68) 0%, rgba(12, 21, 32, .4) 55%, rgba(12, 21, 32, .8) 100%),
+    url("{% static 'assets/img/theme/microbial.jpg' %}") center 58% / cover no-repeat !important;
+  position: relative;
+}
+
+#slideshow-header .mask { background: rgba(12, 21, 32, .28) !important; opacity: 1 !important; }
+#slideshow-header::after { opacity: .1 !important; }
+
+#slideshow-header .row.align-items-center.py-4 {
+  padding-top: 1.05rem !important;
+  padding-bottom: .7rem !important;
+}
+#slideshow-header .row.g-3.mb-6 { margin-bottom: 1.05rem !important; }
+
+#slideshow-header h6.h2 {
+  font-family: var(--sv-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-size: 1.05rem !important;
+}
+
+#slideshow-header .breadcrumb-links a {
+  font-family: var(--sv-mono);
+  font-size: .78rem;
+}
+
+#current-date-row {
+  font-family: var(--sv-mono);
+}
+
+#slideshow-header .preview-card { height: 170px; border-radius: 4px; }
+#slideshow-header .card-content { padding: 1.35rem 1.45rem; }
+#slideshow-header .card-icon { font-size: 2.15rem; }
+#slideshow-header .card-title {
+  font-size: 1.05rem;
+  font-family: var(--sv-mono);
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+#slideshow-header .card-description {
+  font-size: .82rem;
+  font-family: var(--sv-mono);
+  opacity: .85;
+}
+
+.preview-card-link .preview-card {
+  border: 1px solid var(--sv-border);
+  background: var(--sv-panel-alt) !important;
+}
+.preview-card-link .card-background {
+  opacity: .16 !important;
+}
+.preview-card-link:hover .preview-card {
+  border-color: var(--sv-border-hi);
+  box-shadow: 0 0 0 1px var(--sv-border-hi), 0 16px 32px rgba(0,0,0,.5);
+}
+
+.header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+</style>
+
+{% endblock stylesheets %}
+
+{% block content %}
+
+<div class="header-container hud-frame">
+      <div class="scanlines" aria-hidden="true"></div>
+      <div class="background-animation-wrapper" aria-hidden="true">
+      <div class="grid-bg"></div>
+      <div class="particles">
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+      </div>
+      <div class="scanner"></div>
+      <div class="scanner"></div>
+      <div class="scanner"></div>
+      <div class="glow-orb"></div>
+      <div class="glow-orb"></div>
+      <div class="overlay"></div>
+  </div>
+
+<div class="header-index">
+      <div class="header-title-row">
+        <div class="header-title-copy">
+          <div class="sv-eyebrow mb-1"><span class="live-dot"></span>Node Active &nbsp;/&nbsp; Surveillance Network Online</div>
+          <h1>Antimicrobial Resistance Surveillance Program</h1>
+          <p style="font-size: 15px; font-weight: 400; font-family: var(--sv-mono); color: var(--sv-text-dim);">AST RESULTS MANAGEMENT SYSTEM</p>
+        </div>
+      
+      </div>
+
+        <div class="header-action-row">
+          <div class="badge-group">
+            <a href="{% url 'emerging_list_view' %}" class="badge badge-pill badge-primary text-decoration-none"><span class="badge-icon">🔬</span>Emerging Pathogens  </a>
+            <div class="badge"><span class="badge-icon">📊</span>Real-time Data</div>
+            <a href="{% url 'tat_review_view' %}" class="badge badge-pill badge-primary text-decoration-none">
+              <span class="badge-icon mr-1">⚡</span>
+              TAT Monitoring
+            </a>
+            <a href="{% url 'concordance_analysis' %}"
+              class="badge badge-pill badge-success text-decoration-none">
+              <span class="badge-icon mr-1">🔄</span>
+              Concordance Dashboard
+            </a>
+             <a href="{% url 'batch_create_view' %}"
+              class="badge badge-pill badge-secondary">
+              <span class="badge-icon mr-1">+</span>
+             Add New
+            </a>
+          </div>
+
+        </div>
+    </div>
+
+
+    <div class="header-stats index-font">
+  <!-- <a href="{% url 'batch_create_view' %}" class="btn-new-crf index-font">+ Add New</a> -->
+        <div class="stat-item">
+            <span class="stat-number">{{ record_count }}</span>
+            <span class="stat-label">Total Records</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ site_count }}</span>
+            <span class="stat-label">Active Sites</span>
+        </div>
+
+    </div>
+
+
+</div> 
+
+    <!-- Header -->
+    <div id="slideshow-header" class="header bg-primary pb-6 g-gradient-default align-items-center index-font" style="min-height: 145px; background-size: cover; background-image: url(/static/assets/img/theme/arsp-hero.png); background-position: center center;">
+      <span class="mask bg-gradient-default opacity-3"></span>
+      <div class="container-fluid">
+        <div class="header-body">
+                                   <div class="header-year-scope">Referral year: {{ dashboard_year_label }}</div>
+          <div class="row align-items-center py-4">
+
+            <div class="col-lg-6 col-7">
+              <h6 class="h2 text-white d-inline-block mb-0">Home</h6>
+              <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+                <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+                  <li class="breadcrumb-item"><a href="#"><i class="fas fa-home"></i></a></li>
+                  <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                </ol>
+              </nav>
+            </div>
+            <div class="col-lg-6 col-12 text-right">
+              <span style="color: rgba(255,255,255,0.7); font-size: .85rem; font-weight: 500; font-family: var(--sv-mono);">
+                <span class="live-dot"></span>
+                <i class="ni ni-calendar-grid-58 mr-2"></i>
+                <span id="current-date"></span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Preview Cards -->
+          <div class="row g-3 mb-6">
+
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="{% url 'view_wgs_overview' %}" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #2dce89 0%, #11cdef 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="ni ni-atom"></i></div>
+                    <h5 class="card-title">WGS Overview</h5>
+                    <p class="card-description">Whole Genome Sequencing Results</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="{% url 'antibiotics_view' %}" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #11cdef 0%, #64c8ff 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="fas fa-medkit"></i></div>
+                    <h5 class="card-title">Antibiotics</h5>
+                    <p class="card-description">View Antibiotics</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="{% url 'review_batches' %}" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #64c8ff 0%, #5e72e4 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="fa fa-cubes"></i></div>
+                    <h5 class="card-title">Batches</h5>
+                    <p class="card-description">Batch Management System</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="#" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #fb6340 0%, #fbc658 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="ni ni-chart-pie-35"></i></div>
+                    <h5 class="card-title">Reports</h5>
+                    <p class="card-description">Generate Reports</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Page content -->
+    <div class="container-fluid mt--4 index-font index-content-panel">
+      <div class="dashboard-animation-wrapper" aria-hidden="true">
+        <div class="grid-bg"></div>
+        <div class="particles">
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+        </div>
+        <div class="scanner"></div>
+        <div class="scanner"></div>
+        <div class="scanner"></div>
+        <div class="glow-orb"></div>
+        <div class="glow-orb"></div>
+        <div class="overlay"></div>
+      </div>
+      <div class="row">
+        <div class="col-xl-12">
+          <div class="card tat-dashboard-card hud-frame">
+
+            <!-- ── Card header ── -->
+            <div class="tat-dashboard-header d-flex justify-content-between align-items-center flex-wrap">
+              <div>
+                <h3 class="mb-0 text-white">
+                  <i class="ni ni-time-alarm mr-2"></i>RUNNING TAT
+                </h3>
+                <small style="color:#d7f7ff;">Running status view for batches currently monitored for TAT.</small>
+              </div>
+              <div class="d-flex align-items-center mt-2 mt-md-0">
+                <a href="{% url 'tat_running_list' %}" class="btn btn-sm btn-light mr-2">
+                  <i class="fas fa-list mr-1"></i> Full List
+                </a>
+                <form method="get" action="{% url 'export_tat_excel' %}" class="d-flex align-items-center flex-wrap justify-content-end" style="gap:0.35rem;">
+                  <input type="hidden" name="tat_q" value="{{ tat_q }}">
+                  <input type="hidden" name="tat_status" value="{{ tat_status }}">
+                  <input type="hidden" name="tat_year" value="{{ tat_year }}">
+                  <input type="date" name="date_from" class="form-control form-control-sm" title="Referral date from" style="width:135px;">
+                  <input type="date" name="date_to" class="form-control form-control-sm" title="Referral date to" style="width:135px;">
+
+                  <button type="submit" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-download mr-1"></i> Export
+                  </button>
+                  <!-- <small class="w-100 text-right" style="font-size:0.7rem; color:#d7f7ff;">
+                    Filtered by: TAT Referral Date.
+                  </small> -->
+                </form>
+
+              </div>
+
+            </div>
+
+            <!-- ── Filters ── -->
+            <form method="get" class="tat-filter-panel">
+              <div class="row align-items-end">
+                <div class="col-lg-5 col-md-12 mb-3 mb-lg-0">
+                  <label>Search</label>
+                  <input class="form-control" name="tat_q" value="{{ tat_q }}" placeholder="Batch, site, or accession range" type="text">
+                </div>
+                <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+                  <label>Status</label>
+                  <select class="form-control" name="tat_status">
+                    <option value="">All Status</option>
+                    {% for item in tat_status_choices %}
+                      <option value="{{ item }}" {% if tat_status == item %}selected{% endif %}>{{ item }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+                  <label>Year</label>
+                  <select class="form-control" name="tat_year">
+                    <option value="all" {% if tat_year == "all" %}selected{% endif %}>All Years</option>
+                    {% for item in tat_years %}
+                      <option value="{{ item }}" {% if tat_year == item|stringformat:"s" %}selected{% endif %}>{{ item }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-lg-3 col-md-4 d-flex">
+                  <button class="btn btn-primary flex-fill mr-2" type="submit">
+                    <i class="fas fa-search mr-1"></i> Filter
+                  </button>
+                  <a href="{% url 'home' %}" class="btn btn-secondary">Reset</a>
+                </div>
+              </div>
+            </form>
+
+            <!-- ── Status strip ── -->
+            <div class="tat-status-strip">
+
+              <div class="tat-status-tile tat-tile-total">
+                <span>Total</span>
+                <strong>{{ tat_status_counts.total }}</strong>
+                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">All batches</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-ongoing">
+                <span>Ongoing</span>
+                <strong>{{ tat_status_counts.ongoing }}</strong>
+                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">In progress</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-near">
+                <span>Near Due</span>
+                <strong>{{ tat_status_counts.near_due }}</strong>
+                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">Approaching deadline</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-overdue">
+                <span>Overdue</span>
+                <strong>{{ tat_status_counts.overdue }}</strong>
+                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">Past deadline</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-released">
+                <span>Released</span>
+                <strong>{{ tat_status_counts.released }}</strong>
+                <small style="font-size:.68rem;color:#a0aec0;margin-top:.15rem;">Completed</small>
+              </div>
+
+            </div>
+
+            <!-- ── Toggle bar ── -->
+            <div class="tat-table-toggle-bar">
+              <span>
+                <i class="fas fa-table mr-1"></i> TAT Records Table
+                <small class="text-muted ml-2">
+                  Showing latest {{ tat_running_rows|length }}{% if tat_running_total %} of {{ tat_running_total }}{% endif %}
+                </small>
+              </span>
+              <button class="btn-toggle-table" id="tatTableToggle" type="button" onclick="toggleTatTable()">
+                <span class="toggle-icon">&#9660;</span>
+                <span class="toggle-label">Hide TAT Table</span>
+              </button>
+            </div>
+
+            <!-- ── Main table ── -->
+            <div class="tat-main-table-wrap" id="tatTableWrap">
+              <table class="table table-hover tat-main-table">
+                <thead>
+                  <tr>
+                    <th>Batch</th>
+                    <th>Site</th>
+                    <th>Accessions</th>
+                    <th>Referral Date</th>
+                    <th>No. Isolates</th>
+                    <th>Running TAT</th>
+                    <th>Status</th>
+                    <th>Action Taken</th>
+                    <th>Assigned To</th>
+                    <th>Location</th>
+                    <th>Date Released</th>
+                    <th>Final TAT</th>
+                    <th>Action</th>
+                    {% for config in tat_configs|slice:":4" %}
+                      <th>{{ config.step_type }} Days</th>
+                      <th>Within</th>
+                    {% endfor %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in tat_running_rows %}
+                  <tr>
+                    <td class="font-weight-bold text-primary">{{ row.batch_name|default:"-" }}</td>
+                    <td>{{ row.site_code|default:"-" }}</td>
+                    <td>{{ row.accessions|default:"-" }}</td>
+                    <td>{{ row.referral_date|date:"M d, Y"|default:"-" }}</td>
+                    <td class="text-center">{{ row.num_isolates|default:"-" }}</td>
+                    <td class="text-center">
+                      <span class="tat-pill tat-pill-running">{{ row.effective_days|default:"-" }} days</span>
+                    </td>
+                    <td class="text-center">
+                      {% if row.is_overdue %}
+                        <span class="tat-pill tat-pill-overdue">Overdue</span>
+                      {% elif row.near_due %}
+                        <span class="tat-pill tat-pill-near">Near Due</span>
+                      {% elif row.tat.tat_Status_Release == "Released" %}
+                        <span class="tat-pill tat-pill-released">Released</span>
+                      {% else %}
+                        <span class="tat-pill tat-pill-ongoing">{{ row.tat.tat_Status_Release }}</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ row.action_taken|default:"-" }}</td>
+                    <td>{{ row.assigned_to|default:"-" }}</td>
+                    <td>{{ row.location|default:"-" }}</td>
+                    <td>{{ row.tat.tat_Date_Released|date:"M d, Y"|default:"-" }}</td>
+                    <td class="text-center">{{ row.tat.tat_Final_TAT|default:"-" }}</td>
+                    <td>
+                      {% if row.batch %}
+                        <a href="{% url 'tat_monitoring_view' row.batch.id %}" class="btn btn-sm btn-primary">
+                          <i class="fas fa-tasks mr-1 text-white"></i>  <span class="text-white">Update Process</span>
+                        </a>
+                      {% else %}
+                        <span class="text-muted">-</span>
+                      {% endif %}
+                    </td>
+                    {% for cell in row.step_cells|slice:":4" %}
+                      <td class="text-center">{{ cell.step.step_days_count|default:"-" }}</td>
+                      <td class="text-center">
+                        {% if cell.step.within_tat %}
+                          <span class="text-success font-weight-bold">Yes</span>
+                        {% elif cell.step.within_tat == False %}
+                          <span class="text-danger font-weight-bold">No</span>
+                        {% else %}
+                          <span class="text-muted">-</span>
+                        {% endif %}
+                      </td>
+                    {% endfor %}
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="19" class="text-center text-muted py-5">No TAT records found.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <!-- /table wrap -->
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+{% endblock content %}
+
+{% block javascripts %}
+<script src="/static/assets/vendor/chart.js/dist/Chart.min.js"></script>
+<script src="/static/assets/vendor/chart.js/dist/Chart.extension.js"></script>
+
+<script>
+  /* ── Table toggle ── */
+  function toggleTatTable() {
+    const wrap   = document.getElementById('tatTableWrap');
+    const btn    = document.getElementById('tatTableToggle');
+    const label  = btn.querySelector('.toggle-label');
+    const icon   = btn.querySelector('.toggle-icon');
+    const hidden = wrap.classList.toggle('table-hidden');
+
+    label.textContent = hidden ? 'View TAT Table' : 'Hide TAT Table';
+    icon.innerHTML    = hidden ? '&#9654;' : '&#9660;';
+    btn.classList.toggle('collapsed', hidden);
+  }
+</script>
+
+<script>
+  function searchTable() {
+    var input  = document.querySelector("#search-input input");
+    var filter = input.value.toLowerCase();
+    var rows   = document.querySelectorAll(".tat-main-table tbody tr");
+    rows.forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
+    });
+  }
+</script>
+
+<!-- <script>
+  const images = [
+    '/static/assets/img/theme/resistance1.jpg',
+    '/static/assets/img/theme/resistance3.jpg',
+    '/static/assets/img/theme/resistance4.jpg',
+    '/static/assets/img/theme/resistance5.jpg',
+    '/static/assets/img/theme/viruses.jpg',
+    '/static/assets/img/theme/microbial.jpg'
+  ];
+  let index = 0;
+  const header = document.getElementById('slideshow-header');
+  function changeBackground() {
+    header.style.backgroundImage = `url(${images[index]})`;
+    index = (index + 1) % images.length;
+  }
+  changeBackground();
+  setInterval(changeBackground, 15000);
+</script> -->
+
+<script>
+  document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+  });
+</script>
+
+{% endblock javascripts %}

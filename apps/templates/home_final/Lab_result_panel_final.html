@@ -178,6 +178,7 @@ tr {
 {% with isolate=isolate_data.isolate %}
 {% with grouped_rows=isolate_data.grouped_rows %}
 {% with grouped_ars_rows=isolate_data.grouped_ars_rows %}
+{% with site_is_plus=isolate_data.site_uses_plus_layout %}
 
 {% if grouped_rows %}
 
@@ -208,8 +209,10 @@ tr {
 </tr>
 
 <tr>
-    <td colspan="20" style="font-size: 10px;" class="gray"><strong>Sentinel Site Results</strong></td>
+    <td colspan="{% if site_is_plus %}30{% else %}20{% endif %}" style="font-size: 10px;" class="gray"><strong>Sentinel Site Results</strong></td>
+    {% if not site_is_plus %}
     <td colspan="10" style="font-size: 10px; border-bottom: 0; text-align: left;"><strong>Remarks:</strong></td>
+    {% endif %}
 </tr>
 
 <tr>
@@ -220,9 +223,11 @@ tr {
             <strong><i>No Organism Identified</i></strong>
         {% endif %}
     </td>
-    <td colspan="6">{{ isolate.f_Site_Pre_ed|prefer_text:isolate.f_Site_Pre }}</td>
-    <td colspan="6">{{ isolate.f_Site_Pos_ed|prefer_text:isolate.f_Site_Pos }}</td>
+    <td colspan="{% if site_is_plus %}11{% else %}6{% endif %}">{{ isolate.f_Site_Pre_ed|prefer_text:isolate.f_Site_Pre }}</td>
+    <td colspan="{% if site_is_plus %}11{% else %}6{% endif %}">{{ isolate.f_Site_Pos_ed|prefer_text:isolate.f_Site_Pos }}</td>
+    {% if not site_is_plus %}
     <td colspan="10" style="border-top: 0;">{{isolate.f_Comments|default:""}}</td>
+    {% endif %}
 </tr>
 
 <tr>
@@ -338,8 +343,10 @@ tr {
 </tr>
 
 <tr>
-    <td colspan="20" style="font-size: 10px;" class="gray"><strong>Sentinel Site Results</strong></td>
+    <td colspan="{% if site_is_plus %}30{% else %}20{% endif %}" style="font-size: 10px;" class="gray"><strong>Sentinel Site Results</strong></td>
+    {% if not site_is_plus %}
     <td colspan="10" style="font-size: 10px; border-bottom: 0; text-align: left;"><strong>Remarks:</strong></td>
+    {% endif %}
 </tr>
 
 <tr>
@@ -351,9 +358,11 @@ tr {
             <strong><i>No Organism Identified</i></strong>
         {% endif %}
     </td>
-    <td colspan="6">{{ isolate.f_Site_Pre_ed|prefer_text:isolate.f_Site_Pre }}</td>
-    <td colspan="6">{{ isolate.f_Site_Pos_ed|prefer_text:isolate.f_Site_Pos }}</td>
+    <td colspan="{% if site_is_plus %}11{% else %}6{% endif %}">{{ isolate.f_Site_Pre_ed|prefer_text:isolate.f_Site_Pre }}</td>
+    <td colspan="{% if site_is_plus %}11{% else %}6{% endif %}">{{ isolate.f_Site_Pos_ed|prefer_text:isolate.f_Site_Pos }}</td>
+    {% if not site_is_plus %}
     <td colspan="10" style="border-top: 0;">&nbsp;</td>
+    {% endif %}
 </tr>
 
 <tr>
@@ -576,6 +585,7 @@ tr {
 {% endwith %}
 {% endwith %}
 {% endwith %}
+{% endwith %}
 {% endfor %}
 
 </tbody>
@@ -606,13 +616,13 @@ tr {
       <td colspan="1"></td>
       <td colspan="2" style="font-size: 9px;"></td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Encoder|with_staff_credentials|professional_caps }}<br>{% if page.0.isolate.f_arsp_Enc_Lic|lower != "none" %}Lic No: {{page.0.isolate.f_arsp_Enc_Lic}}{% else %}&nbsp;{% endif %}</td>
+      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Encoder|with_staff_credentials|professional_caps }}<br>{% clean_firstof page.0.isolate.f_arsp_Enc_Lic page.0.isolate.f_arsp_Encoder|staff_license as enc_lic %}{% if enc_lic|lower != "none" %}Lic No: {{ enc_lic }}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Checker|with_staff_credentials|professional_caps }}<br>{% if page.0.isolate.f_arsp_Chec_Lic%}Lic No: {{page.0.isolate.f_arsp_Chec_Lic|default:""}}{% else %}&nbsp;{% endif %}</td>
+      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Checker|with_staff_credentials|professional_caps }}<br>{% clean_firstof page.0.isolate.f_arsp_Chec_Lic page.0.isolate.f_arsp_Checker|staff_license as chec_lic %}{% if chec_lic %}Lic No: {{ chec_lic|default:"" }}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="7" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Verifier|with_staff_credentials|professional_caps }} / {{ page.0.isolate.f_arsp_LabManager|with_staff_credentials|professional_caps }}<br>{% if page.0.isolate.f_arsp_Ver_Lic or page.0.isolate.f_arsp_Lab_Lic %}License No.:{% if page.0.isolate.f_arsp_Ver_Lic %} {{ page.0.isolate.f_arsp_Ver_Lic|default:"" }}{% endif %}{% if page.0.isolate.f_arsp_Ver_Lic and page.0.isolate.f_arsp_Lab_Lic %} / {% endif %}{% if page.0.isolate.f_arsp_Lab_Lic %}{{ page.0.isolate.f_arsp_Lab_Lic|default:"" }}{% endif %}{% else %}&nbsp;{% endif %}</td>
+      <td colspan="7" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Verifier|with_staff_credentials|professional_caps }} / {{ page.0.isolate.f_arsp_LabManager|with_staff_credentials|professional_caps }}<br>{% clean_firstof page.0.isolate.f_arsp_Ver_Lic page.0.isolate.f_arsp_Verifier|staff_license as ver_lic %}{% clean_firstof page.0.isolate.f_arsp_Lab_Lic page.0.isolate.f_arsp_LabManager|staff_license as lab_lic %}{% if ver_lic or lab_lic %}License No.:{% if ver_lic %} {{ ver_lic|default:"" }}{% endif %}{% if ver_lic and lab_lic %} / {% endif %}{% if lab_lic %}{{ lab_lic|default:"" }}{% endif %}{% else %}&nbsp;{% endif %}</td>
       <td colspan="2"></td>
-      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Head|with_staff_credentials|professional_caps }}<br>{% if page.0.isolate.f_arsp_Head_Lic%}Lic No: {{page.0.isolate.f_arsp_Head_Lic|default:""}}{% else %}&nbsp;{% endif%}</td>
+      <td colspan="4" style="font-size: 9px;">{{ page.0.isolate.f_arsp_Head|with_staff_credentials|professional_caps }}<br>{% clean_firstof page.0.isolate.f_arsp_Head_Lic page.0.isolate.f_arsp_Head|staff_license as head_lic %}{% if head_lic %}Lic No: {{ head_lic|default:"" }}{% else %}&nbsp;{% endif%}</td>
     </tr>
     <tr>
       <td colspan="30" style="font-size:10px; border: 1px solid black; padding: 2px;">

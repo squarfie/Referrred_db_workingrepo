@@ -66,6 +66,7 @@
     }
 
     .wgs-year-filter,
+    .wgs-organism-filter,
     .wgs-date-filter {
       height: 30px;
       border: 1px solid #d8e2ef;
@@ -78,6 +79,11 @@
 
     .wgs-year-filter {
       width: 125px;
+      height: 38px;
+    }
+
+    .wgs-organism-filter {
+      width: 170px;
       height: 38px;
     }
 
@@ -290,9 +296,21 @@
     }
 
     #wgs-table {
+      width: 100%;
+      table-layout: fixed;
       margin: 0;
       border-collapse: collapse;
       background: transparent;
+    }
+
+    #wgs-table th:first-child,
+    #wgs-table td:first-child {
+      width: 210px;
+    }
+
+    #wgs-table th:last-child,
+    #wgs-table td:last-child {
+      width: 120px;
     }
 
     #wgs-table thead {
@@ -305,7 +323,7 @@
       background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
       backdrop-filter: blur(14px) saturate(125%);
       -webkit-backdrop-filter: blur(14px) saturate(125%);
-      border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+      border-bottom: 1px solid rgba(203, 206, 206, 0.34);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
 
@@ -492,7 +510,7 @@
                   <button class="btn btn-neutral btn-sm" type="submit">
                     <i class="fas fa-search mr-1"></i>Search
                   </button>
-                  {% if q or selected_year %}
+                  {% if q or selected_year or selected_organism %}
                     <a href="{% url 'view_wgs_overview' %}" class="search-clear-btn">
                       <i class="fas fa-redo"></i>
                       Reset
@@ -506,6 +524,13 @@
               <option value="">All Years</option>
               {% for year in available_years %}
                 <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+
+            <select name="organism" class="form-control form-control-sm wgs-organism-filter" onchange="this.form.submit()">
+              <option value="">All Organisms</option>
+              {% for organism in available_organisms %}
+                <option value="{{ organism }}" {% if selected_organism == organism %}selected{% endif %}>{{ organism }}</option>
               {% endfor %}
             </select>
 
@@ -544,7 +569,7 @@
               <i class="ni ni-lock-circle-open mr-1"></i>AMRFinder
             </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="amrfinder" checked> Show</label></div>{% endif %}
             {% for pipeline in selected_custom_pipelines %}
-            <div class="pipeline-control"><button class="btn btn-sm btn-outline-info filter-btn" data-filter="custom{{ pipeline.id }}">
+            <div class="pipeline-control"><button class="btn btn-sm btn-outline-custom-pipeline filter-btn" data-filter="custom{{ pipeline.id }}">
               <i class="ni ni-bullet-list-67 mr-1"></i>{{ pipeline.name }}
             </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle custom-pipeline-toggle" data-column="custom{{ pipeline.id }}" value="{{ pipeline.slug }}" checked> Show</label></div>
             {% endfor %}
@@ -692,7 +717,7 @@
                       {% for pipeline in selected_custom_pipelines %}
                       <div class="pipeline-control">
                         <button
-                          class="btn btn-sm btn-outline-info filter-btn"
+                          class="btn btn-sm btn-outline-custom-pipeline filter-btn"
                           data-filter="custom{{ pipeline.id }}"
                         >
                           <i class="ni ni-bullet-list-67 mr-1"></i>
@@ -742,7 +767,7 @@
               {% if "assembly" in visible_builtin_overview_keys %}<th data-column="assembly"><i class="ni ni-settings text-danger"></i> Assembly</th>{% endif %}
               {% if "amrfinder" in visible_builtin_overview_keys %}<th data-column="amrfinder"><i class="ni ni-lock-circle-open text-purple"></i> AMRFinder</th>{% endif %}
               {% for pipeline in selected_custom_pipelines %}
-              <th data-column="custom{{ pipeline.id }}"><i class="ni ni-bullet-list-67 text-info"></i> {{ pipeline.name }}</th>
+              <th data-column="custom{{ pipeline.id }}"><i class="ni ni-bullet-list-67 text-custom-pipeline"></i> {{ pipeline.name }}</th>
               {% endfor %}
               <th>Action</th>
             </tr>
@@ -876,6 +901,10 @@
   color: #8965e0;
 }
 
+.text-custom-pipeline {
+  color: #1e5a96;
+}
+
 .text-warning {
   color: #fbc658;
 }
@@ -894,6 +923,17 @@
 .btn-outline-purple:hover {
   background-color: #8965e0;
   border-color: #8965e0;
+  color: white;
+}
+
+.btn-outline-custom-pipeline {
+  color: #1e5a96;
+  border-color: #1e5a96;
+}
+
+.btn-outline-custom-pipeline:hover {
+  background-color: #1e5a96;
+  border-color: #1e5a96;
   color: white;
 }
 
@@ -930,7 +970,8 @@
 }
 
 .filter-btn[data-filter^="custom"].active {
-  --btn-bg: #11cdef;
+  --btn-bg: #1e5a96;
+  border-color: #1e5a96;
 }
 
 .pipeline-control {
@@ -983,9 +1024,42 @@ document.addEventListener('DOMContentLoaded', function() {
   const columnToggles = document.querySelectorAll('.pipeline-column-toggle');
   const activeFilters = new Set();
   const filterLabels = {};
+  const columnVisibilityStorageKey = 'wgsOverviewColumnVisibility:v1:user:{{ request.user.pk|default:"anon" }}';
   filterButtons.forEach(btn => {
     filterLabels[btn.dataset.filter] = btn.textContent.trim();
   });
+
+  function loadColumnVisibilityPrefs() {
+    try {
+      const savedPrefs = window.localStorage.getItem(columnVisibilityStorageKey);
+      return savedPrefs ? JSON.parse(savedPrefs) : {};
+    } catch (error) {
+      console.warn('Unable to load WGS column visibility preference.', error);
+      return {};
+    }
+  }
+
+  function saveColumnVisibilityPrefs() {
+    const prefs = {};
+    columnToggles.forEach(toggle => {
+      prefs[toggle.dataset.column] = toggle.checked;
+    });
+
+    try {
+      window.localStorage.setItem(columnVisibilityStorageKey, JSON.stringify(prefs));
+    } catch (error) {
+      console.warn('Unable to save WGS column visibility preference.', error);
+    }
+  }
+
+  function applySavedColumnVisibilityPrefs() {
+    const prefs = loadColumnVisibilityPrefs();
+    columnToggles.forEach(toggle => {
+      if (Object.prototype.hasOwnProperty.call(prefs, toggle.dataset.column)) {
+        toggle.checked = Boolean(prefs[toggle.dataset.column]);
+      }
+    });
+  }
 
   function currentDetailColspan() {
     const visiblePipelineCount = Array.from(columnToggles).filter(input => input.checked).length;
@@ -1061,10 +1135,13 @@ document.addEventListener('DOMContentLoaded', function() {
     showAllRows();
   });
 
+  applySavedColumnVisibilityPrefs();
+
   columnToggles.forEach(toggle => {
     setColumnVisibility(toggle.dataset.column, toggle.checked);
     toggle.addEventListener('change', function() {
       setColumnVisibility(this.dataset.column, this.checked);
+      saveColumnVisibilityPrefs();
     });
   });
 

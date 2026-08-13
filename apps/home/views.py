@@ -163,6 +163,11 @@ def _code_iexact_filter(field_name, codes):
     return query if has_codes else Q(pk__in=[])
 
 
+def _antibiotic_view_mode(request):
+    mode = (request.GET.get("antibiotic_view") or request.POST.get("antibiotic_view") or "all").strip().lower()
+    return "panel" if mode == "panel" else "all"
+
+
 def _raw_antibiotics_for_panel(
     *,
     org_code,
@@ -171,8 +176,15 @@ def _raw_antibiotics_for_panel(
     retest=False,
     require_org=False,
     existing_whonet_codes=None,
+    antibiotic_view="all",
 ):
     qs = Antibiotic_List.objects.all()
+    antibiotic_view = (antibiotic_view or "all").strip().lower()
+    existing_whonet_codes = {
+        (code or "").strip().upper()
+        for code in (existing_whonet_codes or [])
+        if (code or "").strip()
+    }
 
     if retest:
         qs = qs.filter(Retest=True)
@@ -182,8 +194,25 @@ def _raw_antibiotics_for_panel(
     org_code = (org_code or "").strip()
     if _is_no_organism(org_code):
         return qs.none()
-    if not org_code:
-        return qs.order_by("Antibiotic", "Whonet_Abx")
+
+    if antibiotic_view == "panel":
+        if not org_code:
+            return qs.none()
+        breakpoint_year = _year_as_int(specimen_year) or specimen_year
+        panel_codes = {
+            (code or "").strip().upper()
+            for code in get_breakpoint_panel_abx_codes(breakpoint_year, org_code)
+            if (code or "").strip()
+        }
+        panel_filter = (
+            _code_iexact_filter("Whonet_Abx", panel_codes)
+            | _code_iexact_filter("Abx_code", panel_codes)
+        )
+        if existing_whonet_codes:
+            panel_filter |= _code_iexact_filter("Whonet_Abx", existing_whonet_codes)
+        return qs.filter(panel_filter).distinct().order_by("Antibiotic", "Whonet_Abx")
+
+    qs = qs.filter(Show_All=True)
     return qs.order_by("Antibiotic", "Whonet_Abx")
 from django.utils.http import urlencode, url_has_allowed_host_and_scheme
 import csv
@@ -212,6 +241,7 @@ from apps.home.permissions import (
     role_required,
 
 )
+from apps.authentication.models import UserApproval
 
 
 def _parse_disk_value(value):
@@ -317,13 +347,17 @@ def _save_or_delete_antibiotic_entry(entry):
         entry.delete()
 
 
+NO_ORGANISM_CODES = {"", "n/a", "na", "n.a.", "nv", "none", "null", "nan"}
+
+
 def _is_no_organism(value):
-    return (value or "").strip().lower() in {"", "n/a", "na", "none"}
+    return (value or "").strip().lower() in NO_ORGANISM_CODES
 
 
 FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS = {
     "ABI", "GCT", "AGT", "BD-", "BR-", "CAM", "CAR", "EIK", "FRA",
-    "HA-", "HEL", "KIN", "LEG", "MOR", "NE-",
+    "HA-", "HEL", "KIN", "LEG", "MOR", "NE-", "NV", "N/A", "NA",
+    "N.A.", "NONE", "NULL", "NAN",
 }
 
 
@@ -343,19 +377,33 @@ def _uses_fastidious_plus_layout(organism):
     if codes & FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS:
         return True
 
-    organism_name = str(organism.get("Organism") or "").strip().lower()
-    return "HA-" in FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS and (
-        "HIN" in codes or organism_name.startswith("haemophilus ")
+    return _organism_name_uses_fastidious_plus_layout(organism.get("Organism")) or bool(
+        {"HIN", "NME"} & codes
     )
 
 
-def _organism_type_is_plus(org_code):
+def _organism_name_uses_fastidious_plus_layout(organism_name):
+    name = str(organism_name or "").strip().lower()
+    return name.startswith(("haemophilus ", "neisseria "))
+
+
+def _organism_type_is_plus(org_code, organism_name=None):
     code = str(org_code or "").strip()
-    if not code:
+    if _is_no_organism(code):
+        return True
+    if _organism_name_uses_fastidious_plus_layout(organism_name or code):
+        return True
+    name = str(organism_name or "").strip()
+    if not code and not name:
         return False
+    lookup = Q()
+    if code:
+        lookup |= Q(Whonet_Org_Code__iexact=code) | Q(Replaced_by__iexact=code) | Q(Organism__iexact=code)
+    if name:
+        lookup |= Q(Organism__iexact=name)
     organism = (
         Organism_List.objects
-        .filter(Q(Whonet_Org_Code__iexact=code) | Q(Replaced_by__iexact=code))
+        .filter(lookup)
         .values("Whonet_Org_Code", "Replaced_by", "Organism_Type", "Species_Group", "Genus_Group", "Genus_Code", "Organism")
         .first()
     )
@@ -397,23 +445,50 @@ def get_clinic_code(request):
 @login_required
 @role_required(ROLE_ADMIN, ROLE_CHECKER)
 def settings_page(request):
+    active_tab = request.GET.get("tab", "")
+    edit_tat_config_id = request.GET.get("edit_tat_config") or request.GET.get("edit")
+    edit_tat_config = None
+    tat_config_form = TATStepConfigForm()
+
+    if active_tab == "tat_config" and edit_tat_config_id:
+        edit_tat_config = get_object_or_404(TATStepConfig, pk=edit_tat_config_id)
+        tat_config_form = TATStepConfigForm(instance=edit_tat_config)
+
     users = User.objects.all().order_by("last_name", "first_name", "username")
     profile_map = {
         profile.user_id: profile
         for profile in UserProfile.objects.filter(user__in=users)
     }
+    approval_map = {
+        approval.user_id: approval
+        for approval in UserApproval.objects.select_related("user", "reviewed_by")
+    }
     staff_map = {
         staff.User_Account_id: staff
-        for staff in arsStaff_Details.objects.filter(User_Account__in=users)
+        for staff in arsStaff_Details.objects.filter(User_Account__in=users).select_related("User_Account")
     }
+    available_staff = (
+        arsStaff_Details.objects
+        .filter(User_Account__isnull=True)
+        .order_by("Staff_Name", "Staff_License")
+    )
     account_rows = []
     for account in users:
         profile = profile_map.get(account.id)
         staff = staff_map.get(account.id)
+        approval = approval_map.get(account.id)
+        needs_staff_link = (
+            account.is_active
+            and not account.is_superuser
+            and not account.is_staff
+            and not staff
+        )
         account_rows.append({
             "user": account,
             "middle_name": profile.Middle_Name if profile else "",
             "staff": staff,
+            "approval": approval,
+            "needs_staff_link": needs_staff_link,
             "resolved_role": get_user_role(account),
             "resolved_roles": sorted(get_user_roles(account)),
         })
@@ -452,11 +527,17 @@ def settings_page(request):
         "phenotype_post_upload": Pheno_post_upForm(),
         "reco_desc_form": Recco_item_Form(),
         "reco_desc_upload": Reco_item_upForm(),
-        "tat_config_form": TATStepConfigForm(),
+        "tat_config_form": tat_config_form,
+        "edit_tat_config": edit_tat_config,
+        "tat_config_editing": active_tab == "tat_config" and edit_tat_config is not None,
         "tat_upload_form": TATStepConfigUploadForm(),
+        "tat_location_form": TATLocationForm(),
+        "tat_locations": TATLocation.objects.all(),
         "non_working_form": NonWorkingDayForm(),
         "non_working_days": NonWorkingDay.objects.all(),
         "account_rows": account_rows,
+        "available_staff": available_staff,
+        "approval_require_staff_link": getattr(settings, "ACCOUNT_APPROVAL_REQUIRE_STAFF_LINK", False),
         "builtin_wgs_settings": BuiltinWGSPipelineSetting.objects.all(),
         "wgs_pipeline_cards": build_wgs_pipeline_cards(),
         "user_access": role_flags(request.user),
@@ -467,6 +548,169 @@ def settings_page(request):
     }
 
     return render(request, "home/Settings.html", context)
+
+
+@login_required
+@role_required(ROLE_ADMIN)
+@require_POST
+def approve_account(request, approval_id):
+    approval = get_object_or_404(
+        UserApproval.objects.select_related("user"),
+        pk=approval_id,
+        status=UserApproval.STATUS_PENDING,
+    )
+    staff_id = request.POST.get("staff_id")
+    if not staff_id:
+        messages.error(request, "Select an unlinked ARSP staff record before approving the account.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    try:
+        with transaction.atomic():
+            staff = arsStaff_Details.objects.select_for_update().get(pk=staff_id)
+            if staff.User_Account_id is not None:
+                messages.error(request, "That ARSP staff record is already linked to another account.")
+                return redirect("/settings/?tab=accounts_tab")
+
+            user = approval.user
+            staff.User_Account = user
+            staff.save(update_fields=["User_Account"])
+
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+
+            approval.status = UserApproval.STATUS_APPROVED
+            approval.reviewed_by = request.user
+            approval.reviewed_at = timezone.now()
+            approval.save(update_fields=["status", "reviewed_by", "reviewed_at"])
+    except arsStaff_Details.DoesNotExist:
+        messages.error(request, "Selected ARSP staff record was not found.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    messages.success(request, f"{approval.user.username} was approved and linked to {staff.display_name}.")
+    return redirect("/settings/?tab=accounts_tab")
+
+
+@login_required
+@role_required(ROLE_ADMIN)
+@require_POST
+def decline_account(request, approval_id):
+    approval = get_object_or_404(
+        UserApproval.objects.select_related("user"),
+        pk=approval_id,
+        status=UserApproval.STATUS_PENDING,
+    )
+    user = approval.user
+    user.is_active = False
+    user.save(update_fields=["is_active"])
+
+    approval.status = UserApproval.STATUS_DECLINED
+    approval.reviewed_by = request.user
+    approval.reviewed_at = timezone.now()
+    approval.save(update_fields=["status", "reviewed_by", "reviewed_at"])
+
+    messages.success(request, f"{user.username} was declined. No ARSP staff record was changed.")
+    return redirect("/settings/?tab=accounts_tab")
+
+
+@login_required
+@role_required(ROLE_ADMIN)
+@require_POST
+def delete_account_registration(request, approval_id):
+    approval = get_object_or_404(
+        UserApproval.objects.select_related("user"),
+        pk=approval_id,
+    )
+    if approval.status == UserApproval.STATUS_APPROVED:
+        messages.error(request, "Approved accounts cannot be deleted from the registration approval workflow.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    username = approval.user.username
+    approval.user.delete()
+    messages.success(request, f"Registration for {username} was deleted. ARSP staff records were not changed.")
+    return redirect("/settings/?tab=accounts_tab")
+
+
+@login_required
+@role_required(ROLE_ADMIN)
+@require_POST
+def link_account_staff(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+    staff_id = request.POST.get("staff_id")
+    if not staff_id:
+        messages.error(request, "Select an unlinked ARSP staff record before linking the account.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    if arsStaff_Details.objects.filter(User_Account=user).exists():
+        messages.error(request, "That account is already linked to an ARSP staff record.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    try:
+        with transaction.atomic():
+            staff = arsStaff_Details.objects.select_for_update().get(pk=staff_id)
+            if staff.User_Account_id is not None:
+                messages.error(request, "That ARSP staff record is already linked to another account.")
+                return redirect("/settings/?tab=accounts_tab")
+            staff.User_Account = user
+            staff.save(update_fields=["User_Account"])
+    except arsStaff_Details.DoesNotExist:
+        messages.error(request, "Selected ARSP staff record was not found.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    messages.success(request, f"{user.username} was linked to {staff.display_name}.")
+    return redirect("/settings/?tab=accounts_tab")
+
+
+@login_required
+@role_required(ROLE_ADMIN)
+@require_POST
+def set_account_active_status(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+    action = (request.POST.get("action") or "").strip().lower()
+
+    if user.is_superuser:
+        messages.error(request, "Superuser accounts must be managed in Django Admin.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    if user == request.user and action == "deactivate":
+        messages.error(request, "You cannot deactivate your own account.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    if action == "activate":
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+        messages.success(request, f"{user.username} was reactivated.")
+    elif action == "deactivate":
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+        messages.success(request, f"{user.username} was deactivated. ARSP staff records were not changed.")
+    else:
+        messages.error(request, "Unsupported account status action.")
+
+    return redirect("/settings/?tab=accounts_tab")
+
+
+@login_required
+@role_required(ROLE_ADMIN)
+@require_POST
+def delete_unlinked_account(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+
+    if user.is_superuser:
+        messages.error(request, "Superuser accounts must be managed in Django Admin.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    if user == request.user:
+        messages.error(request, "You cannot delete your own account.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    if arsStaff_Details.objects.filter(User_Account=user).exists():
+        messages.error(request, "Linked accounts cannot be deleted here. Deactivate the account instead.")
+        return redirect("/settings/?tab=accounts_tab")
+
+    username = user.username
+    user.delete()
+    messages.success(request, f"Unlinked account {username} was deleted. ARSP staff records were not changed.")
+    return redirect("/settings/?tab=accounts_tab")
 
 
 @login_required(login_url="login")
@@ -492,6 +736,7 @@ def check_setting_duplicate(request):
         "phenotype_post": lambda: Phenotype_Post.objects.filter(Post_Phenotypes__iexact=value).exists(),
         "recommendation": lambda: Recommendation_items.objects.filter(RecoCode__iexact=value).exists(),
         "non_working_day": lambda: NonWorkingDay.objects.filter(date=value).exists(),
+        "tat_location": lambda: TATLocation.objects.filter(name__iexact=value).exists(),
         "tat_config": lambda: TATStepConfig.objects.filter(
             step_type__iexact=value,
             step_owner__iexact=(extra.get("step_owner") or "").strip(),
@@ -934,9 +1179,37 @@ def _batch_personnel_defaults(batch):
     }
 
 
+def _default_signature_staff(default_field):
+    return arsStaff_Details.objects.filter(**{default_field: True}).order_by("Staff_Name").first()
+
+
+def _apply_signature_defaults_to_batch(batch):
+    changed_fields = []
+    default_lab_manager = _default_signature_staff("Is_Default_Lab_Manager")
+    if default_lab_manager and not (batch.bat_LabManager or "").strip():
+        batch.bat_LabManager = default_lab_manager.Staff_Name or ""
+        batch.bat_Lab_Lic = default_lab_manager.Staff_License or ""
+        changed_fields.extend(["bat_LabManager", "bat_Lab_Lic"])
+    elif default_lab_manager and not (batch.bat_Lab_Lic or "").strip() and batch.bat_LabManager == default_lab_manager.Staff_Name:
+        batch.bat_Lab_Lic = default_lab_manager.Staff_License or ""
+        changed_fields.append("bat_Lab_Lic")
+
+    default_head = _default_signature_staff("Is_Default_Head")
+    if default_head and not (batch.bat_Head or "").strip():
+        batch.bat_Head = default_head.Staff_Name or ""
+        batch.bat_Head_Lic = default_head.Staff_License or ""
+        changed_fields.extend(["bat_Head", "bat_Head_Lic"])
+    elif default_head and not (batch.bat_Head_Lic or "").strip() and batch.bat_Head == default_head.Staff_Name:
+        batch.bat_Head_Lic = default_head.Staff_License or ""
+        changed_fields.append("bat_Head_Lic")
+
+    return list(dict.fromkeys(changed_fields))
+
+
 def _sync_batch_membership(batch, accession_numbers):
     new_accessions = list(dict.fromkeys(accession_numbers))
     ref_no = _batch_ref_no(batch)
+    modified_at = timezone.now()
 
     removed_isolates = list(
         Referred_Data.objects
@@ -954,6 +1227,7 @@ def _sync_batch_membership(batch, accession_numbers):
             RefNo="",
             BatchNo="",
             Total_batch="",
+            Date_Modified=modified_at,
         )
         Final_Data.objects.filter(
             f_Batch_id=batch,
@@ -966,6 +1240,7 @@ def _sync_batch_membership(batch, accession_numbers):
             f_RefNo="",
             f_BatchNo="",
             f_Total_batch="",
+            f_Date_Modified=modified_at,
         )
 
     personnel_defaults = _batch_personnel_defaults(batch)
@@ -982,6 +1257,7 @@ def _sync_batch_membership(batch, accession_numbers):
             SiteCode=batch.bat_SiteCode,
             Site_Name=batch.bat_Site_Name,
             Batch_Name=batch.bat_Batch_Name,
+            Date_Modified=modified_at,
             **personnel_defaults,
         )
 
@@ -1012,6 +1288,7 @@ def _sync_batch_membership(batch, accession_numbers):
             f_arsp_Head=iso.arsp_Head,
             f_arsp_Head_Lic=iso.arsp_Head_Lic,
             f_Date_Accomplished_ARSP=iso.Date_Accomplished_ARSP,
+            f_Date_Modified=modified_at,
         )
 
     return len(new_accessions), len(removed_accessions)
@@ -1029,14 +1306,16 @@ def batch_edit_view(request, pk):
         return redirect("show_data")
 
     if request.method == "POST":
+        prior_ref_no = _batch_ref_no(batch)
         form = BatchEditForm(request.POST, instance=batch)
 
         if form.is_valid():
             batch = form.save(commit=False)
+            _apply_signature_defaults_to_batch(batch)
 
             site_code = str(batch.bat_SiteCode or "").strip()
             referral_date = batch.bat_Referral_Date
-            ref_no_raw = str(batch.bat_RefNo or "").strip()
+            ref_no_raw = str(batch.bat_RefNo or "").strip() or prior_ref_no
             batch_no = str(batch.bat_BatchNo or "").strip()
             total_batch = str(batch.bat_Total_batch or "").strip()
             site_name = str(batch.bat_Site_NameGen or "").strip()
@@ -1519,6 +1798,7 @@ def ajax_filter_antibiotics(request):
     isolate_id = request.GET.get("isolate_id")
     org_code   = request.GET.get("org", "").strip().lower()
     retest     = request.GET.get("retest") == "1"
+    antibiotic_view = _antibiotic_view_mode(request)
 
     isolate = get_object_or_404(Referred_Data, pk=isolate_id)
 
@@ -1564,6 +1844,7 @@ def ajax_filter_antibiotics(request):
         show_site=not retest,
         retest=retest,
         existing_whonet_codes=existing_codes,
+        antibiotic_view=antibiotic_view,
     )
 
     # Map entries by Whonet code
@@ -1626,6 +1907,7 @@ def raw_data(request, id):
 
    # Fetch the isolate
     isolates = get_object_or_404(Referred_Data, pk=id)
+    antibiotic_view = _antibiotic_view_mode(request)
 
    # get the display form
     if request.method == "GET":
@@ -1640,6 +1922,7 @@ def raw_data(request, id):
             specimen_year=specimen_year,
             show_site=True,
             existing_whonet_codes=existing_entries.exclude(ab_Abx_code__isnull=True).values_list("ab_Abx_code", flat=True),
+            antibiotic_view=antibiotic_view,
         )
         antibiotics_retest = _raw_antibiotics_for_panel(
             org_code=isolates.ars_OrgCode,
@@ -1647,6 +1930,7 @@ def raw_data(request, id):
             retest=True,
             require_org=True,
             existing_whonet_codes=existing_entries.exclude(ab_Retest_Abx_code__isnull=True).values_list("ab_Retest_Abx_code", flat=True),
+            antibiotic_view=antibiotic_view,
         )
 
         return render(request, "home/Referred_form.html", {
@@ -1658,6 +1942,7 @@ def raw_data(request, id):
             "existing_entries": existing_entries,
             "retest_entries": existing_entries,
             "edit_mode": True,
+            "antibiotic_view": antibiotic_view,
         })
 
     # save form first before processing antibiotics
@@ -1683,6 +1968,7 @@ def raw_data(request, id):
                 specimen_year=specimen_year,
                 show_site=True,
                 existing_whonet_codes=existing_entries.exclude(ab_Abx_code__isnull=True).values_list("ab_Abx_code", flat=True),
+                antibiotic_view=antibiotic_view,
             ),
             "antibiotics_retest": _raw_antibiotics_for_panel(
                 org_code=isolates.ars_OrgCode,
@@ -1690,10 +1976,12 @@ def raw_data(request, id):
                 retest=True,
                 require_org=True,
                 existing_whonet_codes=existing_entries.exclude(ab_Retest_Abx_code__isnull=True).values_list("ab_Retest_Abx_code", flat=True),
+                antibiotic_view=antibiotic_view,
             ),
             "existing_entries": existing_entries,
             "retest_entries": existing_entries,
             "edit_mode": True,
+            "antibiotic_view": antibiotic_view,
         })
 
     isolates = form.save(commit=False)
@@ -1734,6 +2022,7 @@ def raw_data(request, id):
         specimen_year=specimen_year,
         show_site=True,
         existing_whonet_codes=existing_main_entries.keys(),
+        antibiotic_view=antibiotic_view,
     ))
     antibiotics_retest = list(_raw_antibiotics_for_panel(
         org_code=resolved_ars_org,
@@ -1741,6 +2030,7 @@ def raw_data(request, id):
         retest=True,
         require_org=True,
         existing_whonet_codes=existing_retest_entries.keys(),
+        antibiotic_view=antibiotic_view,
     ))
     if site_org_is_na:
         for entry in AntibioticEntry.objects.filter(
@@ -2686,6 +2976,7 @@ def edit_data(request, id):
     if not can_manage_batch(request.user, isolates.Batch_id):
         messages.error(request, "You can only update records from batches that you created.")
         return redirect("show_data")
+    antibiotic_view = _antibiotic_view_mode(request)
 
 
    # get the display form
@@ -2701,6 +2992,7 @@ def edit_data(request, id):
             specimen_year=specimen_year,
             show_site=True,
             existing_whonet_codes=existing_entries.exclude(ab_Abx_code__isnull=True).values_list("ab_Abx_code", flat=True),
+            antibiotic_view=antibiotic_view,
         )
         antibiotics_retest = _raw_antibiotics_for_panel(
             org_code=isolates.ars_OrgCode,
@@ -2708,6 +3000,7 @@ def edit_data(request, id):
             retest=True,
             require_org=True,
             existing_whonet_codes=existing_entries.exclude(ab_Retest_Abx_code__isnull=True).values_list("ab_Retest_Abx_code", flat=True),
+            antibiotic_view=antibiotic_view,
         )
 
         retest_entries = existing_entries.exclude(
@@ -2723,6 +3016,7 @@ def edit_data(request, id):
             "existing_entries": existing_entries,
             "retest_entries": retest_entries,
             "edit_mode": True,
+            "antibiotic_view": antibiotic_view,
         })
 
     # save form first before processing antibiotics
@@ -2736,7 +3030,23 @@ def edit_data(request, id):
         "ars_Post": isolates.ars_Post,
     }
 
-    form = Referred_Form(request.POST, instance=isolates)
+    post_data = request.POST.copy()
+    if old_site_org and not (post_data.get("Site_Org") or "").strip():
+        old_site_choice = resolve_organism_choice(old_site_org, isolates.Site_OrgName)
+        post_data["Site_Org"] = (
+            old_site_choice.Whonet_Org_Code if old_site_choice else old_site_org
+        )
+    if old_ars_org and not (post_data.get("ars_OrgCode") or "").strip():
+        old_ars_choice = resolve_organism_choice(old_ars_org, isolates.ars_OrgName)
+        post_data["ars_OrgCode"] = (
+            old_ars_choice.Whonet_Org_Code if old_ars_choice else old_ars_org
+        )
+    if isolates.Site_OrgName and not (post_data.get("Site_OrgName") or "").strip():
+        post_data["Site_OrgName"] = isolates.Site_OrgName
+    if isolates.ars_OrgName and not (post_data.get("ars_OrgName") or "").strip():
+        post_data["ars_OrgName"] = isolates.ars_OrgName
+
+    form = Referred_Form(post_data, instance=isolates)
     if not form.is_valid():
         messages.error(request, "Please check the highlighted fields.")
         existing_entries = AntibioticEntry.objects.filter(ab_idNum_referred=isolates)
@@ -2750,6 +3060,7 @@ def edit_data(request, id):
                 specimen_year=specimen_year,
                 show_site=True,
                 existing_whonet_codes=existing_entries.exclude(ab_Abx_code__isnull=True).values_list("ab_Abx_code", flat=True),
+                antibiotic_view=antibiotic_view,
             ),
             "antibiotics_retest": _raw_antibiotics_for_panel(
                 org_code=isolates.ars_OrgCode,
@@ -2757,10 +3068,12 @@ def edit_data(request, id):
                 retest=True,
                 require_org=True,
                 existing_whonet_codes=existing_entries.exclude(ab_Retest_Abx_code__isnull=True).values_list("ab_Retest_Abx_code", flat=True),
+                antibiotic_view=antibiotic_view,
             ),
             "existing_entries": existing_entries,
             "retest_entries": existing_entries.exclude(ab_Retest_Abx_code__isnull=True),
             "edit_mode": True,
+            "antibiotic_view": antibiotic_view,
         })
 
     isolates = form.save(commit=False)
@@ -2830,6 +3143,7 @@ def edit_data(request, id):
         specimen_year=specimen_year,
         show_site=True,
         existing_whonet_codes=existing_main_entries.keys(),
+        antibiotic_view=antibiotic_view,
     ))
 
     if not site_org_is_na:
@@ -2984,6 +3298,7 @@ def edit_data(request, id):
         retest=True,
         require_org=True,
         existing_whonet_codes=existing_retest_entries.keys(),
+        antibiotic_view=antibiotic_view,
     ))
 
     if not ars_org_is_na:
@@ -3275,15 +3590,41 @@ def _aligned_pdf_abx_codes(site_codes, ars_codes, site_print_order, ars_print_or
 
 def _blank_no_organism_report_fields(isolate):
     """Blank only the printed result pane for whichever organism side is n/a."""
-    if _is_no_organism(isolate.Site_Org):
+    if _is_no_organism(isolate.Site_Org) and not _is_nonviable_result(
+        isolate.Site_Pre,
+        isolate.Site_OrgName,
+        isolate.Site_Pos,
+    ):
         isolate.Site_OrgName = ""
 
-    if _is_no_organism(isolate.ars_OrgCode):
+    if _is_no_organism(isolate.ars_OrgCode) and not _is_nonviable_result(
+        isolate.ars_Pre,
+        isolate.ars_OrgName,
+        isolate.ars_Post,
+    ):
         isolate.ars_OrgName = ""
+
+    if _is_no_organism(isolate.ars_OrgCode):
         isolate.ars_ct_ctl = ""
         isolate.ars_tz_tzl = ""
         isolate.ars_cn_cni = ""
         isolate.ars_ip_ipi = ""
+
+
+def _chunk_pdf_isolates_for_print(isolates, recommendation_attr, max_per_page=2):
+    isolate_list = list(isolates)
+    return [
+        isolate_list[i:i + max_per_page]
+        for i in range(0, len(isolate_list), max_per_page)
+    ]
+
+
+def _pdf_has_long_recommendation(value):
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    if not text:
+        return False
+    numbered_items = len(re.findall(r"(?:^|\s)\d+\.", text))
+    return numbered_items >= 4 or len(text) >= 330
 
 
 
@@ -3400,6 +3741,10 @@ def generate_pdf_panel_old(request, id):
 
     # CHUNKING FOR TABLE DISPLAY
     MAX_COLS = 29
+    site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.Site_OrgName)
+    ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.ars_OrgName)
+    site_max_cols = 32 if site_uses_plus_layout else MAX_COLS
+    ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
     MAX_ROWS = 2
 
     def chunked(items, size):
@@ -3407,11 +3752,11 @@ def generate_pdf_panel_old(request, id):
             yield items[i:i + size]
 
     grouped_rows = list(
-        chunked(list(grouped_entries.items()), MAX_COLS)
+        chunked(list(grouped_entries.items()), site_max_cols)
     )[:MAX_ROWS]
 
     grouped_ars_rows = list(
-        chunked(list(grouped_retest.items()), MAX_COLS)
+        chunked(list(grouped_retest.items()), ars_max_cols)
     )[:MAX_ROWS]
 
     # CONTEXT FOR TEMPLATE
@@ -3419,6 +3764,8 @@ def generate_pdf_panel_old(request, id):
         "isolate": isolate,
         "grouped_rows": grouped_rows,
         "grouped_ars_rows": grouped_ars_rows,
+        "site_uses_plus_layout": site_uses_plus_layout,
+        "ars_uses_plus_layout": ars_uses_plus_layout,
         "now": timezone.now(),
         "logo_path": static("assets/img/brand/arsplogo.jpg"),
     }
@@ -3533,7 +3880,10 @@ def generate_pdf(request, id):
                 grouped_retest[ars_abx]["mic"] = e
 
     MAX_COLS = 29
-    ARS_MAX_COLS = 32 if _organism_type_is_plus(isolate.ars_OrgCode) else MAX_COLS
+    site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.Site_OrgName)
+    ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.ars_OrgName)
+    SITE_MAX_COLS = 32 if site_uses_plus_layout else MAX_COLS
+    ARS_MAX_COLS = 32 if ars_uses_plus_layout else MAX_COLS
     MAX_ROWS = 2
 
     def chunked(items, size):
@@ -3541,14 +3891,14 @@ def generate_pdf(request, id):
             yield items[i:i + size]
 
     blank_site_rows = [
-        [("", {"disk": None, "mic": None}) for _ in range(MAX_COLS)]
+        [("", {"disk": None, "mic": None}) for _ in range(SITE_MAX_COLS)]
         for _ in range(MAX_ROWS)
     ]
     blank_ars_rows = [
         [("", {"disk": None, "mic": None}) for _ in range(ARS_MAX_COLS)]
         for _ in range(MAX_ROWS)
     ]
-    grouped_rows = list(chunked(list(grouped_entries.items()), MAX_COLS))[:MAX_ROWS]
+    grouped_rows = list(chunked(list(grouped_entries.items()), SITE_MAX_COLS))[:MAX_ROWS]
     grouped_ars_rows = list(chunked(list(grouped_retest.items()), ARS_MAX_COLS))[:MAX_ROWS]
     if not grouped_rows:
         grouped_rows = blank_site_rows
@@ -3559,6 +3909,8 @@ def generate_pdf(request, id):
         "isolate": isolate,
         "grouped_rows": grouped_rows,
         "grouped_ars_rows": grouped_ars_rows,
+        "site_uses_plus_layout": site_uses_plus_layout,
+        "ars_uses_plus_layout": ars_uses_plus_layout,
         "now": timezone.now(),
         "logo_path": static("assets/img/brand/arsplogo.jpg"),
     }
@@ -3907,6 +4259,9 @@ def generate_batch_pdf_panel_old(request, id):
 
     # fetch batch isolates
     batch = get_object_or_404(Batch_Table, pk=id)
+    changed_fields = _apply_signature_defaults_to_batch(batch)
+    if changed_fields:
+        batch.save(update_fields=changed_fields)
 
     isolates = (
         Referred_Data.objects
@@ -3938,19 +4293,7 @@ def generate_batch_pdf_panel_old(request, id):
 #         key=accession_sort_key
 #     )
 
-    def chunked(items, size):
-        for i in range(0, len(items), size):
-            yield items[i:i + size]
-
-    isolate_pages = list(chunked(isolates, 2))
-
-
-    # paginate: 2 isolates per page
-    def chunked(qs, size):
-        for i in range(0, qs.count(), size):
-            yield qs[i:i + size]
-
-    isolate_pages = list(chunked(isolates, 2))
+    isolate_pages = _chunk_pdf_isolates_for_print(isolates, "ars_reco", max_per_page=2)
 
     # these are the constants
     MAX_COLS = 29
@@ -3986,6 +4329,10 @@ def generate_batch_pdf_panel_old(request, id):
     # build pdf
     for page_isolates in isolate_pages:
         page_entries = []
+        compact_page = any(
+            _pdf_has_long_recommendation(getattr(isolate, "ars_reco", ""))
+            for isolate in page_isolates
+        )
 
         for isolate in page_isolates:
             _blank_no_organism_report_fields(isolate)
@@ -4104,16 +4451,20 @@ def generate_batch_pdf_panel_old(request, id):
                             grouped_ars[abx]["mic"] = e
 
 
-            ars_uses_plus_layout = _organism_type_is_plus(ars_org)
+            site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.Site_OrgName)
+            ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.ars_OrgName)
+            site_max_cols = 32 if site_uses_plus_layout else MAX_COLS
             ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
-            grouped_rows = fixed_panel_rows(grouped_site)
+            grouped_rows = fixed_panel_rows(grouped_site, site_max_cols)
             grouped_ars_rows = fixed_panel_rows(grouped_ars, ars_max_cols)
 
             page_entries.append({
                 "isolate": isolate,
                 "grouped_rows": grouped_rows,
                 "grouped_ars_rows": grouped_ars_rows,
+                "site_uses_plus_layout": site_uses_plus_layout,
                 "ars_uses_plus_layout": ars_uses_plus_layout,
+                "compact_page": compact_page,
             })
 
         pages_data.append(page_entries)
@@ -4152,6 +4503,9 @@ def generate_batch_pdf_panel_gram_pos(request, id):
 
     # fetch batch isolates
     batch = get_object_or_404(Batch_Table, pk=id)
+    changed_fields = _apply_signature_defaults_to_batch(batch)
+    if changed_fields:
+        batch.save(update_fields=changed_fields)
 
     isolates = (
         Referred_Data.objects
@@ -4159,19 +4513,7 @@ def generate_batch_pdf_panel_gram_pos(request, id):
         .order_by("bat_seq")
     )
 
-    def chunked(items, size):
-        for i in range(0, len(items), size):
-            yield items[i:i + size]
-
-    isolate_pages = list(chunked(isolates, 2))
-
-
-    # paginate: 2 isolates per page
-    def chunked(qs, size):
-        for i in range(0, qs.count(), size):
-            yield qs[i:i + size]
-
-    isolate_pages = list(chunked(isolates, 2))
+    isolate_pages = _chunk_pdf_isolates_for_print(isolates, "ars_reco", max_per_page=2)
 
     # these are the constants
     MAX_COLS = 32
@@ -4207,6 +4549,10 @@ def generate_batch_pdf_panel_gram_pos(request, id):
     # build pdf
     for page_isolates in isolate_pages:
         page_entries = []
+        compact_page = any(
+            _pdf_has_long_recommendation(getattr(isolate, "ars_reco", ""))
+            for isolate in page_isolates
+        )
 
         for isolate in page_isolates:
             _blank_no_organism_report_fields(isolate)
@@ -4332,6 +4678,7 @@ def generate_batch_pdf_panel_gram_pos(request, id):
                 "isolate": isolate,
                 "grouped_rows": grouped_rows,
                 "grouped_ars_rows": grouped_ars_rows,
+                "compact_page": compact_page,
             })
 
         pages_data.append(page_entries)
@@ -4395,7 +4742,7 @@ def generate_batch_pdf(request, id):
 
     MAX_COLS = 29
     MAX_ROWS = 2
-    isolate_pages = list(chunked(isolates, 2))
+    isolate_pages = _chunk_pdf_isolates_for_print(list(isolates), "ars_reco", max_per_page=2)
     pages_data = []
 
     antibiotic_order = list(
@@ -4416,6 +4763,10 @@ def generate_batch_pdf(request, id):
 
     for page_isolates in isolate_pages:
         page_entries = []
+        compact_page = any(
+            _pdf_has_long_recommendation(getattr(isolate, "ars_reco", ""))
+            for isolate in page_isolates
+        )
 
         for isolate in page_isolates:
             _blank_no_organism_report_fields(isolate)
@@ -4488,14 +4839,18 @@ def generate_batch_pdf(request, id):
                     if e.ab_Retest_MICValue is not None:
                         grouped_ars[ars_abx]["mic"] = e
 
-            ars_uses_plus_layout = _organism_type_is_plus(ars_org)
+            site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.Site_OrgName)
+            ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.ars_OrgName)
+            site_max_cols = 32 if site_uses_plus_layout else MAX_COLS
             ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
 
             page_entries.append({
                 "isolate": isolate,
-                "grouped_rows": fixed_rows(grouped_site),
+                "grouped_rows": fixed_rows(grouped_site, site_max_cols),
                 "grouped_ars_rows": fixed_rows(grouped_ars, ars_max_cols),
+                "site_uses_plus_layout": site_uses_plus_layout,
                 "ars_uses_plus_layout": ars_uses_plus_layout,
+                "compact_page": compact_page,
             })
 
         pages_data.append(page_entries)
@@ -4782,13 +5137,7 @@ def upload_sitecode(request):
     try:
         file.open()
 
-        if file.name.lower().endswith(".csv"):
-            sheets = {"CSV": pd.read_csv(file, dtype=str)}
-        elif file.name.lower().endswith((".xlsx", ".xls")):
-            sheets = pd.read_excel(file, dtype=str, sheet_name=None)
-        else:
-            messages.error(request, "Unsupported file format.")
-            return redirect("/settings/?tab=sitecode")
+        sheets = read_tabular_upload_sheets(file, dtype=str)
 
         success = 0
         skipped = []
@@ -5307,12 +5656,7 @@ def upload_breakpoints(request):
         # --------------------------------------------------
         # READ FILE
         # --------------------------------------------------
-        if file.name.endswith(".csv"):
-            df = pd.read_csv(file)
-        elif file.name.endswith((".xls", ".xlsx")):
-            df = pd.read_excel(file)
-        else:
-            raise ValueError("Unsupported file format")
+        df = read_tabular_upload(file)
 
         print("DataFrame preview:\n", df.head())
 
@@ -5321,6 +5665,37 @@ def upload_breakpoints(request):
         # --------------------------------------------------
         df = df.astype(object).where(pd.notna(df), "")
         df.columns = df.columns.str.strip()
+
+        column_aliases = {
+            "whonetabx": "Whonet_Abx",
+            "whonet_abx": "Whonet_Abx",
+            "abxcode": "Abx_code",
+            "abx_code": "Abx_code",
+            "antibiotic": "Antibiotic",
+            "testmethod": "Test_Method",
+            "test_method": "Test_Method",
+            "potency": "Potency",
+            "year": "Year",
+            "org": "Org",
+            "speccode": "Spec_code",
+            "spec_code": "Spec_code",
+            "rval": "R_val",
+            "r_val": "R_val",
+            "ival": "I_val",
+            "i_val": "I_val",
+            "sddval": "SDD_val",
+            "sdd_val": "SDD_val",
+            "sval": "S_val",
+            "s_val": "S_val",
+        }
+        renamed_columns = {}
+        for column in df.columns:
+            key = re.sub(r"[^a-z0-9]+", "_", str(column).strip().lower()).strip("_")
+            canonical = column_aliases.get(key) or column_aliases.get(key.replace("_", ""))
+            if canonical and canonical not in df.columns:
+                renamed_columns[column] = canonical
+        if renamed_columns:
+            df.rename(columns=renamed_columns, inplace=True)
 
         def normalize_cell(value, *, upper=False):
             if value in ("", None):
@@ -5422,6 +5797,7 @@ def upload_breakpoints(request):
         linked = 0
         updated = 0
         deduped = 0
+        auto_created_antibiotics = 0
 
         for _, row in df.iterrows():
             whonet_code = row["Whonet_Abx"]
@@ -5435,9 +5811,29 @@ def upload_breakpoints(request):
             )
 
             if not antibiotic_ref:
-                skipped += 1
-                print(f"⚠️ Skipped: No Antibiotic_List entry for {whonet_code}")
-                continue
+                antibiotic_ref = Antibiotic_List.objects.create(
+                    Show=True,
+                    Retest=True,
+                    Show_Site=True,
+                    Show_Ars=True,
+                    Show_Value=True,
+                    Disk_Abx=excel_bool(row.get("Disk_Abx", False))
+                    or normalize_cell(row.get("Test_Method", ""), upper=True) == "DISK",
+                    Test_Method=normalize_cell(row.get("Test_Method", ""), upper=True),
+                    Tier=row.get("Tier", ""),
+                    Abx_code=normalize_cell(row.get("Abx_code", ""), upper=True),
+                    Whonet_Abx=whonet_code,
+                    Antibiotic=row.get("Antibiotic", ""),
+                    Guidelines=row.get("Guidelines", "CLSI") or "CLSI",
+                    Potency=row.get("Potency", ""),
+                    Class=row.get("Class", ""),
+                    Subclass=row.get("Subclass", ""),
+                )
+                auto_created_antibiotics += 1
+                print(
+                    f"Created Antibiotic_List entry for {whonet_code} "
+                    f"from breakpoint upload."
+                )
 
             date_modified = pd.to_datetime(
                 row.get("Date_Modified", ""),
@@ -5561,7 +5957,8 @@ def upload_breakpoints(request):
             request,
             f"✅ Uploaded successfully: {linked} created, "
             f"{duplicate_skipped} skipped (already exists), "
-            f"{skipped} skipped (no Antibiotic_List match), "
+            f"{auto_created_antibiotics} antibiotic master record(s) auto-created, "
+            f"{skipped} skipped, "
             f"{deduped} duplicate breakpoint record(s) removed."
         )
         return redirect("breakpoints_view")
@@ -5836,13 +6233,7 @@ def upload_specimen_code(request):
             file = uploaded_file.File_uploadSpec
 
             try:
-                if file.name.endswith(".csv"):
-                    df = pd.read_csv(file, dtype=str)
-                elif file.name.endswith((".xls", ".xlsx")):
-                    df = pd.read_excel(file, dtype=str)
-                else:
-                    messages.error(request, "Unsupported file format.")
-                    return redirect("upload_specimen_code")
+                df = read_tabular_upload(file, dtype=str)
 
                 # Normalize columns
                 df.columns = (
@@ -6020,14 +6411,11 @@ def upload_contacts(request):
 
     uploaded_file = request.FILES.get("contacts_file")
     if not uploaded_file:
-        messages.error(request, "Please choose a staff CSV or Excel file.")
+        messages.error(request, "Please choose a staff CSV, TSV, or Excel file.")
         return redirect("contact_view")
 
     try:
-        if uploaded_file.name.lower().endswith(".csv"):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
+        df = read_tabular_upload(uploaded_file)
     except Exception as exc:
         messages.error(request, f"Unable to read staff upload file: {exc}")
         return redirect("contact_view")
@@ -6460,10 +6848,34 @@ def read_uploaded_file(uploaded_file):
     filename = uploaded_file.name.lower()
     if filename.endswith('.csv'):
         return pd.read_csv(uploaded_file)
+    elif filename.endswith('.tsv'):
+        return pd.read_csv(uploaded_file, sep="\t")
     elif filename.endswith(('.xls', '.xlsx')):
         return pd.read_excel(uploaded_file)
     else:
-        raise ValueError("Unsupported file format. Please upload a CSV or Excel file.")
+        raise ValueError("Unsupported file format. Please upload a CSV, TSV, or Excel file.")
+
+
+def read_tabular_upload(uploaded_file, **kwargs):
+    filename = uploaded_file.name.lower()
+    if filename.endswith(".csv"):
+        return pd.read_csv(uploaded_file, **kwargs)
+    if filename.endswith(".tsv"):
+        return pd.read_csv(uploaded_file, sep="\t", **kwargs)
+    if filename.endswith((".xls", ".xlsx")):
+        return pd.read_excel(uploaded_file, **kwargs)
+    raise ValueError("Unsupported file format. Please upload CSV, TSV, XLSX, or XLS.")
+
+
+def read_tabular_upload_sheets(uploaded_file, **kwargs):
+    filename = uploaded_file.name.lower()
+    if filename.endswith(".csv"):
+        return {"CSV": pd.read_csv(uploaded_file, **kwargs)}
+    if filename.endswith(".tsv"):
+        return {"TSV": pd.read_csv(uploaded_file, sep="\t", **kwargs)}
+    if filename.endswith((".xls", ".xlsx")):
+        return pd.read_excel(uploaded_file, sheet_name=None, **kwargs)
+    raise ValueError("Unsupported file format. Please upload CSV, TSV, XLSX, or XLS.")
 
 
 ### helper for copy data to final
@@ -7354,10 +7766,13 @@ def upload_combined_table(request):
             if file_name.endswith(".csv"):
                 file = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
                 df = pd.read_csv(file)
+            elif file_name.endswith(".tsv"):
+                file = TextIOWrapper(uploaded_file.file, encoding="utf-8-sig")
+                df = pd.read_csv(file, sep="\t")
             elif file_name.endswith((".xlsx", ".xls")):
                 df = pd.read_excel(uploaded_file)
             else:
-                messages.error(request, "Unsupported file format. Please upload CSV, XLSX, or XLS.")
+                messages.error(request, "Unsupported file format. Please upload CSV, TSV, XLSX, or XLS.")
                 return render(request, "wgs_app/Add_wgs.html", {
                     "referred_form": referred_form,
                     "form": form,
@@ -7599,10 +8014,7 @@ def field_mapper_tool(request):
 
         # -------- READ FILE HEADERS --------
         try:
-            if uploaded_file.name.endswith(".csv"):
-                df = pd.read_csv(uploaded_file, nrows=1)
-            else:
-                df = pd.read_excel(uploaded_file, nrows=1)
+            df = read_tabular_upload(uploaded_file, nrows=1)
 
         except Exception as e:
             messages.error(request, f"Error reading file: {e}")
@@ -7784,8 +8196,10 @@ def download_mapping_summary(request):
         messages.error(request, "Temporary file not found. Please upload again.")
         return redirect("field_mapper_tool")
 
-    if temp_path.endswith(".csv"):
+    if temp_path.lower().endswith(".csv"):
         df = pd.read_csv(temp_path, nrows=0)
+    elif temp_path.lower().endswith(".tsv"):
+        df = pd.read_csv(temp_path, sep="\t", nrows=0)
     else:
         df = pd.read_excel(temp_path, nrows=0)
 
@@ -8286,6 +8700,8 @@ def generate_mapped_excel(request):
 
         if temp_file_name.lower().endswith(".csv"):
             df = pd.read_csv(temp_file_path)
+        elif temp_file_name.lower().endswith(".tsv"):
+            df = pd.read_csv(temp_file_path, sep="\t")
         else:
             df = pd.read_excel(temp_file_path)
 
@@ -8726,15 +9142,7 @@ def upload_antibiotics(request):
             print("Uploaded file:", file)  # Debugging statement
             try:
                 # Load file into a DataFrame using file's temporary path
-                if file.name.endswith('.csv'):
-                    df = pd.read_csv(file)  # For CSV files
-                    
-                elif file.name.endswith('.xlsx'):
-                    df = pd.read_excel(file)  # For Excel files
-
-                else:
-                    messages.error(request, messages.INFO, 'Unsupported file format. Please upload a CSV or Excel file.')
-                    return redirect('upload_antibiotics')
+                df = read_tabular_upload(file)
 
                 # Check the DataFrame for debugging
                 print(df)
@@ -9006,13 +9414,7 @@ def upload_organisms(request):
 
             try:
                 # Load file depending on extension
-                if file.name.endswith(".csv"):
-                    df = pd.read_csv(file)
-                elif file.name.endswith(".xlsx"):
-                    df = pd.read_excel(file)
-                else:
-                    messages.error(request, "Unsupported file format. Please upload CSV or Excel.")
-                    return redirect("upload_organisms")
+                df = read_tabular_upload(file)
 
                 # Fill NaN with empty string
                 df = df.fillna("")
@@ -9338,10 +9740,7 @@ def upload_phenotype_pre(request):
 
 
     try:
-        if file.name.endswith(".csv"):
-            df = pd.read_csv(file)
-        else:
-            df = pd.read_excel(file)
+        df = read_tabular_upload(file)
 
         created_count = 0
         duplicate_count = 0
@@ -9495,10 +9894,7 @@ def upload_phenotype_post(request):
 
     try:
         # Read file
-        if upload_file.name.endswith(".csv"):
-            df = pd.read_csv(upload_file)
-        else:
-            df = pd.read_excel(upload_file)
+        df = read_tabular_upload(upload_file)
 
         # Normalize column names
         df.columns = [c.strip() for c in df.columns]
@@ -9651,10 +10047,7 @@ def upload_recommendation_items(request):
     Reco_item_upload.objects.create(File_reco_desc=reco_desc_upload)
 
     try:
-        if reco_desc_upload.name.endswith(".csv"):
-            df = pd.read_csv(reco_desc_upload)
-        else:
-            df = pd.read_excel(reco_desc_upload)
+        df = read_tabular_upload(reco_desc_upload)
 
         df.columns = [c.strip() for c in df.columns]
 
@@ -9967,6 +10360,7 @@ def _get_tat_effective_days(tat):
 
 def _build_tat_running_rows(tat_records, configs):
     rows = []
+    default_display_target_days = 40
 
     for tat in tat_records:
         batch = tat.tat_Batch_Isolates
@@ -9977,9 +10371,29 @@ def _build_tat_running_rows(tat_records, configs):
         effective_days = _get_tat_effective_days(tat)
         target_days = tat.tat_Target_Days or 0
         remaining_days = None
+        display_target_days = target_days or default_display_target_days
+        display_remaining_days = None
+        days_past_target = None
 
         if effective_days is not None and target_days:
             remaining_days = target_days - effective_days
+
+        if effective_days is not None and display_target_days:
+            display_remaining_days = display_target_days - effective_days
+            if display_remaining_days < 0:
+                days_past_target = abs(display_remaining_days)
+
+        tat_pressure = "none"
+        if effective_days is not None and display_target_days:
+            tat_ratio = effective_days / display_target_days
+            if effective_days > display_target_days:
+                tat_pressure = "overdue"
+            elif display_remaining_days is not None and 0 <= display_remaining_days <= 5:
+                tat_pressure = "near"
+            elif tat_ratio >= 0.75:
+                tat_pressure = "watch"
+            else:
+                tat_pressure = "safe"
 
         rows.append({
             "tat": tat,
@@ -10009,8 +10423,12 @@ def _build_tat_running_rows(tat_records, configs):
             "effective_days": effective_days,
             "target_days": target_days,
             "remaining_days": remaining_days,
-            "is_overdue": effective_days is not None and target_days and effective_days > target_days,
-            "near_due": remaining_days is not None and 0 <= remaining_days <= 5,
+            "display_target_days": display_target_days,
+            "display_remaining_days": display_remaining_days,
+            "days_past_target": days_past_target,
+            "is_overdue": effective_days is not None and display_target_days and effective_days > display_target_days,
+            "near_due": display_remaining_days is not None and 0 <= display_remaining_days <= 5,
+            "tat_pressure": tat_pressure,
             "step_cells": [
                 {
                     "config": config,
@@ -10070,8 +10488,21 @@ def _tat_date(row, index):
     return parsed.date()
 
 
+def _tat_location_value(raw_value, existing_value="n/a"):
+    value = str(raw_value or "").strip()
+    if not value:
+        return existing_value or "n/a"
+
+    configured = {
+        item.name.lower(): item.name
+        for item in TATLocation.objects.filter(is_active=True)
+    }
+    configured.setdefault("n/a", "n/a")
+    return configured.get(value.lower(), existing_value or "n/a")
+
+
 def _find_running_tat_sheet(uploaded_file):
-    sheets = pd.read_excel(uploaded_file, sheet_name=None)
+    sheets = read_tabular_upload_sheets(uploaded_file)
     current_year = str(timezone.localdate().year)
     preferred = [current_year, "RUNNING TAT", "Running TAT", "RunningTAT"]
 
@@ -10093,7 +10524,7 @@ def _find_running_tat_sheet(uploaded_file):
 def upload_running_tat(request):
     uploaded_file = request.FILES.get("tat_file")
     if not uploaded_file:
-        messages.error(request, "Please select a Running TAT Excel file.")
+        messages.error(request, "Please select a Running TAT CSV, TSV, or Excel file.")
         return redirect("tat_running_list")
 
     try:
@@ -10152,6 +10583,7 @@ def upload_running_tat(request):
                     },
                 )
 
+                batch_location = _tat_location_value(_tat_text(row, 10), tat.tat_Batch_Location)
                 date_received = _tat_date(row, 11)
                 date_released = _tat_date(row, 17) or _tat_date(row, 13) or date_received
                 status = _tat_text(row, 19) or _tat_text(row, 18)
@@ -10168,6 +10600,7 @@ def upload_running_tat(request):
                     tat_Total_Batch=total_batch,
                     tat_Num_Isolate=num_isolates,
                     tat_Running_TAT=_tat_int(row, 9),
+                    tat_Batch_Location=batch_location,
                     tat_Date_Released=date_released if status == "Released" else None,
                     tat_Final_TAT=_tat_int(row, 18) if status == "Released" else None,
                     tat_Status_Release=status,
@@ -10178,7 +10611,7 @@ def upload_running_tat(request):
                     tat_Date_Last_Update=timezone.localdate(),
                 )
 
-                action_taken = _tat_text(row, 10)
+                action_taken = _tat_text(row, 12)
                 if action_taken:
                     config, _ = TATStepConfig.objects.get_or_create(
                         step_type=action_taken,
@@ -10196,12 +10629,14 @@ def upload_running_tat(request):
                             "step_owner": config.step_owner,
                         },
                     )
-                    TATStep.objects.filter(pk=step.pk).update(
-                        date_received=date_received,
-                        date_finished=date_released if status == "Released" else None,
-                        step_type=config.step_type,
-                        step_owner=config.step_owner,
-                    )
+                    step.date_received = date_received
+                    step.date_finished = date_released if status == "Released" else None
+                    step.step_type = config.step_type
+                    step.step_owner = config.step_owner
+                    step.save()
+
+                    tat.refresh_from_db()
+                    tat.save()
 
                 imported_count += 1
 
@@ -10259,14 +10694,22 @@ def tat_monitoring_view(request, batch_id):
                 formset.save()
                 tat_instance.save()
 
+                receipt_date = (
+                    tat_instance.steps
+                    .filter(date_received__isnull=False)
+                    .order_by("date_received")
+                    .values_list("date_received", flat=True)
+                    .first()
+                    or tat_instance.tat_Referral_Date
+                )
                 if (
-                    tat_instance.tat_Referral_Date
+                    receipt_date
                     and tat_instance.tat_Date_Released
-                    and tat_instance.tat_Date_Released < tat_instance.tat_Referral_Date
+                    and tat_instance.tat_Date_Released < receipt_date
                 ):
                     messages.warning(
                         request,
-                        "Date Released is earlier than the batch referral date. The TAT record was saved, but please verify the dates."
+                        "Date Released is earlier than the receipt date. The TAT record was saved, but please verify the dates."
                     )
 
                 ante_dated_steps = []
@@ -11191,6 +11634,18 @@ def tat_running_list(request):
     paginator = Paginator(tat_records, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
     running_rows = _build_tat_running_rows(page_obj.object_list, configs)
+    tat_location_choices = list(
+        TATLocation.objects
+        .filter(is_active=True)
+        .order_by("order", "name")
+        .values_list("name", flat=True)
+    )
+    if "n/a" not in tat_location_choices:
+        tat_location_choices.append("n/a")
+    for tat in page_obj.object_list:
+        current_location = (tat.tat_Batch_Location or "").strip()
+        if current_location and current_location not in tat_location_choices:
+            tat_location_choices.append(current_location)
     years = (
         TATform.objects
         .exclude(tat_Referral_Date__isnull=True)
@@ -11203,6 +11658,64 @@ def tat_running_list(request):
     return render(
         request,
         "home/tat_running_list.html",
+        {
+            "configs": configs,
+            "running_rows": running_rows,
+            "page_obj": page_obj,
+            "total_rows": paginator.count,
+            "q": q,
+            "status": status,
+            "year": year,
+            "years": years,
+            "status_choices": ["Ongoing", "Released", "Overdue"],
+            "tat_location_choices": tat_location_choices,
+        },
+    )
+
+
+@login_required(login_url="login")
+def tat_running_process_list(request):
+    configs = TATStepConfig.objects.all().order_by("order")
+    tat_records = (
+        TATform.objects
+        .select_related("tat_Batch_Isolates")
+        .prefetch_related("steps__step_config")
+        .order_by("-tat_Referral_Date", "tat_Batch_Code")
+    )
+
+    q = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "").strip()
+    year = request.GET.get("year", "").strip()
+
+    if q:
+        tat_records = tat_records.filter(
+            Q(tat_Batch_Code__icontains=q)
+            | Q(tat_SiteCode__icontains=q)
+            | Q(tat_Batch_Isolates__bat_Batch_Name__icontains=q)
+            | Q(tat_Batch_Isolates__bat_RefNo__icontains=q)
+        )
+
+    if status:
+        tat_records = tat_records.filter(tat_Status_Release=status)
+
+    if year and year != "all":
+        tat_records = tat_records.filter(tat_Referral_Date__year=year)
+
+    paginator = Paginator(tat_records, 50)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    running_rows = _build_tat_running_rows(page_obj.object_list, configs)
+    years = (
+        TATform.objects
+        .exclude(tat_Referral_Date__isnull=True)
+        .annotate(year=ExtractYear("tat_Referral_Date"))
+        .values_list("year", flat=True)
+        .distinct()
+        .order_by("-year")
+    )
+
+    return render(
+        request,
+        "home/tat_running_process_list.html",
         {
             "configs": configs,
             "running_rows": running_rows,
@@ -11232,11 +11745,46 @@ def update_tat_scanning_flags(request, pk):
 
     value = request.POST.get("value", "").strip().lower() in {"1", "true", "yes", "on"}
     setattr(tat, field, value)
-    tat.save(update_fields=[field, "tat_Date_Last_Update"])
+    tat.save(update_fields=[
+        field,
+        "tat_Running_TAT",
+        "tat_Final_TAT",
+        "tat_Status_Release",
+        "tat_Date_Last_Update",
+    ])
     return JsonResponse({
         "ok": True,
         "field": field,
         "value": value,
+        "last_update": tat.tat_Date_Last_Update.isoformat() if tat.tat_Date_Last_Update else "",
+    })
+
+
+@login_required(login_url="login")
+@require_POST
+def update_tat_location(request, pk):
+    tat = get_object_or_404(TATform, pk=pk)
+    location = (request.POST.get("location") or "").strip() or "n/a"
+    is_valid_location = (
+        location == "n/a"
+        or TATLocation.objects.filter(name__iexact=location, is_active=True).exists()
+    )
+
+    if not is_valid_location:
+        return JsonResponse({"ok": False, "error": "Invalid TAT location."}, status=400)
+
+    configured_location = _tat_location_value(location, tat.tat_Batch_Location)
+    tat.tat_Batch_Location = configured_location
+    tat.save(update_fields=[
+        "tat_Batch_Location",
+        "tat_Running_TAT",
+        "tat_Final_TAT",
+        "tat_Status_Release",
+        "tat_Date_Last_Update",
+    ])
+    return JsonResponse({
+        "ok": True,
+        "location": tat.tat_Batch_Location,
         "last_update": tat.tat_Date_Last_Update.isoformat() if tat.tat_Date_Last_Update else "",
     })
 
@@ -11277,7 +11825,7 @@ def edit_tat_step_config(request, pk):
     config = get_object_or_404(TATStepConfig, pk=pk)
 
     if request.method != "POST":
-        return redirect("/settings/?tab=tat_config")
+        return redirect(f"/settings/?tab=tat_config&edit_tat_config={config.pk}")
 
     form = TATStepConfigForm(request.POST, instance=config)
 
@@ -11289,6 +11837,58 @@ def edit_tat_step_config(request, pk):
         print(form.errors)
 
     return redirect("/settings/?tab=tat_config")
+
+
+@login_required(login_url="login")
+def add_tat_location(request):
+    if request.method != "POST":
+        return redirect("/settings/?tab=tat_location")
+
+    form = TATLocationForm(request.POST)
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "TAT location added successfully.")
+    else:
+        messages.warning(request, _first_form_error(form, "Failed to add TAT location."))
+
+    return redirect("/settings/?tab=tat_location")
+
+
+@login_required(login_url="login")
+def edit_tat_location(request, pk):
+    location = get_object_or_404(TATLocation, pk=pk)
+
+    if request.method != "POST":
+        return redirect("/settings/?tab=tat_location")
+
+    form = TATLocationForm(request.POST, instance=location)
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "TAT location updated successfully.")
+    else:
+        messages.warning(request, _first_form_error(form, "Failed to update TAT location."))
+
+    return redirect("/settings/?tab=tat_location")
+
+
+@login_required(login_url="login")
+def delete_tat_location(request, pk):
+    location = get_object_or_404(TATLocation, pk=pk)
+    name = location.name
+    if TATform.objects.filter(tat_Batch_Location=name).exists():
+        location.is_active = False
+        location.save(update_fields=["is_active"])
+        messages.warning(
+            request,
+            "That location is already used by TAT records, so it was deactivated instead of deleted."
+        )
+    else:
+        location.delete()
+        messages.success(request, "TAT location deleted successfully.")
+
+    return redirect("/settings/?tab=tat_location")
 
 
 
@@ -11333,7 +11933,7 @@ def upload_tat_step_config(request):
         upload_instance = form.save()
 
         try:
-            df = pd.read_excel(upload_instance.tat_file)
+            df = read_tabular_upload(upload_instance.tat_file)
 
             required_columns = ['step_type', 'step_owner', 'target_days', 'order']
 

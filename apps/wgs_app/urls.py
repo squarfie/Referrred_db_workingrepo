@@ -69,6 +69,7 @@ urlpatterns = [
     path("wgs/pipelines/<slug:slug>/deactivate/", views.custom_pipeline_deactivate, name="custom_pipeline_deactivate"),
     path("wgs/pipelines/<slug:slug>/delete/", views.custom_pipeline_delete, name="custom_pipeline_delete"),
     path("wgs/pipelines/<slug:slug>/fields/", views.custom_pipeline_fields, name="custom_pipeline_fields"),
+    path("wgs/pipelines/<slug:slug>/fields/<int:field_id>/edit/", views.custom_pipeline_field_edit, name="custom_pipeline_field_edit"),
     path("wgs/pipelines/<slug:slug>/fields/<int:field_id>/delete/", views.custom_pipeline_field_delete, name="custom_pipeline_field_delete"),
     path("wgs/pipelines/<slug:slug>/upload/", views.custom_pipeline_upload, name="custom_pipeline_upload"),
     path("wgs/pipelines/<slug:slug>/records/", views.custom_pipeline_records, name="custom_pipeline_records"),

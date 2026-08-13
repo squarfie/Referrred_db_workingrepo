@@ -85,13 +85,44 @@ def visible_builtin_wgs_keys(target):
     )
 
 
-# helper to read uploaded file (csv or excel)
+# helper to read uploaded file (csv, tsv, or excel)
 def read_uploaded_file(uploaded_file, sheet_name=None):
     import pandas as pd
 
+    def read_delimited_upload(default_sep):
+        try:
+            sample = uploaded_file.read(4096)
+            uploaded_file.seek(0)
+        except Exception:
+            sample = ""
+
+        if isinstance(sample, bytes):
+            sample_text = sample.decode("utf-8-sig", errors="ignore")
+        else:
+            sample_text = str(sample or "")
+
+        header_line = sample_text.splitlines()[0] if sample_text.splitlines() else ""
+        if default_sep and default_sep in header_line:
+            delimiter = default_sep
+        else:
+            delimiter = default_sep
+            try:
+                delimiter = csv.Sniffer().sniff(sample_text, delimiters="\t,;|").delimiter
+            except csv.Error:
+                pass
+
+        return pd.read_csv(
+            uploaded_file,
+            sep=delimiter,
+            dtype=str,
+            keep_default_na=False,
+        )
+
     filename = uploaded_file.name.lower()
     if filename.endswith('.csv'):
-        return pd.read_csv(uploaded_file)
+        df = read_delimited_upload(",")
+    elif filename.endswith('.tsv'):
+        df = read_delimited_upload("\t")
     elif filename.endswith(('.xls', '.xlsx')):
         if sheet_name:
             excel_file = pd.ExcelFile(uploaded_file)
@@ -107,14 +138,23 @@ def read_uploaded_file(uploaded_file, sheet_name=None):
             for requested_sheet in requested_sheets:
                 matched_sheet = normalized_sheets.get(str(requested_sheet).strip().lower())
                 if matched_sheet:
-                    return pd.read_excel(excel_file, sheet_name=matched_sheet)
-            raise ValueError(
-                "Required sheet not found. Expected one of "
-                f"{requested_sheets}; available sheets: {excel_file.sheet_names}"
-            )
-        return pd.read_excel(uploaded_file)
+                    df = pd.read_excel(excel_file, sheet_name=matched_sheet)
+                    break
+            else:
+                raise ValueError(
+                    "Required sheet not found. Expected one of "
+                    f"{requested_sheets}; available sheets: {excel_file.sheet_names}"
+                )
+        else:
+            df = pd.read_excel(uploaded_file)
     else:
-        raise ValueError("Unsupported file format. Please upload a CSV or Excel file.")
+        raise ValueError("Unsupported file format. Please upload a CSV, TSV, or Excel file.")
+
+    df.columns = [
+        str(column).replace("\ufeff", "").strip()
+        for column in df.columns
+    ]
+    return df
 
 
 def normalize_custom_column_name(value):
@@ -216,14 +256,12 @@ def custom_pipeline_accession_variants(value):
 def find_custom_pipeline_match(accession):
     accession_variants = custom_pipeline_accession_variants(accession)
     if not accession_variants:
-        return None, None, "invalid"
+        return None, ""
 
     final_filter = Q()
-    raw_filter = Q()
     wgs_filter = Q()
     for candidate in accession_variants:
         final_filter |= Q(f_AccessionNo__iexact=candidate)
-        raw_filter |= Q(AccessionNo__iexact=candidate)
         wgs_filter |= (
             Q(WGS_SampleInfo_Acc__iexact=candidate)
             | Q(WGS_BactScout_Acc__iexact=candidate)
@@ -237,17 +275,18 @@ def find_custom_pipeline_match(accession):
 
     final_match = Final_Data.objects.filter(final_filter).first()
     if final_match:
-        return final_match, None, "final"
+        return final_match, "final"
 
-    raw_match = Referred_Data.objects.filter(raw_filter).first()
-    if raw_match:
-        return None, raw_match, "raw"
-
-    wgs_match = WGS_Project.objects.filter(wgs_filter).exists()
+    wgs_match = (
+        WGS_Project.objects
+        .filter(wgs_filter, Ref_Accession__isnull=False)
+        .select_related("Ref_Accession")
+        .first()
+    )
     if wgs_match:
-        return None, None, "wgs_project"
+        return wgs_match.Ref_Accession, "wgs_project"
 
-    return None, None, ""
+    return None, ""
 
 
 def custom_record_accession_keys(record_data):
@@ -258,10 +297,9 @@ def custom_record_accession_keys(record_data):
     """
     keys = []
     final_accession = record_data.get("matched_final_data_id")
-    raw_accession = record_data.get("matched_raw_data_id")
     uploaded_accession = record_data.get("accession")
 
-    for value in (final_accession, raw_accession):
+    for value in (final_accession,):
         value = str(value or "").strip()
         if value:
             keys.append(value)
@@ -289,9 +327,32 @@ def custom_record_primary_accession(record_data):
 def custom_record_display_accession(record):
     return (
         (getattr(record, "matched_final_data_id", "") or "").strip()
-        or (getattr(record, "matched_raw_data_id", "") or "").strip()
         or custom_record_primary_accession({"accession": getattr(record, "accession", "")})
         or (getattr(record, "accession", "") or "").strip()
+    )
+
+
+def ensure_custom_wgs_project(final_match):
+    if not final_match:
+        return None
+    project = (
+        WGS_Project.objects
+        .filter(Ref_Accession=final_match)
+        .order_by("id")
+        .first()
+    )
+    if project:
+        return project
+    return WGS_Project.objects.create(
+        Ref_Accession=final_match,
+        WGS_SampleInfoSummary=False,
+        WGS_BactScoutSummary=False,
+        WGS_GtdbTkSummary=False,
+        WGS_GambitSummary=False,
+        WGS_MlstSummary=False,
+        WGS_Checkm2Summary=False,
+        WGS_AssemblySummary=False,
+        WGS_AmrfinderSummary=False,
     )
 
 
@@ -456,7 +517,7 @@ WGS_SAMPLEINFO_LINK_FIELDS = {
         "accession_field": "BactScout_Accession",
         "project_accession_field": "WGS_BactScout_Acc",
         "summary_field": "WGS_BactScoutSummary",
-        "sample_fields": ("name",),
+        "sample_fields": ("sample_id",),
     },
     "GtdbTk": {
         "project_field": "gtdbtk_project",
@@ -477,7 +538,7 @@ WGS_SAMPLEINFO_LINK_FIELDS = {
         "accession_field": "Mlst_Accession",
         "project_accession_field": "WGS_Mlst_Acc",
         "summary_field": "WGS_MlstSummary",
-        "sample_fields": ("name",),
+        "sample_fields": ("file",),
     },
     "Checkm2": {
         "project_field": "checkm2_project",
@@ -866,6 +927,7 @@ def upload_wgs_view(request):
 
 
 @login_required
+@role_required(ROLE_ADMIN)
 def custom_pipeline_list(request):
     ensure_builtin_wgs_pipeline_settings()
     if request.method == "POST":
@@ -917,7 +979,7 @@ def custom_pipeline_list(request):
 
 
 @login_required
-@role_required(*WGS_WRITE_ALLOWED_ROLES)
+@role_required(ROLE_ADMIN)
 def custom_pipeline_create(request):
     if request.method == "POST":
         action = request.POST.get("action")
@@ -926,7 +988,7 @@ def custom_pipeline_create(request):
         if action == "preview_sample":
             sample_file = request.FILES.get("sample_file")
             if not sample_file:
-                messages.error(request, "Please upload a sample CSV/XLSX file.")
+                messages.error(request, "Please upload a sample CSV/TSV/XLSX file.")
                 return render(request, "wgs_app/custom_pipeline_form.html", {"form": form, "pipeline": None})
             try:
                 df = read_uploaded_file(sample_file, sheet_name=request.POST.get("sheet_name") or None)
@@ -1017,7 +1079,7 @@ def custom_pipeline_create(request):
 
 
 @login_required
-@role_required(*WGS_WRITE_ALLOWED_ROLES)
+@role_required(ROLE_ADMIN)
 def custom_pipeline_edit(request, slug):
     pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
     if request.method == "POST":
@@ -1032,7 +1094,7 @@ def custom_pipeline_edit(request, slug):
 
 
 @login_required
-@role_required(*WGS_WRITE_ALLOWED_ROLES)
+@role_required(ROLE_ADMIN)
 @require_POST
 def custom_pipeline_deactivate(request, slug):
     pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
@@ -1076,7 +1138,7 @@ def custom_pipeline_delete(request, slug):
 
 
 @login_required
-@role_required(*WGS_WRITE_ALLOWED_ROLES)
+@role_required(ROLE_ADMIN)
 def custom_pipeline_fields(request, slug):
     pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
     if request.method == "POST":
@@ -1099,7 +1161,44 @@ def custom_pipeline_fields(request, slug):
 
 
 @login_required
-@role_required(*WGS_WRITE_ALLOWED_ROLES)
+@role_required(ROLE_ADMIN)
+def custom_pipeline_field_edit(request, slug, field_id):
+    pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
+    field = get_object_or_404(CustomWGSPipelineField, pk=field_id, pipeline=pipeline)
+    record_count = pipeline.records.count()
+    original_data_type = field.data_type
+
+    if request.method == "POST":
+        form = CustomWGSPipelineFieldForm(request.POST, instance=field)
+        if form.is_valid():
+            updated_field = form.save(commit=False)
+            if not updated_field.field_key:
+                updated_field.field_key = slugify(updated_field.display_label)
+            updated_field.save()
+            messages.success(request, f"{updated_field.display_label} field updated.")
+            if record_count and original_data_type != updated_field.data_type:
+                messages.warning(
+                    request,
+                    "Field type changed. Existing uploaded records were kept as-is; the new type applies to future uploads.",
+                )
+            return redirect("custom_pipeline_fields", slug=pipeline.slug)
+    else:
+        form = CustomWGSPipelineFieldForm(instance=field)
+
+    return render(
+        request,
+        "wgs_app/custom_pipeline_field_form.html",
+        {
+            "pipeline": pipeline,
+            "field": field,
+            "form": form,
+            "record_count": record_count,
+        },
+    )
+
+
+@login_required
+@role_required(ROLE_ADMIN)
 @require_POST
 def custom_pipeline_field_delete(request, slug, field_id):
     pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
@@ -1111,7 +1210,7 @@ def custom_pipeline_field_delete(request, slug, field_id):
 
 
 @login_required
-@role_required(*WGS_WRITE_ALLOWED_ROLES)
+@role_required(ROLE_ADMIN)
 def custom_pipeline_upload(request, slug):
     pipeline = get_object_or_404(CustomWGSPipeline, slug=slug, is_active=True)
     fields = list(pipeline.fields.all())
@@ -1168,31 +1267,49 @@ def custom_pipeline_upload(request, slug):
                         skipped_count += 1
                         continue
 
-                    if replace_existing and accession not in replaced_accessions:
-                        CustomWGSPipelineRecord.objects.filter(
-                            pipeline=pipeline,
-                            accession__iexact=accession,
-                        ).delete()
-                        replaced_accessions.add(accession)
-
                     sample_name = ""
                     if pipeline.sample_name_column:
                         sample_name = str(custom_row_value(row, [pipeline.sample_name_column])).strip()
 
-                    final_match, raw_match, match_source = find_custom_pipeline_match(accession)
+                    final_match, match_source = find_custom_pipeline_match(accession)
                     match_status = "matched" if match_source else "unmatched"
                     if match_status == "matched":
                         matched_count += 1
+                        ensure_custom_wgs_project(final_match)
                     else:
                         unmatched_count += 1
+
+                    stored_accession = (
+                        final_match.f_AccessionNo
+                        if final_match
+                        else custom_record_primary_accession({"accession": accession}) or accession
+                    )
+
+                    if replace_existing:
+                        replacement_keys = custom_pipeline_accession_variants(accession)
+                        replacement_keys.extend(custom_pipeline_accession_variants(stored_accession))
+                        replacement_filter = Q()
+                        for replacement_key in replacement_keys:
+                            replacement_key = str(replacement_key or "").strip()
+                            if not replacement_key:
+                                continue
+                            normalized_key = replacement_key.upper()
+                            if normalized_key in replaced_accessions:
+                                continue
+                            replacement_filter |= Q(accession__iexact=replacement_key)
+                            replaced_accessions.add(normalized_key)
+                        if replacement_filter:
+                            CustomWGSPipelineRecord.objects.filter(
+                                replacement_filter,
+                                pipeline=pipeline,
+                            ).delete()
 
                     CustomWGSPipelineRecord.objects.create(
                         pipeline=pipeline,
                         upload_batch=batch,
-                        accession=accession,
+                        accession=stored_accession,
                         sample_name=sample_name,
                         matched_final_data=final_match,
-                        matched_raw_data=raw_match,
                         match_status=match_status,
                         match_source=match_source,
                         values_json=values,
@@ -1230,19 +1347,19 @@ def custom_pipeline_upload(request, slug):
 
 
 @login_required
+@role_required(ROLE_ADMIN)
 def custom_pipeline_records(request, slug):
     pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
     fields = list(pipeline.fields.filter(show_in_table=True))
     q = request.GET.get("q", "").strip()
     match_status = request.GET.get("match_status", "").strip()
 
-    records = pipeline.records.select_related("upload_batch", "matched_final_data", "matched_raw_data")
+    records = pipeline.records.select_related("upload_batch", "matched_final_data")
     if q:
         records = records.filter(
             Q(accession__icontains=q)
             | Q(sample_name__icontains=q)
             | Q(matched_final_data__f_AccessionNo__icontains=q)
-            | Q(matched_raw_data__AccessionNo__icontains=q)
         )
     if match_status in {"matched", "unmatched", "invalid"}:
         records = records.filter(match_status=match_status)
@@ -1273,6 +1390,7 @@ def custom_pipeline_records(request, slug):
 
 
 @login_required
+@role_required(ROLE_ADMIN)
 def custom_pipeline_export(request, slug):
     pipeline = get_object_or_404(CustomWGSPipeline, slug=slug)
     fields = list(pipeline.fields.filter(show_in_export=True))
@@ -1328,7 +1446,23 @@ def export_builtin_wgs_pipeline(request, pipeline_key):
         return redirect("upload_wgs_view")
 
     model, label = export_map[pipeline_key]
-    rows = list(model.objects.all().values())
+    if pipeline_key == "bactscout":
+        export_fields = ["BactScout_Accession", *BactScout.UPLOAD_FIELDS, "Date_uploaded_bs"]
+        rows = list(model.objects.all().values(*export_fields))
+    elif pipeline_key == "gambit":
+        export_fields = ["Gambit_Accession", *Gambit.UPLOAD_FIELDS, "Date_uploaded_g"]
+        rows = list(model.objects.all().values(*export_fields))
+    elif pipeline_key == "mlst":
+        export_fields = ["Mlst_Accession", *Mlst.UPLOAD_FIELDS, "Date_uploaded_m"]
+        rows = list(model.objects.all().values(*export_fields))
+    elif pipeline_key == "checkm2":
+        export_fields = ["Checkm2_Accession", *Checkm2.UPLOAD_FIELDS, "Date_uploaded_c"]
+        rows = list(model.objects.all().values(*export_fields))
+    elif pipeline_key == "amrfinder":
+        export_fields = ["Amrfinder_Accession", *Amrfinderplus.UPLOAD_FIELDS, "Date_uploaded_am"]
+        rows = list(model.objects.all().values(*export_fields))
+    else:
+        rows = list(model.objects.all().values())
     df = pd.DataFrame.from_records(rows)
     if df.empty:
         df = pd.DataFrame([{"message": f"No {label} records found."}])
@@ -1395,8 +1529,11 @@ def upload_gambit(request):
         if gambit_form.is_valid():
             try:
                 upload = gambit_form.save()
-                df = read_uploaded_file(upload.GambitFile, sheet_name="gambit")
-                df.columns = df.columns.str.strip().str.replace(".", "_", regex=False)
+                df = read_uploaded_file(upload.GambitFile, sheet_name=["gambit", "Sheet1"])
+                df.columns = [
+                    str(column).strip().lower().replace(".", "_")
+                    for column in df.columns
+                ]
             except Exception as e:
                 messages.error(request, f"Error processing FASTQ file: {e}")
                 return render(request, "wgs_app/Add_wgs.html", {
@@ -1416,20 +1553,35 @@ def upload_gambit(request):
                     "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
                 })
 
-            site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
-                # helper to build accession
+            site_codes = {
+                str(code or "").strip().upper()
+                for code in SiteData.objects.values_list("SiteCode", flat=True)
+                if str(code or "").strip()
+            }
+            # helper to build accession
             def format_gambit_accession(raw_name: str, site_codes: set) -> str:
                 """
-                Returns formatted accession only if BOTH 'ARS' and a valid SiteCode from SiteData exist in the name.
+                Parse Gambit sample names like 18ARS-BGH0055-20220426A
+                into the app accession format 18ARS_BGH0055.
                 """
                 if not raw_name:
                     return ""
 
-                name = raw_name.strip().upper() # normalize case
+                name = os.path.splitext(os.path.basename(str(raw_name).strip()))[0].upper()
+                name = re.sub(r"\s+", "", name)
 
                 # Reject invalid patterns
                 if "UTPR" in name or "UTPN" in name or "BL" in name:
                     return ""
+                direct_match = re.search(
+                    r"(?P<prefix>\d{2,4}ARS)[-_]?(?P<site>[A-Z]{2,6})[-_]?(?P<number>\d{3,6})",
+                    name,
+                )
+                if direct_match:
+                    return (
+                        f"{direct_match.group('prefix')}_"
+                        f"{direct_match.group('site')}{direct_match.group('number')}"
+                    )
                 
                 # ✅ Must contain 'ARS' - if not, return empty immediately
                 if "ARS" not in name:
@@ -1439,12 +1591,11 @@ def upload_gambit(request):
                 # Use word boundaries to match complete site codes only
                 valid_code = None
                 for code in site_codes:
-                    code_upper = code.upper()
                     # Look for the site code with word boundaries (hyphens, start/end of string)
                     # Pattern: site code must be followed by a hyphen and digits
-                    pattern = rf"[-]?{re.escape(code_upper)}[-]?\d+"
+                    pattern = rf"[-_]?{re.escape(code)}[-_]?\d+"
                     if re.search(pattern, name):
-                        valid_code = code_upper
+                        valid_code = code
                         break
 
                 # No valid site code found → blank
@@ -1452,23 +1603,30 @@ def upload_gambit(request):
                     return ""
 
                 # ✅ Extract prefix that includes ARS (e.g., "18ARS")
-                prefix_match = re.search(r"(\d*ARS)", name)
+                prefix_match = re.search(r"(\d{2,4}ARS)", name)
                 prefix = prefix_match.group(1) if prefix_match else "ARS"
 
                 # ✅ Extract numeric digits after the site code (e.g., 0055)
-                num_match = re.search(rf"{re.escape(valid_code)}[-]?(\d+)", name)
+                num_match = re.search(rf"{re.escape(valid_code)}[-_]?(\d+)", name)
                 digits = num_match.group(1) if num_match else ""
 
                 return f"{prefix}_{valid_code}{digits}" if digits else ""
 
 
+            created_count = 0
+            updated_count = 0
+            skipped_count = 0
             for _, row in df.iterrows():
-                sample_name = str(row.get("sample", "")).strip()
+                sample_name = (
+                    upload_text_or_none(row.get("sample"))
+                    or upload_text_or_none(row.get("query"))
+                    or ""
+                )
                 gambit_accession = format_gambit_accession(sample_name, site_codes)
 
-                # if invalid accession keep blank
-                if not gambit_accession: 
-                    gambit_accession = ""
+                if not sample_name or not gambit_accession:
+                    skipped_count += 1
+                    continue
 
                 existing_gambit = find_existing_wgs_module_record(
                     Gambit,
@@ -1478,6 +1636,7 @@ def upload_gambit(request):
                     sample_name,
                 )
                 if existing_gambit and not overwrite:
+                    skipped_count += 1
                     continue
 
                 # try to find Referred_Data with this accession
@@ -1485,37 +1644,56 @@ def upload_gambit(request):
                     f_AccessionNo=gambit_accession
                 ).first()
 
-                connect_project = get_or_create_wgs_project_for_upload(
-                    gambit_accession,
-                    referred_obj,
-                    "WGS_Gambit_Acc",
-                    "WGS_GambitSummary",
-                    existing_project=existing_gambit.gambit_project if existing_gambit else None,
-                )
-                save_or_update_wgs_module_record(
+                connect_project = None
+                if gambit_accession:
+                    connect_project = get_or_create_wgs_project_for_upload(
+                        gambit_accession,
+                        referred_obj,
+                        "WGS_Gambit_Acc",
+                        "WGS_GambitSummary",
+                        existing_project=existing_gambit.gambit_project if existing_gambit else None,
+                    )
+                record, status = save_or_update_wgs_module_record(
                     existing_gambit,
                     {
                         "_model": Gambit,
                         "Gambit_Accession": gambit_accession,
                         "gambit_project": connect_project,
                         "sample": sample_name,
-                        "predicted_name": row.get("predicted_name", ""),
-                        "predicted_rank": row.get("predicted_rank", ""),
-                        "predicted_ncbi_id": row.get("predicted_ncbi_id", ""),
-                        "predicted_threshold": row.get("predicted_threshold", ""),
-                        "closest_distance": row.get("closest_distance", ""),
-                        "closest_description": row.get("closest_description", ""),
-                        "next_name": row.get("next_name", ""),
-                        "next_rank": row.get("next_rank", ""),
-                        "next_ncbi_id": row.get("next_ncbi_id", ""),
-                        "next_threshold": row.get("next_threshold", ""),
+                        "predicted_name": upload_text_or_none(row.get("predicted_name")),
+                        "predicted_rank": upload_text_or_none(row.get("predicted_rank")),
+                        "predicted_ncbi_id": upload_text_or_none(row.get("predicted_ncbi_id")),
+                        "predicted_threshold": upload_text_or_none(row.get("predicted_threshold")),
+                        "closest_distance": upload_text_or_none(row.get("closest_distance")),
+                        "closest_description": upload_text_or_none(row.get("closest_description")),
+                        "next_name": upload_text_or_none(row.get("next_name")),
+                        "next_rank": upload_text_or_none(row.get("next_rank")),
+                        "next_ncbi_id": upload_text_or_none(row.get("next_ncbi_id")),
+                        "next_threshold": upload_text_or_none(row.get("next_threshold")),
                     },
                     overwrite=overwrite,
                 )
+                if status == "created":
+                    created_count += 1
+                elif status == "updated":
+                    updated_count += 1
+                else:
+                    skipped_count += 1
 
-
-            messages.success(request, "Gambit records updated successfully.")
+            if created_count or updated_count:
+                messages.success(
+                    request,
+                    f"Gambit upload complete: {created_count} created, "
+                    f"{updated_count} updated, {skipped_count} skipped."
+                )
+            else:
+                messages.warning(
+                    request,
+                    "No Gambit rows were uploaded. Please check that the file has a "
+                    "'sample' or 'query' column with accession-like sample names."
+                )
             return redirect("show_gambit")
+        messages.error(request, f"Gambit file upload failed: {gambit_form.errors.as_text()}")
 
     return render(request, "wgs_app/Add_wgs.html", {
         "form": form,
@@ -1557,6 +1735,8 @@ def show_gambit(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "gambit_fields": Gambit.FIELD_LABELS,
+        "gambit_colspan": len(Gambit.FIELD_LABELS) + 3,
     })
 
 
@@ -1685,13 +1865,6 @@ def upload_mlst(request):
         # ✅ Load all valid site codes from the SiteData table
         site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
 
-        def to_bool(value):
-            if isinstance(value, bool):
-                return value
-            if value is None or pd.isna(value):
-                return False
-            return str(value).strip().lower() in {"1", "true", "yes", "y", "checked", "x"}
-
         # === Helper: build accession from file name ===
         def format_mlst_accession(raw_name: str, site_codes: set) -> str:
             if not raw_name:
@@ -1748,15 +1921,15 @@ def upload_mlst(request):
 
         # === Loop through rows ===
         for _, row in df.iterrows():
-            full_path = str(row.get("name", "")).strip()
+            full_path = str(row.get("FILE", "")).strip()
             mlst_accession = format_mlst_accession(full_path, site_codes)
-            scheme = row.get("scheme", "")
+            scheme = row.get("SCHEME", "")
 
             existing_mlst = find_existing_wgs_module_record_by_fields(
                 Mlst,
                 {
                     "Mlst_Accession": mlst_accession,
-                    "name": full_path,
+                    "file": full_path,
                     "scheme": scheme,
                 },
             )
@@ -1783,16 +1956,12 @@ def upload_mlst(request):
                     "_model": Mlst,
                     "Mlst_Accession": mlst_accession,
                     "mlst_project": connect_project,
-                    "name": full_path,
+                    "file": full_path,
                     "scheme": scheme,
-                    "mlst": row.get("MLST", ""),
-                    "allele1": row.get("allele1", ""),
-                    "allele2": row.get("allele2", ""),
-                    "allele3": row.get("allele3", ""),
-                    "allele4": row.get("allele4", ""),
-                    "allele5": row.get("allele5", ""),
-                    "allele6": row.get("allele6", ""),
-                    "allele7": row.get("allele7", ""),
+                    "st": row.get("ST", ""),
+                    "status": row.get("STATUS", ""),
+                    "score": row.get("SCORE", ""),
+                    "alleles": row.get("ALLELES", ""),
                 },
                 overwrite=overwrite,
             )
@@ -1840,6 +2009,7 @@ def show_mlst(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "mlst_fields": Mlst.FIELD_LABELS,
     })
 
 
@@ -1872,7 +2042,7 @@ def delete_mlst(request, pk):
         )
 
         mlst_item.delete()
-        messages.success(request, f"Record {mlst_item.sample} deleted successfully!")
+        messages.success(request, f"Record {mlst_item.file} deleted successfully!")
         return redirect('show_mlst')
 
     messages.error(request, "Invalid request for deletion.")
@@ -2049,27 +2219,20 @@ def upload_checkm2(request):
                 existing_project=existing_checkm2.checkm2_project if existing_checkm2 else None,
             )
 
+            checkm2_values = {
+                "_model": Checkm2,
+                "Checkm2_Accession": checkm2_accession,
+                "Name": sample_name,
+                "checkm2_project": connect_project,
+            }
+            for field in Checkm2.UPLOAD_FIELDS:
+                if field == "Name":
+                    continue
+                checkm2_values[field] = row.get(field, "")
+
             save_or_update_wgs_module_record(
                 existing_checkm2,
-                {
-                    "_model": Checkm2,
-                    "Checkm2_Accession": checkm2_accession,
-                    "Name": sample_name,
-                    "checkm2_project": connect_project,
-                    "Completeness": row.get("Completeness", ""),
-                    "Contamination": row.get("Contamination", ""),
-                    "Completeness_Model_Used": row.get("Completeness_Model_Used", ""),
-                    "Translation_Table_Used": row.get("Translation_Table_Used", ""),
-                    "Coding_Density": row.get("Coding_Density", ""),
-                    "Contig_N50": row.get("Contig_N50", ""),
-                    "Average_Gene_Length": row.get("Average_Gene_Length", ""),
-                    "Genome_Size": row.get("Genome_Size", ""),
-                    "GC_Content": row.get("GC_Content", ""),
-                    "Total_Coding_Sequences": row.get("Total_Coding_Sequences", ""),
-                    "Total_Contigs": row.get("Total_Contigs", ""),
-                    "Max_Contig_Length": row.get("Max_Contig_Length", ""),
-                    "Additional_Notes": row.get("Additional_Notes", ""),
-                },
+                checkm2_values,
                 overwrite=overwrite,
             )
 
@@ -2115,6 +2278,7 @@ def show_checkm2(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "checkm2_fields": Checkm2.FIELD_LABELS,
     })
 
 
@@ -2501,10 +2665,11 @@ def upload_amrfinder(request):
         amrfinder_form = AmrUploadForm(request.POST, request.FILES)
         try:
             upload = amrfinder_form.save()
-            df = read_uploaded_file(upload.Amrfinderfile, sheet_name="amrfinderplus")
-            df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
+            df = read_uploaded_file(upload.Amrfinderfile, sheet_name=["amrfinderplus", "Sheet1"])
+            df.columns = [str(column).strip() if column is not None else "" for column in df.columns]
+            df = df.loc[:, [column for column in df.columns if column and column.lower() != "nan"]]
         except Exception as e:
-            messages.error(request, f"Error processing MLST file: {e}")
+            messages.error(request, f"Error processing AMRFinderPlus file: {e}")
             return render(request, "wgs_app/Add_wgs.html", {
                 "form": form,
                 "gambit_form": GambitUploadForm(),
@@ -2522,15 +2687,10 @@ def upload_amrfinder(request):
                 "visible_builtin_upload_keys": visible_builtin_wgs_keys("upload"),
             })
 
-        # Clean and standardize column names
-        df.columns = (
-            df.columns
-            .str.strip()
-            .str.replace(" ", "_", regex=False)
-            .str.replace("%", "pct", regex=False)
-            .str.replace(".", "_", regex=False)
-            .str.lower()
-        )
+        amrfinder_source_columns = {
+            label: field
+            for field, label in Amrfinderplus.FIELD_LABELS
+        }
 
         # Preload all valid site codes from SiteData (uppercase)
         site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
@@ -2592,13 +2752,17 @@ def upload_amrfinder(request):
         print("Total rows in dataframe:", len(df))
 
         for _, row in df.iterrows():
-            sample_name = str(row.get("name", "")).strip()
+            sample_name = upload_text_or_none(row.get("Name", "")) or ""
             amrfinder_accession = format_amrfinder_accession(sample_name)
-            protein_id = row.get("protein_id", "")
-            contig_id = row.get("contig_id", "")
-            start = row.get("start", "")
-            stop = row.get("stop", "")
-            element_symbol = row.get("element_symbol", "")
+            amrfinder_values = {
+                field: upload_text_or_none(row.get(label, "")) or ""
+                for label, field in amrfinder_source_columns.items()
+            }
+            protein_id = amrfinder_values.get("protein_id", "")
+            contig_id = amrfinder_values.get("contig_id", "")
+            start = amrfinder_values.get("start", "")
+            stop = amrfinder_values.get("stop", "")
+            element_symbol = amrfinder_values.get("element_symbol", "")
 
             existing_amrfinder = find_existing_wgs_module_record_by_fields(
                 Amrfinderplus,
@@ -2610,6 +2774,7 @@ def upload_amrfinder(request):
                     "start": start,
                     "stop": stop,
                     "element_symbol": element_symbol,
+                    "amrfinder_id": amrfinder_values.get("amrfinder_id", ""),
                 },
             )
             if existing_amrfinder and not overwrite:
@@ -2632,37 +2797,16 @@ def upload_amrfinder(request):
                 ),
             )
 
+            amrfinder_values.update({
+                "_model": Amrfinderplus,
+                "Amrfinder_Accession": amrfinder_accession,
+                "name": sample_name,
+                "amrfinder_project": connect_project,
+            })
+
             save_or_update_wgs_module_record(
                 existing_amrfinder,
-                {
-                    "_model": Amrfinderplus,
-                    "Amrfinder_Accession": amrfinder_accession,
-                    "name": sample_name,
-                    "amrfinder_project": connect_project,
-                    "protein_id": protein_id,
-                    "contig_id": contig_id,
-                    "start": start,
-                    "stop": stop,
-                    "strand": row.get("strand", ""),
-                    "element_symbol": element_symbol,
-                    "element_name": row.get("element_name", ""),
-                    "scope": row.get("scope", ""),
-                    "type_field": row.get("type", ""),
-                    "subtype": row.get("subtype", ""),
-                    "class_field": row.get("class", ""),
-                    "subclass": row.get("subclass", ""),
-                    "method": row.get("method", ""),
-                    "target_length": row.get("target_length", ""),
-                    "reference_sequence_length": row.get("reference_sequence_length", ""),
-                    "percent_coverage_of_reference": row.get("pct_coverage_of_reference", ""),
-                    "percent_identity_to_reference": row.get("pct_identity_to_reference", ""),
-                    "alignment_length": row.get("alignment_length", ""),
-                    "closest_reference_accession": row.get("closest_reference_accession", ""),
-                    "closest_reference_name": row.get("closest_reference_name", ""),
-                    "hmm_accession": row.get("hmm_accession", ""),
-                    "hmm_description": row.get("hmm_description", ""),
-                    "Date_uploaded_am": row.get("date_uploaded_am", ""),
-                },
+                amrfinder_values,
                 overwrite=overwrite,
             )
 
@@ -2709,6 +2853,7 @@ def show_amrfinder(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "amrfinder_fields": Amrfinderplus.FIELD_LABELS,
     })
 
 
@@ -3152,12 +3297,13 @@ def upload_bactscout(request):
 
         try:
             upload = bactscout_form.save()
-            df = read_uploaded_file(upload.bactscoutfile, sheet_name="bactscout")
-
-            df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
-            if "genome_size_expected_status" in df.columns:
-                cutoff_index = df.columns.get_loc("genome_size_expected_status")
-                df = df.iloc[:, :cutoff_index + 1]
+            df = read_uploaded_file(upload.bactscoutfile, sheet_name=["bactscout", "Sheet1"])
+            df = df.dropna(axis=1, how="all")
+            df.columns = [
+                str(column).strip().replace(".", "")
+                for column in df.columns
+            ]
+            df = df[[column for column in BactScout.UPLOAD_FIELDS if column in df.columns]]
 
         except Exception as e:
 
@@ -3230,17 +3376,18 @@ def upload_bactscout(request):
 
         for _, row in df.iterrows():
 
-            name = str(row.get("name") or row.get("sample_id") or "").strip()
+            sample_id = upload_text_or_none(row.get("sample_id"))
+            sample_id = str(sample_id or "").strip()
 
-            bactscout_accession = format_bactscout_accession(name)
+            bactscout_accession = format_bactscout_accession(sample_id)
 
             existing_bactscout = (
                 BactScout.objects
-                .filter(BactScout_Accession=bactscout_accession, name=name)
+                .filter(BactScout_Accession=bactscout_accession, sample_id=sample_id)
                 .select_related("bactscout_project")
                 .order_by("-id")
                 .first()
-                if name else None
+                if sample_id else None
             )
             if existing_bactscout and not overwrite:
                 continue
@@ -3264,79 +3411,63 @@ def upload_bactscout(request):
             bactscout_defaults = {
                 "bactscout_project": connect_project,
                 "BactScout_Accession": bactscout_accession,
-                "name": name,
-                "status": row.get("status") or row.get("a_final_status"),
+                "sample_id": sample_id,
 
-                "completeness": upload_number_or_none(row.get("completeness")),
-                "contamination": upload_number_or_none(row.get("contamination")),
-                "completeness_model_used": row.get("completeness_model_used"),
-                "translation_table_used": upload_number_or_none(row.get("translation_table_used"), integer=True),
-                "coding_density": upload_number_or_none(row.get("coding_density")),
-                "contig_n50": upload_number_or_none(row.get("contig_n50"), integer=True),
-                "average_gene_length": upload_number_or_none(row.get("average_gene_length")),
-                "genome_size": upload_number_or_none(row.get("genome_size"), integer=True),
-                "checkm2_gc_content": upload_number_or_none(row.get("checkm2_gc_content")),
-                "total_coding_sequences": upload_number_or_none(row.get("total_coding_sequences"), integer=True),
-                "total_contigs": upload_number_or_none(row.get("total_contigs"), integer=True),
-                "max_contig_length": upload_number_or_none(row.get("max_contig_length"), integer=True),
-                "additional_notes": row.get("additional_notes"),
+                "a_final_status": upload_text_or_none(row.get("a_final_status")),
+                "adapter_detection_status": upload_text_or_none(row.get("adapter_detection_status")),
+                "contamination_status": upload_text_or_none(row.get("contamination_status")),
+                "species_status": upload_text_or_none(row.get("species_status")),
+                "coverage_status": upload_text_or_none(row.get("coverage_status")),
+                "coverage_estimate_qualibact_status": upload_text_or_none(row.get("coverage_estimate_qualibact_status")),
+                "duplication_status": upload_text_or_none(row.get("duplication_status")),
+                "gc_content_status": upload_text_or_none(row.get("gc_content_status")),
+                "mlst_status": upload_text_or_none(row.get("mlst_status")),
+                "n_content_status": upload_text_or_none(row.get("n_content_status")),
+                "read_length_status": upload_text_or_none(row.get("read_length_status")),
+                "read_q30_status": upload_text_or_none(row.get("read_q30_status")),
 
-                "a_final_status": row.get("a_final_status"),
-                "adapter_detection_status": row.get("adapter_detection_status"),
-                "contamination_status": row.get("contamination_status"),
-                "species_status": row.get("species_status"),
-                "coverage_status": row.get("coverage_status"),
-                "coverage_estimate_qualibact_status": row.get("coverage_estimate_qualibact_status"),
-                "duplication_status": row.get("duplication_status"),
-                "gc_content_status": row.get("gc_content_status"),
-                "mlst_status": row.get("mlst_status"),
-                "n_content_status": row.get("n_content_status"),
-                "read_length_status": row.get("read_length_status"),
-                "read_q30_status": row.get("read_q30_status"),
-
-                "species": row.get("species"),
+                "species": upload_text_or_none(row.get("species")),
                 "species_abundance": upload_text_or_none(row.get("species_abundance")),
                 "species_coverage": upload_text_or_none(row.get("species_coverage")),
-                "species_message": row.get("species_message"),
+                "species_message": upload_text_or_none(row.get("species_message")),
 
-                "contamination_message": row.get("contamination_message"),
+                "contamination_message": upload_text_or_none(row.get("contamination_message")),
 
                 "coverage_estimate_sylph": upload_number_or_none(row.get("coverage_estimate_sylph")),
-                "coverage_estimate_sylph_message": row.get("coverage_estimate_sylph_message"),
+                "coverage_estimate_sylph_message": upload_text_or_none(row.get("coverage_estimate_sylph_message")),
                 "coverage_estimate_qualibact": upload_number_or_none(row.get("coverage_estimate_qualibact")),
-                "coverage_estimate_qualibact_message": row.get("coverage_estimate_qualibact_message"),
+                "coverage_estimate_qualibact_message": upload_text_or_none(row.get("coverage_estimate_qualibact_message")),
 
                 "duplication_rate": upload_number_or_none(row.get("duplication_rate")),
-                "duplication_message": row.get("duplication_message"),
+                "duplication_message": upload_text_or_none(row.get("duplication_message")),
 
                 "gc_content": upload_number_or_none(row.get("gc_content")),
                 "gc_content_lower": upload_number_or_none(row.get("gc_content_lower"), integer=True),
                 "gc_content_upper": upload_number_or_none(row.get("gc_content_upper"), integer=True),
-                "gc_content_message": row.get("gc_content_message"),
+                "gc_content_message": upload_text_or_none(row.get("gc_content_message")),
 
                 "n_content_rate": upload_number_or_none(row.get("n_content_rate")),
-                "n_content_message": row.get("n_content_message"),
+                "n_content_message": upload_text_or_none(row.get("n_content_message")),
 
-                "mlst_st": row.get("mlst_st"),
-                "mlst_message": row.get("mlst_message"),
+                "mlst_st": upload_text_or_none(row.get("mlst_st")),
+                "mlst_message": upload_text_or_none(row.get("mlst_message")),
 
                 "read1_mean_length": upload_number_or_none(row.get("read1_mean_length"), integer=True),
                 "read2_mean_length": upload_number_or_none(row.get("read2_mean_length"), integer=True),
-                "read_length_message": row.get("read_length_message"),
+                "read_length_message": upload_text_or_none(row.get("read_length_message")),
 
                 "read_q20_bases": upload_number_or_none(row.get("read_q20_bases")),
                 "read_q20_rate": upload_number_or_none(row.get("read_q20_rate")),
                 "read_q30_bases": upload_number_or_none(row.get("read_q30_bases")),
                 "read_q30_rate": upload_number_or_none(row.get("read_q30_rate")),
-                "read_q30_message": row.get("read_q30_message"),
+                "read_q30_message": upload_text_or_none(row.get("read_q30_message")),
                 "read_total_bases": upload_number_or_none(row.get("read_total_bases")),
                 "read_total_reads": upload_number_or_none(row.get("read_total_reads"), integer=True),
 
-                "adapter_detection_message": row.get("adapter_detection_message"),
+                "adapter_detection_message": upload_text_or_none(row.get("adapter_detection_message")),
 
-                "ref_genome": row.get("ref_genome"),
+                "ref_genome": upload_text_or_none(row.get("ref_genome")),
                 "genome_size_expected": upload_number_or_none(row.get("genome_size_expected"), integer=True),
-                "genome_size_expected_status": row.get("genome_size_expected_status"),
             }
 
             save_or_update_wgs_module_record(
@@ -3394,6 +3525,8 @@ def show_bactscout(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "bactscout_fields": BactScout.FIELD_LABELS,
+        "bactscout_colspan": len(BactScout.FIELD_LABELS) + 3,
 
     })
 
@@ -3409,7 +3542,7 @@ def delete_bactscout(request, pk):
 
         item.delete()
 
-        messages.success(request, f"Record {item.name} deleted successfully!")
+        messages.success(request, f"Record {item.sample_id} deleted successfully!")
 
         return redirect("show_bactscout")
 
@@ -3751,6 +3884,7 @@ def view_wgs_overview(request):
     """
     q = request.GET.get("q", "").strip()
     selected_year = request.GET.get("year", "").strip()
+    selected_organism = request.GET.get("organism", "").strip()
     visible_builtin_overview_keys = visible_builtin_wgs_keys("overview")
 
     overview_source_map = {
@@ -3808,7 +3942,7 @@ def view_wgs_overview(request):
     for row in (
         CustomWGSPipelineRecord.objects
         .filter(pipeline__in=custom_overview_pipelines, match_status="matched")
-        .values("accession", "matched_final_data_id", "matched_raw_data_id")
+        .values("accession", "matched_final_data_id")
         .distinct()
     ):
         custom_wgs_accessions.update(custom_record_accession_keys(row))
@@ -3816,6 +3950,15 @@ def view_wgs_overview(request):
     available_years = sorted(
         {year for year in (accession_year(acc) for acc in all_wgs_accessions) if year},
         reverse=True,
+    )
+    available_organisms = list(
+        Final_Data.objects
+        .filter(f_AccessionNo__in=all_wgs_accessions)
+        .exclude(f_ars_OrgCode__isnull=True)
+        .exclude(f_ars_OrgCode="")
+        .order_by("f_ars_OrgCode")
+        .values_list("f_ars_OrgCode", flat=True)
+        .distinct()
     )
 
     wgs_sets = {
@@ -3827,7 +3970,7 @@ def view_wgs_overview(request):
     for row in (
         CustomWGSPipelineRecord.objects
         .filter(pipeline__in=selected_custom_pipelines, match_status="matched")
-        .values("accession", "matched_final_data_id", "matched_raw_data_id")
+        .values("accession", "matched_final_data_id")
         .distinct()
     ):
         selected_custom_accessions.update(custom_record_accession_keys(row))
@@ -3868,6 +4011,9 @@ def view_wgs_overview(request):
             Q(f_ars_OrgCode__icontains=q) |
             Q(f_SiteCode__icontains=q)
         )
+
+    if selected_organism:
+        referred_list = referred_list.filter(f_ars_OrgCode=selected_organism)
 
     referred_list = referred_list.order_by("f_AccessionNo")
 
@@ -3919,10 +4065,9 @@ def view_wgs_overview(request):
         .filter(pipeline__in=selected_custom_pipelines, match_status="matched")
         .filter(
             Q(matched_final_data_id__in=page_accessions)
-            | Q(matched_raw_data_id__in=page_accessions)
             | Q(accession__in=page_accessions)
         )
-        .values("accession", "matched_final_data_id", "matched_raw_data_id", "pipeline_id")
+        .values("accession", "matched_final_data_id", "pipeline_id")
         .distinct()
     ):
         for custom_accession in custom_record_accession_keys(row):
@@ -4002,6 +4147,8 @@ def view_wgs_overview(request):
         "q": q,
         "available_years": available_years,
         "selected_year": selected_year,
+        "available_organisms": available_organisms,
+        "selected_organism": selected_organism,
         "preserved_params": preserved_params,
         "custom_overview_pipelines": custom_overview_pipelines,
         "selected_custom_pipelines": selected_custom_pipelines,
@@ -4135,10 +4282,7 @@ def get_wgs_details(request, accession):
         custom_pipeline_filter = custom_pipeline_filter.filter(slug__in=requested_custom_slugs)
     custom_related_data = []
     accession_variants = custom_pipeline_accession_variants(accession)
-    custom_accession_filter = (
-        Q(matched_final_data__f_AccessionNo__iexact=accession)
-        | Q(matched_raw_data__AccessionNo__iexact=accession)
-    )
+    custom_accession_filter = Q(matched_final_data__f_AccessionNo__iexact=accession)
     for accession_variant in accession_variants:
         custom_accession_filter |= Q(accession__iexact=accession_variant)
     for pipeline in custom_pipeline_filter.prefetch_related("fields").order_by("sequencing_type", "name"):
@@ -4179,6 +4323,11 @@ def get_wgs_details(request, accession):
             "antibiotics": antibiotics,  
             "related_data": related_data,
             "custom_related_data": custom_related_data,
+            "bactscout_fields": BactScout.FIELD_LABELS,
+            "gambit_fields": Gambit.FIELD_LABELS,
+            "mlst_fields": Mlst.FIELD_LABELS,
+            "checkm2_fields": Checkm2.FIELD_LABELS,
+            "amrfinder_fields": Amrfinderplus.FIELD_LABELS,
         }
     }
 
@@ -4291,7 +4440,7 @@ def download_matched_wgs_data(request):
                 custom_filter = custom_filter.filter(uploaded_at__date__lte=date_to)
 
         accessions = set()
-        for row in custom_filter.values("accession", "matched_final_data_id", "matched_raw_data_id").distinct():
+        for row in custom_filter.values("accession", "matched_final_data_id").distinct():
             for key in custom_record_accession_keys(row):
                 normalized = normalize_accession(key)
                 if normalized in final_acc_map:
@@ -4424,11 +4573,66 @@ def download_matched_wgs_data(request):
         return df
 
     bactscout_df = qs_to_df(bactscout_qs, "BactScout", "BactScout_Accession")
+    if not bactscout_df.empty:
+        bactscout_export_columns = [
+            "Table",
+            "f_AccessionNo",
+            "BactScout_Accession",
+            *BactScout.UPLOAD_FIELDS,
+            "Date_uploaded_bs",
+        ]
+        bactscout_df = bactscout_df[
+            [column for column in bactscout_export_columns if column in bactscout_df.columns]
+        ]
     mlst_df = qs_to_df(mlst_qs, "Mlst", "Mlst_Accession")
+    if not mlst_df.empty:
+        mlst_export_columns = [
+            "Table",
+            "f_AccessionNo",
+            "Mlst_Accession",
+            *Mlst.UPLOAD_FIELDS,
+            "Date_uploaded_m",
+        ]
+        mlst_df = mlst_df[
+            [column for column in mlst_export_columns if column in mlst_df.columns]
+        ]
     checkm2_df = qs_to_df(checkm2_qs, "Checkm2", "Checkm2_Accession")
+    if not checkm2_df.empty:
+        checkm2_export_columns = [
+            "Table",
+            "f_AccessionNo",
+            "Checkm2_Accession",
+            *Checkm2.UPLOAD_FIELDS,
+            "Date_uploaded_c",
+        ]
+        checkm2_df = checkm2_df[
+            [column for column in checkm2_export_columns if column in checkm2_df.columns]
+        ]
     assembly_df = qs_to_df(assembly_qs, "AssemblyScan", "Assembly_Accession")
     amrfinder_df = qs_to_df(amrfinder_qs, "Amrfinderplus", "Amrfinder_Accession")
+    if not amrfinder_df.empty:
+        amrfinder_export_columns = [
+            "Table",
+            "f_AccessionNo",
+            "Amrfinder_Accession",
+            *Amrfinderplus.UPLOAD_FIELDS,
+            "Date_uploaded_am",
+        ]
+        amrfinder_df = amrfinder_df[
+            [column for column in amrfinder_export_columns if column in amrfinder_df.columns]
+        ]
     gambit_df = qs_to_df(gambit_qs, "Gambit", "Gambit_Accession")
+    if not gambit_df.empty:
+        gambit_export_columns = [
+            "Table",
+            "f_AccessionNo",
+            "Gambit_Accession",
+            *Gambit.UPLOAD_FIELDS,
+            "Date_uploaded_g",
+        ]
+        gambit_df = gambit_df[
+            [column for column in gambit_export_columns if column in gambit_df.columns]
+        ]
 
     final_df["id"] = final_df["id"].astype(str)
     if not classification_df.empty:
@@ -4578,7 +4782,6 @@ def download_matched_wgs_data(request):
             .filter(pipeline=pipeline, match_status="matched")
             .filter(
                 Q(matched_final_data_id__in=matched_accessions)
-                | Q(matched_raw_data_id__in=matched_accessions)
                 | Q(accession__in=matched_accessions)
             )
             .order_by("accession", "-uploaded_at", "id")
@@ -4590,12 +4793,11 @@ def download_matched_wgs_data(request):
                 for key in custom_record_accession_keys({
                     "accession": record.accession,
                     "matched_final_data_id": record.matched_final_data_id,
-                    "matched_raw_data_id": record.matched_raw_data_id,
                 })
             ]
             canonical_accession = next(
                 (matched_accession_lookup[key] for key in normalized_keys if key in matched_accession_lookup),
-                record.matched_final_data_id or record.matched_raw_data_id or record.accession,
+                record.matched_final_data_id or record.accession,
             )
             export_row = {
                 "f_AccessionNo": canonical_accession,
@@ -4689,7 +4891,7 @@ def projects_page(request):
 @require_POST
 def upload_final_data(request):
     """
-    POST — receives a multipart Excel file (.xlsx) and saves rows into
+    POST — receives a multipart CSV, TSV, or Excel file and saves rows into
     Final_Data and Final_AntibioticEntry (retest antibiotic entries only).
 
     Returns JSON: { success, created, updated, skipped, errors }
@@ -4701,15 +4903,31 @@ def upload_final_data(request):
     overwrite = request.POST.get("overwrite", "false").lower() == "true"
 
     try:
-        wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+        file_name = f.name.lower()
+        wb = None
+        if file_name.endswith(".csv"):
+            df = pd.read_csv(f, dtype=object)
+            sheet_rows = [(f.name, [tuple(df.columns), *df.itertuples(index=False, name=None)])]
+        elif file_name.endswith(".tsv"):
+            df = pd.read_csv(f, sep="\t", dtype=object)
+            sheet_rows = [(f.name, [tuple(df.columns), *df.itertuples(index=False, name=None)])]
+        elif file_name.endswith((".xlsx", ".xls")):
+            wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+            sheet_rows = [
+                (sheet_name, list(wb[sheet_name].iter_rows(values_only=True)))
+                for sheet_name in wb.sheetnames
+            ]
+        else:
+            return JsonResponse(
+                {"success": False, "error": "Unsupported file format. Please upload CSV, TSV, XLSX, or XLS."},
+                status=400,
+            )
     except Exception as e:
         return JsonResponse({"success": False, "error": f"Cannot open file: {e}"}, status=400)
 
     results = {"created": 0, "updated": 0, "skipped": 0, "errors": []}
 
-    for sheet_name in wb.sheetnames:
-        ws = wb[sheet_name]
-        rows = list(ws.iter_rows(values_only=True))
+    for sheet_name, rows in sheet_rows:
         if not rows:
             continue
 
@@ -4918,7 +5136,8 @@ def upload_final_data(request):
                     "error":     str(e),
                 })
 
-    wb.close()
+    if wb:
+        wb.close()
     results["success"] = True
     return JsonResponse(results)
 
@@ -6176,11 +6395,14 @@ def upload_referred_table(request):
         if file_name.endswith(".csv"):
             df = pd.read_csv(uploaded_file)
 
+        elif file_name.endswith(".tsv"):
+            df = pd.read_csv(uploaded_file, sep="\t")
+
         elif file_name.endswith((".xlsx", ".xls")):
             df = pd.read_excel(uploaded_file)
 
         else:
-            messages.error(request, "Unsupported file format.")
+            messages.error(request, "Unsupported file format. Please upload CSV, TSV, XLSX, or XLS.")
             return redirect("upload_wgs_view")
 
         df.columns = [str(c).strip() for c in df.columns]
@@ -8150,10 +8372,12 @@ def upload_final_antibiotics(request):
         file_name = file.name.lower()
         if file_name.endswith(".csv"):
             sheets = {"Final_AntibioticEntry": pd.read_csv(file)}
+        elif file_name.endswith(".tsv"):
+            sheets = {"Final_AntibioticEntry": pd.read_csv(file, sep="\t")}
         elif file_name.endswith((".xlsx", ".xls")):
             sheets = pd.read_excel(file, sheet_name=None)
         else:
-            messages.error(request, "Unsupported file format. Please upload CSV, XLSX, or XLS.")
+            messages.error(request, "Unsupported file format. Please upload CSV, TSV, XLSX, or XLS.")
             return redirect("show_final_antibiotic")
     except Exception as e:
         print(f"[FINAL ABX DEBUG] Failed to read uploaded file: {e}")
@@ -8732,7 +8956,23 @@ def upload_raw_antibiotics(request):
         return redirect("show_raw_antibiotic")
 
     try:
-        wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+        file_name = file.name.lower()
+        wb = None
+        if file_name.endswith(".csv"):
+            df = pd.read_csv(file)
+            sheet_rows = [(file.name, [tuple(df.columns), *df.itertuples(index=False, name=None)])]
+        elif file_name.endswith(".tsv"):
+            df = pd.read_csv(file, sep="\t")
+            sheet_rows = [(file.name, [tuple(df.columns), *df.itertuples(index=False, name=None)])]
+        elif file_name.endswith((".xlsx", ".xls")):
+            wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+            sheet_rows = [
+                (sheet, wb[sheet].iter_rows(values_only=True))
+                for sheet in wb.sheetnames
+            ]
+        else:
+            messages.error(request, "Unsupported file format. Please upload CSV, TSV, XLSX, or XLS.")
+            return redirect("show_raw_antibiotic")
     except Exception as e:
         messages.error(request, str(e))
         return redirect("show_raw_antibiotic")
@@ -8760,15 +9000,16 @@ def upload_raw_antibiotics(request):
     }
 
     # -----------------------------
-    # PROCESS WORKBOOK
+    # PROCESS UPLOADED TABLES
     # -----------------------------
 
-    for sheet in wb.sheetnames:
-
-        ws = wb[sheet]
-        rows = ws.iter_rows(values_only=True)
-
-        headers = next(rows)
+    for _sheet_name, rows in sheet_rows:
+        try:
+            headers = next(iter(rows))
+        except StopIteration:
+            continue
+        if not hasattr(rows, "__next__"):
+            rows = iter(rows[1:])
         headers_lower = [str(c).lower().strip() if c else "" for c in headers]
 
         if "accessionno" not in headers_lower:
@@ -8914,7 +9155,8 @@ def upload_raw_antibiotics(request):
                     "defaults": defaults,
                 }
 
-    wb.close()
+    if wb:
+        wb.close()
 
     created, updated, _ = _bulk_upsert_antibiotic_entries(
         AntibioticEntry,

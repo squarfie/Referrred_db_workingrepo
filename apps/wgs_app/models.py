@@ -211,7 +211,6 @@ class CustomWGSPipelineRecord(models.Model):
     ]
     MATCH_SOURCE_CHOICES = [
         ("final", "Final data"),
-        ("raw", "Raw data"),
         ("wgs_project", "WGS project"),
         ("", "None"),
     ]
@@ -233,14 +232,6 @@ class CustomWGSPipelineRecord(models.Model):
         blank=True,
         related_name="custom_wgs_records",
         to_field="f_AccessionNo",
-    )
-    matched_raw_data = models.ForeignKey(
-        "home.Referred_Data",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="custom_wgs_records",
-        to_field="AccessionNo",
     )
     match_status = models.CharField(max_length=20, choices=MATCH_STATUS_CHOICES, default="unmatched", db_index=True)
     match_source = models.CharField(max_length=20, choices=MATCH_SOURCE_CHOICES, blank=True, default="")
@@ -354,6 +345,55 @@ class SampleInfoUpload(models.Model):
 # BactScout
 # ──────────────────────────────────────────────
 class BactScout(models.Model):
+    FIELD_LABELS = [
+        ("sample_id", "sample_id"),
+        ("a_final_status", "a_final_status"),
+        ("adapter_detection_status", "adapter_detection_status"),
+        ("contamination_status", "contamination_status"),
+        ("species_status", "species_status"),
+        ("coverage_status", "coverage_status"),
+        ("coverage_estimate_qualibact_status", "coverage_estimate_qualibact_status"),
+        ("duplication_status", "duplication_status"),
+        ("gc_content_status", "gc_content_status"),
+        ("mlst_status", "mlst_status"),
+        ("n_content_status", "n_content_status"),
+        ("read_length_status", "read_length_status"),
+        ("read_q30_status", "read_q30_status"),
+        ("species", "species"),
+        ("species_abundance", "species_abundance"),
+        ("species_coverage", "species_coverage"),
+        ("species_message", "species_message"),
+        ("contamination_message", "contamination_message"),
+        ("coverage_estimate_sylph", "coverage_estimate_sylph"),
+        ("coverage_estimate_sylph_message", "coverage_estimate_sylph_message"),
+        ("coverage_estimate_qualibact", "coverage_estimate_qualibact"),
+        ("coverage_estimate_qualibact_message", "coverage_estimate_qualibact_message"),
+        ("duplication_rate", "duplication_rate"),
+        ("duplication_message", "duplication_message"),
+        ("gc_content", "gc_content"),
+        ("gc_content_lower", "gc_content_lower"),
+        ("gc_content_upper", "gc_content_upper"),
+        ("gc_content_message", "gc_content_message"),
+        ("n_content_rate", "n_content_rate"),
+        ("n_content_message", "n_content_message"),
+        ("mlst_st", "mlst_st"),
+        ("mlst_message", "mlst_message"),
+        ("read1_mean_length", "read1_mean_length"),
+        ("read2_mean_length", "read2_mean_length"),
+        ("read_length_message", "read_length_message"),
+        ("read_q20_bases", "read_q20_bases"),
+        ("read_q20_rate", "read_q20_rate"),
+        ("read_q30_bases", "read_q30_bases"),
+        ("read_q30_rate", "read_q30_rate"),
+        ("read_q30_message", "read_q30_message"),
+        ("read_total_bases", "read_total_bases"),
+        ("read_total_reads", "read_total_reads"),
+        ("adapter_detection_message", "adapter_detection_message"),
+        ("ref_genome", "ref_genome"),
+        ("genome_size_expected", "genome_size_expected"),
+    ]
+    UPLOAD_FIELDS = [field for field, _label in FIELD_LABELS]
+
     bactscout_project = models.ForeignKey(
         "wgs_app.WGS_Project",
         on_delete=models.SET_NULL,
@@ -363,23 +403,7 @@ class BactScout(models.Model):
     BactScout_Accession = models.CharField(max_length=255, blank=True, null=True, db_index=True)
 
     # sample information
-    name = models.CharField(max_length=255, blank=True, null=True)
-    status = models.CharField(max_length=255, blank=True, null=True)
-
-    # integrated checkm2 columns
-    completeness = models.FloatField(blank=True, null=True)                         # e.g. 99.99
-    contamination = models.FloatField(blank=True, null=True)                        # e.g. 0.16
-    completeness_model_used = models.CharField(max_length=255, blank=True, null=True)
-    translation_table_used = models.IntegerField(blank=True, null=True)             # e.g. 11
-    coding_density = models.FloatField(blank=True, null=True)                       # e.g. 0.841
-    contig_n50 = models.IntegerField(blank=True, null=True)                         # e.g. 44250
-    average_gene_length = models.FloatField(blank=True, null=True)                  # e.g. 276.16
-    genome_size = models.IntegerField(blank=True, null=True)                        # e.g. 2191704
-    checkm2_gc_content = models.FloatField(blank=True, null=True)                   # GC_Content from checkm2 (e.g. 0.52)
-    total_coding_sequences = models.IntegerField(blank=True, null=True)             # e.g. 2230
-    total_contigs = models.IntegerField(blank=True, null=True)                      # e.g. 114
-    max_contig_length = models.IntegerField(blank=True, null=True)                  # e.g. 207591
-    additional_notes = models.TextField(blank=True, null=True)                      # e.g. None
+    sample_id = models.CharField(max_length=255, blank=True, null=True)
 
     # overall status flags
     a_final_status = models.CharField(max_length=255, blank=True, null=True)
@@ -448,7 +472,6 @@ class BactScout(models.Model):
     # reference
     ref_genome = models.CharField(max_length=255, blank=True, null=True)            # e.g. GCF_003697165.2
     genome_size_expected = models.IntegerField(blank=True, null=True)               # e.g. 5200000
-    genome_size_expected_status = models.TextField(blank=True, null=True)
 
     Date_uploaded_bs = models.DateField(auto_now_add=True)
 
@@ -456,7 +479,7 @@ class BactScout(models.Model):
         db_table = "BactScout"
 
     def __str__(self):
-        return self.name or ""
+        return self.sample_id or ""
 
 
 class BactScoutUpload(models.Model):
@@ -526,6 +549,21 @@ class GtdbTkUpload(models.Model):
 
 # gambit
 class Gambit(models.Model):
+    FIELD_LABELS = [
+        ("sample", "sample"),
+        ("predicted_name", "predicted.name"),
+        ("predicted_rank", "predicted.rank"),
+        ("predicted_ncbi_id", "predicted.ncbi_id"),
+        ("predicted_threshold", "predicted.threshold"),
+        ("closest_distance", "closest.distance"),
+        ("closest_description", "closest.description"),
+        ("next_name", "next.name"),
+        ("next_rank", "next.rank"),
+        ("next_ncbi_id", "next.ncbi_id"),
+        ("next_threshold", "next.threshold"),
+    ]
+    UPLOAD_FIELDS = [field for field, _label in FIELD_LABELS]
+
     gambit_project = models.ForeignKey(
         "wgs_app.WGS_Project",   # connects to WGS_Project model
         on_delete=models.SET_NULL,
@@ -571,6 +609,23 @@ class GambitDisplayConfig(models.Model):
 
 # mlst
 class Mlst(models.Model):
+    FIELD_LABELS = [
+        ("file", "FILE"),
+        ("scheme", "SCHEME"),
+        ("st", "ST"),
+        ("status", "STATUS"),
+        ("score", "SCORE"),
+        ("alleles", "ALLELES"),
+    ]
+    UPLOAD_FIELDS = (
+        "file",
+        "scheme",
+        "st",
+        "status",
+        "score",
+        "alleles",
+    )
+
     mlst_project = models.ForeignKey(
         "wgs_app.WGS_Project",   # connects to WGS_Project model
         on_delete=models.SET_NULL,
@@ -578,21 +633,17 @@ class Mlst(models.Model):
         related_name="mlst_entries"
     )
     Mlst_Accession = models.CharField(max_length=255, blank=True, null=True, db_index=True)
-    name = models.CharField(max_length=255, blank=True, null=True)
+    file = models.CharField(max_length=255, blank=True, null=True)
     scheme = models.CharField(max_length=255, blank=True, null=True)
-    mlst = models.CharField(max_length=255, blank=True, null=True)
-    allele1 = models.CharField(max_length=255, blank=True, null=True)
-    allele2 = models.CharField(max_length=255, blank=True, null=True)
-    allele3 = models.CharField(max_length=255, blank=True, null=True)
-    allele4 = models.CharField(max_length=255, blank=True, null=True)
-    allele5 = models.CharField(max_length=255, blank=True, null=True)
-    allele6 = models.CharField(max_length=255, blank=True, null=True)
-    allele7 = models.CharField(max_length=255, blank=True, null=True)
+    st = models.CharField(max_length=255, blank=True, null=True)
+    status = models.CharField(max_length=255, blank=True, null=True)
+    score = models.CharField(max_length=255, blank=True, null=True)
+    alleles = models.TextField(blank=True, null=True)
     Date_uploaded_m = models.DateField(auto_now_add=True)
     class Meta:
         db_table = "mlst"
     def __str__(self):
-        return self.name or ""
+        return self.file or ""
 
 class MlstUpload(models.Model):
     Mlstfile = models.FileField(upload_to='uploads/wgs/mlst/', null=True, blank=True)
@@ -603,6 +654,39 @@ class MlstUpload(models.Model):
 
 # Checkm2
 class Checkm2(models.Model):
+    FIELD_LABELS = [
+        ("Name", "Name"),
+        ("Completeness", "Completeness"),
+        ("Contamination", "Contamination"),
+        ("Completeness_Model_Used", "Completeness Model Used"),
+        ("Translation_Table_Used", "Translation Table Used"),
+        ("Coding_Density", "Coding Density"),
+        ("Contig_N50", "Contig N50"),
+        ("Average_Gene_Length", "Average Gene Length"),
+        ("Genome_Size", "Genome Size"),
+        ("GC_Content", "GC Content"),
+        ("Total_Coding_Sequences", "Total Coding Sequences"),
+        ("Total_Contigs", "Total Contigs"),
+        ("Max_Contig_Length", "Max Contig Length"),
+        ("Additional_Notes", "Additional Notes"),
+    ]
+    UPLOAD_FIELDS = (
+        "Name",
+        "Completeness",
+        "Contamination",
+        "Completeness_Model_Used",
+        "Translation_Table_Used",
+        "Coding_Density",
+        "Contig_N50",
+        "Average_Gene_Length",
+        "Genome_Size",
+        "GC_Content",
+        "Total_Coding_Sequences",
+        "Total_Contigs",
+        "Max_Contig_Length",
+        "Additional_Notes",
+    )
+
     checkm2_project = models.ForeignKey(
         "wgs_app.WGS_Project",   # connects to WGS_Project model
         on_delete=models.SET_NULL,
@@ -684,6 +768,61 @@ class AssemblyUpload(models.Model):
 
 # Amrfinderplus
 class Amrfinderplus(models.Model):
+    FIELD_LABELS = [
+        ("amrfinder_id", "ID"),
+        ("name", "Name"),
+        ("protein_id", "Protein id"),
+        ("contig_id", "Contig id"),
+        ("start", "Start"),
+        ("stop", "Stop"),
+        ("strand", "Strand"),
+        ("element_symbol", "Element symbol"),
+        ("element_name", "Element name"),
+        ("scope", "Scope"),
+        ("type_field", "Type"),
+        ("subtype", "Subtype"),
+        ("class_field", "Class"),
+        ("subclass", "Subclass"),
+        ("method", "Method"),
+        ("target_length", "Target length"),
+        ("reference_sequence_length", "Reference sequence length"),
+        ("percent_coverage_of_reference", "% Coverage of reference"),
+        ("percent_identity_to_reference", "% Identity to reference"),
+        ("alignment_length", "Alignment length"),
+        ("closest_reference_accession", "Closest reference accession"),
+        ("closest_reference_name", "Closest reference name"),
+        ("hmm_accession", "HMM accession"),
+        ("hmm_description", "HMM description"),
+        ("hierarchy_node", "Hierarchy node"),
+    ]
+    UPLOAD_FIELDS = (
+        "amrfinder_id",
+        "name",
+        "protein_id",
+        "contig_id",
+        "start",
+        "stop",
+        "strand",
+        "element_symbol",
+        "element_name",
+        "scope",
+        "type_field",
+        "subtype",
+        "class_field",
+        "subclass",
+        "method",
+        "target_length",
+        "reference_sequence_length",
+        "percent_coverage_of_reference",
+        "percent_identity_to_reference",
+        "alignment_length",
+        "closest_reference_accession",
+        "closest_reference_name",
+        "hmm_accession",
+        "hmm_description",
+        "hierarchy_node",
+    )
+
     amrfinder_project = models.ForeignKey(
         "wgs_app.WGS_Project",   # connects to WGS_Project model
         on_delete=models.SET_NULL,
@@ -691,6 +830,7 @@ class Amrfinderplus(models.Model):
         related_name="amrfinder_entries"
     )
     Amrfinder_Accession = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    amrfinder_id = models.CharField(max_length=255, blank=True, null=True)
     name = models.CharField(max_length=255, blank=True, null=True)
     protein_id = models.CharField(max_length=255, blank=True, null=True)
     contig_id = models.CharField(max_length=255, blank=True, null=True)
@@ -714,6 +854,7 @@ class Amrfinderplus(models.Model):
     closest_reference_name = models.CharField(max_length=255, blank=True, null=True)
     hmm_accession = models.CharField(max_length=255, blank=True, null=True)
     hmm_description = models.CharField(max_length=255, blank=True, null=True)
+    hierarchy_node = models.CharField(max_length=255, blank=True, null=True)
     Date_uploaded_am = models.DateField(auto_now_add=True)
     class Meta:
         db_table = "amrfinderplus"

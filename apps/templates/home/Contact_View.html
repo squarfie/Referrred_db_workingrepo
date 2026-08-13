@@ -1,6 +1,13 @@
 {% extends 'layouts/base.html' %}
+{% load static %}
 
 {% block title %} ARSP Staff {% endblock title %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
+{% endblock stylesheets %}
 
 {% block content %}
 <div class="header bg-primary pb-6" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
@@ -50,7 +57,7 @@
                                         class="btn btn-sm btn-secondary"
                                         data-toggle="modal"
                                         data-target="#UploadModalContact">
-                                    <i class="fas fa-file-upload mr-1"></i> Upload CSV / Excel
+                                    <i class="fas fa-file-upload mr-1"></i> Upload CSV / TSV / Excel
                                 </button>
                                 <a href="{% url 'export_contacts' %}" class="btn btn-sm btn-outline-primary">
                                     <i class="fas fa-file-export mr-1"></i> Export Excel
@@ -132,6 +139,12 @@
                                     {% else %}
                                         <span class="badge badge-light">Checker</span>
                                     {% endif %}
+                                    {% if contact_item.Is_Default_Lab_Manager %}
+                                        <span class="badge badge-success mr-1">Default Lab Manager</span>
+                                    {% endif %}
+                                    {% if contact_item.Is_Default_Head %}
+                                        <span class="badge badge-info mr-1">Default Head</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     {% if contact_item.User_Account %}
@@ -183,7 +196,7 @@
                     <input type="file"
                            name="contacts_file"
                            class="form-control"
-                           accept=".xlsx,.xls,.csv"
+                           accept=".xlsx,.xls,.csv,.tsv"
                            required>
                     <small class="text-muted d-block mt-2">
                         Supported columns: User_Account, Username, Staff_Name, Staff_Credentials,

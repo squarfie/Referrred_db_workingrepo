@@ -76,8 +76,8 @@ def classify_id_concordance(site_org, ars_pre, ars_org, ars_post=""):
     if _contains_any(" ".join([site, ars, pre, post]), MIXED_INDICATORS):
         return "M", "M"
 
-    # "No ... recovered" is a discordant identification, not a non-viable isolate.
-    if "no" in pre and "recovered" in (pre + " " + post):
+    # "No ... recovered or isolated" is a discordant identification, not a non-viable isolate.
+    if "no" in pre and ("recovered" in (pre + " " + post) or "isolated" in (pre + " " + post)):
         return "X", "X"
 
     if _contains_any(" ".join([ars, pre, post]), NONVIABLE_INDICATORS):

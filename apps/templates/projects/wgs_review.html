@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% load static %}
+{% load custom_tags %}
 
 {% block title %}WGS Classification{% endblock %}
 
@@ -71,26 +72,18 @@
   <thead>
     <tr>
       <th>Accession</th>
-      <th>Name</th>
-      <th>Species</th>
-      <th>Q30 Rate</th>
-      <th>GC Content</th>
-      <th>Status</th>
+      {% for field, label in bactscout_fields %}
+        <th>{{ label }}</th>
+      {% endfor %}
     </tr>
   </thead>
   <tbody>
   {% for bs in bactscout %}
     <tr>
       <td>{{ bs.BactScout_Accession }}</td>
-      <td>{{ bs.name }}</td>
-      <td>{{ bs.species }}</td>
-      <td>{{ bs.read_q30_rate }}</td>
-      <td>{{ bs.gc_content }}</td>
-      <td>
-        <span class="badge badge-{% if bs.read_q30_status == 'PASS' or bs.a_final_status == 'PASS' %}success{% else %}danger{% endif %}">
-          {{ bs.read_q30_status|default:bs.a_final_status }}
-        </span>
-      </td>
+      {% for field, label in bactscout_fields %}
+        <td>{{ bs|getattr:field|default:"N/A" }}</td>
+      {% endfor %}
     </tr>
   {% endfor %}
   </tbody>
@@ -101,41 +94,78 @@
       <!-- GAMBIT -->
       {% if wgs_project.gambit_entries.exists %}
       <h6 class="text-uppercase text-muted">GAMBIT Identification</h6>
-      {% for g in wgs_project.gambit_entries.all %}
-        <p class="mb-1">
-          <strong>{{ g.predicted_name }}</strong>
-          ({{ g.predicted_rank }})<br>
-          <small class="text-muted">
-            Closest: {{ g.closest_description }} ({{ g.closest_distance }})
-          </small>
-        </p>
-      {% endfor %}
+      <div class="table-responsive mb-2">
+        <table class="table table-sm table-bordered">
+          <thead class="thead-light">
+            <tr>
+              {% for field, label in gambit_fields %}
+                <th>{{ label }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in wgs_project.gambit_entries.all %}
+            <tr>
+              {% for field, label in gambit_fields %}
+                <td>{{ g|getattr:field|default:"N/A" }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       <hr>
       {% endif %}
 
       <!-- MLST -->
       {% if wgs_project.mlst_entries.exists %}
       <h6 class="text-uppercase text-muted">MLST</h6>
-      {% for m in wgs_project.mlst_entries.all %}
-        <p class="mb-1">
-          <strong>Scheme:</strong> {{ m.scheme }} |
-          <strong>ST:</strong> {{ m.mlst }}
-        </p>
-      {% endfor %}
+      <div class="table-responsive mb-2">
+        <table class="table table-sm table-bordered">
+          <thead class="thead-light">
+            <tr>
+              {% for field, label in mlst_fields %}
+                <th>{{ label }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in wgs_project.mlst_entries.all %}
+            <tr>
+              {% for field, label in mlst_fields %}
+                <td>{{ m|getattr:field|default:"N/A" }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       <hr>
       {% endif %}
 
       <!-- CHECKM2 -->
       {% if wgs_project.checkm2_entries.exists %}
       <h6 class="text-uppercase text-muted">Genome Quality (CheckM2)</h6>
-      {% for c in wgs_project.checkm2_entries.all %}
-        <div class="row text-sm mb-2">
-          <div class="col-md-3">Completeness: {{ c.Completeness }}%</div>
-          <div class="col-md-3">Contamination: {{ c.Contamination }}%</div>
-          <div class="col-md-3">Genome Size: {{ c.Genome_Size }}</div>
-          <div class="col-md-3">GC: {{ c.GC_Content }}</div>
-        </div>
-      {% endfor %}
+      <div class="table-responsive mb-2">
+        <table class="table table-sm table-bordered">
+          <thead class="thead-light">
+            <tr>
+              {% for field, label in checkm2_fields %}
+                <th>{{ label }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in wgs_project.checkm2_entries.all %}
+            <tr>
+              {% for field, label in checkm2_fields %}
+                <td>{{ c|getattr:field|default:"N/A" }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       <hr>
       {% endif %}
 
@@ -155,11 +185,26 @@
       <!-- AMRFINDER -->
       {% if wgs_project.amrfinder_entries.exists %}
       <h6 class="text-uppercase text-muted">AMR Genes</h6>
-      {% for amr in wgs_project.amrfinder_entries.all %}
-        <span class="badge badge-warning mb-1">
-          {{ amr.element_symbol }} ({{ amr.class_field }})
-        </span>
-      {% endfor %}
+      <div class="table-responsive mb-2">
+        <table class="table table-sm table-bordered">
+          <thead class="thead-light">
+            <tr>
+              {% for field, label in amrfinder_fields %}
+                <th>{{ label }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for amr in wgs_project.amrfinder_entries.all %}
+            <tr>
+              {% for field, label in amrfinder_fields %}
+                <td>{{ amr|getattr:field|default:"N/A" }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       {% endif %}
 
     </div>

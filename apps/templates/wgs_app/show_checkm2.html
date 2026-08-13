@@ -1,4 +1,5 @@
 {% extends 'layouts/base.html' %}
+{% load custom_tags %}
 {% block title %}CheckM2 Summary{% endblock %}
 
 {% block content %}
@@ -91,10 +92,10 @@
         <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
           <tr>
             <th style="width: 100px;">Actions</th>
-            <th>Name</th>
             <th>CheckM2 Accession</th>
-            <th style="width: 130px;">Completeness</th>
-            <th style="width: 130px;">Contamination</th>
+            {% for field, label in checkm2_fields %}
+              <th>{{ label }}</th>
+            {% endfor %}
           </tr>
         </thead>
         <tbody class="list">
@@ -110,53 +111,27 @@
               </a>
             </td>
             <td>
-              <strong class="text-primary">{{ check.Name }}</strong>
-            </td>
-            <td>
               {% if check.Checkm2_Accession %}
                 <span>{{ check.Checkm2_Accession }}</span>
               {% else %}
                 <span class="badge badge-light">Not Assigned</span>
               {% endif %}
             </td>
+            {% for field, label in checkm2_fields %}
             <td>
-              {% if check.Completeness %}
-                <div class="d-flex align-items-center">
-                  <span class="mr-2">{{ check.Completeness }}%</span>
-                  <div class="progress" style="width: 60px; height: 8px;">
-                    <div class="progress-bar bg-success" role="progressbar" 
-                         style="width: {{ check.Completeness }}%" 
-                         aria-valuenow="{{ check.Completeness }}" 
-                         aria-valuemin="0" 
-                         aria-valuemax="100">
-                    </div>
-                  </div>
-                </div>
+              {% with value=check|getattr:field %}
+              {% if value %}
+                <span>{{ value }}</span>
               {% else %}
                 <span class="badge badge-light">N/A</span>
               {% endif %}
+              {% endwith %}
             </td>
-            <td>
-              {% if check.Contamination %}
-                <div class="d-flex align-items-center">
-                  <span class="mr-2">{{ check.Contamination }}%</span>
-                  <div class="progress" style="width: 60px; height: 8px;">
-                    <div class="progress-bar bg-warning" role="progressbar" 
-                         style="width: {{ check.Contamination }}%" 
-                         aria-valuenow="{{ check.Contamination }}" 
-                         aria-valuemin="0" 
-                         aria-valuemax="100">
-                    </div>
-                  </div>
-                </div>
-              {% else %}
-                <span class="badge badge-light">N/A</span>
-              {% endif %}
-            </td>
+            {% endfor %}
           </tr>
           {% empty %}
           <tr>
-            <td colspan="5" class="text-center py-5">
+            <td colspan="16" class="text-center py-5">
               <i class="ni ni-folder-17 text-muted" style="font-size: 3rem;"></i>
               <p class="text-muted mt-3 mb-0">No CheckM2 records found</p>
             </td>
@@ -360,13 +335,9 @@ function searchTable() {
 
   rows.forEach(row => {
     if (row.cells.length > 1) {
-      var name = row.cells[1].textContent.toLowerCase();
-      var accession = row.cells[2].textContent.toLowerCase();
-      var completeness = row.cells[3].textContent.toLowerCase();
-      var contamination = row.cells[4].textContent.toLowerCase();
+      var rowText = row.textContent.toLowerCase();
 
-      if (name.includes(filter) || accession.includes(filter) || 
-          completeness.includes(filter) || contamination.includes(filter)) {
+      if (rowText.includes(filter)) {
         row.style.display = "";
       } else {
         row.style.display = "none";

@@ -68,6 +68,12 @@ html, body {
     margin-top: 10px;
 }
 
+.report-title-gap {
+    height: 4px;
+    line-height: 4px;
+    font-size: 4px;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -238,6 +244,7 @@ td[colspan="4"] div {
 
 .recommendation-row {
     height: auto !important;
+    page-break-inside: avoid;
 }
 
 .recommendation-cell {
@@ -275,6 +282,16 @@ td[colspan="4"] div {
     display: block;
     height: 0.2px;
     line-height: 0.2px;
+}
+
+.report-table,
+.signature-row {
+    page-break-inside: avoid;
+}
+
+.signature-gap td {
+    height: 6px !important;
+    line-height: 6px !important;
 }
 
 .page-break {
@@ -327,6 +344,87 @@ td[colspan="4"] div {
     font-size: 13px !important;
     font-weight: bold !important;
     line-height: 1.1 !important;
+}
+
+/* Compact only pages with long recommendation blocks. */
+.compact-pdf-page .header-container {
+    height: 42px;
+    max-height: 42px;
+}
+
+.compact-pdf-page .header-container th,
+.compact-pdf-page .header-container td,
+.compact-pdf-page .header-container p {
+    line-height: 0.86 !important;
+}
+
+.compact-pdf-page .header-container img {
+    height: 44px !important;
+}
+
+.compact-pdf-page .report-table {
+    margin-top: 2px;
+}
+
+.compact-pdf-page th,
+.compact-pdf-page td {
+    padding: 0.3px 0.5px 0 0;
+    line-height: 0.92;
+}
+
+.compact-pdf-page table.report-table th,
+.compact-pdf-page table.report-table td {
+    padding: 0.3px 0.5px 0 0 !important;
+    line-height: 0.9 !important;
+}
+
+.compact-pdf-page table.report-table tr {
+    height: 12.2px;
+}
+
+.compact-pdf-page .abx-header {
+    padding: 0.3px 0 !important;
+    line-height: 0.92 !important;
+}
+
+.compact-pdf-page .mic,
+.compact-pdf-page table.report-table .mic {
+    line-height: 0.92 !important;
+}
+
+.compact-pdf-page .lab-box {
+    line-height: 1.2 !important;
+    padding: 1px 0 0 0;
+}
+
+.compact-pdf-page .patient-info-box {
+    padding-top: 0.5px !important;
+    line-height: 1.12 !important;
+}
+
+.compact-pdf-page .patient-info-box strong {
+    line-height: 1.12 !important;
+}
+
+.compact-pdf-page .org-cell,
+.compact-pdf-page .site-org-cell,
+.compact-pdf-page .ars-org-cell {
+    line-height: 1.05 !important;
+}
+
+.compact-pdf-page .recommendation-text {
+    line-height: 0.88 !important;
+}
+
+.compact-pdf-page .signature-gap td {
+    height: 4px !important;
+    line-height: 4px !important;
+}
+
+.compact-pdf-page .result-cell,
+.compact-pdf-page .result-cell.mic {
+    line-height: 0.95 !important;
+    padding: 0.1px 0.1px 0 0 !important;
 }
 
 .patient-name-inline {
@@ -384,6 +482,7 @@ table.report-table td.patient-cell .lab-box span {
 <body>
 
 {% for page in pages %}
+<div class="{% if page.0.compact_page %}compact-pdf-page{% endif %}">
 
 <!-- ================= PAGE HEADER ================= -->
     <div class="header-container">
@@ -419,6 +518,7 @@ table.report-table td.patient-cell .lab-box span {
         </tr>
     </table>
 </div>
+<div class="report-title-gap">&nbsp;</div>
 <table class="report-table">
 <tbody>
 <tr>
@@ -432,6 +532,7 @@ table.report-table td.patient-cell .lab-box span {
 {% with isolate=isolate_data.isolate %}
 {% with grouped_rows=isolate_data.grouped_rows %}
 {% with grouped_ars_rows=isolate_data.grouped_ars_rows %}
+{% with site_is_plus=isolate_data.site_uses_plus_layout %}
 
 <!-- ================= ISOLATE HEADER ================= -->
 <tr>
@@ -481,31 +582,31 @@ table.report-table td.patient-cell .lab-box span {
                         <br>
                                     <div class="patient-info-box">
                                         <strong >Patient ID:</strong>
-                                        &nbsp;&nbsp; {{ isolate.f_Patient_ID|blank_empty }}
+                                        &nbsp;<span style="font-size:11.5px;">{{ isolate.f_Patient_ID|blank_empty }} </span>
                                         <br>
                                         <strong >Date of Birth:</strong>
-                                        &nbsp;&nbsp;{{ isolate.f_Date_Birth|date:"m/d/Y"|blank_empty }}
+                                        &nbsp;{{ isolate.f_Date_Birth|date:"m/d/Y"|blank_empty }}
                                         <br>
                                         <strong >Age / Sex:</strong>
-                                        &nbsp;&nbsp;{{ isolate.f_Age|age_result_display:isolate|blank_empty }}  {% if isolate.f_Sex %}  / {{ isolate.f_Sex|blank_empty }} {% else %} &nbsp; {% endif %}
+                                        &nbsp;{{ isolate.f_Age|age_result_display:isolate|blank_empty }}  {% if isolate.f_Sex %}  / {{ isolate.f_Sex|blank_empty }} {% else %} &nbsp; {% endif %}
                                         <br>
                                         <strong >Ad Date:</strong>
-                                        &nbsp;&nbsp;{{ isolate.f_Date_Admis|date:"m/d/Y"|blank_empty }}
+                                        &nbsp;{{ isolate.f_Date_Admis|date:"m/d/Y"|blank_empty }}
                                         <br>
                                         <strong >Ward:</strong>
-                                        &nbsp;&nbsp;{{ isolate.f_Ward|blank_empty }}
+                                        &nbsp;{{ isolate.f_Ward|blank_empty }}
                                         <br>
                                         <strong >Sp No:</strong>
-                                        &nbsp;&nbsp;{{ isolate.f_Spec_Num|blank_empty }}
+                                        &nbsp;{{ isolate.f_Spec_Num|blank_empty }}
                                         <br>
                                         <strong >Sp Date:</strong>
-                                        &nbsp;&nbsp;{{ isolate.f_Spec_Date|date:"m/d/Y"|blank_empty }}
+                                        &nbsp;{{ isolate.f_Spec_Date|date:"m/d/Y"|blank_empty }}
                                         <br>
                                         <strong >Sp Type:</strong>
-                                        &nbsp;&nbsp;{{ isolate.f_Spec_Type|blank_empty }}
+                                        &nbsp;{{ isolate.f_Spec_Type|blank_empty }}
                                         <br>
                                         <strong >Reason:</strong>
-                                        &nbsp;&nbsp;{{ isolate.f_Reason|blank_empty }}
+                                        &nbsp;{{ isolate.f_Reason|blank_empty }}
                                         <br><br>
                                     </div>
                     </td>
@@ -527,15 +628,25 @@ table.report-table td.patient-cell .lab-box span {
    
 
                     {% with abx_count=row|length %}
-                        {% for i in "x"|rjust:29 %}
-                            {% if forloop.counter > abx_count %}
-                                <th class="abx-header" style="border-right:1px solid black;">&nbsp;</th>
-                            {% endif %}
-                        {% endfor %}
+                        {% if site_is_plus %}
+                            {% for i in "x"|rjust:32 %}
+                                {% if forloop.counter > abx_count %}
+                                    <th class="abx-header" style="border-right:1px solid black;">&nbsp;</th>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            {% for i in "x"|rjust:29 %}
+                                {% if forloop.counter > abx_count %}
+                                    <th class="abx-header" style="border-right:1px solid black;">&nbsp;</th>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
                     {% endwith %}
-                    {% if forloop.first %}
-                    <th colspan="3" style="font-size: 10px;">Remarks</th>
-                {% endif %}
+                    {% if not site_is_plus %}
+                        {% if forloop.first %}
+                        <th colspan="3" style="font-size: 10px;">Remarks</th>
+                        {% endif %}
+                    {% endif %}
             </tr>
 
 
@@ -592,18 +703,28 @@ table.report-table td.patient-cell .lab-box span {
                     {% endfor %}
 
                     {% with abx_count=row|length %}
-                        {% for i in "x"|rjust:29 %}
-                            {% if forloop.counter > abx_count %}
-                                <td>&nbsp;</td>
-                            {% endif %}
-                        {% endfor %}
+                        {% if site_is_plus %}
+                            {% for i in "x"|rjust:32 %}
+                                {% if forloop.counter > abx_count %}
+                                    <td>&nbsp;</td>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            {% for i in "x"|rjust:29 %}
+                                {% if forloop.counter > abx_count %}
+                                    <td>&nbsp;</td>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
                     {% endwith %}
 
 
-                {% if forloop.first %}
-                <td colspan="3" rowspan="{{ isolate_data.site_detail_rowspan }}" style="border-top:0; border-bottom:1px solid black; border-right:1px solid black; text-align: left; vertical-align: top;">{{isolate.f_Comments}}</td>
+                {% if not site_is_plus %}
+                    {% if forloop.first %}
+                    <td colspan="3" rowspan="{{ isolate_data.site_detail_rowspan }}" style="border-top:0; border-bottom:1px solid black; border-right:1px solid black; text-align: left; vertical-align: top;">{{isolate.f_Comments}}</td>
 
-                {% endif%}
+                    {% endif%}
+                {% endif %}
 
             </tr>
             <tr>
@@ -614,11 +735,19 @@ table.report-table td.patient-cell .lab-box span {
                                 {% endfor %}
 
                                 {% with abx_count=row|length %}
-                                    {% for i in "x"|rjust:29 %}
-                                        {% if forloop.counter > abx_count %}
-                                            <td>&nbsp;</td>
-                                        {% endif %}
-                                    {% endfor %}
+                                    {% if site_is_plus %}
+                                        {% for i in "x"|rjust:32 %}
+                                            {% if forloop.counter > abx_count %}
+                                                <td>&nbsp;</td>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        {% for i in "x"|rjust:29 %}
+                                            {% if forloop.counter > abx_count %}
+                                                <td>&nbsp;</td>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
                                 {% endwith %}
 
                 
@@ -644,11 +773,19 @@ table.report-table td.patient-cell .lab-box span {
                 {% endfor %}
 
                 {% with abx_count=row|length %}
-                    {% for i in "x"|rjust:29 %}
-                        {% if forloop.counter > abx_count %}
-                            <td class="result=-cell mic">&nbsp;</td>
-                        {% endif %}
-                    {% endfor %}
+                    {% if site_is_plus %}
+                        {% for i in "x"|rjust:32 %}
+                            {% if forloop.counter > abx_count %}
+                                <td class="result=-cell mic">&nbsp;</td>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        {% for i in "x"|rjust:29 %}
+                            {% if forloop.counter > abx_count %}
+                                <td class="result=-cell mic">&nbsp;</td>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
                 {% endwith %}
             </tr>
 
@@ -662,11 +799,19 @@ table.report-table td.patient-cell .lab-box span {
                 {% endfor %}
 
                 {% with abx_count=row|length %}
-                    {% for i in "x"|rjust:29 %}
-                        {% if forloop.counter > abx_count %}
-                            <td class="result-cell mic">&nbsp;</td>
-                        {% endif %}
-                    {% endfor %}
+                    {% if site_is_plus %}
+                        {% for i in "x"|rjust:32 %}
+                            {% if forloop.counter > abx_count %}
+                                <td class="result-cell mic">&nbsp;</td>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        {% for i in "x"|rjust:29 %}
+                            {% if forloop.counter > abx_count %}
+                                <td class="result-cell mic">&nbsp;</td>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
                 {% endwith %}
             </tr>
 
@@ -918,20 +1063,21 @@ table.report-table td.patient-cell .lab-box span {
 {% endwith %}
 {% endwith %}
 {% endwith %}
+{% endwith %}
 {% endfor %}
 
 {% if page|length == 1 %}
-<tr>
+<tr class="signature-row">
     <td colspan="42" style="height: 300px; border: none;"></td>
 </tr>
 {% endif %}
 
                 <!-- ================= SIGNATURES ================= -->
-                <tr style="line-height: 1px;">
-                    <td colspan="42" style="border:none; height:1px; line-height:1px;">&nbsp;</td>
+                <tr class="signature-row signature-gap">
+                    <td colspan="42" style="border:none;">&nbsp;</td>
                 </tr>
 
-                <tr>
+                <tr class="signature-row">
                     <td colspan="2" style="border-left:0; border-bottom:0; border-right:0; border-top:0;">
                         <strong>Date:</strong>
                     </td>
@@ -987,26 +1133,26 @@ table.report-table td.patient-cell .lab-box span {
                         {{ head_name|with_staff_credentials|professional_caps }}
                     </td>
                 </tr>
-                <tr style="height:8px; text-align:center; line-height:1;">
+                <tr class="signature-row" style="height:8px; text-align:center; line-height:1;">
                     <td colspan="2" style="border:none;"></td>
                     <td colspan="4" style="border:none;"></td>
 
                     <td colspan="2" style="border:none;"></td>
                     <td colspan="6" style="border:none; font-size:8.5px;">
-                        {% clean_firstof batch.bat_Enc_Lic isolate.f_arsp_Enc_Lic as enc_lic %}
+                        {% clean_firstof batch.bat_Enc_Lic isolate.f_arsp_Enc_Lic encoder_name|staff_license as enc_lic %}
                         {{ enc_lic|default:"&nbsp;" }}
                     </td>
 
                     <td colspan="2" style="border:none;"></td>
                     <td colspan="6" style="border:none; font-size:8.5px;">
-                        {% clean_firstof isolate.f_arsp_Chec_Lic batch.bat_Chec_Lic as chec_lic %}
+                        {% clean_firstof isolate.f_arsp_Chec_Lic batch.bat_Chec_Lic checker_name|staff_license as chec_lic %}
                         {{ chec_lic|default:"&nbsp;" }}
                     </td>
 
                     <td colspan="2" style="border:none;"></td>
                     <td colspan="9" style="border:none; font-size:8.5px;">
-                        {% clean_firstof isolate.f_arsp_Ver_Lic batch.bat_Ver_Lic as ver_lic %}
-                        {% clean_firstof isolate.f_arsp_Lab_Lic batch.bat_Lab_Lic as lab_lic %}
+                        {% clean_firstof isolate.f_arsp_Ver_Lic batch.bat_Ver_Lic verifier_name|staff_license as ver_lic %}
+                        {% clean_firstof isolate.f_arsp_Lab_Lic batch.bat_Lab_Lic lab_manager_name|staff_license as lab_lic %}
 
                         {% if ver_lic and lab_lic %}
                             License No.: &nbsp;  {{ ver_lic }} / {{ lab_lic }}
@@ -1021,7 +1167,7 @@ table.report-table td.patient-cell .lab-box span {
 
                     <td colspan="2" style="border:none;"></td>
                     <td colspan="7" style="border:none; font-size:8.5px;">
-                        {% clean_firstof batch.bat_Head_Lic isolate.f_arsp_Head_Lic as head_lic %}
+                        {% clean_firstof batch.bat_Head_Lic isolate.f_arsp_Head_Lic head_name|staff_license as head_lic %}
                         {% if head_lic %}
                            License No.: &nbsp;  {{ head_lic|default:"&nbsp;" }}
                            {% else %}
@@ -1038,6 +1184,7 @@ table.report-table td.patient-cell .lab-box span {
 
 </tbody>
 </table>
+</div>
 
 {% if not forloop.last %}
 <div class="page-break"></div>

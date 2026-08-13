@@ -659,6 +659,9 @@ class arsStaff_Details(models.Model):
     Staff_License = models.CharField(max_length=100, blank=True, null=True)
     Staff_Credentials = models.CharField(max_length=100, blank=True, default="")
     Staff_Role = models.CharField(max_length=150, choices=Role_choices,  blank=True, default="")
+    Is_Default_Lab_Manager = models.BooleanField(default=False)
+    Is_Default_Head = models.BooleanField(default=False)
+
 
     @property
     def role_list(self):
@@ -687,6 +690,17 @@ class arsStaff_Details(models.Model):
         if name and credentials:
             return f"{name}, {credentials}"
         return name or "Unnamed Staff"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.Is_Default_Lab_Manager:
+            arsStaff_Details.objects.exclude(pk=self.pk).filter(Is_Default_Lab_Manager=True).update(
+                Is_Default_Lab_Manager=False
+            )
+        if self.Is_Default_Head:
+            arsStaff_Details.objects.exclude(pk=self.pk).filter(Is_Default_Head=True).update(
+                Is_Default_Head=False
+            )
 
     def __str__(self):
         return self.display_name
@@ -740,12 +754,14 @@ class Antibiotic_List(models.Model):
     GuidelineChoices = (
         ('CLSI', 'CLSI'),        
     )
-    Show=models.BooleanField(default=True) #Show in Sentinel Antibiotiocs in data entry
+    Show=models.BooleanField(default=True) #Show in Sentinel Antibiotics in data entry
     Retest=models.BooleanField(default=True) # Show in Retest antibiotics in data entry
-    Show_Site=models.BooleanField(default=True) # Show in Sentinel Result
-    Show_Ars = models.BooleanField(default=True) # Show in ARSRL Result
-    Show_Value=models.BooleanField(default=True) # Show Value Column
-    Disk_Abx=models.BooleanField(default=True)
+    Show_Site=models.BooleanField(default=True) # Show in Sentinel AST Result
+    Show_Ars = models.BooleanField(default=True) # Show in ARSRL AST Result
+    Show_Value=models.BooleanField(default=True) # Show Encoded Value in Laboratory Result, if false, no value will be displayed in the laboratory result
+    Show_Panel =models.BooleanField(default=False) # Show only panel antibiotics in the form filtering
+    Show_All =models.BooleanField(default=True) # Show in All Antibiotics in the form filtering
+    Disk_Abx=models.BooleanField(default=True) 
     Tier = models.CharField(max_length=10, blank=True, default='')
     Test_Method=models.CharField(max_length=100, choices=TestMethodChoices, blank=True, default="")
     Abx_code=models.CharField(max_length=100, blank=True, default="",)
@@ -755,6 +771,7 @@ class Antibiotic_List(models.Model):
     Potency=models.CharField(max_length=100, blank=True, default="")
     Class=models.CharField(max_length=100, blank=True, default="")
     Subclass=models.CharField(max_length=100, blank=True, default="")
+    Method_specific = models.BooleanField(default=False)
     Date_Modified=models.DateField(auto_now_add=True, null=True)
 
     class Meta:
@@ -787,6 +804,7 @@ class Organism_List(models.Model):
     Order = models.CharField(max_length=100, null=True, blank=True)
     Family= models.CharField(max_length=100, null=True, blank=True)
     Genus = models.CharField(max_length=100, null=True, blank=True)
+    No_serotyping = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.Whonet_Org_Code}"
@@ -872,6 +890,19 @@ class Reco_item_upload(models.Model):
 
 
 
+class TATLocation(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["order", "name"]
+        db_table = "TATLocation"
+
+    def __str__(self):
+        return self.name
+
+
 class TATform(models.Model):
 
     tat_Batch_Isolates = models.OneToOneField(
@@ -890,12 +921,7 @@ class TATform(models.Model):
     tat_Scanning_ws = models.BooleanField(default=False)
     tat_Scanning_final = models.BooleanField(default=False)
     tat_Batch_Location = models.CharField(
-        max_length=20,
-        choices=(
-            ('LAB', 'LAB'),
-            ('DMU', 'DMU'),
-            ('n/a', 'n/a'),
-        ),
+        max_length=100,
         default='n/a'
     )
 
@@ -923,14 +949,24 @@ class TATform(models.Model):
     def save(self, *args, **kwargs):
 
         today = timezone.now().date()
+        receipt_date = self.tat_Referral_Date
+        if self.pk:
+            first_step_received = (
+                self.steps
+                .filter(date_received__isnull=False)
+                .order_by("date_received")
+                .values_list("date_received", flat=True)
+                .first()
+            )
+            receipt_date = first_step_received or receipt_date
 
-        if self.tat_Referral_Date:
+        if receipt_date:
 
             # 🔹 If Released
             if self.tat_Date_Released:
 
                 self.tat_Final_TAT = working_days(
-                    self.tat_Referral_Date,
+                    receipt_date,
                     self.tat_Date_Released
                 )
 
@@ -940,7 +976,7 @@ class TATform(models.Model):
             else:
                 # 🔹 Ongoing
                 self.tat_Running_TAT = working_days(
-                    self.tat_Referral_Date,
+                    receipt_date,
                     today
                 )
 

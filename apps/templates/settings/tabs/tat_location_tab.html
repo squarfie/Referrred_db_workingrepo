@@ -1,0 +1,102 @@
+{% load widget_tweaks %}
+
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center"
+       style="background: linear-gradient(135deg, #e8fbff 0%, #d9f3f8 100%);
+              border-bottom: 2px solid #bfe8ef;">
+    <h5 class="card-title mb-0">
+      <i class="fas fa-map-marker-alt mr-2 text-info"></i>
+      Add TAT Location
+    </h5>
+  </div>
+
+  <div class="card-body">
+    <form method="POST" action="{% url 'add_tat_location' %}" id="tatLocationForm" novalidate>
+      {% csrf_token %}
+      {% include "includes/form_errors.html" with form=tat_location_form %}
+
+      <div class="row align-items-end">
+        <div class="col-md-6 mb-3">
+          <label>Location Item</label>
+          {{ tat_location_form.name|add_class:"form-control" }}
+        </div>
+        <div class="col-md-3 mb-3">
+          <label>Display Order</label>
+          {{ tat_location_form.order|add_class:"form-control" }}
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="form-check mt-4">
+            {{ tat_location_form.is_active }}
+            <label class="form-check-label ml-2">Active</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-2">
+        <button type="submit" class="btn btn-primary px-4">
+          <i class="fas fa-save mr-2"></i> Save Location
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm mt-4">
+  <div class="card-header"
+       style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+              border-bottom: 2px solid #dee2e6;">
+    <h5 class="mb-0">
+      <i class="fas fa-list mr-2"></i>Configured TAT Locations
+    </h5>
+  </div>
+
+  <div class="card-body table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Location Item</th>
+          <th>Display Order</th>
+          <th>Status</th>
+          <th style="width: 220px;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for location in tat_locations %}
+        <tr>
+          <form method="POST" action="{% url 'edit_tat_location' location.id %}">
+            {% csrf_token %}
+            <td>
+              <input type="text" name="name" class="form-control" value="{{ location.name }}" required>
+            </td>
+            <td>
+              <input type="number" name="order" class="form-control" value="{{ location.order }}" min="0" required>
+            </td>
+            <td>
+              <div class="form-check">
+                <input type="checkbox" name="is_active" class="form-check-input" {% if location.is_active %}checked{% endif %}>
+                <label class="form-check-label">Active</label>
+              </div>
+            </td>
+            <td class="d-flex flex-wrap" style="gap: 6px;">
+              <button type="submit" class="btn btn-sm btn-info">
+                <i class="fas fa-save mr-1"></i> Save
+              </button>
+              <a href="{% url 'delete_tat_location' location.id %}"
+                 class="btn btn-sm btn-danger"
+                 onclick="return confirm('Delete this TAT location? Existing records using it will deactivate it instead.');">
+                <i class="fas fa-trash mr-1"></i> Delete
+              </a>
+            </td>
+          </form>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="text-center text-muted">
+            No TAT locations configured.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

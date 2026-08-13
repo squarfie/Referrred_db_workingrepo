@@ -1,0 +1,327 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+{% endblock stylesheets %}
+
+{% block content %}
+
+<style>
+.tat-page {
+  background: transparent;
+  min-height: 100vh;
+  font-size: 0.9rem;
+}
+
+.tat-hero {
+  background: linear-gradient(135deg, #101a34 0%, #153a5f 100%);
+  color: #fff;
+  padding: 1.45rem 2rem;
+  border-bottom: 4px solid #00bcd4;
+}
+
+.tat-title {
+  margin: 0;
+  font-weight: 800;
+  color: #00d4e8;
+  font-size: 1.55rem;
+}
+
+.tat-subtitle {
+  color: #c8d7ea;
+  margin: .35rem 0 0;
+  font-size: 0.9rem;
+}
+
+.tat-card,
+.tat-control-card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #dbe4f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(15, 39, 68, .08);
+}
+
+.tat-filter-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.tat-control-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.tat-control-field label {
+  margin: 0;
+  color: #24466f;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tat-field-search { flex: 1 1 360px; }
+.tat-field-select { flex: 0 0 140px; }
+.tat-field-buttons { flex: 0 0 260px; }
+
+.tat-process-wrap {
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.tat-process-table {
+  min-width: 2200px;
+  margin: 0;
+  font-size: .76rem;
+}
+
+.tat-process-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: rgba(18, 63, 78, 0.92) !important;
+  color: #fff;
+  border: 0;
+  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
+  white-space: nowrap;
+  font-size: .64rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.tat-process-table td {
+  vertical-align: middle;
+  border-color: #e7edf5;
+  white-space: nowrap;
+}
+
+.tat-process-table tbody tr:hover {
+  background: #eefaff;
+}
+
+.tat-process-table .identity-col {
+  background: rgba(242, 250, 252, 0.96);
+  font-weight: 700;
+}
+
+.step-ok { color: #15936b; font-weight: 800; }
+.step-bad { color: #d34234; font-weight: 800; }
+.step-muted { color: #94a3b8; }
+
+.status-pill {
+  border-radius: 999px;
+  padding: .22rem .55rem;
+  font-weight: 700;
+  font-size: .68rem;
+  display: inline-block;
+}
+
+.status-released { background: #d4f4dd; color: #0f5132; }
+.status-ongoing { background: #fff4d8; color: #7d4e00; }
+.status-overdue { background: #ffd7d7; color: #8a1f16; }
+
+.tat-pagination .page-link {
+  color: #174f82;
+  border-color: #d8e4f2;
+  font-weight: 700;
+}
+
+.tat-pagination .page-item.active .page-link {
+  background: #174f82;
+  border-color: #174f82;
+}
+
+@media (max-width: 768px) {
+  .tat-filter-form {
+    flex-wrap: wrap;
+  }
+
+  .tat-control-field,
+  .tat-field-search,
+  .tat-field-select,
+  .tat-field-buttons {
+    flex: 1 1 100%;
+  }
+}
+</style>
+
+<div class="tat-page">
+  <div class="tat-hero">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <h1 class="tat-title"><i class="fas fa-columns me-2"></i>&nbsp;Running TAT Process Columns</h1>
+        <p class="tat-subtitle">Review per-process days and status separately from the main running list</p>
+      </div>
+      <div class="d-flex flex-wrap justify-content-end gap-2">
+        <a href="{% url 'tat_running_list' %}?{% if q %}q={{ q|urlencode }}&{% endif %}{% if status %}status={{ status|urlencode }}&{% endif %}{% if year %}year={{ year|urlencode }}{% endif %}"
+           class="btn btn-light btn-sm">
+          <i class="fas fa-arrow-left me-1"></i> Running List
+        </a>
+        <a href="{% url 'tat_review_view' %}" class="btn btn-outline-light btn-sm">
+          <i class="fas fa-chart-line me-1"></i> Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid px-4 py-4">
+    <div class="tat-control-card p-3 mb-4">
+      <form method="get" class="tat-filter-form">
+        <div class="tat-control-field tat-field-search">
+          <label>Search</label>
+          <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Batch, site, or accession range">
+        </div>
+        <div class="tat-control-field tat-field-select">
+          <label>Status</label>
+          <select name="status" class="form-control">
+            <option value="">All Status</option>
+            {% for item in status_choices %}
+              <option value="{{ item }}" {% if status == item %}selected{% endif %}>{{ item }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="tat-control-field tat-field-select">
+          <label>Year</label>
+          <select name="year" class="form-control">
+            <option value="">All Years</option>
+            {% for item in years %}
+              <option value="{{ item }}" {% if year == item|stringformat:"s" %}selected{% endif %}>{{ item }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="tat-control-field tat-field-buttons">
+          <label>&nbsp;</label>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary flex-fill" type="submit">
+              <i class="fas fa-search me-1"></i> Filter
+            </button>
+            <a href="{% url 'tat_running_process_list' %}" class="btn btn-secondary">
+              <i class="fas fa-sync-alt me-1"></i> Reset
+            </a>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="tat-card">
+      <div class="d-flex justify-content-between align-items-center flex-wrap px-3 py-3 border-bottom" style="gap:0.75rem;">
+        <h5 class="mb-0 fw-bold text-primary">
+          <i class="fas fa-columns me-2"></i>&nbsp;Per-process TAT View
+        </h5>
+        <span style="background:rgba(243,156,18,0.25);color:#f39c12;border:1px solid rgba(243,156,18,0.4);padding:2px 10px;border-radius:12px;font-size:0.72rem;font-weight:700;">
+          <i class="fas fa-info-circle me-1"></i>
+          Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ total_rows }} rows
+        </span>
+      </div>
+
+      <div class="tat-process-wrap">
+        <table class="table table-hover tat-process-table">
+          <thead>
+            <tr>
+              <th>BatchCode</th>
+              <th>SiteCode</th>
+              <th>RefDate</th>
+              <th>Running TAT</th>
+              <th>Location</th>
+              <th>Action Taken</th>
+              <th>Assigned To</th>
+              <th>Status/Release</th>
+              <th>Action</th>
+              {% for config in configs %}
+                <th>{{ config.step_type }} Days</th>
+                <th>{{ config.step_type }} Status</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in running_rows %}
+            <tr>
+              <td class="identity-col text-primary">{{ row.batch_name|default:"-" }}</td>
+              <td class="identity-col">{{ row.site_code|default:"-" }}</td>
+              <td class="identity-col">{{ row.referral_date|date:"M d, Y"|default:"-" }}</td>
+              <td>{{ row.tat.tat_Running_TAT|default:"-" }}</td>
+              <td>{{ row.location|default:"-" }}</td>
+              <td>{{ row.action_taken|default:"-" }}</td>
+              <td>{{ row.assigned_to|default:"-" }}</td>
+              <td>
+                <span class="status-pill {% if row.tat.tat_Status_Release == 'Released' %}status-released{% elif row.is_overdue %}status-overdue{% else %}status-ongoing{% endif %}">
+                  {{ row.tat.tat_Status_Release }}
+                </span>
+              </td>
+              <td>
+                {% if row.batch %}
+                  <a href="{% url 'tat_monitoring_view' row.batch.id %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-tasks me-1 text-white">  </i> <span style="color: #c8d7ea;">Update </span>  
+                  </a>
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              {% for cell in row.step_cells %}
+                <td>{{ cell.step.step_days_count|default:"-" }}</td>
+                <td>
+                  {% if cell.step.within_tat %}
+                    <span class="step-ok">Within</span>
+                  {% elif cell.step.within_tat == False %}
+                    <span class="step-bad">Outside</span>
+                  {% else %}
+                    <span class="step-muted">-</span>
+                  {% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="999" class="text-center py-5 text-muted">No TAT records found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if page_obj.paginator.num_pages > 1 %}
+      <div class="d-flex justify-content-between align-items-center px-3 py-3 border-top bg-white">
+        <small class="text-muted">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </small>
+        <nav aria-label="Running TAT process pagination">
+          <ul class="pagination pagination-sm mb-0 tat-pagination">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page=1{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&laquo;</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&lsaquo;</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+              <li class="page-item disabled"><span class="page-link">&lsaquo;</span></li>
+            {% endif %}
+
+            <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&rsaquo;</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&raquo;</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">&rsaquo;</span></li>
+              <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -178,6 +178,31 @@ class FinalReferred_Form(forms.ModelForm):
             self.fields['f_ars_OrgCode'].queryset = Organism_List.objects.all() # Always load the latest Site Code
             self.fields['f_ars_OrgCode'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
             self.fields['f_ars_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
+            if not self.is_bound and getattr(self.instance, "pk", None):
+                site_org = (getattr(self.instance, "f_Site_Org", "") or "").strip()
+                ars_org = (getattr(self.instance, "f_ars_OrgCode", "") or "").strip()
+                site_choice = resolve_organism_choice(
+                    site_org,
+                    getattr(self.instance, "f_Site_OrgName", ""),
+                )
+                ars_choice = resolve_organism_choice(
+                    ars_org,
+                    getattr(self.instance, "f_ars_OrgName", ""),
+                )
+                if site_choice:
+                    self.initial["f_Site_Org"] = site_choice.Whonet_Org_Code
+                    self.fields["f_Site_Org"].initial = site_choice.Whonet_Org_Code
+                    self.initial["f_Site_OrgName"] = site_choice.Organism
+                elif site_org:
+                    self.initial["f_Site_Org"] = site_org
+                    self.fields["f_Site_Org"].initial = site_org
+                if ars_choice:
+                    self.initial["f_ars_OrgCode"] = ars_choice.Whonet_Org_Code
+                    self.fields["f_ars_OrgCode"].initial = ars_choice.Whonet_Org_Code
+                    self.initial["f_ars_OrgName"] = ars_choice.Organism
+                elif ars_org:
+                    self.initial["f_ars_OrgCode"] = ars_org
+                    self.fields["f_ars_OrgCode"].initial = ars_org
            
         def clean_f_bat_seq(self):
             accession = (

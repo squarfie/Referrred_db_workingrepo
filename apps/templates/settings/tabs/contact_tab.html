@@ -64,7 +64,7 @@
           </small>
         </div>
 
-        <div class="col-md-6 mb-3">
+        <div class="col-md-4 mb-3">
           <label>License Number</label>
           {{ contact_form.Staff_License|append_attr:"class:form-control" }}
           <small class="helper-text text-muted">
@@ -73,12 +73,7 @@
           </small>
         </div>
 
-      </div>
-
-      <div class="row">
-
-
-          <div class="col-md-4 mb-3"> 
+        <div class="col-md-4 mb-3"> 
           <label>Designation</label>
           {{ contact_form.Staff_Designation|append_attr:"class:form-control" }}
           <small class="helper-text text-muted">
@@ -94,6 +89,13 @@
             Printed after the staff name.
           </small>
           </div>
+
+      </div>
+
+      <div class="row">
+
+
+
           {% if user_access.can_edit_staff_roles %}
             <div class="col-md-4 mb-3">
             <label>Role</label>
@@ -113,6 +115,29 @@
             </small>
 
               </div>
+          {% endif %}
+          {% if user_access.is_admin %}
+            <div class="col-md-4 mb-3">
+              <label>Batch Signature Defaults</label>
+              <div class="border rounded p-3 bg-light">
+                <div class="custom-control custom-checkbox mb-1">
+                  {{ contact_form.Is_Default_Lab_Manager|append_attr:"class:custom-control-input" }}
+                  <label class="custom-control-label" for="{{ contact_form.Is_Default_Lab_Manager.id_for_label }}">
+                    Default Lab Manager
+                  </label>
+                </div>
+                <div class="custom-control custom-checkbox mb-1">
+                  {{ contact_form.Is_Default_Head|append_attr:"class:custom-control-input" }}
+                  <label class="custom-control-label" for="{{ contact_form.Is_Default_Head.id_for_label }}">
+                    Default Head
+                  </label>
+                </div>
+              </div>
+              <small class="helper-text text-muted">
+                <i class="fas fa-info-circle mr-1"></i>
+                Used automatically when creating new batches.
+              </small>
+            </div>
           {% endif %}
 
 

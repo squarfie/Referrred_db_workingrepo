@@ -144,9 +144,11 @@ th, td {
                     <th style="padding: 2px;">{{ abx }}</th>
                 {% endfor %}
                 
-                {% if forloop.first %}
-                    <th colspan="3" style="border-bottom: 0;">Remarks</th>
-                {% endif%}
+                {% if not site_uses_plus_layout %}
+                    {% if forloop.first %}
+                        <th colspan="3" style="border-bottom: 0;">Remarks</th>
+                    {% endif%}
+                {% endif %}
             </tr>
 
             <!-- DISK ROW -->
@@ -169,10 +171,12 @@ th, td {
                         <span class="enris-text">{{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe}}</span>
                     </td>
                 {% endfor %}
-                {% if forloop.first %}
-                <td colspan="3" rowspan="5" style="border-top:0; border-bottom:1px solid black; border-right:1px solid black; text-align: left; vertical-align: top;">{{isolate.Comments}}</td>
+                {% if not site_uses_plus_layout %}
+                    {% if forloop.first %}
+                    <td colspan="3" rowspan="5" style="border-top:0; border-bottom:1px solid black; border-right:1px solid black; text-align: left; vertical-align: top;">{{isolate.Comments}}</td>
 
-                {% endif%}
+                    {% endif%}
+                {% endif %}
 
             </tr>
 
@@ -365,9 +369,11 @@ th, td {
                     <th style="padding: 2px;">{{ abx }}</th>
                 {% endfor %}
                 
-                {% if forloop.first %}
-                    <th colspan="3" style="border-bottom: 0;">Remarks</th>
-                {% endif%}
+                {% if not site_uses_plus_layout %}
+                    {% if forloop.first %}
+                        <th colspan="3" style="border-bottom: 0;">Remarks</th>
+                    {% endif%}
+                {% endif %}
             </tr>
 
             <!-- DISK ROW -->
@@ -390,10 +396,12 @@ th, td {
                         <span class="enris-text">{{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe}}</span>
                     </td>
                 {% endfor %}
-                {% if forloop.first %}
-                <td colspan="3" rowspan="5" style="border-top:0; border-bottom:1px solid black; border-right:1px solid black; text-align: left; vertical-align: top;">{{isolate.Comments}}</td>
+                {% if not site_uses_plus_layout %}
+                    {% if forloop.first %}
+                    <td colspan="3" rowspan="5" style="border-top:0; border-bottom:1px solid black; border-right:1px solid black; text-align: left; vertical-align: top;">{{isolate.Comments}}</td>
 
-                {% endif%}
+                    {% endif%}
+                {% endif %}
 
             </tr>
 
@@ -566,19 +574,30 @@ th, td {
                 <td colspan="2" style="border: none;"></td>
                 <td colspan="4"  style="border: none;"></td>
                 <td colspan="2" style="border: none;"><strong></strong></td>
-                <td colspan="6"  style="border: none;">{{isolate.arsp_Enc_Lic}}</td>
+                <td colspan="6"  style="border: none;">
+                    {% clean_firstof isolate.arsp_Enc_Lic isolate.arsp_Encoder|staff_license as enc_lic %}
+                    {{ enc_lic }}
+                </td>
                 <td colspan="2"  style="border: none;"></td>
-                <td colspan="6"  style="border: none;">{{isolate.arsp_Chec_Lic }}</td>
+                <td colspan="6"  style="border: none;">
+                    {% clean_firstof isolate.arsp_Chec_Lic isolate.arsp_Checker|staff_license as chec_lic %}
+                    {{ chec_lic }}
+                </td>
                 <td colspan="2"  style="border: none;"></td>
                 <td colspan="9"  style="border: none;">
-                    {% if isolate.arsp_Ver_Lic or isolate.arsp_Lab_Lic %}
-                        License No.:{% if isolate.arsp_Ver_Lic %} {{ isolate.arsp_Ver_Lic }}{% endif %}{% if isolate.arsp_Ver_Lic and isolate.arsp_Lab_Lic %} / {% endif %}{% if isolate.arsp_Lab_Lic %}{{ isolate.arsp_Lab_Lic }}{% endif %}
+                    {% clean_firstof isolate.arsp_Ver_Lic isolate.arsp_Verifier|staff_license as ver_lic %}
+                    {% clean_firstof isolate.arsp_Lab_Lic isolate.arsp_LabManager|staff_license as lab_lic %}
+                    {% if ver_lic or lab_lic %}
+                        License No.:{% if ver_lic %} {{ ver_lic }}{% endif %}{% if ver_lic and lab_lic %} / {% endif %}{% if lab_lic %}{{ lab_lic }}{% endif %}
                     {% else %}
                         &nbsp;
                     {% endif %}
                 </td>
                 <td colspan="2"  style="border: none;"></td>
-                <td colspan="6"  style="border: none;">{{isolate.arsp_Head_Lic}}</td>
+                <td colspan="6"  style="border: none;">
+                    {% clean_firstof isolate.arsp_Head_Lic isolate.arsp_Head|staff_license as head_lic %}
+                    {{ head_lic }}
+                </td>
             </tr>
             <tr>
                   <th colspan="41" style="font-size: 9px; border: 1px solid black;"><strong>THIS CONFIFMATORY TEST RESULTS ARE FOR THE LABORATORY WHOSE NAME

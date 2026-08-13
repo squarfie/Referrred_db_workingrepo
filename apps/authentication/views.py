@@ -9,11 +9,11 @@ from .forms import *
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
-from django.urls import reverse
-from django.utils.html import format_html
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
-from apps.home.models import UserProfile
+from django.conf import settings
+from apps.home.models import UserProfile, arsStaff_Details
+from .models import UserApproval
 
 
 def login_view(request):
@@ -26,10 +26,25 @@ def login_view(request):
             password = form.cleaned_data.get("password")
             user = authenticate(username=username, password=password)
             if user is not None:
+                if (
+                    not user.is_superuser
+                    and getattr(settings, "ACCOUNT_APPROVAL_REQUIRE_STAFF_LINK", False)
+                    and not arsStaff_Details.objects.filter(User_Account=user).exists()
+                ):
+                    msg = "Your account is not linked to an approved ARSP staff record yet."
+                    return render(request, "accounts/login.html", {"form": form, "msg": msg})
                 login(request, user)
                 return redirect("/")
             elif User.objects.filter(username=username).exists():
-                msg = 'Password is incorrect for this username.'
+                account = User.objects.filter(username=username).first()
+                if account and not account.is_active:
+                    approval = getattr(account, "account_approval", None)
+                    if approval and approval.status == UserApproval.STATUS_DECLINED:
+                        msg = "Your registration was declined. Please contact an administrator."
+                    else:
+                        msg = "Your account is awaiting administrator approval."
+                else:
+                    msg = 'Password is incorrect for this username.'
             else:
                 msg = 'Username not found.'
         else:
@@ -45,18 +60,22 @@ def register_user(request):
     if request.method == "POST":
         form = SignUpForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            user = form.save(commit=False)
+            user.is_active = False
+            user.save()
+            form.save_m2m()
+            UserApproval.objects.create(
+                user=user,
+                status=UserApproval.STATUS_PENDING,
+            )
             UserProfile.objects.update_or_create(
                 user=user,
                 defaults={"Middle_Name": form.cleaned_data.get("middle_name", "")},
             )
-            username = form.cleaned_data.get("username")
-            raw_password = form.cleaned_data.get("password1")
-            user = authenticate(username=username, password=raw_password)
 
-            msg = format_html(
-                'User created - please <a href="{}">login</a>.',
-                reverse("login"),
+            msg = (
+                "Registration successful. Your account is awaiting administrator approval. "
+                "You will be able to log in after your account has been approved."
             )
             success = True
         else:

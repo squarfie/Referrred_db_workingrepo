@@ -45,7 +45,7 @@
 
                         <a class="list-group-item list-group-item-action"
                             data-toggle="list" href="#sitecode_tab" role="tab">
-                            <i class="fas fa-hospital mr-2"></i> Site Code
+                            <i class="fas fa-hospital mr-2"></i> Site Details
                         </a>
 
                         <a class="list-group-item list-group-item-action"
@@ -88,6 +88,10 @@
                         <a class="list-group-item list-group-item-action"
                             data-toggle="list" href="#tat_config_tab" role="tab">
                             <i class="fas fa-clock mr-2"></i> TAT Configuration
+                        </a>
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#tat_location_tab" role="tab">
+                            <i class="fas fa-map-marker-alt mr-2"></i> TAT Locations
                         </a>
                         <a class="list-group-item list-group-item-action"
                             data-toggle="list" href="#non_working_tab" role="tab">
@@ -175,6 +179,10 @@
                 <div class="tab-pane fade" id="tat_config_tab" role="tabpanel">
                     {% include "settings/tabs/tat_config_tab.html" %}
                 </div>
+                <!-- TAT Location Dropdown -->
+                <div class="tab-pane fade" id="tat_location_tab" role="tabpanel">
+                    {% include "settings/tabs/tat_location_tab.html" %}
+                </div>
                 <!-- TAT Non-working days -->
                 <div class="tab-pane fade" id="non_working_tab" role="tabpanel">
                     {% include "settings/tabs/non_working_days.html" %}
@@ -219,6 +227,7 @@ document.addEventListener("DOMContentLoaded", function () {
         { selector: '#phenotypepostform [name="Post_Phenotypes"]', type: 'phenotype_post', label: 'Phenotype Post' },
         { selector: '#recoform [name="RecoCode"]', type: 'recommendation', label: 'Recommendation Code' },
         { selector: '#nonWorkingDayForm [name="date"]', type: 'non_working_day', label: 'Non-working Day' },
+        { selector: '#tatLocationForm [name="name"]', type: 'tat_location', label: 'TAT Location' },
         {
             selector: '#tatStepConfigForm [name="step_type"]',
             type: 'tat_config',

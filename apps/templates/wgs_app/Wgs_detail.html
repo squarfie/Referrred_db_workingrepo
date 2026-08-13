@@ -2,125 +2,120 @@
 {% load custom_tags %}
 
 <div class="card mb-4 shadow-sm wgs-detail-drawer">
-  <div class="card-header py-3" style="background: linear-gradient(135deg, #172b4d 0%, #1e5a96 100%);">
+  <div class="card-header py-3">
     <h5 class="mb-0 text-white">
       <i class="ni ni-single-copy-04 mr-2"></i>Referred Isolate Information
     </h5>
   </div>
   <div class="card-body p-3">
-    {% if entry.related_data %}
-    <!-- Identification & Specimen -->
-    <div class="row mb-2">
-      <div class="col-lg-6">
-        <div class="info-section" style="border-left-color: #5e72e4;">
-          <h6 class="section-title mb-2">
-            <i class="ni ni-badge mr-2" style="color: #5e72e4;"></i>Identification
-          </h6>
-          <div class="row">
-            <div class="col-6">
-          <div class="info-item mb-2">
-            <label>Accession No:</label>
-            <p class="info-value font-weight-bold" style="color: #5e72e4;">{{ entry.accession }}</p>
-          </div></div>
-          <div class="col-6">
-          <div class="info-item mb-2">
-                <label>Referring Lab:</label>
-                <p class="info-value small">{{ entry.sitecode|default:"N/A" }}</p>
-          </div></div>
-        </div>
-          <div class="row">
-            <div class="col-6">
-              <div class="info-item mb-0">
-                <label>Referral Date:</label>
-                <p class="info-value small">{{ entry.referral_date |date:"M j, Y"|default:"N/A" }}</p>
-              </div>
-            </div>
-            <div class="col-6">
-              <div class="info-item mb-0">
-                <label>Patient ID:</label>
-                <p class="info-value small">{{ entry.patient_id|default:"N/A" }}</p>
-              </div>
-            </div>
-          </div>
+    <div class="wgs-record-preview">
+      <div class="wgs-record-accent">
+        <span class="wgs-record-kicker">Accession No</span>
+        <strong>{{ entry.accession }}</strong>
+        <span>Referring Lab: {{ entry.sitecode|default:"N/A" }}</span>
+      </div>
 
-        <div class="info-item mb-0 mt-3">
-          <h6 class="section-title mb-2" style="font-size: 0.9rem; border-bottom-color: #11cdef; color: #11cdef;">
-            <i class="ni ni-single-02 mr-2" style="color: #11cdef;"></i>Patient Information
-          </h6>
-          <div class="info-item mb-2">
-            <label>Name:</label>
-            <p class="info-value small">{{ entry.patient_name|title }}</p>
+      <div class="wgs-record-info-grid">
+        <div class="info-cell">
+          <div class="wgs-info-section-title">
+            <i class="ni ni-single-02 mr-1"></i>Patient Information
           </div>
-          <div class="row">
-            <div class="col-4">
-              <div class="info-item mb-2">
-                <label>Sex:</label>
-                <p class="info-value">
-                  {% if entry.sex == 'M' %}
-                    <span class="badge badge-info badge-sm">Male</span>
-                  {% elif entry.sex == 'F' %}
-                    <span class="badge badge-pink badge-sm">Female</span>
-                  {% else %}
-                    <span class="badge badge-secondary badge-sm">{{ entry.sex|default:"N/A" }}</span>
-                  {% endif %}
-                </p>
-              </div>
+          <div class="info-row">
+            <span class="info-label">Name</span>
+            <span class="info-value primary">{{ entry.patient_name|title|default:"N/A" }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Patient ID</span>
+            <span class="info-value">{{ entry.patient_id|default:"N/A" }}</span>
+          </div>
+          <div class="wgs-mini-pair">
+            <div class="info-row">
+              <span class="info-label">Age</span>
+              <span class="info-value">{{ entry.age|default:"N/A" }}</span>
             </div>
-            <div class="col-4">
-              <div class="info-item mb-2">
-                <label>Age:</label>
-                <p class="info-value">
-                  <span class="badge badge-sm badge-age">{{ entry.age|default:"N/A" }}</span>
-                </p>
-              </div>
-            </div>
-            <div class="col-4">
-              <div class="info-item mb-0">
-                <label>Ward:</label>
-                <p class="info-value small">{{ entry.ward|default:"N/A" }}</p>
-              </div>
+            <div class="info-row">
+              <span class="info-label">Sex</span>
+              <span class="info-value">{{ entry.sex|default:"N/A" }}</span>
             </div>
           </div>
         </div>
 
-        <div class="info-item mb-0 mt-3">
-          <h6 class="section-title mb-2" style="font-size: 0.9rem; border-bottom-color: #20c997; color: #20c997;">
-            <i class="ni ni-archive-2 mr-2" style="color: #20c997;"></i>Sample Information
-          </h6>
-          {% if entry.sample_information %}
-            <div class="row">
-              <div class="col-4">
-                <div class="info-item mb-2">
-                  <label>Batch Code:</label>
-                  <p class="info-value small">{{ entry.sample_information.batch_code|default:"N/A" }}</p>
-                </div>
-              </div>
-              <div class="col-4">
-                <div class="info-item mb-2">
-                  <label>Sample Name:</label>
-                  <p class="info-value small">{{ entry.sample_information.sample_name|default:"N/A" }}</p>
-                </div>
-              </div>
-              <div class="col-4">
-                <div class="info-item mb-2">
-                  <label>Status:</label>
-                  <p class="info-value small">
-                    <span class="sample-status-badge">{{ entry.sample_information.status|default:"N/A" }}</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-          {% else %}
-            <div class="alert-secondary medium mb-0">
-              &nbsp;&nbsp;<i class="ni ni-notification-70 mr-1"></i> No uploaded sample information matched.
-            </div>
-          {% endif %}
+        <div class="info-cell">
+          <div class="wgs-info-section-title">
+            <i class="ni ni-album-2 mr-1"></i>Specimen Details
+          </div>
+          <div class="info-row">
+            <span class="info-label">Type</span>
+            <span class="info-value primary">{{ entry.specimen|default:"N/A" }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Collection Date</span>
+            <span class="info-value">{{ entry.date_collected|date:"M j, Y"|default:"N/A" }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Referral Date</span>
+            <span class="info-value">{{ entry.referral_date|date:"M j, Y"|default:"N/A" }}</span>
+          </div>
         </div>
 
-        <div class="info-item mb-0 mt-3">
-          <h6 class="section-title mb-2" style="font-size: 0.9rem; border-bottom-color: #2dcecc; color: #2dcecc;">
-            <i class="ni ni-tag mr-2" style="color: #2dcecc;"></i>Classification Summary
-          </h6>
+        <div class="info-cell">
+          <div class="wgs-info-section-title">
+            <i class="ni ni-badge mr-1"></i>Identification
+          </div>
+          <div class="info-row">
+            <span class="info-label">Organism</span>
+            <span class="info-value primary">{{ entry.organism|default:"N/A" }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Growth</span>
+            <span class="info-value">{{ entry.growth|default:"N/A" }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Ward</span>
+            <span class="info-value">{{ entry.ward|default:"N/A" }}</span>
+          </div>
+        </div>
+
+        <div class="info-cell">
+          <div class="wgs-info-section-title">
+            <i class="ni ni-archive-2 mr-1"></i>Sample Information
+          </div>
+          <div class="info-row">
+            <span class="info-label">Sample Name</span>
+            <span class="info-value primary">
+              {% if entry.sample_information %}
+                {{ entry.sample_information.sample_name|default:"N/A" }}
+              {% else %}
+                N/A
+              {% endif %}
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Batch Code</span>
+            <span class="info-value">
+              {% if entry.sample_information %}
+                {{ entry.sample_information.batch_code|default:"N/A" }}
+              {% else %}
+                N/A
+              {% endif %}
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Sample Status</span>
+            <span class="info-value">
+              {% if entry.sample_information %}
+                <span class="sample-status-badge">{{ entry.sample_information.status|default:"N/A" }}</span>
+              {% else %}
+                N/A
+              {% endif %}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wgs-record-lower">
+        <div class="wgs-record-strip">
+          <span class="info-label">Classification</span>
           {% if entry.classification_items %}
             <div class="classification-badges">
               {% for item in entry.classification_items %}
@@ -128,110 +123,50 @@
               {% endfor %}
             </div>
           {% else %}
-            <div class="alert-secondary medium mb-0">
-             &nbsp;&nbsp;  <i class="ni ni-notification-70 mr-1"></i> No active classification flags.
-            </div>
+            <span class="wgs-empty-note">No active classification flags.</span>
           {% endif %}
         </div>
 
-
-        </div>
-      </div>
-
-      <div class="col-lg-6">
-        <div class="info-section" style="border-left-color: #2dce89;">
-          <h6 class="section-title mb-2">
-            <i class="ni ni-album-2 mr-2" style="color: #2dce89;"></i>Specimen Details
-          </h6>
-          <div class="row">
-            <div class="col-6">
-              <div class="info-item mb-2">
-                <label>Type:</label>
-                <p class="info-value small">{{ entry.specimen|default:"N/A" }}</p>
-              </div>
+        <div class="wgs-record-strip">
+          <span class="info-label">Antibiotic Results</span>
+          {% if entry.antibiotics %}
+            <div class="antibiotic-grid">
+              {% for abx in entry.antibiotics %}
+                {% if abx.disk or abx.mic %}
+                  <div class="antibiotic-item">
+                    <span class="abx-code">{{ abx.code }}</span>
+                    {% with value=abx.disk|default:abx.mic %}
+                    {% with ris=abx.d_ris|default:abx.m_ris %}
+                    <span class="abx-result badge badge-sm
+                      {% if ris == 'R' %}badge-danger
+                      {% elif ris == 'S' %}badge-success
+                      {% elif ris == 'I' %}badge-warning
+                      {% elif ris == 'SDD' %}badge-info
+                      {% else %}badge-secondary{% endif %}
+                    ">
+                      {% if abx.m_op and abx.m_op|lower != 'nan' %}
+                        {{ abx.m_op }}{{ value }}
+                      {% else %}
+                        {{ value }}
+                      {% endif %}
+                      {% if ris %}&nbsp;<strong>{{ ris }}</strong>{% endif %}
+                    </span>
+                    {% endwith %}
+                    {% endwith %}
+                  </div>
+                {% endif %}
+              {% endfor %}
             </div>
-            <div class="col-6">
-              <div class="info-item mb-2">
-                <label>Collection Date:</label>
-                <p class="info-value small">{{ entry.date_collected|date:"M j, Y"|default:"N/A" }}</p>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-6">
-          <div class="info-item mb-0">
-            <label>Growth:</label>
-            <p class="info-value">
-              {% if entry.growth %}
-                <span class="badge badge-success badge-sm">{{ entry.growth }}</span>
-              {% else %}
-                <span class="badge badge-secondary badge-sm">N/A</span>
-              {% endif %}
-            </p>
-          </div>
-          </div>
-              <div class="col-6">
-              <div class="info-item mb-2">
-                <label>Organism:</label>
-                <p class="info-value font-weight-bold small" style="color: #fb6340;">
-                  {{ entry.organism|default:"N/A" }}
-                </p>
-              </div>
-            </div>
-              </div>
-
-          <div class="info-item mb-0 mt-3">
-            <h6 class="section-title mb-2" style="font-size: 0.9rem; border-bottom-color: #fb6340; color: #fb6340;">
-              <i class="ni ni-chart-pie-35 mr-2" style="color: #fb6340;"></i>Antibiotic Results
-            </h6>
-            {% if entry.antibiotics %}
-              <label style="margin-bottom: 0.75rem;">Antibiotics:</label>
-              <div class="antibiotic-grid">
-                {% for abx in entry.antibiotics %}
-                  {% if abx.disk or abx.mic %}
-                    <div class="antibiotic-item">
-                      <span class="abx-code">{{ abx.code }}</span>
-
-                      {% with value=abx.disk|default:abx.mic %}
-                      {% with ris=abx.d_ris|default:abx.m_ris %}
-
-                      <span class="abx-result badge badge-sm
-                        {% if ris == 'R' %}badge-danger
-                        {% elif ris == 'S' %}badge-success
-                        {% elif ris == 'I' %}badge-warning
-                        {% elif ris == 'SDD' %}badge-info
-                        {% else %}badge-secondary{% endif %}
-                      ">
-                          {% if abx.m_op and abx.m_op|lower != 'nan' %}
-                            {{ abx.m_op }}{{ value }}
-                          {% else %}
-                            {{ value }}
-                          {% endif %}
-
-                          {% if ris %}&nbsp;<strong>{{ ris }}</strong>{% endif %}
-                      </span>
-
-                      {% endwith %}
-                      {% endwith %}
-                    </div>
-                  {% endif %}
-
-                {% endfor %}
-              </div>
-            {% else %}
-              <div class="alert alert-secondary small mb-0">
-                <i class="ni ni-notification-70"></i> No antibiotic data available.
-              </div>
-            {% endif %}
-          </div>
+          {% else %}
+            <span class="wgs-empty-note">No antibiotic data available.</span>
+          {% endif %}
         </div>
       </div>
     </div>
 
-    {% endif %}
     <!-- WGS Data Sections -->
     {% if entry.related_data.bactscout %}
-      <div class="mt-4">
+      <div class="wgs-summary-section">
         <div class="card mb-0">
           <div class="card-header bg-gradient-success py-2">
             <h5 class="mb-0 text-white">
@@ -239,29 +174,21 @@
             </h5>
           </div>
           <div class="card-body p-3">
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-              <table class="table table-sm table-bordered mb-0">
+            <div class="table-responsive wgs-pipeline-table-shell">
+              <table class="table table-sm table-bordered mb-0 wgs-pipeline-table">
                 <thead class="thead-light">
                   <tr>
-                    <th>Name</th>
-                    <th>Final Status</th>
-                    <th>Species</th>
-                    <th>Read Q30 Rate</th>
-                    <th>GC Content</th>
-                    <th>Duplication Rate</th>
-                    <th>Total Reads</th>
+                    {% for field, label in entry.bactscout_fields %}
+                      <th>{{ label }}</th>
+                    {% endfor %}
                   </tr>
                 </thead>
                 <tbody>
                   {% for b in entry.related_data.bactscout %}
                   <tr>
-                    <td>{{ b.name|default:"N/A" }}</td>
-                    <td>{{ b.a_final_status|default:b.status|default:"N/A" }}</td>
-                    <td>{{ b.species|default:"N/A" }}</td>
-                    <td>{{ b.read_q30_rate|default:"N/A" }}</td>
-                    <td>{{ b.gc_content|default:"N/A" }}</td>
-                    <td>{{ b.duplication_rate|default:"N/A" }}</td>
-                    <td>{{ b.read_total_reads|default:"N/A" }}</td>
+                    {% for field, label in entry.bactscout_fields %}
+                    <td>{{ b|getattr:field|default:"N/A" }}</td>
+                    {% endfor %}
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -273,7 +200,7 @@
     {% endif %}
 
     {% if entry.related_data.gambit %}
-      <div class="mt-4">
+      <div class="wgs-summary-section">
         <div class="card mb-0">
           <div class="card-header bg-gradient-primary py-2">
             <h5 class="mb-0 text-white">
@@ -281,23 +208,21 @@
             </h5>
           </div>
           <div class="card-body p-3">
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-              <table class="table table-sm table-bordered mb-0">
+            <div class="table-responsive wgs-pipeline-table-shell">
+              <table class="table table-sm table-bordered mb-0 wgs-pipeline-table">
                 <thead class="thead-light">
                   <tr>
-                    <th>Sample</th>
-                    <th>Predicted Name</th>
-                    <th>Closest Genomes</th>
-                    <th>Distance</th>
+                    {% for field, label in entry.gambit_fields %}
+                      <th>{{ label }}</th>
+                    {% endfor %}
                   </tr>
                 </thead>
                 <tbody>
                   {% for g in entry.related_data.gambit %}
                   <tr>
-                    <td>{{ g.sample|default:"N/A" }}</td>
-                    <td>{{ g.predicted_name|default:"N/A" }}</td>
-                    <td>{{ g.closest_genomes|default:"N/A" }}</td>
-                    <td>{{ g.closest_distance|default:"N/A" }}</td>
+                    {% for field, label in entry.gambit_fields %}
+                    <td>{{ g|getattr:field|default:"N/A" }}</td>
+                    {% endfor %}
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -309,7 +234,7 @@
     {% endif %}
 
     {% if entry.related_data.mlst %}
-      <div class="mt-4">
+      <div class="wgs-summary-section">
         <div class="card mb-0">
           <div class="card-header bg-gradient-warning py-2">
             <h5 class="mb-0 text-white">
@@ -317,23 +242,21 @@
             </h5>
           </div>
           <div class="card-body p-3">
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-              <table class="table table-sm table-bordered mb-0">
+            <div class="table-responsive wgs-pipeline-table-shell">
+              <table class="table table-sm table-bordered mb-0 wgs-pipeline-table">
                 <thead class="thead-light">
                   <tr>
-                    <th>Name</th>
-                    <th>Scheme</th>
-                    <th>MLST</th>
-                    <th>Alleles</th>
+                    {% for field, label in entry.mlst_fields %}
+                      <th>{{ label }}</th>
+                    {% endfor %}
                   </tr>
                 </thead>
                 <tbody>
                   {% for m in entry.related_data.mlst %}
                   <tr>
-                    <td>{{ m.name|default:"N/A" }}</td>
-                    <td>{{ m.scheme|default:"N/A" }}</td>
-                    <td>{{ m.mlst|default:"N/A" }}</td>
-                    <td>{{ m.alleles|default:"N/A" }}</td>
+                    {% for field, label in entry.mlst_fields %}
+                    <td>{{ m|getattr:field|default:"N/A" }}</td>
+                    {% endfor %}
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -345,7 +268,7 @@
     {% endif %}
 
     {% if entry.related_data.checkm2 %}
-      <div class="mt-4">
+      <div class="wgs-summary-section">
         <div class="card mb-0">
           <div class="card-header bg-gradient-info py-2">
             <h5 class="mb-0 text-white">
@@ -353,23 +276,21 @@
             </h5>
           </div>
           <div class="card-body p-3">
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-              <table class="table table-sm table-bordered mb-0">
+            <div class="table-responsive wgs-pipeline-table-shell">
+              <table class="table table-sm table-bordered mb-0 wgs-pipeline-table">
                 <thead class="thead-light">
                   <tr>
-                    <th>Name</th>
-                    <th>Completeness (%)</th>
-                    <th>Contamination (%)</th>
-                    <th>Quality</th>
+                    {% for field, label in entry.checkm2_fields %}
+                      <th>{{ label }}</th>
+                    {% endfor %}
                   </tr>
                 </thead>
                 <tbody>
                   {% for c in entry.related_data.checkm2 %}
                   <tr>
-                    <td>{{ c.Name|default:"N/A" }}</td>
-                    <td>{{ c.Completeness|default:"N/A" }}</td>
-                    <td>{{ c.Contamination|default:"N/A" }}</td>
-                    <td>{{ c.quality|default:"N/A" }}</td>
+                    {% for field, label in entry.checkm2_fields %}
+                    <td>{{ c|getattr:field|default:"N/A" }}</td>
+                    {% endfor %}
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -381,7 +302,7 @@
     {% endif %}
 
     {% if entry.related_data.assembly %}
-      <div class="mt-4">
+      <div class="wgs-summary-section">
         <div class="card mb-0">
           <div class="card-header bg-gradient-danger py-2">
             <h5 class="mb-0 text-white">
@@ -389,8 +310,8 @@
             </h5>
           </div>
           <div class="card-body p-3">
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-              <table class="table table-sm table-bordered mb-0">
+            <div class="table-responsive wgs-pipeline-table-shell">
+              <table class="table table-sm table-bordered mb-0 wgs-pipeline-table">
                 <thead class="thead-light">
                   <tr>
                     <th>Sample</th>
@@ -417,7 +338,7 @@
     {% endif %}
 
     {% if entry.related_data.amrfinder %}
-      <div class="mt-4">
+      <div class="wgs-summary-section">
         <div class="card mb-0">
           <div class="card-header bg-gradient-purple py-2">
             <h5 class="mb-0 text-white">
@@ -425,23 +346,21 @@
             </h5>
           </div>
           <div class="card-body p-3">
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-              <table class="table table-sm table-bordered mb-0">
+            <div class="table-responsive wgs-pipeline-table-shell">
+              <table class="table table-sm table-bordered mb-0 wgs-pipeline-table">
                 <thead class="thead-light">
                   <tr>
-                    <th>Name</th>
-                    <th>Gene Symbol</th>
-                    <th>Class</th>
-                    <th>Subclass</th>
+                    {% for field, label in entry.amrfinder_fields %}
+                      <th>{{ label }}</th>
+                    {% endfor %}
                   </tr>
                 </thead>
                 <tbody>
                   {% for amr in entry.related_data.amrfinder %}
                   <tr>
-                    <td>{{ amr.name|default:"N/A" }}</td>
-                    <td>{{ amr.element_symbol|default:"N/A" }}</td>
-                    <td>{{ amr.class_field|default:"N/A" }}</td>
-                    <td>{{ amr.subclass|default:"N/A" }}</td>
+                    {% for field, label in entry.amrfinder_fields %}
+                    <td>{{ amr|getattr:field|default:"N/A" }}</td>
+                    {% endfor %}
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -453,7 +372,7 @@
     {% endif %}
 
     {% for custom in entry.custom_related_data %}
-      <div class="mt-4">
+      <div class="wgs-summary-section">
         <div class="card mb-0">
           <div class="card-header bg-gradient-info py-2">
             <h5 class="mb-0 text-white">
@@ -461,8 +380,8 @@
             </h5>
           </div>
           <div class="card-body p-3">
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-              <table class="table table-sm table-bordered mb-0">
+            <div class="table-responsive wgs-pipeline-table-shell">
+              <table class="table table-sm table-bordered mb-0 wgs-pipeline-table">
                 <thead class="thead-light">
                   <tr>
                     <th>Accession</th>
@@ -504,13 +423,21 @@
 .wgs-detail-cell {
   padding: 0 !important;
   background: #ffffff !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
 }
 
 .wgs-detail-drawer {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
   margin: 0 !important;
   border: 0 !important;
   border-radius: 0 0 8px 8px !important;
   background: #ffffff !important;
+  overflow: hidden !important;
   box-shadow: inset 4px 0 0 #00cfe8, inset -1px 0 0 rgba(0, 188, 212, 0.16) !important;
 }
 
@@ -519,8 +446,10 @@
 }
 
 .wgs-detail-drawer > .card-body {
-  padding: 1rem 1.15rem !important;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fcfd 100%) !important;
+  padding: 0.9rem 1.05rem 1rem !important;
+  background:
+    linear-gradient(90deg, rgba(224, 248, 252, 0.76) 0%, rgba(255, 255, 255, 0.86) 48%, rgba(224, 248, 252, 0.76) 100%),
+    url("{% static 'assets/img/theme/microbial.jpg' %}") center 42% / cover no-repeat !important;
 }
 
 /* Color utilities */
@@ -545,76 +474,161 @@
 .bg-gradient-danger { background: linear-gradient(135deg, #172b4d 0%, #1e5a96 100%); }
 .bg-gradient-purple { background: linear-gradient(135deg, #172b4d 0%, #1e5a96 100%); }
 
-/* Info section styles */
-.info-section {
-  background: #f8fcfd;
-  padding: 1.1rem 1.2rem;
+.wgs-record-preview {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 0;
+  border: 1px solid rgba(0, 188, 212, 0.25);
+  border-left: 4px solid #00cfe8;
   border-radius: 8px;
-  border: 1px solid rgba(0, 188, 212, 0.16);
-  border-left: 4px solid #00a9b9 !important;
-  box-shadow: 0 8px 18px rgba(15, 58, 95, 0.06);
+  overflow: hidden;
+  background: rgba(248, 253, 255, 0.9);
+  box-shadow: 0 8px 22px rgba(15, 58, 95, 0.08);
 }
 
-.section-title {
-  font-size: 0.86rem;
+.wgs-summary-section {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 0.85rem;
+  overflow: hidden;
+}
+
+.wgs-summary-section:first-of-type {
+  margin-top: 0.9rem;
+}
+
+.wgs-record-accent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 100%;
+  padding: 1rem;
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(15, 58, 95, 0.96), rgba(8, 121, 138, 0.95));
+}
+
+.wgs-record-accent strong {
+  font-size: 1rem;
+  line-height: 1.2;
+  color: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.wgs-record-accent span:last-child {
+  font-size: 0.78rem;
   font-weight: 800;
-  color: #0f3a5f !important;
-  margin-bottom: 1rem;
+  color: rgba(230, 249, 252, 0.92);
+}
+
+.wgs-record-kicker {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #90f3ff !important;
+}
+
+.wgs-record-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(165px, 1fr));
+  gap: 0;
+  border-bottom: 1px solid rgba(15, 58, 95, 0.08);
+}
+
+.wgs-record-info-grid .info-cell {
+  min-width: 0;
+  padding: 0.85rem 1rem;
+  border-right: 1px solid rgba(15, 58, 95, 0.08);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.wgs-record-info-grid .info-cell:last-child {
+  border-right: 0;
+}
+
+.wgs-info-section-title {
   display: flex;
   align-items: center;
-  padding-bottom: 0.6rem;
-  border-bottom: 2px solid rgba(0, 188, 212, 0.34) !important;
-  letter-spacing: 0;
+  gap: 0.25rem;
+  color: #064f76;
+  font-size: 0.74rem;
+  font-weight: 900;
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(0, 188, 212, 0.22);
 }
 
-.section-title i {
-  color: #00a9b9 !important;
+.wgs-record-lower {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.34fr) minmax(0, 1fr);
+  border-top: 1px solid rgba(0, 188, 212, 0.12);
 }
 
-.info-section[style*="border-left-color: #5e72e4"] .section-title {
-  border-bottom-color: rgba(0, 188, 212, 0.34);
-  color: #0f3a5f;
+.wgs-record-strip {
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.72);
+  border-right: 1px solid rgba(15, 58, 95, 0.08);
 }
 
-.info-section[style*="border-left-color: #2dce89"] .section-title {
-  border-bottom-color: rgba(0, 188, 212, 0.34);
-  color: #0f3a5f;
+.wgs-record-strip:last-child {
+  border-right: 0;
 }
 
-.info-section[style*="border-left-color: #11cdef"] .section-title {
-  border-bottom-color: rgba(0, 188, 212, 0.34);
-  color: #0f3a5f;
+.info-cell {
+  min-width: 170px;
 }
 
-.info-section[style*="border-left-color: #fb6340"] .section-title {
-  border-bottom-color: rgba(0, 188, 212, 0.34);
-  color: #0f3a5f;
-}
-
-.info-section[style*="border-left-color: #2dcecc"] .section-title {
-  border-bottom-color: rgba(0, 188, 212, 0.34);
-  color: #0f3a5f;
-}
-
-.info-item {
-  margin-bottom: 1rem;
-}
-
-.info-item label {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #6d8398;
-  margin-bottom: 0.25rem;
+.info-label {
   display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.35px;
+  color: #7b8da5;
+  margin-bottom: 0.12rem;
 }
 
 .info-value {
-  font-size: 0.9rem;
-  color: #143852;
+  display: block;
+  font-size: 0.82rem;
+  color: #2c3e50;
   margin-bottom: 0;
   font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.info-value.primary {
+  color: #0f4c81 !important;
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 0.35rem;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.wgs-mini-pair {
+  display: flex;
+  gap: 1rem;
+}
+
+.wgs-empty-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  color: #7890a6;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .info-value[style*="color: #5e72e4"],
@@ -626,8 +640,10 @@
 .antibiotic-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.35rem;
   margin-top: 0.5rem;
+  max-height: 92px;
+  overflow-y: auto;
 }
 
 .antibiotic-item {
@@ -686,16 +702,20 @@
 }
 
 .wgs-detail-drawer .card:not(.wgs-detail-drawer) {
-  border: 1px solid rgba(0, 188, 212, 0.18);
-  border-radius: 7px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(0, 188, 212, 0.24);
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: none;
+  box-shadow: 0 4px 12px rgba(15, 58, 95, 0.05);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .wgs-detail-drawer .card:not(.wgs-detail-drawer) .card-header {
-  background: var(--wgs-section-header, linear-gradient(135deg, #0f3a5f 0%, #08798a 100%)) !important;
-  border-bottom: 2px solid var(--wgs-section-accent, #00cfe8);
-  padding: 0.65rem 0.9rem !important;
+  background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)) !important;
+  border-bottom: 2px solid #00cfe8;
+  padding: 0.55rem 0.85rem !important;
 }
 
 .wgs-detail-drawer .card:not(.wgs-detail-drawer) .card-header h5 {
@@ -762,50 +782,97 @@
 }
 
 .wgs-detail-drawer .card:not(.wgs-detail-drawer) .card-body {
-  background: #ffffff;
-  padding: 0.85rem !important;
+  background: rgba(255, 255, 255, 0.62);
+  padding: 0.7rem !important;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.wgs-detail-drawer table {
+.wgs-pipeline-table-shell {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid rgba(0, 188, 212, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.76);
+  contain: inline-size;
+  overscroll-behavior: contain;
+}
+
+.wgs-detail-drawer .wgs-pipeline-table {
   color: #143852;
+  table-layout: fixed;
+  width: auto;
+  min-width: max-content;
+  max-width: none;
 }
 
-.wgs-detail-drawer table thead th {
-  background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
-  color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+.wgs-detail-drawer .wgs-pipeline-table thead th {
+  background: linear-gradient(180deg, rgba(224, 248, 252, 0.74) 0%, rgba(205, 239, 246, 0.68) 100%) !important;
+  color: #0f3a5f !important;
+  border-color: rgba(15, 58, 95, 0.08) !important;
   font-size: 0.7rem;
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: 0.25px;
-  backdrop-filter: blur(14px) saturate(125%);
-  -webkit-backdrop-filter: blur(14px) saturate(125%);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(10px) saturate(115%);
+  -webkit-backdrop-filter: blur(10px) saturate(115%);
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
-.wgs-detail-drawer table thead {
-  background: linear-gradient(90deg, rgba(20, 40, 62, 0.56) 0%, rgba(16, 72, 88, 0.46) 52%, rgba(0, 188, 212, 0.36) 100%) !important;
-  backdrop-filter: blur(14px) saturate(125%);
-  -webkit-backdrop-filter: blur(14px) saturate(125%);
-  border-bottom: 1px solid rgba(0, 207, 232, 0.34);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+.wgs-detail-drawer .wgs-pipeline-table thead {
+  background: rgba(224, 248, 252, 0.68) !important;
+  border-bottom: 1px solid rgba(0, 169, 185, 0.2);
+  box-shadow: inset 0 -1px 0 rgba(0, 169, 185, 0.1);
 }
 
-.wgs-detail-drawer table tbody td {
-  background: #fbfdfe;
+.wgs-detail-drawer .wgs-pipeline-table th,
+.wgs-detail-drawer .wgs-pipeline-table td {
+  min-width: 165px;
+  max-width: 220px;
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.wgs-detail-drawer .wgs-pipeline-table tbody td {
+  background: rgba(251, 253, 254, 0.86);
   border-color: rgba(15, 58, 95, 0.09) !important;
   color: #143852;
   font-size: 0.78rem;
   font-weight: 650;
 }
 
+.wgs-detail-drawer .wgs-pipeline-table tbody tr:hover td {
+  background: rgba(235, 250, 253, 0.96);
+}
+
 /* Responsive */
-@media (max-width: 768px) {
-  .info-section {
-    padding: 1rem;
+@media (max-width: 1199.98px) {
+  .wgs-record-preview {
+    grid-template-columns: 1fr;
   }
-  
-  .section-title {
-    font-size: 0.9rem;
+
+  .wgs-record-info-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .wgs-record-info-grid,
+  .wgs-record-lower {
+    grid-template-columns: 1fr;
+  }
+
+  .wgs-record-info-grid .info-cell,
+  .wgs-record-strip {
+    border-right: 0;
+    border-bottom: 1px solid rgba(15, 58, 95, 0.08);
   }
 
   .antibiotic-grid {

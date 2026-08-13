@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'apps.home',  # Your custom app
+    'apps.authentication.apps.AuthenticationConfig',
     'widget_tweaks',
     'phonenumber_field',
     'phonenumbers',
@@ -59,6 +60,9 @@ ROOT_URLCONF = 'core.urls'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'      # this sends users to the home app (dashboard)
 LOGOUT_REDIRECT_URL = 'home'
+
+# Rollout safety: keep disabled until legitimate legacy users are linked to ARSP staff.
+ACCOUNT_APPROVAL_REQUIRE_STAFF_LINK = True
 
 
 
@@ -139,3 +143,9 @@ TIME_ZONE = "Asia/Manila"
 # Allow more form fields for large antibiotic datasets
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 20000
 PHONENUMBER_DEFAULT_REGION = 'PH'
+
+# logout automatically after 15 minutes of inactivity
+SESSION_COOKIE_AGE = 900
+
+# Save the session to the database on every request, even if it wasn't modified. This is useful for tracking user activity and ensuring that the session expiration is reset with each request.
+SESSION_SAVE_EVERY_REQUEST = True

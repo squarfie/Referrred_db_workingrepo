@@ -1,6 +1,6 @@
 from .models import *
 from django import forms
-from django.db.models import Q
+from django.db.models import Max, Q
 from apps.home.permissions import ROLE_ADMIN, ROLE_CHECKER, ROLE_ENCODER, ROLE_LAB_ENCODER, ROLE_LAB_MANAGER, ROLE_VERIFIER
 import re
 
@@ -33,6 +33,53 @@ def staff_with_role(*roles):
         .distinct()
         .order_by("Staff_Name", "User_Account__first_name", "User_Account__username")
     )
+
+
+def default_signature_staff(default_field):
+    return arsStaff_Details.objects.filter(**{default_field: True}).order_by("Staff_Name").first()
+
+
+def resolve_organism_choice(value, organism_name=""):
+    candidates = [
+        str(value or "").strip(),
+        str(organism_name or "").strip(),
+    ]
+
+    for candidate in candidates:
+        if not candidate:
+            continue
+        organism = (
+            Organism_List.objects
+            .filter(
+                Q(Whonet_Org_Code__iexact=candidate)
+                | Q(Replaced_by__iexact=candidate)
+            )
+            .order_by("Whonet_Org_Code")
+            .first()
+        )
+        if organism:
+            return organism
+
+    for candidate in candidates:
+        if not candidate:
+            continue
+        organism = (
+            Organism_List.objects
+            .filter(Organism__iexact=candidate)
+            .order_by("Whonet_Org_Code")
+            .first()
+        )
+        if organism:
+            return organism
+
+    return None
+
+
+def batch_ref_no_from_code(batch_code):
+    batch_code = (batch_code or "").strip()
+    if "_" not in batch_code:
+        return ""
+    return batch_code.rsplit("_", 1)[-1].strip()
 
 
 def apply_required_widget_attrs(form):
@@ -237,6 +284,31 @@ class Referred_Form(forms.ModelForm):
             self.fields['ars_OrgCode'].queryset = Organism_List.objects.all() # Always load the latest Organism_List
             self.fields['ars_OrgCode'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
             self.fields['ars_OrgName'].label_from_instance = lambda obj: obj.Organism 
+            if not self.is_bound and getattr(self.instance, "pk", None):
+                site_org = (getattr(self.instance, "Site_Org", "") or "").strip()
+                ars_org = (getattr(self.instance, "ars_OrgCode", "") or "").strip()
+                site_choice = resolve_organism_choice(
+                    site_org,
+                    getattr(self.instance, "Site_OrgName", ""),
+                )
+                ars_choice = resolve_organism_choice(
+                    ars_org,
+                    getattr(self.instance, "ars_OrgName", ""),
+                )
+                if site_choice:
+                    self.initial["Site_Org"] = site_choice.Whonet_Org_Code
+                    self.fields["Site_Org"].initial = site_choice.Whonet_Org_Code
+                    self.initial["Site_OrgName"] = site_choice.Organism
+                elif site_org:
+                    self.initial["Site_Org"] = site_org
+                    self.fields["Site_Org"].initial = site_org
+                if ars_choice:
+                    self.initial["ars_OrgCode"] = ars_choice.Whonet_Org_Code
+                    self.fields["ars_OrgCode"].initial = ars_choice.Whonet_Org_Code
+                    self.initial["ars_OrgName"] = ars_choice.Organism
+                elif ars_org:
+                    self.initial["ars_OrgCode"] = ars_org
+                    self.fields["ars_OrgCode"].initial = ars_org
 
         def clean_bat_seq(self):
             accession = (
@@ -346,6 +418,16 @@ class BatchTable_form(forms.ModelForm):
             self.fields['bat_Lab_Lic'].widget.attrs['readonly'] = True  
             self.fields['bat_Head_Lic'].widget.attrs['readonly'] = True
             self.fields['bat_Status'].required=False
+
+            if not self.is_bound and not getattr(self.instance, "pk", None):
+                default_lab_manager = default_signature_staff("Is_Default_Lab_Manager")
+                if default_lab_manager:
+                    self.initial["bat_LabManager"] = default_lab_manager.Staff_Name
+                    self.initial["bat_Lab_Lic"] = default_lab_manager.Staff_License or ""
+                default_head = default_signature_staff("Is_Default_Head")
+                if default_head:
+                    self.initial["bat_Head"] = default_head.Staff_Name
+                    self.initial["bat_Head_Lic"] = default_head.Staff_License or ""
 
             # self.fields['Batch_Code'].widget = forms.HiddenInput()
 
@@ -462,12 +544,26 @@ class BatchEditForm(forms.ModelForm):
                 self.fields['bat_Head'].queryset = staff_with_role(ROLE_LAB_MANAGER)
                 if self.instance and self.instance.pk and not self.initial.get("bat_Site_NameGen"):
                     self.initial["bat_Site_NameGen"] = self.instance.bat_Site_Name
+                if self.instance and self.instance.pk and not self.initial.get("bat_RefNo"):
+                    self.initial["bat_RefNo"] = (
+                        (self.instance.bat_RefNo or "").strip()
+                        or batch_ref_no_from_code(self.instance.bat_Batch_Code)
+                    )
                 self.fields['bat_Batch_Name'].widget.attrs['readonly'] = True
                 self.fields['bat_Enc_Lic'].widget.attrs['readonly'] = True  
                 self.fields['bat_Chec_Lic'].widget.attrs['readonly'] = True  
                 self.fields['bat_Ver_Lic'].widget.attrs['readonly'] = True  
                 self.fields['bat_Lab_Lic'].widget.attrs['readonly'] = True  
                 self.fields['bat_Head_Lic'].widget.attrs['readonly'] = True
+                if not self.is_bound:
+                    default_lab_manager = default_signature_staff("Is_Default_Lab_Manager")
+                    if default_lab_manager and not (getattr(self.instance, "bat_LabManager", "") or "").strip():
+                        self.initial["bat_LabManager"] = default_lab_manager.Staff_Name
+                        self.initial["bat_Lab_Lic"] = default_lab_manager.Staff_License or ""
+                    default_head = default_signature_staff("Is_Default_Head")
+                    if default_head and not (getattr(self.instance, "bat_Head", "") or "").strip():
+                        self.initial["bat_Head"] = default_head.Staff_Name
+                        self.initial["bat_Head_Lic"] = default_head.Staff_License or ""
 
 
 # --- Custom cleaning methods to save Staff_Name as string ---
@@ -830,12 +926,12 @@ class Breakpoint_uploadForm(RequiredAttrsModelForm):
           model = Breakpoint_upload
           fields = ['File_uploadBP']
 
-#ensure only csv and excel are uploaded
+#ensure only csv, tsv, and excel are uploaded
 def clean_file_upload(self):
         file = self.cleaned_data.get('File_uploadBP') #make sure this matches the model 
         if file:
-            if not file.name.endswith('.csv') and not file.name.endswith('.xlsx'):
-                raise forms.ValidationError('File must be a CSV or Excel file.')
+            if not file.name.lower().endswith(('.csv', '.tsv', '.xlsx', '.xls')):
+                raise forms.ValidationError('File must be a CSV, TSV, or Excel file.')
         return file
 
 #for antibiotic entry form
@@ -930,6 +1026,8 @@ class ContactForm(RequiredAttrsModelForm):
         })
         if not self.can_edit_roles:
             self.fields["Staff_Role"].required = False
+            self.fields["Is_Default_Lab_Manager"].disabled = True
+            self.fields["Is_Default_Head"].disabled = True
 
     def clean_Staff_Role(self):
         if not self.can_edit_roles:
@@ -1129,6 +1227,22 @@ class TATMonitoringForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        location_names = list(
+            TATLocation.objects
+            .filter(is_active=True)
+            .order_by("order", "name")
+            .values_list("name", flat=True)
+        )
+        if not location_names:
+            location_names = ["n/a"]
+        current_location = getattr(self.instance, "tat_Batch_Location", "") or "n/a"
+        if current_location and current_location not in location_names:
+            location_names.append(current_location)
+        self.fields["tat_Batch_Location"] = forms.ChoiceField(
+            choices=[(name, name) for name in location_names],
+            required=False,
+            widget=forms.Select(attrs={"class": "form-control"}),
+        )
         self.fields["tat_Running_TAT"].disabled = True
         self.fields["tat_Final_TAT"].disabled = True
 
@@ -1175,6 +1289,51 @@ class TATStepConfigForm(RequiredAttrsModelForm):
 
         return cleaned_data
 
+
+
+class TATLocationForm(RequiredAttrsModelForm):
+    class Meta:
+        model = TATLocation
+        fields = ["name", "order", "is_active"]
+        widgets = {
+            "name": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Enter location item",
+            }),
+            "order": forms.NumberInput(attrs={
+                "class": "form-control",
+                "min": 0,
+            }),
+            "is_active": forms.CheckboxInput(attrs={
+                "class": "form-check-input",
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["order"].required = False
+
+    def clean_name(self):
+        name = (self.cleaned_data.get("name") or "").strip()
+        if not name:
+            raise forms.ValidationError("Location name is required.")
+        if TATLocation.objects.filter(name__iexact=name).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("This TAT location already exists.")
+        return name
+
+    def clean_order(self):
+        order = self.cleaned_data.get("order")
+        if order is not None:
+            return order
+
+        last_order = (
+            TATLocation.objects
+            .exclude(pk=self.instance.pk)
+            .aggregate(Max("order"))
+            .get("order__max")
+            or 0
+        )
+        return last_order + 1
 
 
 class TATStepForm(forms.ModelForm):

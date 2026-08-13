@@ -77,7 +77,7 @@ from openpyxl.styles import Font
 # ================================
 # Project Imports
 # ================================
-from apps.home.views import link_callback
+from apps.home.views import _apply_signature_defaults_to_batch, link_callback
 from apps.home.models import *
 from apps.home.forms import *
 from apps.home.permissions import (
@@ -234,6 +234,11 @@ def _code_iexact_filter(field_name, codes):
     return query if has_codes else Q(pk__in=[])
 
 
+def _antibiotic_view_mode(request):
+    mode = (request.GET.get("antibiotic_view") or request.POST.get("antibiotic_view") or "all").strip().lower()
+    return "panel" if mode == "panel" else "all"
+
+
 def _final_antibiotics_for_panel(
     *,
     org_code,
@@ -242,9 +247,16 @@ def _final_antibiotics_for_panel(
     retest=False,
     require_org=False,
     existing_whonet_codes=None,
+    antibiotic_view="all",
 ):
     AntibioticList = HomeAntibioticList()
     qs = AntibioticList.objects.all()
+    antibiotic_view = (antibiotic_view or "all").strip().lower()
+    existing_whonet_codes = {
+        (code or "").strip().upper()
+        for code in (existing_whonet_codes or [])
+        if (code or "").strip()
+    }
 
     if retest:
         qs = qs.filter(Retest=True)
@@ -254,8 +266,25 @@ def _final_antibiotics_for_panel(
     org_code = (org_code or "").strip()
     if _is_no_organism(org_code):
         return qs.none()
-    if not org_code:
-        return qs.order_by("Antibiotic", "Whonet_Abx")
+
+    if antibiotic_view == "panel":
+        if not org_code:
+            return qs.none()
+        breakpoint_year = _year_as_int(specimen_year) or specimen_year
+        panel_codes = {
+            (code or "").strip().upper()
+            for code in get_breakpoint_panel_abx_codes(breakpoint_year, org_code)
+            if (code or "").strip()
+        }
+        panel_filter = (
+            _code_iexact_filter("Whonet_Abx", panel_codes)
+            | _code_iexact_filter("Abx_code", panel_codes)
+        )
+        if existing_whonet_codes:
+            panel_filter |= _code_iexact_filter("Whonet_Abx", existing_whonet_codes)
+        return qs.filter(panel_filter).distinct().order_by("Antibiotic", "Whonet_Abx")
+
+    qs = qs.filter(Show_All=True)
     return qs.order_by("Antibiotic", "Whonet_Abx")
 
 
@@ -398,13 +427,17 @@ def _save_or_delete_antibiotic_entry(entry):
         entry.delete()
 
 
+NO_ORGANISM_CODES = {"", "n/a", "na", "n.a.", "nv", "none", "null", "nan"}
+
+
 def _is_no_organism(value):
-    return (value or "").strip().lower() in {"", "n/a", "na", "none"}
+    return (value or "").strip().lower() in NO_ORGANISM_CODES
 
 
 FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS = {
     "ABI", "GCT", "AGT", "BD-", "BR-", "CAM", "CAR", "EIK", "FRA",
-    "HA-", "HEL", "KIN", "LEG", "MOR", "NE-",
+    "HA-", "HEL", "KIN", "LEG", "MOR", "NE-", "NV", "N/A", "NA",
+    "N.A.", "NONE", "NULL", "NAN",
 }
 
 
@@ -424,20 +457,34 @@ def _uses_fastidious_plus_layout(organism):
     if codes & FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS:
         return True
 
-    organism_name = str(organism.get("Organism") or "").strip().lower()
-    return "HA-" in FASTIDIOUS_PLUS_LAYOUT_SPECIES_GROUPS and (
-        "HIN" in codes or organism_name.startswith("haemophilus ")
+    return _organism_name_uses_fastidious_plus_layout(organism.get("Organism")) or bool(
+        {"HIN", "NME"} & codes
     )
 
 
-def _organism_type_is_plus(org_code):
+def _organism_name_uses_fastidious_plus_layout(organism_name):
+    name = str(organism_name or "").strip().lower()
+    return name.startswith(("haemophilus ", "neisseria "))
+
+
+def _organism_type_is_plus(org_code, organism_name=None):
     code = str(org_code or "").strip()
-    if not code:
+    if _is_no_organism(code):
+        return True
+    if _organism_name_uses_fastidious_plus_layout(organism_name or code):
+        return True
+    name = str(organism_name or "").strip()
+    if not code and not name:
         return False
+    lookup = Q()
+    if code:
+        lookup |= Q(Whonet_Org_Code__iexact=code) | Q(Replaced_by__iexact=code) | Q(Organism__iexact=code)
+    if name:
+        lookup |= Q(Organism__iexact=name)
     OrganismList = HomeOrganismList()
     organism = (
         OrganismList.objects
-        .filter(Q(Whonet_Org_Code__iexact=code) | Q(Replaced_by__iexact=code))
+        .filter(lookup)
         .values("Whonet_Org_Code", "Replaced_by", "Organism_Type", "Species_Group", "Genus_Group", "Genus_Code", "Organism")
         .first()
     )
@@ -970,6 +1017,7 @@ def edit_final_data(request, id):
         return redirect("show_final_table")
 
     request.session["current_final_isolate_id"] = isolate.id
+    antibiotic_view = _antibiotic_view_mode(request)
 
     classification, _ = Classification_Table.objects.get_or_create(
         Class_idNumReferred=isolate,
@@ -998,6 +1046,7 @@ def edit_final_data(request, id):
             specimen_year=specimen_year,
             show_site=True,
             existing_whonet_codes=existing_main_codes,
+            antibiotic_view=antibiotic_view,
         )
         antibiotics_retest = _final_antibiotics_for_panel(
             org_code=isolate.f_ars_OrgCode,
@@ -1005,6 +1054,7 @@ def edit_final_data(request, id):
             retest=True,
             require_org=True,
             existing_whonet_codes=existing_retest_codes,
+            antibiotic_view=antibiotic_view,
         )
 
         retest_entries = existing_entries.exclude(
@@ -1021,6 +1071,7 @@ def edit_final_data(request, id):
             "retest_entries": retest_entries,
             "classification": classification,
             "edit_mode": True,
+            "antibiotic_view": antibiotic_view,
         })
 
     # =========================
@@ -1037,7 +1088,23 @@ def edit_final_data(request, id):
         "f_ars_Post": isolate.f_ars_Post,
     }
 
-    form = FinalReferred_Form(request.POST, instance=isolate)
+    post_data = request.POST.copy()
+    if old_site_org and not (post_data.get("f_Site_Org") or "").strip():
+        old_site_choice = resolve_organism_choice(old_site_org, isolate.f_Site_OrgName)
+        post_data["f_Site_Org"] = (
+            old_site_choice.Whonet_Org_Code if old_site_choice else old_site_org
+        )
+    if old_ars_org and not (post_data.get("f_ars_OrgCode") or "").strip():
+        old_ars_choice = resolve_organism_choice(old_ars_org, isolate.f_ars_OrgName)
+        post_data["f_ars_OrgCode"] = (
+            old_ars_choice.Whonet_Org_Code if old_ars_choice else old_ars_org
+        )
+    if isolate.f_Site_OrgName and not (post_data.get("f_Site_OrgName") or "").strip():
+        post_data["f_Site_OrgName"] = isolate.f_Site_OrgName
+    if isolate.f_ars_OrgName and not (post_data.get("f_ars_OrgName") or "").strip():
+        post_data["f_ars_OrgName"] = isolate.f_ars_OrgName
+
+    form = FinalReferred_Form(post_data, instance=isolate)
 
     if not form.is_valid():
         messages.error(request, "Please check the highlighted fields.")
@@ -1052,6 +1119,7 @@ def edit_final_data(request, id):
                 specimen_year=specimen_year,
                 show_site=True,
                 existing_whonet_codes=existing_entries.exclude(ab_Abx_code__isnull=True).values_list("ab_Abx_code", flat=True),
+                antibiotic_view=antibiotic_view,
             ),
             "antibiotics_retest": _final_antibiotics_for_panel(
                 org_code=isolate.f_ars_OrgCode,
@@ -1059,11 +1127,13 @@ def edit_final_data(request, id):
                 retest=True,
                 require_org=True,
                 existing_whonet_codes=existing_entries.exclude(ab_Retest_Abx_code__isnull=True).values_list("ab_Retest_Abx_code", flat=True),
+                antibiotic_view=antibiotic_view,
             ),
             "existing_entries": existing_entries,
             "retest_entries": existing_entries.exclude(ab_Retest_Abx_code__isnull=True),
             "classification": classification,
             "edit_mode": True,
+            "antibiotic_view": antibiotic_view,
         })
 
     isolate = form.save(commit=False)
@@ -1146,6 +1216,7 @@ def edit_final_data(request, id):
         specimen_year=specimen_year,
         show_site=True,
         existing_whonet_codes=existing_main_entries.keys(),
+        antibiotic_view=antibiotic_view,
     ))
 
     if not site_org_is_na:
@@ -1283,6 +1354,7 @@ def edit_final_data(request, id):
         retest=True,
         require_org=True,
         existing_whonet_codes=existing_retest_entries.keys(),
+        antibiotic_view=antibiotic_view,
     ))
 
     if not ars_org_is_na:
@@ -1490,15 +1562,41 @@ def _aligned_pdf_abx_codes(site_codes, ars_codes, site_print_order, ars_print_or
 
 def _blank_no_organism_report_fields(isolate):
     """Blank only the printed result pane for whichever organism side is n/a."""
-    if _is_no_organism(isolate.f_Site_Org):
+    if _is_no_organism(isolate.f_Site_Org) and not _is_nonviable_result(
+        isolate.f_Site_Pre,
+        isolate.f_Site_OrgName,
+        isolate.f_Site_Pos,
+    ):
         isolate.f_Site_OrgName = ""
 
-    if _is_no_organism(isolate.f_ars_OrgCode):
+    if _is_no_organism(isolate.f_ars_OrgCode) and not _is_nonviable_result(
+        isolate.f_ars_Pre,
+        isolate.f_ars_OrgName,
+        isolate.f_ars_Post,
+    ):
         isolate.f_ars_OrgName = ""
+
+    if _is_no_organism(isolate.f_ars_OrgCode):
         isolate.f_ars_ct_ctl = ""
         isolate.f_ars_tz_tzl = ""
         isolate.f_ars_cn_cni = ""
         isolate.f_ars_ip_ipi = ""
+
+
+def _chunk_pdf_isolates_for_print(isolates, recommendation_attr, max_per_page=2):
+    isolate_list = list(isolates)
+    return [
+        isolate_list[i:i + max_per_page]
+        for i in range(0, len(isolate_list), max_per_page)
+    ]
+
+
+def _pdf_has_long_recommendation(value):
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    if not text:
+        return False
+    numbered_items = len(re.findall(r"(?:^|\s)\d+\.", text))
+    return numbered_items >= 4 or len(text) >= 330
 
 
 
@@ -1507,6 +1605,9 @@ def generate_final_batch_pdf_panel_old(request, id):
 
     # fetch batch isolates
     batch = get_object_or_404(Batch_Table, pk=id)
+    changed_fields = _apply_signature_defaults_to_batch(batch)
+    if changed_fields:
+        batch.save(update_fields=changed_fields)
 
     # isolates = (
     #     Final_Data.objects
@@ -1545,12 +1646,7 @@ def generate_final_batch_pdf_panel_old(request, id):
         key=final_ars_sort_key
     )
 
-    # paginate: 2 isolates per page
-    def chunked(items, size):
-        for i in range(0, len(items), size):
-            yield items[i:i + size]
-
-    isolate_pages = list(chunked(isolates, 2))
+    isolate_pages = _chunk_pdf_isolates_for_print(isolates, "f_ars_reco", max_per_page=2)
 
 
     # these are the constants
@@ -1577,6 +1673,10 @@ def generate_final_batch_pdf_panel_old(request, id):
     # build pdf
     for page_isolates in isolate_pages:
         page_entries = []
+        compact_page = any(
+            _pdf_has_long_recommendation(getattr(isolate, "f_ars_reco", ""))
+            for isolate in page_isolates
+        )
 
         for isolate in page_isolates:
             _blank_no_organism_report_fields(isolate)
@@ -1679,14 +1779,17 @@ def generate_final_batch_pdf_panel_old(request, id):
                             grouped_ars[abx]["mic"] = e
 
 
+            site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.f_Site_OrgName)
+            site_max_cols = 32 if site_uses_plus_layout else MAX_COLS
+
             # a chunk for display
             grouped_rows = list(
-                chunk_list(list(grouped_site.items()), MAX_COLS)
+                chunk_list(list(grouped_site.items()), site_max_cols)
             )[:MAX_ROWS]
             while len(grouped_rows) < MAX_ROWS:
                 grouped_rows.append([])
 
-            ars_uses_plus_layout = _organism_type_is_plus(ars_org)
+            ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.f_ars_OrgName)
             ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
             grouped_ars_rows = list(
                 chunk_list(list(grouped_ars.items()), ars_max_cols)
@@ -1701,10 +1804,12 @@ def generate_final_batch_pdf_panel_old(request, id):
                 "isolate": isolate,
                 "grouped_rows": grouped_rows,
                 "grouped_ars_rows": grouped_ars_rows,
+                "site_uses_plus_layout": site_uses_plus_layout,
                 "ars_uses_plus_layout": ars_uses_plus_layout,
                 "patient_rowspan": (site_group_count + ars_group_count) * 5,
                 "site_detail_rowspan": (site_group_count * 5) - 1,
                 "ars_detail_rowspan": (ars_group_count * 5) - 1,
+                "compact_page": compact_page,
             })
 
         pages_data.append(page_entries)
@@ -1765,7 +1870,7 @@ def generate_final_batch_pdf(request, id):
 
     MAX_COLS = 29
     MAX_ROWS = 2
-    isolate_pages = list(chunked(isolates, 2))
+    isolate_pages = _chunk_pdf_isolates_for_print(list(isolates), "f_ars_reco", max_per_page=2)
     pages_data = []
 
     AntibioticList = HomeAntibioticList()
@@ -1787,6 +1892,10 @@ def generate_final_batch_pdf(request, id):
 
     for page_isolates in isolate_pages:
         page_entries = []
+        compact_page = any(
+            _pdf_has_long_recommendation(getattr(isolate, "f_ars_reco", ""))
+            for isolate in page_isolates
+        )
 
         for isolate in page_isolates:
             _blank_no_organism_report_fields(isolate)
@@ -1859,9 +1968,11 @@ def generate_final_batch_pdf(request, id):
                     if e.ab_Retest_MICValue is not None:
                         grouped_ars[ars_abx]["mic"] = e
 
-            ars_uses_plus_layout = _organism_type_is_plus(ars_org)
+            site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.f_Site_OrgName)
+            ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.f_ars_OrgName)
+            site_max_cols = 32 if site_uses_plus_layout else MAX_COLS
             ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
-            grouped_rows = fixed_rows(grouped_site)
+            grouped_rows = fixed_rows(grouped_site, site_max_cols)
             grouped_ars_rows = fixed_rows(grouped_ars, ars_max_cols)
             site_group_count = len(grouped_rows)
             ars_group_count = len(grouped_ars_rows)
@@ -1870,10 +1981,12 @@ def generate_final_batch_pdf(request, id):
                 "isolate": isolate,
                 "grouped_rows": grouped_rows,
                 "grouped_ars_rows": grouped_ars_rows,
+                "site_uses_plus_layout": site_uses_plus_layout,
                 "ars_uses_plus_layout": ars_uses_plus_layout,
                 "patient_rowspan": (site_group_count + ars_group_count) * 5,
                 "site_detail_rowspan": (site_group_count * 5) - 1,
                 "ars_detail_rowspan": (ars_group_count * 5) - 1,
+                "compact_page": compact_page,
             })
 
         pages_data.append(page_entries)
@@ -2219,6 +2332,7 @@ def ajax_filter_antibiotics(request):
 
     org_code   = request.GET.get("org", "").strip().lower()
     retest     = request.GET.get("retest") == "1"
+    antibiotic_view = _antibiotic_view_mode(request)
 
     isolate = get_object_or_404(Final_Data, pk=isolate_id)
 
@@ -2256,6 +2370,7 @@ def ajax_filter_antibiotics(request):
         show_site=not retest,
         retest=retest,
         existing_whonet_codes=existing_codes,
+        antibiotic_view=antibiotic_view,
     )
 
     # Map entries by WHONET code
@@ -3231,6 +3346,11 @@ def wgs_classification_view(request, pk):
         "checkm2": checkm2,
         "assembly": assembly,
         "amrfinder": amrfinder,
+        "bactscout_fields": BactScout.FIELD_LABELS,
+        "gambit_fields": Gambit.FIELD_LABELS,
+        "mlst_fields": Mlst.FIELD_LABELS,
+        "checkm2_fields": Checkm2.FIELD_LABELS,
+        "amrfinder_fields": Amrfinderplus.FIELD_LABELS,
     }
 
     return render(

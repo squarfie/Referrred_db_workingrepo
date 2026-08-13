@@ -391,9 +391,10 @@
                 <span class="fmt-tag">XLSX</span>
                 <span class="fmt-tag">XLS</span>
                 <span class="fmt-tag">CSV</span>
+                <span class="fmt-tag">TSV</span>
               </div>
               <input type="file" name="raw_file" id="raw_file"
-                     accept=".xlsx,.xls,.csv" required>
+                     accept=".xlsx,.xls,.csv,.tsv" required>
             </div>
 
             <!-- File Preview -->
@@ -408,7 +409,7 @@
               </button>
             </div>
 
-            <div class="field-hint mt-2">Supported: Excel (.xlsx, .xls) and CSV (.csv)</div>
+            <div class="field-hint mt-2">Supported: Excel (.xlsx, .xls), CSV (.csv), and TSV (.tsv)</div>
           </div>
 
           <hr class="form-divider">
@@ -439,6 +440,7 @@
             <li>Excel Workbook (.xlsx)</li>
             <li>Legacy Excel (.xls)</li>
             <li>Comma-Separated Values (.csv)</li>
+            <li>Tab-Separated Values (.tsv)</li>
           </ul>
         </div>
         <div class="help-section">
@@ -512,8 +514,8 @@ dropZone.addEventListener('drop', e => {
   const file = e.dataTransfer.files[0];
   if (!file) return;
   const ext = file.name.split('.').pop().toLowerCase();
-  if (!['xlsx','xls','csv'].includes(ext)) {
-    alert('Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.');
+  if (!['xlsx','xls','csv','tsv'].includes(ext)) {
+    alert('Please upload an Excel (.xlsx, .xls), CSV (.csv), or TSV (.tsv) file.');
     return;
   }
   try { const dt = new DataTransfer(); dt.items.add(file); fileInput.files = dt.files; } catch(ex){}
