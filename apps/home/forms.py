@@ -1082,6 +1082,21 @@ class AntibioticsForm(RequiredAttrsModelForm):
           
      def save(self, commit=True):
         instance = super().save(commit=False)
+        test_method = (instance.Test_Method or "").strip().upper()
+        instance.Test_Method = test_method
+        instance.Disk_Abx = test_method == "DISK"
+
+        if self.instance and self.instance.pk:
+            for hidden_flag in ("Show_All", "Show_Panel", "Method_specific"):
+                if hidden_flag not in self.data:
+                    setattr(instance, hidden_flag, getattr(self.instance, hidden_flag))
+        else:
+            if "Show_All" not in self.data:
+                instance.Show_All = True
+            if "Show_Panel" not in self.data:
+                instance.Show_Panel = False
+            if "Method_specific" not in self.data:
+                instance.Method_specific = False
         
         # Replace None with an empty string or another default value
         for field_name in self.fields:
@@ -1107,10 +1122,18 @@ class OrganismForm(RequiredAttrsModelForm):
           fields = '__all__'
 
      def clean_Whonet_Org_Code(self):
-        value = (self.cleaned_data.get("Whonet_Org_Code") or "").strip().upper()
+        value = (self.cleaned_data.get("Whonet_Org_Code") or "").strip().lower()
         if duplicate_exists(Organism_List, "Whonet_Org_Code", value, self.instance):
             raise forms.ValidationError("Organism code already exists.")
         return value
+
+     def clean(self):
+        cleaned_data = super().clean()
+        for field in Organism_List.UPPERCASE_CODE_FIELDS:
+            value = cleaned_data.get(field)
+            if value:
+                cleaned_data[field] = value.strip().upper()
+        return cleaned_data
 
 
 class Organism_uploadForm(RequiredAttrsModelForm):
@@ -1209,7 +1232,7 @@ class TATStepConfigUploadForm(RequiredAttrsModelForm):
 class TATMonitoringForm(forms.ModelForm):
     class Meta:
         model = TATform
-        exclude = ['tat_Date_Last_Update', 'tat_Batch_Isolates']
+        exclude = ['tat_Date_Last_Update', 'tat_Batch_Isolates', 'tat_Status_Release', 'tat_Target_Days']
         widgets = {
             'tat_Referral_Date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'tat_Date_Released': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -1245,12 +1268,40 @@ class TATMonitoringForm(forms.ModelForm):
         )
         self.fields["tat_Running_TAT"].disabled = True
         self.fields["tat_Final_TAT"].disabled = True
+        self.fields["tat_BatchNumber"].disabled = True
+        self.fields["tat_Total_Batch"].disabled = True
+        for field_name in ("tat_BatchNumber", "tat_Total_Batch"):
+            self.fields[field_name].widget.attrs.update({
+                "class": "form-control bg-light",
+                "readonly": "readonly",
+                "style": "cursor: not-allowed;",
+            })
 
     def clean_tat_Running_TAT(self):
         return self.instance.tat_Running_TAT
 
     def clean_tat_Final_TAT(self):
         return self.instance.tat_Final_TAT
+
+    def clean_tat_BatchNumber(self):
+        return self.instance.tat_BatchNumber
+
+    def clean_tat_Total_Batch(self):
+        return self.instance.tat_Total_Batch
+
+
+class TATOverallSettingForm(RequiredAttrsModelForm):
+    class Meta:
+        model = TATOverallSetting
+        fields = ["target_days"]
+        widgets = {
+            "target_days": forms.NumberInput(attrs={
+                "class": "form-control",
+                "min": 0,
+                "placeholder": "Enter overall allowed days",
+            }),
+        }
+
 
 class TATStepConfigForm(RequiredAttrsModelForm):
     class Meta:
@@ -1372,11 +1423,16 @@ TATStepFormSet = forms.inlineformset_factory(
 
 
 class NonWorkingDayForm(RequiredAttrsModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["is_recurring"].required = False
+
     class Meta:
         model = NonWorkingDay
-        fields = ['date', 'description', 'applies_to']
+        fields = ['date', 'description', 'applies_to', 'is_recurring']
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'description': forms.TextInput(attrs={'class': 'form-control'}),
             'applies_to': forms.Select(attrs={'class': 'form-control'}),
+            'is_recurring': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

@@ -168,6 +168,7 @@ urlpatterns = [
 
     path("tat/<int:batch_id>/", views.tat_monitoring_view, name="tat_monitoring_view"),
     path("tat/config/", settings_write_required(views.add_tat_step_config), name="add_tat_step_config"),
+    path("tat/overall-target/", settings_write_required(views.update_tat_overall_setting), name="update_tat_overall_setting"),
     path("tat/config/edit/<int:pk>/", settings_write_required(views.edit_tat_step_config), name="edit_tat_step_config"),
     path("tat/location/add/", settings_write_required(views.add_tat_location), name="add_tat_location"),
     path("tat/location/edit/<int:pk>/", settings_write_required(views.edit_tat_location), name="edit_tat_location"),
@@ -177,6 +178,7 @@ urlpatterns = [
     path("tat/config/export/", settings_write_required(views.export_tat_step_config), name="export_tat_step_config"),
     path("tat/delete-all/", settings_write_required(views.delete_all_tat_process), name="delete_all_tat_process"),
     path("export/tat-report/", views.export_tat_excel, name="export_tat_excel"),
+    path("export/tat-analysis-tracking/", views.export_tat_analysis_tracking_excel, name="export_tat_analysis_tracking_excel"),
     path("export/tat-owner-performance/", views.export_tat_owner_performance_excel, name="export_tat_owner_performance_excel"),
     path("export/tat-ipcr-basis/", views.export_tat_ipcr_basis_excel, name="export_tat_ipcr_basis_excel"),
     path("export/tat-ipcr-template/", views.download_tat_ipcr_template, name="download_tat_ipcr_template"),
@@ -188,7 +190,9 @@ urlpatterns = [
     path("tat/scanning/<int:pk>/", views.update_tat_scanning_flags, name="update_tat_scanning_flags"),
     path("tat/analysis/", views.tat_analysis, name="tat_analysis"),
     path("settings/non-working/add/", settings_write_required(views.add_non_working_day), name="add_non_working_day"),
+    path("settings/non-working/edit/<int:pk>/", settings_write_required(views.edit_non_working_day), name="edit_non_working_day"),
     path("settings/non-working/delete/<int:pk>/", settings_write_required(views.delete_non_working_day), name="delete_non_working_day"),
+    path("settings/non-working/delete-all/", settings_write_required(views.delete_all_non_working_days), name="delete_all_non_working_days"),
     path("batches/delete-all/",views.delete_all_batches,name="delete_all_batches"),
     path("batches/delete-all/",views.delete_blank_batches,name="delete_blank_batches"),
    

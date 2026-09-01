@@ -4,17 +4,27 @@
    ========================================================= */
 
 :root {
-  --primary-color: #1e5a96;
-  --primary-dark: #0f3a5f;
-  --primary-light: #2979c9;
-  --secondary-color: #00bcd4;
-  --secondary-light: #26c6da;
-  --accent-cyan: #00bcd4;
-  --accent-teal: #009688;
-  --success: #26a69a;
-  --danger: #e74c3c;
-  --warning: #f39c12;
-  --info: #00bcd4;
+  --primary-color: #1c5d99;
+  --primary-dark: #14304a;
+  --primary-light: #2a7abc;
+  --secondary-color: #118386;
+  --secondary-light: #20b486;
+  --accent-cyan: #19b9c8;
+  --accent-teal: #118386;
+  --success: #20b486;
+  --danger: #e85b4a;
+  --warning: #f28f38;
+  --info: #19b9c8;
+  --arsp-bg: #f4f7fb;
+  --arsp-panel: #ffffff;
+  --arsp-border: #e5edf5;
+  --arsp-text: #14304a;
+  --arsp-muted: #7b8ba0;
+  --arsp-teal: #118386;
+  --arsp-blue: #1c5d99;
+  --arsp-green: #20b486;
+  --arsp-orange: #f28f38;
+  --arsp-red: #e85b4a;
   --bg-dark: #1a1f3a;
   --bg-darker: #0f1423;
   --bg-darkest: #0a0e1a;
@@ -23,10 +33,132 @@
   --border-light: #e3e6f0;
   --border-subtle: #d1e8ed;
   --bg-light: rgba(0, 188, 212, 0.08);
-  --card-teal: #009688;
-  --card-cyan: #00bcd4;
-  --card-blue: #1e5a96;
-  --card-orange: #ff7043;
+  --card-teal: #118386;
+  --card-cyan: #19b9c8;
+  --card-blue: #1c5d99;
+  --card-orange: #f28f38;
+}
+
+.arsp-auth-page.bg-default {
+  background:
+    linear-gradient(180deg, rgba(244, 247, 251, 0.84), rgba(244, 247, 251, 0.94)),
+    url("/static/assets/img/theme/micros_2.png") center 56% / cover fixed !important;
+  color: var(--arsp-text);
+}
+
+.arsp-auth-page .main-content {
+  min-height: 100vh;
+}
+
+.arsp-auth-page .header.bg-gradient-primary {
+  --auth-slant-height: 64px;
+  background:
+    linear-gradient(135deg, rgba(20, 48, 74, 0.98) 0%, rgba(28, 93, 153, 0.96) 52%, rgba(17, 131, 134, 0.94) 100%) !important;
+  border-bottom: 0;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--auth-slant-height)), 0 100%);
+  min-height: 360px;
+  overflow: hidden;
+  padding-bottom: 5.75rem !important;
+  padding-top: 4.75rem !important;
+  position: relative;
+}
+
+.arsp-auth-page .header.bg-gradient-primary::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: calc(var(--auth-slant-height) + 5px);
+  background: var(--accent-cyan);
+  clip-path: polygon(0 calc(100% - 5px), 100% 0, 100% 5px, 0 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.arsp-auth-page .header-body {
+  margin-bottom: 1.25rem !important;
+}
+
+.arsp-auth-page .header h2,
+.arsp-auth-page .header h2 a {
+  color: #ffffff !important;
+}
+
+.arsp-auth-page .header .text-lead,
+.arsp-auth-page .header .text-light {
+  color: rgba(236, 252, 255, 0.9) !important;
+}
+
+.arsp-auth-page .header .text-lead a {
+  color: #ffffff !important;
+}
+
+.arsp-auth-page .separator {
+  display: none;
+}
+
+.arsp-auth-page .separator .fill-default {
+  fill: transparent !important;
+}
+
+.arsp-auth-page .arsp-auth-separator-line {
+  stroke: var(--accent-cyan);
+  stroke-width: 5;
+  vector-effect: non-scaling-stroke;
+}
+
+.arsp-auth-page .container.mt--8 {
+  margin-top: -4.35rem !important;
+  position: relative;
+  z-index: 2;
+}
+
+.arsp-auth-page .card {
+  background: var(--arsp-panel) !important;
+  border: 1px solid var(--arsp-border) !important;
+  border-radius: 8px;
+  box-shadow: 0 18px 45px rgba(20, 48, 74, 0.12) !important;
+}
+
+.arsp-auth-page .card-header {
+  border-bottom-color: var(--arsp-border);
+}
+
+.arsp-auth-page .input-group-alternative {
+  border: 1px solid var(--arsp-border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.arsp-auth-page .input-group-alternative .form-control,
+.arsp-auth-page .input-group-alternative .input-group-text {
+  color: var(--arsp-text);
+  background: #fbfdff;
+}
+
+.arsp-auth-page .input-group-alternative:focus-within {
+  border-color: rgba(25, 185, 200, 0.72);
+  box-shadow: 0 0 0 3px rgba(25, 185, 200, 0.12);
+}
+
+.arsp-auth-page .text-light {
+  color: var(--primary-dark) !important;
+}
+
+.arsp-auth-page a {
+  color: var(--primary-color);
+}
+
+@media (max-width: 768px) {
+  .arsp-auth-page .header.bg-gradient-primary {
+    --auth-slant-height: 50px;
+    min-height: 330px;
+    padding-bottom: 5rem !important;
+    padding-top: 4.5rem !important;
+  }
+
+  .arsp-auth-page .container.mt--8 {
+    margin-top: -3.85rem !important;
+  }
 }
 
 /* =========================================================
@@ -197,7 +329,7 @@ html {
   inset: 0;
   background:
     linear-gradient(90deg, rgba(232, 248, 252, 0.9) 0%, rgba(255, 255, 255, 0.76) 46%, rgba(232, 248, 252, 0.84) 100%),
-    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+    url("/static/assets/img/theme/micros_2.png") center 36% / cover no-repeat;
   opacity: 0.20;
   pointer-events: none;
 }
@@ -369,7 +501,7 @@ html {
   min-height: 128px !important;
   background:
     linear-gradient(90deg, rgba(15, 20, 35, 0.18), rgba(15, 58, 95, 0.12)),
-    url("/static/assets/img/theme/microbial.jpg") center center / cover no-repeat !important;
+    url("/static/assets/img/theme/micros_2.png") center center / cover no-repeat !important;
   border-bottom: 3px solid #00cfe8 !important;
 }
 
@@ -2031,7 +2163,7 @@ select.form-control {
   --arsp-dashboard-bg: linear-gradient(135deg, #0f1423 0%, #172740 48%, #0d747f 100%);
   --arsp-dashboard-image-bg:
     linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
-    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+    url("/static/assets/img/theme/micros_2.png") center 36% / cover no-repeat;
   --arsp-dashboard-panel-bg: rgba(255, 255, 255, 0.055);
   --arsp-dashboard-panel-border: rgba(0, 188, 212, 0.24);
   --arsp-table-head-bg: rgba(18, 63, 78, 0.94);
@@ -2676,4 +2808,1523 @@ select.form-control {
 .table-responsive table > tbody .btn-group,
 .table-responsive table > tbody [role="button"] {
   z-index: 1 !important;
+}
+
+/* Main-dashboard companion styling for TAT and Concordance pages. */
+.dashboard-wrapper,
+.tat-page,
+.page-wrapper.concordance-dashboard-wrapper,
+.page-wrapper.concordance-history-wrapper {
+  background:
+    linear-gradient(180deg, rgba(244, 247, 251, 0.88), rgba(244, 247, 251, 0.95)),
+    url("/static/assets/img/theme/micros_2.png") center 36% / cover fixed !important;
+  color: var(--arsp-text) !important;
+  min-height: calc(100vh - 80px) !important;
+  padding: 24px !important;
+}
+
+.dashboard-wrapper::before,
+.dashboard-wrapper::after,
+.tat-page::before,
+.tat-page::after,
+.page-wrapper.concordance-dashboard-wrapper::before,
+.page-wrapper.concordance-dashboard-wrapper::after,
+.page-wrapper.concordance-history-wrapper::before,
+.page-wrapper.concordance-history-wrapper::after {
+  display: none !important;
+}
+
+.dashboard-wrapper > .container-fluid,
+.tat-page > .container-fluid,
+.concordance-dashboard-wrapper > .container-fluid,
+.concordance-history-wrapper > .container-fluid {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.dashboard-wrapper .dashboard-header,
+.tat-page .tat-hero,
+.concordance-dashboard-wrapper .page-header,
+.concordance-history-wrapper .page-header {
+  background: var(--arsp-panel) !important;
+  border: 1px solid var(--arsp-border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 12px 30px rgba(18, 49, 80, 0.06) !important;
+  margin: 0 0 18px !important;
+  padding: 22px 24px !important;
+}
+
+.dashboard-wrapper .dashboard-title,
+.dashboard-wrapper .dashboard-title i,
+.tat-page .tat-title,
+.concordance-dashboard-wrapper .page-title,
+.concordance-history-wrapper .page-title {
+  background: none !important;
+  color: var(--arsp-text) !important;
+  -webkit-text-fill-color: currentColor !important;
+  font-size: 1.65rem !important;
+  font-weight: 850 !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+.dashboard-wrapper .dashboard-title i,
+.tat-page .tat-title i,
+.concordance-dashboard-wrapper .page-title i,
+.concordance-history-wrapper .page-title i {
+  color: var(--arsp-teal) !important;
+}
+
+.dashboard-wrapper .dashboard-subtitle,
+.dashboard-wrapper .header-date,
+.tat-page .tat-subtitle,
+.concordance-dashboard-wrapper .page-subtitle,
+.concordance-history-wrapper .page-subtitle {
+  color: var(--arsp-muted) !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+.dashboard-wrapper .header-date,
+.concordance-dashboard-wrapper .scope-pill,
+.concordance-dashboard-wrapper .btn-history,
+.concordance-history-wrapper .btn-back {
+  background: #eef8fb !important;
+  border: 1px solid #d6edf3 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  color: var(--arsp-teal) !important;
+  font-size: 0.78rem !important;
+  font-weight: 850 !important;
+  min-height: 34px;
+  padding: 8px 14px !important;
+  text-transform: none !important;
+}
+
+.dashboard-wrapper .header-date:hover,
+.concordance-dashboard-wrapper .btn-history:hover,
+.concordance-history-wrapper .btn-back:hover {
+  background: #def3f7 !important;
+  color: #083f52 !important;
+  transform: none !important;
+}
+
+.dashboard-wrapper .kpi-card,
+.concordance-dashboard-wrapper .kpi-card {
+  background: var(--arsp-panel) !important;
+  border: 1px solid var(--arsp-border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 12px 30px rgba(18, 49, 80, 0.06) !important;
+  min-height: 112px;
+  padding: 18px !important;
+}
+
+.dashboard-wrapper .kpi-card::before,
+.concordance-dashboard-wrapper .kpi-card::before {
+  border-radius: 8px 8px 0 0 !important;
+  height: 4px !important;
+}
+
+.dashboard-wrapper .kpi-card::after,
+.concordance-dashboard-wrapper .kpi-card::after {
+  display: none !important;
+}
+
+.dashboard-wrapper .kpi-card:hover,
+.concordance-dashboard-wrapper .kpi-card:hover {
+  border-color: #c7dfeb !important;
+  box-shadow: 0 14px 34px rgba(18, 49, 80, 0.09) !important;
+  transform: translateY(-2px) !important;
+}
+
+.dashboard-wrapper .kpi-icon-wrapper,
+.concordance-dashboard-wrapper .kpi-icon-wrapper {
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  height: 42px !important;
+  margin: 0 0 12px !important;
+  width: 42px !important;
+}
+
+.dashboard-wrapper .kpi-card:hover .kpi-icon-wrapper,
+.concordance-dashboard-wrapper .kpi-card:hover .kpi-icon-wrapper {
+  transform: none !important;
+}
+
+.dashboard-wrapper .kpi-number,
+.concordance-dashboard-wrapper .kpi-number {
+  background: none !important;
+  color: var(--arsp-text) !important;
+  -webkit-text-fill-color: currentColor !important;
+  font-size: 1.7rem !important;
+  font-weight: 850 !important;
+}
+
+.dashboard-wrapper .kpi-label,
+.concordance-dashboard-wrapper .kpi-label,
+.dashboard-wrapper .kpi-sub,
+.concordance-dashboard-wrapper .kpi-sub {
+  color: var(--arsp-muted) !important;
+  letter-spacing: 0 !important;
+}
+
+.dashboard-wrapper .kpi-card.card-teal,
+.concordance-dashboard-wrapper .kpi-card.card-teal {
+  --card-gradient: linear-gradient(135deg, var(--arsp-teal) 0%, var(--arsp-green) 100%) !important;
+}
+
+.dashboard-wrapper .kpi-card.card-cyan,
+.concordance-dashboard-wrapper .kpi-card.card-cyan {
+  --card-gradient: linear-gradient(135deg, var(--accent-cyan) 0%, var(--arsp-teal) 100%) !important;
+}
+
+.dashboard-wrapper .kpi-card.card-blue,
+.concordance-dashboard-wrapper .kpi-card.card-blue {
+  --card-gradient: linear-gradient(135deg, var(--arsp-blue) 0%, #4f72c9 100%) !important;
+}
+
+.dashboard-wrapper .kpi-card.card-orange,
+.concordance-dashboard-wrapper .kpi-card.card-orange {
+  --card-gradient: linear-gradient(135deg, var(--arsp-orange) 0%, var(--arsp-red) 100%) !important;
+}
+
+.dashboard-wrapper .content-card,
+.dashboard-wrapper .tat-filter-panel,
+.dashboard-wrapper .tat-status-summary,
+.tat-page .tat-card,
+.tat-page .tat-control-card,
+.concordance-dashboard-wrapper .content-card,
+.concordance-dashboard-wrapper .chart-card,
+.concordance-dashboard-wrapper .year-filter-card,
+.concordance-history-wrapper .report-card,
+.concordance-history-wrapper .info-banner,
+.concordance-history-wrapper .history-filter-panel {
+  background: var(--arsp-panel) !important;
+  border: 1px solid var(--arsp-border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 12px 30px rgba(18, 49, 80, 0.06) !important;
+  color: var(--arsp-text) !important;
+}
+
+.dashboard-wrapper .content-card-header,
+.tat-page .tat-card .card-header,
+.concordance-dashboard-wrapper .content-card-header,
+.concordance-dashboard-wrapper .chart-card-header,
+.concordance-history-wrapper .report-card-header {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--arsp-teal) 100%) !important;
+  border-bottom: 1px solid rgba(25, 185, 200, 0.24) !important;
+  color: #ffffff !important;
+  padding: 14px 18px !important;
+}
+
+.dashboard-wrapper .content-card-header *,
+.tat-page .tat-card .card-header *,
+.concordance-dashboard-wrapper .content-card-header *,
+.concordance-dashboard-wrapper .chart-card-header *,
+.concordance-history-wrapper .report-card-header * {
+  color: inherit !important;
+}
+
+.dashboard-wrapper .tat-filter-panel,
+.concordance-dashboard-wrapper .year-filter-card,
+.concordance-history-wrapper .history-filter-panel {
+  padding: 16px 18px !important;
+}
+
+.dashboard-wrapper .tat-filter-panel label,
+.concordance-dashboard-wrapper .year-filter-card label,
+.concordance-history-wrapper .history-filter-panel label {
+  color: var(--arsp-muted) !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0 !important;
+}
+
+.dashboard-wrapper .form-control,
+.tat-page .form-control,
+.concordance-dashboard-wrapper .form-control,
+.concordance-history-wrapper .form-control {
+  background: #fbfdff !important;
+  border: 1px solid #dce7f1 !important;
+  border-radius: 8px !important;
+  color: var(--arsp-text) !important;
+}
+
+.dashboard-wrapper .form-control:focus,
+.tat-page .form-control:focus,
+.concordance-dashboard-wrapper .form-control:focus,
+.concordance-history-wrapper .form-control:focus {
+  border-color: rgba(25, 185, 200, 0.72) !important;
+  box-shadow: 0 0 0 3px rgba(25, 185, 200, 0.12) !important;
+}
+
+.dashboard-wrapper .btn-export,
+.dashboard-wrapper .btn-primary,
+.tat-page .btn-primary,
+.concordance-dashboard-wrapper .btn-primary,
+.concordance-history-wrapper .btn-primary {
+  background: linear-gradient(135deg, var(--arsp-blue) 0%, var(--primary-dark) 100%) !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 18px rgba(20, 48, 74, 0.16) !important;
+  color: #ffffff !important;
+}
+
+.dashboard-wrapper .records-table tbody tr:hover,
+.dashboard-wrapper .process-table tbody tr:hover,
+.tat-page .tat-running-table tbody tr:hover,
+.concordance-dashboard-wrapper table tbody tr:hover,
+.concordance-history-wrapper table tbody tr:hover {
+  background: #f3fbfd !important;
+  transform: none !important;
+}
+
+.dashboard-wrapper .summary-tile,
+.dashboard-wrapper .stat-box,
+.concordance-dashboard-wrapper .ast-stat-item {
+  background: #f8fbfd !important;
+  border: 1px solid var(--arsp-border) !important;
+  border-radius: 8px !important;
+}
+
+.dashboard-wrapper .compliance-circle-outer {
+  animation: none !important;
+  background: linear-gradient(135deg, var(--arsp-green) 0%, var(--arsp-teal) 100%) !important;
+  box-shadow: 0 16px 30px rgba(17, 131, 134, 0.18) !important;
+}
+
+.dashboard-wrapper .compliance-percentage {
+  background: none !important;
+  color: var(--arsp-teal) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+@media (max-width: 768px) {
+  .dashboard-wrapper,
+  .tat-page,
+  .page-wrapper.concordance-dashboard-wrapper,
+  .page-wrapper.concordance-history-wrapper {
+    padding: 14px !important;
+  }
+
+  .dashboard-wrapper .dashboard-header,
+  .tat-page .tat-hero,
+  .concordance-dashboard-wrapper .page-header,
+  .concordance-history-wrapper .page-header {
+    padding: 18px !important;
+  }
+}
+
+/* Readability hardening after the lighter shared background update. */
+.page-wrapper.concordance-history-wrapper .dashboard-topbar .breadcrumb a,
+.page-wrapper.concordance-history-wrapper .dashboard-topbar .breadcrumb-item,
+.page-wrapper.concordance-dashboard-wrapper .dashboard-topbar .breadcrumb a,
+.page-wrapper.concordance-dashboard-wrapper .dashboard-topbar .breadcrumb-item,
+.dashboard-wrapper .dashboard-topbar .breadcrumb a,
+.dashboard-wrapper .dashboard-topbar .breadcrumb-item,
+.tat-page .breadcrumb a,
+.tat-page .breadcrumb-item {
+  color: var(--arsp-text) !important;
+  opacity: 0.78 !important;
+  text-shadow: none !important;
+}
+
+.page-wrapper.concordance-history-wrapper .page-header .page-title,
+.page-wrapper.concordance-history-wrapper .page-header .page-title *,
+.page-wrapper.concordance-dashboard-wrapper .page-header .page-title,
+.page-wrapper.concordance-dashboard-wrapper .page-header .page-title *,
+.dashboard-wrapper .dashboard-header .dashboard-title,
+.dashboard-wrapper .dashboard-header .dashboard-title *,
+.tat-page .tat-hero .tat-title,
+.tat-page .tat-hero .tat-title * {
+  color: var(--arsp-text) !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-shadow: none !important;
+}
+
+.page-wrapper.concordance-history-wrapper .page-header .page-title i,
+.page-wrapper.concordance-dashboard-wrapper .page-header .page-title i,
+.dashboard-wrapper .dashboard-header .dashboard-title i,
+.tat-page .tat-hero .tat-title i {
+  color: var(--arsp-teal) !important;
+}
+
+.page-wrapper.concordance-history-wrapper .page-header .page-subtitle,
+.page-wrapper.concordance-dashboard-wrapper .page-header .page-subtitle,
+.dashboard-wrapper .dashboard-header .dashboard-subtitle,
+.tat-page .tat-hero .tat-subtitle,
+.tat-page .tat-hero p,
+.tat-running-list .tat-subtitle {
+  color: var(--arsp-muted) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.page-wrapper.concordance-history-wrapper .info-banner,
+.page-wrapper.concordance-history-wrapper .report-card,
+.page-wrapper.concordance-history-wrapper .history-filter-panel,
+.page-wrapper.concordance-dashboard-wrapper .year-filter-card,
+.page-wrapper.concordance-dashboard-wrapper .content-card,
+.page-wrapper.concordance-dashboard-wrapper .chart-card,
+.dashboard-wrapper .content-card,
+.dashboard-wrapper .tat-filter-panel,
+.tat-page .tat-card,
+.tat-page .tat-control-card {
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: var(--arsp-text) !important;
+}
+
+.page-wrapper.concordance-history-wrapper .info-banner *,
+.page-wrapper.concordance-history-wrapper .history-filter-panel *,
+.page-wrapper.concordance-dashboard-wrapper .year-filter-card *,
+.dashboard-wrapper .tat-filter-panel *,
+.tat-page .tat-control-card * {
+  color: var(--arsp-text) !important;
+  text-shadow: none !important;
+}
+
+.page-wrapper.concordance-history-wrapper .info-banner p,
+.page-wrapper.concordance-history-wrapper .info-banner .small,
+.page-wrapper.concordance-history-wrapper .history-filter-panel label,
+.page-wrapper.concordance-dashboard-wrapper .year-filter-card label,
+.dashboard-wrapper .tat-filter-panel label,
+.tat-page .tat-control-field label {
+  color: var(--arsp-muted) !important;
+}
+
+.page-wrapper.concordance-history-wrapper .info-banner strong,
+.page-wrapper.concordance-history-wrapper .info-banner a,
+.page-wrapper.concordance-dashboard-wrapper .year-filter-card .scope-pill,
+.page-wrapper.concordance-dashboard-wrapper .year-filter-card a {
+  color: var(--arsp-teal) !important;
+}
+
+.page-wrapper.concordance-history-wrapper .report-card .report-card-header,
+.page-wrapper.concordance-dashboard-wrapper .content-card .content-card-header,
+.page-wrapper.concordance-dashboard-wrapper .chart-card .chart-card-header,
+.dashboard-wrapper .content-card .content-card-header,
+.tat-page .tat-card .card-header {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--arsp-teal) 100%) !important;
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
+
+.page-wrapper.concordance-history-wrapper .report-card .report-card-header *,
+.page-wrapper.concordance-dashboard-wrapper .content-card .content-card-header *,
+.page-wrapper.concordance-dashboard-wrapper .chart-card .chart-card-header *,
+.dashboard-wrapper .content-card .content-card-header *,
+.tat-page .tat-card .card-header * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-shadow: none !important;
+}
+
+.page-wrapper.concordance-history-wrapper .record-count-badge,
+.page-wrapper.concordance-dashboard-wrapper .scope-pill,
+.dashboard-wrapper .header-date {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.32) !important;
+  color: #ffffff !important;
+}
+
+.page-wrapper.concordance-history-wrapper .report-card .record-count-badge {
+  color: #ffffff !important;
+}
+
+.page-wrapper.concordance-history-wrapper .concordance-table tbody td,
+.page-wrapper.concordance-dashboard-wrapper .concordance-table tbody td,
+.dashboard-wrapper .records-table tbody td,
+.dashboard-wrapper .process-table tbody td,
+.tat-page .tat-running-table tbody td {
+  color: #28455e !important;
+}
+
+.page-wrapper.concordance-history-wrapper .text-light,
+.page-wrapper.concordance-history-wrapper .text-muted,
+.page-wrapper.concordance-dashboard-wrapper .text-light,
+.page-wrapper.concordance-dashboard-wrapper .text-muted,
+.dashboard-wrapper .text-light,
+.dashboard-wrapper .text-muted,
+.tat-page .text-light,
+.tat-page .text-muted {
+  color: var(--arsp-muted) !important;
+}
+
+.page-wrapper.concordance-history-wrapper a:not(.btn):not(.dropdown-item),
+.page-wrapper.concordance-dashboard-wrapper a:not(.btn):not(.dropdown-item),
+.dashboard-wrapper a:not(.btn):not(.dropdown-item),
+.tat-page a:not(.btn):not(.dropdown-item) {
+  color: var(--arsp-teal) !important;
+}
+
+.page-wrapper.concordance-history-wrapper .btn,
+.page-wrapper.concordance-dashboard-wrapper .btn,
+.dashboard-wrapper .btn,
+.tat-page .btn {
+  text-shadow: none !important;
+}
+
+/* Shared microscope-background readability fixes for older page templates. */
+.page-wrapper .breadcrumb a,
+.page-wrapper .breadcrumb-item,
+.page-wrapper .batch-header-title .breadcrumb-item a,
+.page-wrapper .batch-header-title .breadcrumb-item,
+.arsp-translucent-page .breadcrumb a,
+.arsp-translucent-page .breadcrumb-item,
+.arsp-form-page .breadcrumb a,
+.arsp-form-page .breadcrumb-item,
+.upload-page .breadcrumb a,
+.upload-page .breadcrumb-item,
+.mapper-page .breadcrumb a,
+.mapper-page .breadcrumb-item {
+  text-shadow: none !important;
+}
+
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .content-area,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .search-panel,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .table-card,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .card,
+.arsp-form-page .card,
+.upload-page .card,
+.mapper-page .card {
+  color: var(--arsp-text) !important;
+}
+
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .content-area p,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .content-area small,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .search-result-info,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .text-muted,
+.arsp-form-page .text-muted,
+.upload-page .text-muted,
+.mapper-page .text-muted {
+  color: var(--arsp-muted) !important;
+  text-shadow: none !important;
+}
+
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .section-title,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .card-title,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) h1,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) h2,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) h3,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) h4,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) h5,
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) h6 {
+  text-shadow: none !important;
+}
+
+.page-wrapper:not(.concordance-dashboard-wrapper):not(.concordance-history-wrapper) .table tbody td,
+.arsp-form-page .table tbody td,
+.upload-page .table tbody td,
+.mapper-page .table tbody td,
+.tat-page .tat-process-table tbody td {
+  color: #28455e !important;
+}
+
+.tat-page .tat-process-table tbody tr:hover {
+  background: #f3fbfd !important;
+}
+
+.tat-page .tat-process-table a:not(.btn):not(.dropdown-item) {
+  color: var(--arsp-teal) !important;
+}
+
+.tat-page .tat-process-table .text-white {
+  color: #ffffff !important;
+}
+
+/* Button label contrast pass for the lighter microscope page background. */
+.main-content .btn,
+.main-content button,
+.main-content a.btn,
+.settings-page-shell .btn,
+.settings-container .btn,
+.page-wrapper .btn,
+.dashboard-wrapper .btn,
+.tat-page .btn,
+.arsp-auth-page .btn {
+  text-shadow: none !important;
+}
+
+.main-content .btn-primary,
+.main-content .btn-success,
+.main-content .btn-danger,
+.main-content .btn-info,
+.main-content .btn-secondary,
+.main-content .btn-warning,
+.main-content .btn-export,
+.main-content .btn-submit,
+.main-content .btn-new-crf,
+.main-content .btn-hdr,
+.settings-page-shell .btn-primary,
+.settings-page-shell .btn-success,
+.settings-page-shell .btn-danger,
+.settings-page-shell .btn-info,
+.settings-page-shell .btn-secondary,
+.settings-container .btn-primary,
+.settings-container .btn-success,
+.settings-container .btn-danger,
+.settings-container .btn-info,
+.settings-container .btn-secondary,
+.page-wrapper .btn-primary,
+.page-wrapper .btn-success,
+.page-wrapper .btn-danger,
+.page-wrapper .btn-info,
+.page-wrapper .btn-secondary,
+.dashboard-wrapper .btn-primary,
+.dashboard-wrapper .btn-success,
+.dashboard-wrapper .btn-danger,
+.dashboard-wrapper .btn-info,
+.dashboard-wrapper .btn-secondary,
+.tat-page .btn-primary,
+.tat-page .btn-success,
+.tat-page .btn-danger,
+.tat-page .btn-info,
+.tat-page .btn-secondary,
+.arsp-auth-page .btn-primary {
+  color: #ffffff !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.main-content .btn-primary *,
+.main-content .btn-success *,
+.main-content .btn-danger *,
+.main-content .btn-info *,
+.main-content .btn-secondary *,
+.main-content .btn-warning *,
+.main-content .btn-export *,
+.main-content .btn-submit *,
+.main-content .btn-new-crf *,
+.main-content .btn-hdr *,
+.settings-page-shell .btn-primary *,
+.settings-page-shell .btn-success *,
+.settings-page-shell .btn-danger *,
+.settings-page-shell .btn-info *,
+.settings-page-shell .btn-secondary *,
+.settings-container .btn-primary *,
+.settings-container .btn-success *,
+.settings-container .btn-danger *,
+.settings-container .btn-info *,
+.settings-container .btn-secondary *,
+.page-wrapper .btn-primary *,
+.page-wrapper .btn-success *,
+.page-wrapper .btn-danger *,
+.page-wrapper .btn-info *,
+.page-wrapper .btn-secondary *,
+.dashboard-wrapper .btn-primary *,
+.dashboard-wrapper .btn-success *,
+.dashboard-wrapper .btn-danger *,
+.dashboard-wrapper .btn-info *,
+.dashboard-wrapper .btn-secondary *,
+.tat-page .btn-primary *,
+.tat-page .btn-success *,
+.tat-page .btn-danger *,
+.tat-page .btn-info *,
+.tat-page .btn-secondary *,
+.arsp-auth-page .btn-primary * {
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.main-content .btn-light,
+.main-content .btn-neutral,
+.main-content .btn-outline-light,
+.page-wrapper .btn-light,
+.page-wrapper .btn-neutral,
+.page-wrapper .btn-outline-light,
+.dashboard-wrapper .btn-light,
+.dashboard-wrapper .btn-neutral,
+.dashboard-wrapper .btn-outline-light,
+.tat-page .btn-light,
+.tat-page .btn-neutral,
+.tat-page .btn-outline-light,
+.settings-page-shell .btn-light,
+.settings-page-shell .btn-neutral,
+.settings-page-shell .btn-outline-light,
+.settings-container .btn-light,
+.settings-container .btn-neutral,
+.settings-container .btn-outline-light {
+  background: #eef8fb !important;
+  border-color: #d6edf3 !important;
+  color: var(--arsp-text) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.main-content .btn-light *,
+.main-content .btn-neutral *,
+.main-content .btn-outline-light *,
+.page-wrapper .btn-light *,
+.page-wrapper .btn-neutral *,
+.page-wrapper .btn-outline-light *,
+.dashboard-wrapper .btn-light *,
+.dashboard-wrapper .btn-neutral *,
+.dashboard-wrapper .btn-outline-light *,
+.tat-page .btn-light *,
+.tat-page .btn-neutral *,
+.tat-page .btn-outline-light *,
+.settings-page-shell .btn-light *,
+.settings-page-shell .btn-neutral *,
+.settings-page-shell .btn-outline-light *,
+.settings-container .btn-light *,
+.settings-container .btn-neutral *,
+.settings-container .btn-outline-light * {
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.main-content .btn-light:hover,
+.main-content .btn-neutral:hover,
+.main-content .btn-outline-light:hover,
+.page-wrapper .btn-light:hover,
+.page-wrapper .btn-neutral:hover,
+.page-wrapper .btn-outline-light:hover,
+.dashboard-wrapper .btn-light:hover,
+.dashboard-wrapper .btn-neutral:hover,
+.dashboard-wrapper .btn-outline-light:hover,
+.tat-page .btn-light:hover,
+.tat-page .btn-neutral:hover,
+.tat-page .btn-outline-light:hover,
+.settings-page-shell .btn-light:hover,
+.settings-page-shell .btn-neutral:hover,
+.settings-page-shell .btn-outline-light:hover,
+.settings-container .btn-light:hover,
+.settings-container .btn-neutral:hover,
+.settings-container .btn-outline-light:hover {
+  background: #def3f7 !important;
+  border-color: #c6e7ef !important;
+  color: #083f52 !important;
+}
+
+.main-content .btn-outline-primary,
+.main-content .btn-outline-info,
+.main-content .btn-outline-success,
+.page-wrapper .btn-outline-primary,
+.page-wrapper .btn-outline-info,
+.page-wrapper .btn-outline-success,
+.dashboard-wrapper .btn-outline-primary,
+.dashboard-wrapper .btn-outline-info,
+.dashboard-wrapper .btn-outline-success,
+.tat-page .btn-outline-primary,
+.tat-page .btn-outline-info,
+.tat-page .btn-outline-success,
+.settings-page-shell .btn-outline-primary,
+.settings-page-shell .btn-outline-info,
+.settings-page-shell .btn-outline-success,
+.settings-container .btn-outline-primary,
+.settings-container .btn-outline-info,
+.settings-container .btn-outline-success {
+  background: #ffffff !important;
+  border-color: #b9dfe8 !important;
+  color: var(--arsp-teal) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.main-content .btn-outline-primary:hover,
+.main-content .btn-outline-info:hover,
+.main-content .btn-outline-success:hover,
+.page-wrapper .btn-outline-primary:hover,
+.page-wrapper .btn-outline-info:hover,
+.page-wrapper .btn-outline-success:hover,
+.dashboard-wrapper .btn-outline-primary:hover,
+.dashboard-wrapper .btn-outline-info:hover,
+.dashboard-wrapper .btn-outline-success:hover,
+.tat-page .btn-outline-primary:hover,
+.tat-page .btn-outline-info:hover,
+.tat-page .btn-outline-success:hover,
+.settings-page-shell .btn-outline-primary:hover,
+.settings-page-shell .btn-outline-info:hover,
+.settings-page-shell .btn-outline-success:hover,
+.settings-container .btn-outline-primary:hover,
+.settings-container .btn-outline-info:hover,
+.settings-container .btn-outline-success:hover {
+  background: var(--arsp-teal) !important;
+  border-color: var(--arsp-teal) !important;
+  color: #ffffff !important;
+}
+
+.main-content .btn-outline-danger,
+.page-wrapper .btn-outline-danger,
+.dashboard-wrapper .btn-outline-danger,
+.tat-page .btn-outline-danger,
+.settings-page-shell .btn-outline-danger,
+.settings-container .btn-outline-danger {
+  background: #fff8f7 !important;
+  border-color: #f1c5bd !important;
+  color: var(--arsp-red) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.main-content .btn-outline-danger:hover,
+.page-wrapper .btn-outline-danger:hover,
+.dashboard-wrapper .btn-outline-danger:hover,
+.tat-page .btn-outline-danger:hover,
+.settings-page-shell .btn-outline-danger:hover,
+.settings-container .btn-outline-danger:hover {
+  background: var(--arsp-red) !important;
+  border-color: var(--arsp-red) !important;
+  color: #ffffff !important;
+}
+
+/* Form, filter, and metric label contrast pass. */
+.main-content label,
+.main-content .form-control-label,
+.main-content .control-label,
+.main-content .field-label,
+.main-content .form-label,
+.main-content .custom-control-label,
+.main-content .form-check-label,
+.main-content .info-label,
+.main-content .meta-label,
+.main-content .stat-label,
+.main-content .kpi-label,
+.main-content .ast-stat-label,
+.main-content .error-label,
+.main-content .step-label,
+.main-content .tat-analysis-kpi-label,
+.main-content .tat-target-label,
+.page-wrapper label,
+.page-wrapper .form-control-label,
+.page-wrapper .control-label,
+.page-wrapper .field-label,
+.page-wrapper .form-label,
+.page-wrapper .custom-control-label,
+.page-wrapper .form-check-label,
+.page-wrapper .info-label,
+.page-wrapper .meta-label,
+.page-wrapper .stat-label,
+.page-wrapper .kpi-label,
+.page-wrapper .ast-stat-label,
+.page-wrapper .error-label,
+.page-wrapper .step-label,
+.page-wrapper .tat-analysis-kpi-label,
+.page-wrapper .tat-target-label,
+.dashboard-wrapper label,
+.dashboard-wrapper .form-control-label,
+.dashboard-wrapper .control-label,
+.dashboard-wrapper .field-label,
+.dashboard-wrapper .form-label,
+.dashboard-wrapper .custom-control-label,
+.dashboard-wrapper .form-check-label,
+.dashboard-wrapper .info-label,
+.dashboard-wrapper .meta-label,
+.dashboard-wrapper .stat-label,
+.dashboard-wrapper .kpi-label,
+.dashboard-wrapper .ast-stat-label,
+.dashboard-wrapper .error-label,
+.dashboard-wrapper .step-label,
+.dashboard-wrapper .tat-analysis-kpi-label,
+.dashboard-wrapper .tat-target-label,
+.tat-page label,
+.tat-page .form-control-label,
+.tat-page .control-label,
+.tat-page .field-label,
+.tat-page .form-label,
+.tat-page .custom-control-label,
+.tat-page .form-check-label,
+.tat-page .info-label,
+.tat-page .meta-label,
+.tat-page .stat-label,
+.tat-page .kpi-label,
+.tat-page .ast-stat-label,
+.tat-page .error-label,
+.tat-page .step-label,
+.tat-page .tat-analysis-kpi-label,
+.tat-page .tat-target-label,
+.settings-page-shell label,
+.settings-page-shell .form-control-label,
+.settings-page-shell .control-label,
+.settings-page-shell .field-label,
+.settings-page-shell .form-label,
+.settings-page-shell .custom-control-label,
+.settings-page-shell .form-check-label,
+.settings-page-shell .info-label,
+.settings-page-shell .meta-label,
+.settings-page-shell .stat-label,
+.settings-page-shell .kpi-label,
+.settings-page-shell .ast-stat-label,
+.settings-page-shell .error-label,
+.settings-page-shell .step-label,
+.settings-page-shell .tat-analysis-kpi-label,
+.settings-page-shell .tat-target-label,
+.settings-container label,
+.settings-container .form-control-label,
+.settings-container .control-label,
+.settings-container .field-label,
+.settings-container .form-label,
+.settings-container .custom-control-label,
+.settings-container .form-check-label,
+.settings-container .info-label,
+.settings-container .meta-label,
+.settings-container .stat-label,
+.settings-container .kpi-label,
+.settings-container .ast-stat-label,
+.settings-container .error-label,
+.settings-container .step-label,
+.settings-container .tat-analysis-kpi-label,
+.settings-container .tat-target-label,
+.arsp-auth-page label,
+.arsp-auth-page .form-control-label,
+.arsp-auth-page .control-label,
+.arsp-auth-page .field-label,
+.arsp-auth-page .form-label,
+.arsp-auth-page .custom-control-label,
+.arsp-auth-page .form-check-label {
+  color: #2e4d68 !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-shadow: none !important;
+}
+
+.main-content .card-header label,
+.main-content .card-header .form-control-label,
+.main-content .card-header .control-label,
+.main-content .card-header .field-label,
+.main-content .card-header .form-label,
+.main-content .card-header .custom-control-label,
+.main-content .card-header .form-check-label,
+.main-content .card-header .info-label,
+.main-content .card-header .meta-label,
+.main-content .card-header .stat-label,
+.main-content .card-header .kpi-label,
+.main-content .card-header .ast-stat-label,
+.main-content .card-header .error-label,
+.main-content .card-header .step-label,
+.main-content .card-header .tat-analysis-kpi-label,
+.main-content .card-header .tat-target-label,
+.page-wrapper .card-header label,
+.page-wrapper .card-header .form-control-label,
+.page-wrapper .card-header .control-label,
+.page-wrapper .card-header .field-label,
+.page-wrapper .card-header .form-label,
+.page-wrapper .card-header .custom-control-label,
+.page-wrapper .card-header .form-check-label,
+.page-wrapper .card-header .info-label,
+.page-wrapper .card-header .meta-label,
+.page-wrapper .card-header .stat-label,
+.page-wrapper .card-header .kpi-label,
+.page-wrapper .card-header .ast-stat-label,
+.page-wrapper .card-header .error-label,
+.page-wrapper .card-header .step-label,
+.page-wrapper .card-header .tat-analysis-kpi-label,
+.page-wrapper .card-header .tat-target-label,
+.dashboard-wrapper .card-header label,
+.dashboard-wrapper .card-header .form-control-label,
+.dashboard-wrapper .card-header .control-label,
+.dashboard-wrapper .card-header .field-label,
+.dashboard-wrapper .card-header .form-label,
+.dashboard-wrapper .card-header .custom-control-label,
+.dashboard-wrapper .card-header .form-check-label,
+.dashboard-wrapper .card-header .info-label,
+.dashboard-wrapper .card-header .meta-label,
+.dashboard-wrapper .card-header .stat-label,
+.dashboard-wrapper .card-header .kpi-label,
+.dashboard-wrapper .card-header .ast-stat-label,
+.dashboard-wrapper .card-header .error-label,
+.dashboard-wrapper .card-header .step-label,
+.dashboard-wrapper .card-header .tat-analysis-kpi-label,
+.dashboard-wrapper .card-header .tat-target-label,
+.tat-page .card-header label,
+.tat-page .card-header .form-control-label,
+.tat-page .card-header .control-label,
+.tat-page .card-header .field-label,
+.tat-page .card-header .form-label,
+.tat-page .card-header .custom-control-label,
+.tat-page .card-header .form-check-label,
+.tat-page .card-header .info-label,
+.tat-page .card-header .meta-label,
+.tat-page .card-header .stat-label,
+.tat-page .card-header .kpi-label,
+.tat-page .card-header .ast-stat-label,
+.tat-page .card-header .error-label,
+.tat-page .card-header .step-label,
+.tat-page .card-header .tat-analysis-kpi-label,
+.tat-page .card-header .tat-target-label,
+.settings-page-shell .card-header label,
+.settings-page-shell .card-header .form-control-label,
+.settings-page-shell .card-header .control-label,
+.settings-page-shell .card-header .field-label,
+.settings-page-shell .card-header .form-label,
+.settings-page-shell .card-header .custom-control-label,
+.settings-page-shell .card-header .form-check-label,
+.settings-page-shell .card-header .info-label,
+.settings-page-shell .card-header .meta-label,
+.settings-page-shell .card-header .stat-label,
+.settings-page-shell .card-header .kpi-label,
+.settings-page-shell .card-header .ast-stat-label,
+.settings-page-shell .card-header .error-label,
+.settings-page-shell .card-header .step-label,
+.settings-page-shell .card-header .tat-analysis-kpi-label,
+.settings-page-shell .card-header .tat-target-label,
+.settings-container .card-header label,
+.settings-container .card-header .form-control-label,
+.settings-container .card-header .control-label,
+.settings-container .card-header .field-label,
+.settings-container .card-header .form-label,
+.settings-container .card-header .custom-control-label,
+.settings-container .card-header .form-check-label,
+.settings-container .card-header .info-label,
+.settings-container .card-header .meta-label,
+.settings-container .card-header .stat-label,
+.settings-container .card-header .kpi-label,
+.settings-container .card-header .ast-stat-label,
+.settings-container .card-header .error-label,
+.settings-container .card-header .step-label,
+.settings-container .card-header .tat-analysis-kpi-label,
+.settings-container .card-header .tat-target-label,
+.page-wrapper .batch-header label,
+.page-wrapper .batch-header .info-label,
+.page-wrapper .batch-header .field-label,
+.upload-page .upload-header label,
+.upload-page .upload-header .info-label,
+.upload-page .upload-header .field-label {
+  color: #ffffff !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.arsp-form-page .form-card label,
+.arsp-form-page .form-card .form-control-label,
+.arsp-form-page .form-card .control-label,
+.arsp-form-page .form-card .field-label,
+.arsp-form-page .form-card .form-label {
+  color: #2e4d68 !important;
+  -webkit-text-fill-color: #2e4d68 !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.main-content .label-muted,
+.main-content .small-label,
+.main-content small label,
+.page-wrapper .label-muted,
+.page-wrapper .small-label,
+.page-wrapper small label,
+.dashboard-wrapper .label-muted,
+.dashboard-wrapper .small-label,
+.dashboard-wrapper small label,
+.tat-page .label-muted,
+.tat-page .small-label,
+.tat-page small label,
+.settings-page-shell .label-muted,
+.settings-page-shell .small-label,
+.settings-page-shell small label,
+.settings-container .label-muted,
+.settings-container .small-label,
+.settings-container small label {
+  color: var(--arsp-muted) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* Final table header visibility and stacking pass.
+   Must stay after global button/link z-index repairs. */
+.main-content .table-responsive,
+.page-wrapper .table-responsive,
+.dashboard-wrapper .table-responsive,
+.tat-page .table-responsive,
+.settings-page-shell .table-responsive,
+.settings-container .table-responsive,
+.snapshot-table-scroll,
+.records-scroll,
+.process-table-wrap,
+.history-table-scroll {
+  isolation: isolate !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.main-content .table-responsive table > thead,
+.main-content .table-responsive table > thead.thead-light,
+.main-content .table-responsive table > thead.thead-dark,
+.main-content .table-responsive table > thead.table-light,
+.page-wrapper .table-responsive table > thead,
+.page-wrapper .table-responsive table > thead.thead-light,
+.page-wrapper .table-responsive table > thead.thead-dark,
+.page-wrapper .table-responsive table > thead.table-light,
+.dashboard-wrapper .table-responsive table > thead,
+.dashboard-wrapper .table-responsive table > thead.thead-light,
+.dashboard-wrapper .table-responsive table > thead.thead-dark,
+.dashboard-wrapper .table-responsive table > thead.table-light,
+.tat-page .table-responsive table > thead,
+.tat-page .table-responsive table > thead.thead-light,
+.tat-page .table-responsive table > thead.thead-dark,
+.tat-page .table-responsive table > thead.table-light,
+.settings-page-shell .table-responsive table > thead,
+.settings-page-shell .table-responsive table > thead.thead-light,
+.settings-page-shell .table-responsive table > thead.thead-dark,
+.settings-page-shell .table-responsive table > thead.table-light,
+.settings-container .table-responsive table > thead,
+.settings-container .table-responsive table > thead.thead-light,
+.settings-container .table-responsive table > thead.thead-dark,
+.settings-container .table-responsive table > thead.table-light,
+.snapshot-table-scroll table > thead,
+.records-scroll table > thead,
+.process-table-wrap table > thead,
+.history-table-scroll table > thead,
+.tat-page .tat-running-table > thead,
+.tat-page .tat-process-table > thead,
+.dashboard-wrapper .records-table > thead,
+.dashboard-wrapper .process-table > thead,
+.page-wrapper .data-table > thead,
+.page-wrapper .concordance-table > thead,
+.page-wrapper .detail-table > thead {
+  background: #123a4c !important;
+  border-bottom: 1px solid rgba(25, 185, 200, 0.48) !important;
+  box-shadow: 0 2px 0 rgba(25, 185, 200, 0.18), 0 8px 14px rgba(15, 48, 74, 0.14) !important;
+  color: #ffffff !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 9000 !important;
+}
+
+.main-content .table-responsive table > thead > tr > th,
+.page-wrapper .table-responsive table > thead > tr > th,
+.dashboard-wrapper .table-responsive table > thead > tr > th,
+.tat-page .table-responsive table > thead > tr > th,
+.settings-page-shell .table-responsive table > thead > tr > th,
+.settings-container .table-responsive table > thead > tr > th,
+.snapshot-table-scroll table > thead > tr > th,
+.records-scroll table > thead > tr > th,
+.process-table-wrap table > thead > tr > th,
+.history-table-scroll table > thead > tr > th,
+.tat-page .tat-running-table > thead > tr > th,
+.tat-page .tat-process-table > thead > tr > th,
+.dashboard-wrapper .records-table > thead > tr > th,
+.dashboard-wrapper .process-table > thead > tr > th,
+.page-wrapper .data-table > thead > tr > th,
+.page-wrapper .concordance-table > thead > tr > th,
+.page-wrapper .detail-table > thead > tr > th,
+#settings-page table.table > thead > tr > th {
+  background: #123a4c !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em !important;
+  opacity: 1 !important;
+  position: sticky !important;
+  top: 0 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.42) !important;
+  z-index: 9001 !important;
+}
+
+.main-content .table-responsive table > thead > tr > th *,
+.page-wrapper .table-responsive table > thead > tr > th *,
+.dashboard-wrapper .table-responsive table > thead > tr > th *,
+.tat-page .table-responsive table > thead > tr > th *,
+.settings-page-shell .table-responsive table > thead > tr > th *,
+.settings-container .table-responsive table > thead > tr > th *,
+.snapshot-table-scroll table > thead > tr > th *,
+.records-scroll table > thead > tr > th *,
+.process-table-wrap table > thead > tr > th *,
+.history-table-scroll table > thead > tr > th *,
+.tat-page .tat-running-table > thead > tr > th *,
+.tat-page .tat-process-table > thead > tr > th *,
+.dashboard-wrapper .records-table > thead > tr > th *,
+.dashboard-wrapper .process-table > thead > tr > th *,
+.page-wrapper .data-table > thead > tr > th *,
+.page-wrapper .concordance-table > thead > tr > th *,
+.page-wrapper .detail-table > thead > tr > th *,
+#settings-page table.table > thead > tr > th * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+  text-shadow: inherit !important;
+}
+
+.main-content .table-responsive table > tbody,
+.page-wrapper .table-responsive table > tbody,
+.dashboard-wrapper .table-responsive table > tbody,
+.tat-page .table-responsive table > tbody,
+.settings-page-shell .table-responsive table > tbody,
+.settings-container .table-responsive table > tbody,
+.snapshot-table-scroll table > tbody,
+.records-scroll table > tbody,
+.process-table-wrap table > tbody,
+.history-table-scroll table > tbody {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.main-content .table-responsive table > tbody .btn,
+.main-content .table-responsive table > tbody button,
+.main-content .table-responsive table > tbody a,
+.main-content .table-responsive table > tbody [role="button"],
+.main-content .table-responsive table > tbody .action-btn-icon,
+.page-wrapper .table-responsive table > tbody .btn,
+.page-wrapper .table-responsive table > tbody button,
+.page-wrapper .table-responsive table > tbody a,
+.page-wrapper .table-responsive table > tbody [role="button"],
+.page-wrapper .table-responsive table > tbody .action-btn-icon,
+.dashboard-wrapper .table-responsive table > tbody .btn,
+.dashboard-wrapper .table-responsive table > tbody button,
+.dashboard-wrapper .table-responsive table > tbody a,
+.dashboard-wrapper .table-responsive table > tbody [role="button"],
+.dashboard-wrapper .table-responsive table > tbody .action-btn-icon,
+.tat-page .table-responsive table > tbody .btn,
+.tat-page .table-responsive table > tbody button,
+.tat-page .table-responsive table > tbody a,
+.tat-page .table-responsive table > tbody [role="button"],
+.tat-page .table-responsive table > tbody .action-btn-icon,
+.settings-page-shell .table-responsive table > tbody .btn,
+.settings-page-shell .table-responsive table > tbody button,
+.settings-page-shell .table-responsive table > tbody a,
+.settings-page-shell .table-responsive table > tbody [role="button"],
+.settings-page-shell .table-responsive table > tbody .action-btn-icon,
+.settings-container .table-responsive table > tbody .btn,
+.settings-container .table-responsive table > tbody button,
+.settings-container .table-responsive table > tbody a,
+.settings-container .table-responsive table > tbody [role="button"],
+.settings-container .table-responsive table > tbody .action-btn-icon,
+.snapshot-table-scroll table > tbody .btn,
+.snapshot-table-scroll table > tbody button,
+.snapshot-table-scroll table > tbody a,
+.snapshot-table-scroll table > tbody [role="button"],
+.snapshot-table-scroll table > tbody .action-btn-icon,
+.records-scroll table > tbody .btn,
+.records-scroll table > tbody button,
+.records-scroll table > tbody a,
+.records-scroll table > tbody [role="button"],
+.records-scroll table > tbody .action-btn-icon,
+.process-table-wrap table > tbody .btn,
+.process-table-wrap table > tbody button,
+.process-table-wrap table > tbody a,
+.process-table-wrap table > tbody [role="button"],
+.process-table-wrap table > tbody .action-btn-icon,
+.history-table-scroll table > tbody .btn,
+.history-table-scroll table > tbody button,
+.history-table-scroll table > tbody a,
+.history-table-scroll table > tbody [role="button"],
+.history-table-scroll table > tbody .action-btn-icon {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* Final filter value and button label visibility pass. */
+.main-content input.form-control,
+.main-content select.form-control,
+.main-content textarea.form-control,
+.main-content .custom-select,
+.main-content input[type="search"],
+.main-content input[type="text"],
+.main-content input[type="date"],
+.main-content input[type="file"],
+.page-wrapper input.form-control,
+.page-wrapper select.form-control,
+.page-wrapper textarea.form-control,
+.page-wrapper .custom-select,
+.page-wrapper input[type="search"],
+.page-wrapper input[type="text"],
+.page-wrapper input[type="date"],
+.page-wrapper input[type="file"],
+.dashboard-wrapper input.form-control,
+.dashboard-wrapper select.form-control,
+.dashboard-wrapper textarea.form-control,
+.dashboard-wrapper .custom-select,
+.dashboard-wrapper input[type="search"],
+.dashboard-wrapper input[type="text"],
+.dashboard-wrapper input[type="date"],
+.dashboard-wrapper input[type="file"],
+.tat-page input.form-control,
+.tat-page select.form-control,
+.tat-page textarea.form-control,
+.tat-page .custom-select,
+.tat-page input[type="search"],
+.tat-page input[type="text"],
+.tat-page input[type="date"],
+.tat-page input[type="file"],
+.settings-page-shell input.form-control,
+.settings-page-shell select.form-control,
+.settings-page-shell textarea.form-control,
+.settings-page-shell .custom-select,
+.settings-page-shell input[type="search"],
+.settings-page-shell input[type="text"],
+.settings-page-shell input[type="date"],
+.settings-page-shell input[type="file"],
+.settings-container input.form-control,
+.settings-container select.form-control,
+.settings-container textarea.form-control,
+.settings-container .custom-select,
+.settings-container input[type="search"],
+.settings-container input[type="text"],
+.settings-container input[type="date"],
+.settings-container input[type="file"],
+.arsp-auth-page input.form-control,
+.arsp-auth-page select.form-control,
+.arsp-auth-page textarea.form-control,
+.arsp-auth-page .custom-select,
+.arsp-auth-page input[type="search"],
+.arsp-auth-page input[type="text"],
+.arsp-auth-page input[type="date"],
+.arsp-auth-page input[type="file"] {
+  background-color: #fbfdff !important;
+  border-color: #d6e4ef !important;
+  color: var(--arsp-text) !important;
+  -webkit-text-fill-color: var(--arsp-text) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.main-content input.form-control::placeholder,
+.main-content textarea.form-control::placeholder,
+.main-content input[type="search"]::placeholder,
+.main-content input[type="text"]::placeholder,
+.page-wrapper input.form-control::placeholder,
+.page-wrapper textarea.form-control::placeholder,
+.page-wrapper input[type="search"]::placeholder,
+.page-wrapper input[type="text"]::placeholder,
+.dashboard-wrapper input.form-control::placeholder,
+.dashboard-wrapper textarea.form-control::placeholder,
+.dashboard-wrapper input[type="search"]::placeholder,
+.dashboard-wrapper input[type="text"]::placeholder,
+.tat-page input.form-control::placeholder,
+.tat-page textarea.form-control::placeholder,
+.tat-page input[type="search"]::placeholder,
+.tat-page input[type="text"]::placeholder,
+.settings-page-shell input.form-control::placeholder,
+.settings-page-shell textarea.form-control::placeholder,
+.settings-page-shell input[type="search"]::placeholder,
+.settings-page-shell input[type="text"]::placeholder,
+.settings-container input.form-control::placeholder,
+.settings-container textarea.form-control::placeholder,
+.settings-container input[type="search"]::placeholder,
+.settings-container input[type="text"]::placeholder,
+.arsp-auth-page input.form-control::placeholder,
+.arsp-auth-page textarea.form-control::placeholder,
+.arsp-auth-page input[type="search"]::placeholder,
+.arsp-auth-page input[type="text"]::placeholder {
+  color: #8aa0b6 !important;
+  -webkit-text-fill-color: #8aa0b6 !important;
+  opacity: 1 !important;
+}
+
+.main-content select.form-control option,
+.main-content .custom-select option,
+.page-wrapper select.form-control option,
+.page-wrapper .custom-select option,
+.dashboard-wrapper select.form-control option,
+.dashboard-wrapper .custom-select option,
+.tat-page select.form-control option,
+.tat-page .custom-select option,
+.settings-page-shell select.form-control option,
+.settings-page-shell .custom-select option,
+.settings-container select.form-control option,
+.settings-container .custom-select option,
+.arsp-auth-page select.form-control option,
+.arsp-auth-page .custom-select option {
+  background: #ffffff !important;
+  color: var(--arsp-text) !important;
+  -webkit-text-fill-color: var(--arsp-text) !important;
+}
+
+.main-content input[type="date"]::-webkit-datetime-edit,
+.main-content input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.main-content input[type="date"]::-webkit-datetime-edit-text,
+.main-content input[type="date"]::-webkit-datetime-edit-month-field,
+.main-content input[type="date"]::-webkit-datetime-edit-day-field,
+.main-content input[type="date"]::-webkit-datetime-edit-year-field,
+.page-wrapper input[type="date"]::-webkit-datetime-edit,
+.page-wrapper input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.page-wrapper input[type="date"]::-webkit-datetime-edit-text,
+.page-wrapper input[type="date"]::-webkit-datetime-edit-month-field,
+.page-wrapper input[type="date"]::-webkit-datetime-edit-day-field,
+.page-wrapper input[type="date"]::-webkit-datetime-edit-year-field,
+.dashboard-wrapper input[type="date"]::-webkit-datetime-edit,
+.dashboard-wrapper input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.dashboard-wrapper input[type="date"]::-webkit-datetime-edit-text,
+.dashboard-wrapper input[type="date"]::-webkit-datetime-edit-month-field,
+.dashboard-wrapper input[type="date"]::-webkit-datetime-edit-day-field,
+.dashboard-wrapper input[type="date"]::-webkit-datetime-edit-year-field,
+.tat-page input[type="date"]::-webkit-datetime-edit,
+.tat-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.tat-page input[type="date"]::-webkit-datetime-edit-text,
+.tat-page input[type="date"]::-webkit-datetime-edit-month-field,
+.tat-page input[type="date"]::-webkit-datetime-edit-day-field,
+.tat-page input[type="date"]::-webkit-datetime-edit-year-field,
+.settings-page-shell input[type="date"]::-webkit-datetime-edit,
+.settings-page-shell input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.settings-page-shell input[type="date"]::-webkit-datetime-edit-text,
+.settings-page-shell input[type="date"]::-webkit-datetime-edit-month-field,
+.settings-page-shell input[type="date"]::-webkit-datetime-edit-day-field,
+.settings-page-shell input[type="date"]::-webkit-datetime-edit-year-field,
+.settings-container input[type="date"]::-webkit-datetime-edit,
+.settings-container input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.settings-container input[type="date"]::-webkit-datetime-edit-text,
+.settings-container input[type="date"]::-webkit-datetime-edit-month-field,
+.settings-container input[type="date"]::-webkit-datetime-edit-day-field,
+.settings-container input[type="date"]::-webkit-datetime-edit-year-field {
+  color: var(--arsp-text) !important;
+}
+
+.main-content input[type="file"]::file-selector-button,
+.page-wrapper input[type="file"]::file-selector-button,
+.dashboard-wrapper input[type="file"]::file-selector-button,
+.tat-page input[type="file"]::file-selector-button,
+.settings-page-shell input[type="file"]::file-selector-button,
+.settings-container input[type="file"]::file-selector-button {
+  background: #eef8fb !important;
+  border: 1px solid #d6edf3 !important;
+  color: var(--arsp-text) !important;
+  font-weight: 700 !important;
+}
+
+.main-content .select2-container--default .select2-selection--single,
+.main-content .select2-container--default .select2-selection--multiple,
+.page-wrapper .select2-container--default .select2-selection--single,
+.page-wrapper .select2-container--default .select2-selection--multiple,
+.dashboard-wrapper .select2-container--default .select2-selection--single,
+.dashboard-wrapper .select2-container--default .select2-selection--multiple,
+.tat-page .select2-container--default .select2-selection--single,
+.tat-page .select2-container--default .select2-selection--multiple,
+.settings-page-shell .select2-container--default .select2-selection--single,
+.settings-page-shell .select2-container--default .select2-selection--multiple,
+.settings-container .select2-container--default .select2-selection--single,
+.settings-container .select2-container--default .select2-selection--multiple {
+  background: #fbfdff !important;
+  border-color: #d6e4ef !important;
+  color: var(--arsp-text) !important;
+}
+
+.main-content .select2-container--default .select2-selection--single .select2-selection__rendered,
+.main-content .select2-container--default .select2-selection--multiple .select2-selection__rendered,
+.main-content .select2-container--default .select2-selection__choice,
+.page-wrapper .select2-container--default .select2-selection--single .select2-selection__rendered,
+.page-wrapper .select2-container--default .select2-selection--multiple .select2-selection__rendered,
+.page-wrapper .select2-container--default .select2-selection__choice,
+.dashboard-wrapper .select2-container--default .select2-selection--single .select2-selection__rendered,
+.dashboard-wrapper .select2-container--default .select2-selection--multiple .select2-selection__rendered,
+.dashboard-wrapper .select2-container--default .select2-selection__choice,
+.tat-page .select2-container--default .select2-selection--single .select2-selection__rendered,
+.tat-page .select2-container--default .select2-selection--multiple .select2-selection__rendered,
+.tat-page .select2-container--default .select2-selection__choice,
+.settings-page-shell .select2-container--default .select2-selection--single .select2-selection__rendered,
+.settings-page-shell .select2-container--default .select2-selection--multiple .select2-selection__rendered,
+.settings-page-shell .select2-container--default .select2-selection__choice,
+.settings-container .select2-container--default .select2-selection--single .select2-selection__rendered,
+.settings-container .select2-container--default .select2-selection--multiple .select2-selection__rendered,
+.settings-container .select2-container--default .select2-selection__choice,
+.select2-dropdown,
+.select2-results__option {
+  color: var(--arsp-text) !important;
+  -webkit-text-fill-color: var(--arsp-text) !important;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected],
+.select2-container--default .select2-results__option--highlighted[data-selected] {
+  background: var(--arsp-teal) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.main-content .btn,
+.main-content button,
+.page-wrapper .btn,
+.page-wrapper button,
+.dashboard-wrapper .btn,
+.dashboard-wrapper button,
+.tat-page .btn,
+.tat-page button,
+.settings-page-shell .btn,
+.settings-page-shell button,
+.settings-container .btn,
+.settings-container button,
+.arsp-auth-page .btn,
+.arsp-auth-page button {
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.main-content .btn *,
+.main-content button *,
+.page-wrapper .btn *,
+.page-wrapper button *,
+.dashboard-wrapper .btn *,
+.dashboard-wrapper button *,
+.tat-page .btn *,
+.tat-page button *,
+.settings-page-shell .btn *,
+.settings-page-shell button *,
+.settings-container .btn *,
+.settings-container button *,
+.arsp-auth-page .btn *,
+.arsp-auth-page button * {
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+/* Restore dashboard motion while keeping the refreshed theme colors/readability. */
+@keyframes arspComplianceFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-16px) scale(1.015);
+  }
+}
+
+.dashboard-wrapper .kpi-card,
+.dashboard-wrapper .content-card,
+.dashboard-wrapper .stat-box,
+.dashboard-wrapper .records-table tbody tr,
+.dashboard-wrapper .process-table tbody tr,
+.dashboard-redesign .metric-card,
+.dashboard-redesign .chart-card,
+.dashboard-redesign .quick-link-card,
+.concordance-dashboard-wrapper .kpi-card,
+.concordance-dashboard-wrapper .content-card,
+.concordance-dashboard-wrapper .chart-card,
+.concordance-history-wrapper .report-card {
+  transition: transform 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.18),
+              box-shadow 0.32s ease,
+              border-color 0.32s ease,
+              background-color 0.32s ease !important;
+}
+
+.dashboard-wrapper .kpi-card:hover,
+.dashboard-redesign .metric-card:hover,
+.dashboard-redesign .chart-card:hover,
+.dashboard-redesign .quick-link-card:hover,
+.concordance-dashboard-wrapper .kpi-card:hover,
+.concordance-dashboard-wrapper .content-card:hover,
+.concordance-dashboard-wrapper .chart-card:hover,
+.concordance-history-wrapper .report-card:hover {
+  transform: translateY(-8px) scale(1.015) !important;
+  box-shadow: 0 20px 48px rgba(18, 49, 80, 0.14) !important;
+  border-color: #a9dce7 !important;
+}
+
+.dashboard-wrapper .content-card:hover,
+.dashboard-wrapper .stat-box:hover {
+  transform: translateY(-5px) !important;
+  box-shadow: 0 18px 42px rgba(18, 49, 80, 0.12) !important;
+  border-color: #a9dce7 !important;
+}
+
+.dashboard-wrapper .kpi-card:hover .kpi-icon-wrapper,
+.concordance-dashboard-wrapper .kpi-card:hover .kpi-icon-wrapper {
+  transform: rotate(360deg) scale(1.08) !important;
+}
+
+.dashboard-wrapper .records-table tbody tr:hover,
+.dashboard-wrapper .process-table tbody tr:hover {
+  background: #f3fbfd !important;
+  transform: none !important;
+}
+
+.dashboard-wrapper .compliance-circle-outer {
+  animation: arspComplianceFloat 6s ease-in-out infinite !important;
+  transform-origin: center !important;
+}
+
+.dashboard-wrapper .content-card:hover .compliance-circle-outer {
+  animation-duration: 3.2s !important;
+}
+
+/* Keep Referred add/edit form labels readable on the light form surface. */
+.arsp-form-page .form-card .card-header:not(.text-center) label,
+.arsp-form-page .form-card .card-header:not(.text-center) .form-control-label,
+.arsp-form-page .form-card .card-header:not(.text-center) .control-label,
+.arsp-form-page .form-card .card-header:not(.text-center) .field-label,
+.arsp-form-page .form-card .card-header:not(.text-center) .form-label {
+  color: #2e4d68 !important;
+  -webkit-text-fill-color: #2e4d68 !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
 }

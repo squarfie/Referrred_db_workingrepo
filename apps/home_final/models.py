@@ -612,3 +612,24 @@ class ConcordanceDetail(models.Model):
 
     def __str__(self):
         return f"{self.accession_no} - {self.antibiotic} ({self.deviation_code})"
+
+
+
+class ConcordanceOptions(models.Model):
+    report = models.OneToOneField(
+        ConcordanceReport,
+        on_delete=models.CASCADE,
+        related_name="options",
+        null=True,
+        blank=True
+    )
+
+    prioritize_mic_site = models.BooleanField(default=False)
+    prioritize_disk_site = models.BooleanField(default=False)
+    no_serotyping = models.BooleanField(default=False)
+    applied_org = models.CharField(max_length=255, blank=True, default="")
+    applied_org_grp = models.CharField(max_length=255, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name_plural = "Concordance Options"

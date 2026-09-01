@@ -21,7 +21,7 @@
   inset: 0;
   background:
     linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
-    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+    url("/static/assets/img/theme/micros_2.png") center 36% / cover no-repeat;
   opacity: .42;
   pointer-events: none;
 }
@@ -749,6 +749,160 @@
   background: linear-gradient(90deg, rgba(0, 188, 212, 0.05) 0%, rgba(26, 188, 156, 0.05) 100%);
 }
 
+.tat-chart-panel {
+  background: #fff;
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(18, 49, 80, 0.06);
+  overflow: hidden;
+}
+
+.tat-chart-toolbar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.tat-chart-toolbar .form-control {
+  background: #ffffff !important;
+  border: 1px solid #d8eaf1 !important;
+  color: #123a63 !important;
+  -webkit-text-fill-color: #123a63 !important;
+  font-weight: 700;
+  min-width: 160px;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.tat-chart-toolbar .form-control option,
+.tat-chart-toolbar .form-control option:checked {
+  background: #ffffff;
+  color: #123a63;
+  -webkit-text-fill-color: #123a63;
+}
+
+.tat-chart-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: .7rem;
+  padding: 1rem 1.15rem 0;
+}
+
+.tat-chart-summary .chart-stat {
+  background: #f8fbfd;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  padding: .8rem .9rem;
+}
+
+.tat-chart-summary strong {
+  color: #123a63;
+  display: block;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.tat-chart-summary span {
+  color: #718096;
+  display: block;
+  font-size: .68rem;
+  font-weight: 800;
+  margin-top: .35rem;
+  text-transform: uppercase;
+}
+
+.tat-site-chart {
+  padding: 1.15rem;
+}
+
+.tat-site-bar-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 190px) minmax(220px, 1fr) 76px minmax(190px, 250px);
+  align-items: start;
+  gap: .9rem;
+  min-height: 48px;
+  padding: .65rem 0;
+}
+
+.tat-site-bar-row + .tat-site-bar-row {
+  border-top: 1px solid #edf3f8;
+}
+
+.tat-site-label {
+  color: #24466f;
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  padding-top: .05rem;
+  white-space: normal;
+}
+
+.tat-site-bar-track {
+  background: linear-gradient(90deg, #e8f2f7 0%, #f4fafc 100%);
+  border: 1px solid #d8eaf1;
+  border-radius: 999px;
+  height: 13px;
+  overflow: hidden;
+  margin-top: .25rem;
+}
+
+.tat-site-bar-fill {
+  background: linear-gradient(90deg, #168f96 0%, #1c6cab 52%, #21b487 100%);
+  border-radius: inherit;
+  height: 100%;
+  min-width: 3px;
+}
+
+.tat-site-value {
+  color: #123a63;
+  font-weight: 850;
+  line-height: 1.25;
+  padding-top: .05rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tat-site-meta {
+  color: #718096;
+  font-size: .75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  padding-top: .05rem;
+}
+
+.tat-chart-empty {
+  color: #718096;
+  padding: 2rem;
+  text-align: center;
+}
+
+@media (max-width: 1200px) {
+  .tat-site-bar-row {
+    grid-template-columns: minmax(120px, 170px) minmax(170px, 1fr) 70px;
+  }
+  .tat-site-meta {
+    grid-column: 2 / 4;
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .tat-chart-summary {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+  .tat-site-bar-row {
+    grid-template-columns: 1fr;
+    gap: .45rem;
+    padding: .75rem 0;
+  }
+  .tat-site-value,
+  .tat-site-meta {
+    text-align: left;
+  }
+}
+
 .batch-code {
   font-weight: 700;
   color: #00bcd4;
@@ -1090,14 +1244,14 @@ tr:hover .cross-icon {
 
   <!-- Left side buttons -->
   <div class="d-flex align-items-center flex-wrap" style="gap:0.4rem;">
-    <a href="{% url 'tat_running_list' %}" class="btn-export">
+    <a href="{% url 'tat_running_list' %}" class="btn-export text-white btn-md">
       <i class="fas fa-list"></i>
       <span>Running TAT List</span>
     </a>
 
-    <a href="{% url 'tat_analysis' %}" class="btn-export btn-md">
+    <a href="{% url 'tat_analysis' %}" class="btn-export text-white btn-md">
       <i class="fas fa-chart-line mr-2"></i>
-      TAT Analysis
+      <span>TAT Analysis</span>
     </a>
   </div>
 
@@ -1126,13 +1280,9 @@ tr:hover .cross-icon {
 
   <!-- ================= DETAILED RECORDS ================= -->
   <div class="pb-5">
-    <form method="get" class="tat-filter-panel">
+    <!-- <form method="get" class="tat-filter-panel">
       <div class="row align-items-end">
-        <div class="col-lg-4 col-md-12 mb-3 mb-lg-0">
-          <label>Batch Name / Accessions</label>
-          <input type="text" name="tat_q" value="{{ tat_q }}" class="form-control" placeholder="Search batch name or accession range">
-        </div>
-        <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+        <div class="col-lg-3 col-md-4 mb-3 mb-lg-0">
           <label>Site</label>
           <select name="tat_site" class="form-control">
             <option value="">All Sites</option>
@@ -1141,7 +1291,7 @@ tr:hover .cross-icon {
             {% endfor %}
           </select>
         </div>
-        <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+        <div class="col-lg-3 col-md-4 mb-3 mb-lg-0">
           <label>Status</label>
           <select name="tat_status" class="form-control">
             <option value="">All Status</option>
@@ -1150,7 +1300,7 @@ tr:hover .cross-icon {
             {% endfor %}
           </select>
         </div>
-        <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+        <div class="col-lg-3 col-md-4 mb-3 mb-lg-0">
           <label>Year</label>
           <select name="tat_year" class="form-control">
             <option value="all" {% if tat_year == "all" %}selected{% endif %}>All Years</option>
@@ -1159,14 +1309,14 @@ tr:hover .cross-icon {
             {% endfor %}
           </select>
         </div>
-        <div class="col-lg-2 d-flex">
+        <div class="col-lg-3 d-flex">
           <button type="submit" class="btn btn-primary flex-fill mr-2">
             <i class="fas fa-search mr-1"></i> Filter
           </button>
           <a href="{% url 'tat_review_view' %}" class="btn btn-secondary">Reset</a>
         </div>
       </div>
-    </form>
+    </form> -->
 
     <div class="tat-status-summary">
       <div class="summary-tile"><strong>{{ total_batches }}</strong><span>Filtered Batches</span></div>
@@ -1175,152 +1325,78 @@ tr:hover .cross-icon {
       <div class="summary-tile"><strong>{{ released_batches }}</strong><span>Released</span></div>
     </div>
 
-    <div class="content-card">
-      <div class="content-card-header d-flex justify-content-between align-items-center">
+    <div class="tat-chart-panel">
+      <div class="content-card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:.75rem;">
         <h5 class="mb-0">
-          <i class="fas fa-table"></i> Detailed TAT Records
-          {% if tat_page_obj %}
-            <span class="badge ml-2">
-              Page {{ tat_page_obj.number }} of {{ tat_page_obj.paginator.num_pages }}
-            </span>
-          {% endif %}
+          <i class="fas fa-chart-bar"></i> TAT Performance by {{ tat_chart_group_label }}
+          <span class="badge ml-2">{{ tat_chart_metric_label }}</span>
         </h5>
-        <form method="get" action="{% url 'export_tat_excel' %}" class="d-flex align-items-center flex-wrap justify-content-end" style="gap:0.35rem;">
-          <input type="hidden" name="tat_q" value="{{ tat_q }}">
+        <form method="get" class="tat-chart-toolbar mb-0">
           <input type="hidden" name="tat_site" value="{{ tat_site }}">
           <input type="hidden" name="tat_status" value="{{ tat_status }}">
           <input type="hidden" name="tat_year" value="{{ tat_year }}">
-          <input type="date" name="date_from" class="form-control form-control-sm" title="Referral date from" style="width:135px;">
-          <input type="date" name="date_to" class="form-control form-control-sm" title="Referral date to" style="width:135px;">
-          <button type="submit" class="btn btn-light btn-sm" style="border-radius: 50px; font-weight: 600;">
-            <i class="fas fa-download me-1"></i> Export
+          <div>
+            <label class="mb-1 d-block" style="font-size:.68rem; color:#eaf8fb; font-weight:800; text-transform:uppercase;">Group By</label>
+            <select name="tat_chart_group" class="form-control form-control-md">
+              {% for group in tat_chart_group_options %}
+                <option value="{{ group.value }}" {% if tat_chart_group == group.value %}selected{% endif %}>{{ group.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="mb-1 d-block" style="font-size:.68rem; color:#eaf8fb; font-weight:800; text-transform:uppercase;">Metric</label>
+            <select name="tat_chart_metric" class="form-control form-control-md">
+              {% for metric in tat_chart_metric_options %}
+                <option value="{{ metric.value }}" {% if tat_chart_metric == metric.value %}selected{% endif %}>{{ metric.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="mb-1 d-block" style="font-size:.68rem; color:#eaf8fb; font-weight:800; text-transform:uppercase;">Sort</label>
+            <select name="tat_chart_order" class="form-control form-control-md">
+              <option value="desc" {% if tat_chart_order == "desc" %}selected{% endif %} >Highest to lowest</option>
+              <option value="asc" {% if tat_chart_order == "asc" %}selected{% endif %} >Lowest to highest</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="fas fa-sync-alt mr-1"></i> Apply
           </button>
-          <small class="w-100 text-right" style="font-size:0.7rem; color:#eceef0;">
-            Filtered by: TAT Referral Date.
-          </small>
+          <a href="{% url 'tat_running_list' %}" class="btn btn-sm btn-light">
+            <i class="fas fa-table mr-1"></i> Full List
+          </a>
         </form>
       </div>
-      <div class="table-responsive records-scroll">
-        <table class="table records-table">
-          <thead style="text-align: center;">
-            <tr>
-              <th>BATCH</th>
-              <th>SITE</th>
-              <th>ACCESSIONS</th>
-              <th>REFERRAL DATE</th>
-              <th>COMPLETION DATE</th>
-              <th>RUNNING TAT</th>
-              <th>STATUS</th>
-              <th>ASSIGNED TO</th>
-              <th style="text-align: center" > ACTION </th>
-              {% for config in configs %}
-                <th class="text-center">{{ config.step_type|upper }} DAYS</th>
-                <th class="text-center">WITHIN</th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in running_rows %}
-            <tr>
-              <td class="batch-code">{{ row.batch_name }}</td>
-              <td>{{ row.site_code }}</td>
-            <td>
-                {{ row.accessions|default:"-" }}
-            </td>
-              <td>{{ row.referral_date }}</td>
-              <td>{{ row.tat.tat_Date_Released|default:"N/A" }}</td>
 
-              <td>
-                <span class="tat-badge 
-                  {% if row.is_overdue %}
-                    status-overdue
-                  {% else %}
-                    status-released
-                  {% endif %}
-                ">
-                  {{ row.effective_days|default:"-" }} day/s
-                </span>
-              </td>
-              <td>
-                <span class="status-badge
-                  {% if row.tat.tat_Status_Release == 'Released' %}
-                    status-released
-                  {% elif row.is_overdue %}
-                    status-overdue
-                  {% else %}
-                    status-ongoing
-                  {% endif %}
-                ">
-                  {% if row.is_overdue %}Overdue{% else %}{{ row.tat.tat_Status_Release }}{% endif %}
-                </span>
-              </td>
-              <td>{{ row.assigned_to|default:"-" }}</td>
-              <td>
-                {% if row.batch %}
-                  <a href="{% url 'tat_monitoring_view' row.batch.id %}" class="btn btn-sm btn-primary" style="font-weight: 600;">
-                   <i class="fas fa-tasks mr-1 text-white"></i> <span class="text-white"> Update Process </span>
-                  </a>
-                {% else %}
-                  <span class="text-muted">-</span>
-                {% endif %}
-              </td>
-
-              {% for cell in row.step_cells %}
-                <td class="text-center">{{ cell.step.step_days_count|default:"-" }}</td>
-                <td class="text-center">
-                  {% if cell.step.within_tat %}
-                    <i class="fas fa-check-circle check-icon"></i>
-                  {% elif cell.step.within_tat == False %}
-                    <i class="fas fa-times-circle cross-icon"></i>
-                  {% else %}
-                    <span class="text-muted">-</span>
-                  {% endif %}
-                </td>
-              {% endfor %}
-
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="tat-chart-summary">
+        <div class="chart-stat"><strong>{{ tat_chart_totals.total }}</strong><span>Batches in chart</span></div>
+        <div class="chart-stat"><strong>{{ tat_chart_totals.avg_tat }}</strong><span>Avg TAT days</span></div>
+        <div class="chart-stat"><strong>{{ tat_chart_totals.within_rate }}%</strong><span>Within TAT</span></div>
+        <div class="chart-stat"><strong>{{ tat_chart_totals.ongoing }}</strong><span>Ongoing</span></div>
+        <div class="chart-stat"><strong>{{ tat_chart_totals.overdue }}</strong><span>Overdue</span></div>
       </div>
-      {% if tat_page_obj and tat_page_obj.paginator.num_pages > 1 %}
-      <div class="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-top">
-        <small class="text-muted">
-          Showing {{ running_rows|length }} of {{ total_batches }} filtered batch(es)
-        </small>
-        <nav aria-label="Detailed TAT records pagination">
-          <ul class="pagination pagination-sm mb-0">
-            {% if tat_page_obj.has_previous %}
-              <li class="page-item">
-                <a class="page-link" href="?page=1{% if tat_q %}&tat_q={{ tat_q|urlencode }}{% endif %}{% if tat_site %}&tat_site={{ tat_site|urlencode }}{% endif %}{% if tat_status %}&tat_status={{ tat_status|urlencode }}{% endif %}{% if tat_year %}&tat_year={{ tat_year|urlencode }}{% endif %}">&laquo;</a>
-              </li>
-              <li class="page-item">
-                <a class="page-link" href="?page={{ tat_page_obj.previous_page_number }}{% if tat_q %}&tat_q={{ tat_q|urlencode }}{% endif %}{% if tat_site %}&tat_site={{ tat_site|urlencode }}{% endif %}{% if tat_status %}&tat_status={{ tat_status|urlencode }}{% endif %}{% if tat_year %}&tat_year={{ tat_year|urlencode }}{% endif %}">&lsaquo;</a>
-              </li>
-            {% else %}
-              <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-              <li class="page-item disabled"><span class="page-link">&lsaquo;</span></li>
-            {% endif %}
 
-            <li class="page-item active">
-              <span class="page-link">{{ tat_page_obj.number }}</span>
-            </li>
-
-            {% if tat_page_obj.has_next %}
-              <li class="page-item">
-                <a class="page-link" href="?page={{ tat_page_obj.next_page_number }}{% if tat_q %}&tat_q={{ tat_q|urlencode }}{% endif %}{% if tat_site %}&tat_site={{ tat_site|urlencode }}{% endif %}{% if tat_status %}&tat_status={{ tat_status|urlencode }}{% endif %}{% if tat_year %}&tat_year={{ tat_year|urlencode }}{% endif %}">&rsaquo;</a>
-              </li>
-              <li class="page-item">
-                <a class="page-link" href="?page={{ tat_page_obj.paginator.num_pages }}{% if tat_q %}&tat_q={{ tat_q|urlencode }}{% endif %}{% if tat_site %}&tat_site={{ tat_site|urlencode }}{% endif %}{% if tat_status %}&tat_status={{ tat_status|urlencode }}{% endif %}{% if tat_year %}&tat_year={{ tat_year|urlencode }}{% endif %}">&raquo;</a>
-              </li>
-            {% else %}
-              <li class="page-item disabled"><span class="page-link">&rsaquo;</span></li>
-              <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-            {% endif %}
-          </ul>
-        </nav>
+      <div class="tat-site-chart">
+        {% if tat_site_chart_rows %}
+          {% for row in tat_site_chart_rows %}
+            <div class="tat-site-bar-row">
+              <div class="tat-site-label">{{ row.label }}</div>
+              <div class="tat-site-bar-track">
+                <div class="tat-site-bar-fill" style="width: {{ row.bar_pct }}%;"></div>
+              </div>
+              <div class="tat-site-value">
+                {{ row.metric_value }}{% if tat_chart_metric == "within_rate" %}%{% elif tat_chart_metric == "avg_tat" %}d{% endif %}
+              </div>
+              <div class="tat-site-meta">
+                {{ row.total }} batches · {{ row.released }} released · {{ row.ongoing }} ongoing · {{ row.overdue }} overdue
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="tat-chart-empty">
+            No TAT data found for the selected chart filters.
+          </div>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
   </div>
 

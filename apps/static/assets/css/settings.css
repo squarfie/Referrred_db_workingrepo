@@ -26,7 +26,7 @@
     inset: 0;
     background:
         linear-gradient(90deg, rgba(232, 248, 252, 0.9) 0%, rgba(255, 255, 255, 0.76) 46%, rgba(232, 248, 252, 0.82) 100%),
-        url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+        url("/static/assets/img/theme/micros_2.png") center 36% / cover no-repeat;
     opacity: 0.34;
     pointer-events: none;
 }

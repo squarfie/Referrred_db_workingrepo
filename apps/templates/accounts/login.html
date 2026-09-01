@@ -11,10 +11,10 @@
 
   .login-brand-logo {
     display: block;
-    width: 128px;
+    width: 106px;
     max-width: 38vw;
     height: auto;
-    margin: 0 auto 0.95rem;
+    margin: 0 auto 0.75rem;
     object-fit: contain;
     cursor: pointer;
   }
@@ -24,21 +24,23 @@
   }
 
   .login-card-header {
-    padding-top: 1.75rem !important;
+    padding-top: 1.35rem !important;
+    padding-bottom: 1.25rem !important;
   }
   .welcome-eyebrow {
-  font-size: 0.89rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #6b7a99;
-  margin-bottom: 0.4rem;
-}
-.welcome-subtext {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  margin-bottom: 0;
-}
+    font-size: 0.89rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--arsp-teal);
+    margin-bottom: 0.4rem;
+  }
+
+  .welcome-subtext {
+    font-size: 0.85rem;
+    color: var(--arsp-muted);
+    margin-bottom: 0;
+  }
 
   .logo-explanation-modal .modal-content {
     border: 0;
@@ -48,7 +50,7 @@
   }
 
   .logo-explanation-modal .modal-header {
-    background: linear-gradient(135deg, #0f3a5f 0%, #08798a 100%);
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--arsp-teal) 100%);
     border: 0;
   }
 
@@ -58,10 +60,52 @@
   }
 
   .logo-explanation-modal .modal-body {
-    color: #294965;
+    color: var(--arsp-text);
     font-size: 0.92rem;
     line-height: 1.75;
   }
+
+  .login-card-header .text-muted {
+    color: var(--arsp-muted) !important;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin-bottom: 0 !important;
+    text-transform: uppercase;
+  }
+
+  .remember-login-row {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.15rem;
+    padding-left: 0;
+  }
+
+  .remember-login-row .custom-control {
+    min-height: 1.25rem;
+    padding-left: 0;
+  }
+
+  .remember-login-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--arsp-muted);
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.5;
+    margin-bottom: 0;
+  }
+
+  .remember-login-label input {
+    margin: 0;
+  }
+
+
+  
 </style>
 {% endblock stylesheets %}
 
@@ -118,6 +162,12 @@
                   
 
                 </div>
+                <div class="remember-login-row">
+                  <label class="remember-login-label" for="rememberMe">
+                    <input id="rememberMe" name="remember_me" type="checkbox">
+                    <span>Remember me</span>
+                  </label>
+                </div>
                 <div class="text-center">
                   <button type="submit" class="btn btn-primary my-4">Sign in</button>
                 </div>
@@ -165,14 +215,16 @@
   const passwordField = document.getElementById("id_password");
   const toggleIcon = document.getElementById("togglePassword");
 
-  toggleIcon.addEventListener("click", () => {
+  if (toggleIcon && passwordField) {
+    toggleIcon.addEventListener("click", () => {
     const isPassword = passwordField.type === "password";
     passwordField.type = isPassword ? "text" : "password";
 
     // Switch icon
     toggleIcon.classList.toggle("fa-eye");
     toggleIcon.classList.toggle("fa-eye-slash");
-  });
+    });
+  }
 
   const logo = document.querySelector(".login-brand-logo");
   if (logo) {

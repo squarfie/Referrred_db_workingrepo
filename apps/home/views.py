@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 
 from io import TextIOWrapper
+import calendar
+from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 import io
 import json
@@ -17,7 +19,7 @@ from django.urls import reverse
 from django.shortcuts import render, redirect, get_object_or_404 
 from django.template import loader
 from django.utils.html import format_html
-from django.db.models import Min, Prefetch, Count, Q, Avg, IntegerField, Sum
+from django.db.models import Min, Max, Prefetch, Count, Q, Avg, IntegerField, Sum, OuterRef, Subquery
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -38,6 +40,7 @@ from apps.wgs_app.models import *
 from .forms import *
 from apps.wgs_app.forms import *
 from apps.home_final.forms import *
+from apps.home_final.services import concordance as concordance_service
 from django.contrib import messages
 # imports for generating pdf
 from django.template.loader import get_template
@@ -212,7 +215,6 @@ def _raw_antibiotics_for_panel(
             panel_filter |= _code_iexact_filter("Whonet_Abx", existing_whonet_codes)
         return qs.filter(panel_filter).distinct().order_by("Antibiotic", "Whonet_Abx")
 
-    qs = qs.filter(Show_All=True)
     return qs.order_by("Antibiotic", "Whonet_Abx")
 from django.utils.http import urlencode, url_has_allowed_host_and_scheme
 import csv
@@ -226,7 +228,7 @@ from django.template.loader import render_to_string
 from django.db.models import Max
 from itertools import islice
 from django.views.decorators.http import require_GET, require_POST
-from django.db.models.functions import ExtractYear
+from django.db.models.functions import ExtractYear, TruncMonth
 from apps.home.permissions import (
     ROLE_ADMIN,
     ROLE_CHECKER,
@@ -447,8 +449,13 @@ def get_clinic_code(request):
 def settings_page(request):
     active_tab = request.GET.get("tab", "")
     edit_tat_config_id = request.GET.get("edit_tat_config") or request.GET.get("edit")
+    edit_concordance_rule_id = request.GET.get("edit_concordance_rule")
+    edit_non_working_id = request.GET.get("edit_non_working")
     edit_tat_config = None
+    edit_concordance_rule = None
+    edit_non_working_day = None
     tat_config_form = TATStepConfigForm()
+    tat_overall_setting = TATOverallSetting.get_solo()
 
     if active_tab == "tat_config" and edit_tat_config_id:
         edit_tat_config = get_object_or_404(TATStepConfig, pk=edit_tat_config_id)
@@ -507,6 +514,49 @@ def settings_page(request):
             })
         return cards
 
+    if active_tab == "concordance_settings" and edit_concordance_rule_id:
+        edit_concordance_rule = get_object_or_404(
+            ConcordanceOptions,
+            pk=edit_concordance_rule_id,
+            report__isnull=True,
+        )
+        concordance_options_form = ConcordanceOptionsForm(instance=edit_concordance_rule)
+    else:
+        concordance_options_form = ConcordanceOptionsForm()
+
+    non_working_form = NonWorkingDayForm()
+    if active_tab == "non_working" and edit_non_working_id:
+        edit_non_working_day = get_object_or_404(NonWorkingDay, pk=edit_non_working_id)
+        non_working_form = NonWorkingDayForm(instance=edit_non_working_day)
+
+    concordance_org_labels = {
+        value: label
+        for value, label in concordance_options_form.fields["applied_org"].choices
+    }
+    concordance_rules = []
+    for rule in concordance_service.get_global_concordance_rules():
+        rule.group_codes = [
+            code.strip()
+            for code in (rule.applied_org_grp or "").split(",")
+            if code.strip()
+        ]
+        normalized_applied_org = concordance_service.normalize_applied_org(rule.applied_org)
+        if concordance_service.is_all_organisms_option(rule.applied_org):
+            rule.applied_org_label = "All organisms"
+        elif not normalized_applied_org or rule.applied_org == "-":
+            rule.applied_org_label = "n/a"
+        else:
+            rule.applied_org_label = concordance_org_labels.get(
+                normalized_applied_org,
+                normalized_applied_org,
+            )
+        concordance_rules.append(rule)
+
+    non_working_queryset = NonWorkingDay.objects.all()
+    non_working_paginator = Paginator(non_working_queryset, 12)
+    non_working_page_number = request.GET.get("non_working_page")
+    non_working_page_obj = non_working_paginator.get_page(non_working_page_number)
+
     context = {
         "antibiotic_form": AntibioticsForm(),
         "org_form": OrganismForm(),
@@ -528,13 +578,24 @@ def settings_page(request):
         "reco_desc_form": Recco_item_Form(),
         "reco_desc_upload": Reco_item_upForm(),
         "tat_config_form": tat_config_form,
+        "tat_overall_form": TATOverallSettingForm(instance=tat_overall_setting),
         "edit_tat_config": edit_tat_config,
         "tat_config_editing": active_tab == "tat_config" and edit_tat_config is not None,
         "tat_upload_form": TATStepConfigUploadForm(),
         "tat_location_form": TATLocationForm(),
+        "concordance_options_form": concordance_options_form,
+        "edit_concordance_rule": edit_concordance_rule,
+        "concordance_rule_editing": edit_concordance_rule is not None,
+        "concordance_rules": concordance_rules,
+        "concordance_org_choices": concordance_options_form.fields["applied_org"].choices,
+        "concordance_group_choices": concordance_options_form.fields["applied_org_grp"].choices,
         "tat_locations": TATLocation.objects.all(),
-        "non_working_form": NonWorkingDayForm(),
-        "non_working_days": NonWorkingDay.objects.all(),
+        "non_working_form": non_working_form,
+        "edit_non_working_day": edit_non_working_day,
+        "non_working_editing": edit_non_working_day is not None,
+        "non_working_days": non_working_page_obj,
+        "non_working_page_obj": non_working_page_obj,
+        "non_working_total": non_working_paginator.count,
         "account_rows": account_rows,
         "available_staff": available_staff,
         "approval_require_staff_link": getattr(settings, "ACCOUNT_APPROVAL_REQUIRE_STAFF_LINK", False),
@@ -822,6 +883,40 @@ def index(request):
         "overdue": tat_overdue_count,
         "near_due": tat_near_due_count,
     }
+    tat_yearly_status_rows = []
+    if tat_year == "all":
+        for row in (
+            tat_records
+            .exclude(tat_Referral_Date__isnull=True)
+            .annotate(year=ExtractYear("tat_Referral_Date"))
+            .values("year")
+            .annotate(total=Count("id"))
+            .order_by("year")
+        ):
+            year_records = tat_records.filter(tat_Referral_Date__year=row["year"])
+            overdue_count = year_records.filter(
+                tat_Target_Days__gt=0,
+            ).filter(
+                Q(tat_Status_Release="Released", tat_Final_TAT__gt=F("tat_Target_Days"))
+                | (Q(tat_Running_TAT__gt=F("tat_Target_Days")) & ~Q(tat_Status_Release="Released"))
+            ).count()
+            near_due_count = year_records.filter(
+                tat_Status_Release="Ongoing",
+                tat_Target_Days__gt=0,
+                tat_Running_TAT__gte=F("tat_Target_Days") - 5,
+                tat_Running_TAT__lte=F("tat_Target_Days"),
+            ).count()
+            tat_yearly_status_rows.append({
+                "year": row["year"],
+                "total": row["total"] or 0,
+                "ongoing": year_records.filter(tat_Status_Release="Ongoing").exclude(
+                    tat_Target_Days__gt=0,
+                    tat_Running_TAT__gt=F("tat_Target_Days"),
+                ).count(),
+                "near_due": near_due_count,
+                "overdue": overdue_count,
+                "released": year_records.filter(tat_Status_Release="Released").count(),
+            })
     # Count per clinic
     site_count = records_for_stats.exclude(SiteCode__isnull=True).exclude(SiteCode__exact="").values('SiteCode').distinct().count()
 
@@ -837,6 +932,284 @@ def index(request):
     age_19_35 = records_for_stats.filter(Age__range=(19, 35)).count()
     age_36_60 = records_for_stats.filter(Age__range=(36, 60)).count()
     age_60_plus = records_for_stats.filter(Age__gte=61).count()
+
+    concordance_reports = (
+        ConcordanceReport.objects
+        .filter(final_data__isnull=True, batch__isnull=False)
+        .select_related("batch")
+    )
+    if tat_year and tat_year != "all":
+        concordance_reports = concordance_reports.filter(batch__bat_Referral_Date__year=tat_year)
+
+    concordance_summary = concordance_reports.aggregate(
+        report_count=Count("id"),
+        avg_genus_rate=Avg("genus_rate"),
+        avg_species_rate=Avg("species_rate"),
+        total_pairs=Sum("total_pairs"),
+        concordant_pairs=Sum("concordant_pairs"),
+        total_deviation=Sum("total_deviation"),
+        critical_deviation=Sum("critical_deviation"),
+    )
+    concordance_total_pairs = concordance_summary["total_pairs"] or 0
+    concordance_concordant_pairs = concordance_summary["concordant_pairs"] or 0
+    concordance_total_deviation = concordance_summary["total_deviation"] or 0
+    concordance_critical_deviation = concordance_summary["critical_deviation"] or 0
+    concordance_ast_rate = (
+        round((concordance_concordant_pairs / concordance_total_pairs) * 100, 2)
+        if concordance_total_pairs else 0
+    )
+    concordance_kpis = {
+        "year": "All Years" if tat_year == "all" else tat_year,
+        "report_count": concordance_summary["report_count"] or 0,
+        "genus_rate": round(concordance_summary["avg_genus_rate"] or 0, 2),
+        "species_rate": round(concordance_summary["avg_species_rate"] or 0, 2),
+        "ast_rate": concordance_ast_rate,
+        "total_deviation": concordance_total_deviation,
+        "critical_deviation": concordance_critical_deviation,
+        "total_pairs": concordance_total_pairs,
+    }
+    concordance_kpi_year_rows = []
+    if tat_year == "all":
+        for row in (
+            concordance_reports
+            .exclude(batch__bat_Referral_Date__isnull=True)
+            .annotate(year=ExtractYear("batch__bat_Referral_Date"))
+            .values("year")
+            .annotate(
+                report_count=Count("id"),
+                genus_rate=Avg("genus_rate"),
+                species_rate=Avg("species_rate"),
+                total_pairs=Sum("total_pairs"),
+                concordant_pairs=Sum("concordant_pairs"),
+                total_deviation=Sum("total_deviation"),
+                critical_deviation=Sum("critical_deviation"),
+            )
+            .order_by("year")
+        ):
+            total_pairs = row["total_pairs"] or 0
+            concordant_pairs = row["concordant_pairs"] or 0
+            concordance_kpi_year_rows.append({
+                "year": row["year"],
+                "report_count": row["report_count"] or 0,
+                "genus_rate": round(row["genus_rate"] or 0, 2),
+                "species_rate": round(row["species_rate"] or 0, 2),
+                "ast_rate": round((concordant_pairs / total_pairs) * 100, 2) if total_pairs else 0,
+                "total_deviation": row["total_deviation"] or 0,
+                "critical_deviation": row["critical_deviation"] or 0,
+                "total_pairs": total_pairs,
+            })
+
+    site_concordance_rows = []
+    site_report_rows = concordance_reports.values(
+        "batch__bat_SiteCode",
+        "batch__bat_Site_Name",
+    ).annotate(
+        report_count=Count("id"),
+        genus_rate=Avg("genus_rate"),
+        species_rate=Avg("species_rate"),
+        total_pairs=Sum("total_pairs"),
+        concordant_pairs=Sum("concordant_pairs"),
+        total_deviation=Sum("total_deviation"),
+    )
+    for row in site_report_rows:
+        total_pairs = row["total_pairs"] or 0
+        concordant_pairs = row["concordant_pairs"] or 0
+        site_concordance_rows.append({
+            "year": "All Years" if tat_year == "all" else tat_year,
+            "site_code": row["batch__bat_SiteCode"] or "N/A",
+            "site_name": row["batch__bat_Site_Name"] or "",
+            "report_count": row["report_count"] or 0,
+            "genus_rate": round(row["genus_rate"] or 0, 2),
+            "species_rate": round(row["species_rate"] or 0, 2),
+            "ast_rate": round((concordant_pairs / total_pairs) * 100, 2) if total_pairs else 0,
+            "total_deviation": row["total_deviation"] or 0,
+        })
+    site_concordance_rows = sorted(
+        site_concordance_rows,
+        key=lambda item: item["genus_rate"],
+        reverse=True,
+    )[:12]
+    site_concordance_year_rows = []
+    if tat_year == "all":
+        site_year_report_rows = (
+            concordance_reports
+            .exclude(batch__bat_Referral_Date__isnull=True)
+            .annotate(year=ExtractYear("batch__bat_Referral_Date"))
+            .values("year", "batch__bat_SiteCode", "batch__bat_Site_Name")
+            .annotate(
+                report_count=Count("id"),
+                genus_rate=Avg("genus_rate"),
+                species_rate=Avg("species_rate"),
+                total_pairs=Sum("total_pairs"),
+                concordant_pairs=Sum("concordant_pairs"),
+                total_deviation=Sum("total_deviation"),
+            )
+            .order_by("year", "batch__bat_SiteCode")
+        )
+        for row in site_year_report_rows:
+            total_pairs = row["total_pairs"] or 0
+            concordant_pairs = row["concordant_pairs"] or 0
+            site_concordance_year_rows.append({
+                "year": row["year"],
+                "site_code": row["batch__bat_SiteCode"] or "N/A",
+                "site_name": row["batch__bat_Site_Name"] or "",
+                "report_count": row["report_count"] or 0,
+                "genus_rate": round(row["genus_rate"] or 0, 2),
+                "species_rate": round(row["species_rate"] or 0, 2),
+                "ast_rate": round((concordant_pairs / total_pairs) * 100, 2) if total_pairs else 0,
+                "total_deviation": row["total_deviation"] or 0,
+            })
+
+    monthly_referral_rows = [
+        {
+            "year": row["month"].year,
+            "month": row["month"].strftime("%b %Y"),
+            "referrals": row["referrals"] or 0,
+            "sites": row["sites"] or 0,
+        }
+        for row in records_for_stats.exclude(Referral_Date__isnull=True)
+        .annotate(month=TruncMonth("Referral_Date"))
+        .values("month")
+        .annotate(
+            referrals=Count("AccessionNo", distinct=True),
+            sites=Count("SiteCode", distinct=True),
+        )
+        .order_by("month")
+    ]
+
+    # WGS_Project is the central connector across WGS uploads/pipelines.
+    # A final accession can have more than one connector row, so keep row
+    # volume and unique linked accessions as separate dashboard metrics.
+    linked_wgs_projects = WGS_Project.objects.filter(Ref_Accession__isnull=False)
+    if tat_year and tat_year != "all":
+        linked_wgs_projects = linked_wgs_projects.filter(Ref_Accession__f_Referral_Date__year=tat_year)
+    wgs_project_count = linked_wgs_projects.count()
+    wgs_matched_count = linked_wgs_projects.values("Ref_Accession").distinct().count()
+    wgs_unmatched_count = WGS_Project.objects.filter(Ref_Accession__isnull=True).count()
+    default_builtin_overview_pipeline_keys = {
+        "bactscout",
+        "gambit",
+        "mlst",
+        "checkm2",
+        "assembly",
+        "amrfinder",
+    }
+    builtin_active_pipeline_count = BuiltinWGSPipelineSetting.objects.filter(show_in_overview=True).count()
+    if not BuiltinWGSPipelineSetting.objects.exists():
+        builtin_active_pipeline_count = len(default_builtin_overview_pipeline_keys)
+    custom_active_pipeline_count = CustomWGSPipeline.objects.filter(is_active=True).count()
+    wgs_active_pipeline_count = builtin_active_pipeline_count + custom_active_pipeline_count
+    emerging_records = Emerging_Table.fully_emerging()
+    final_emerging_records = Final_Data.objects.filter(
+        Q(f_Spec_Emerging=True)
+        | Q(f_Emerging_Flag_Age=True)
+    )
+    if tat_year and tat_year != "all":
+        emerging_records = emerging_records.filter(eme_primary_key__f_Referral_Date__year=tat_year)
+        final_emerging_records = final_emerging_records.filter(f_Referral_Date__year=tat_year)
+    emerging_count = emerging_records.count()
+    final_emerging_count = final_emerging_records.count()
+    surveillance_snapshot = {
+        "year": "All Years" if tat_year == "all" else tat_year,
+        "wgs_projects": wgs_project_count,
+        "wgs_matched": wgs_matched_count,
+        "wgs_unmatched": wgs_unmatched_count,
+        "wgs_active_pipelines": wgs_active_pipeline_count,
+        "emerging_records": emerging_count,
+        "final_emerging_flags": final_emerging_count,
+        "concordance_reports": concordance_kpis["report_count"],
+        "tat_overdue": tat_status_counts["overdue"],
+    }
+    surveillance_snapshot_year_rows = []
+    if tat_year == "all":
+        linked_wgs_years = {
+            row["year"]: row
+            for row in (
+                linked_wgs_projects
+                .exclude(Ref_Accession__f_Referral_Date__isnull=True)
+                .annotate(year=ExtractYear("Ref_Accession__f_Referral_Date"))
+                .values("year")
+                .annotate(
+                    wgs_projects=Count("id"),
+                    wgs_matched=Count("Ref_Accession", distinct=True),
+                )
+                .order_by("year")
+            )
+        }
+        emerging_years = {
+            row["year"]: row["count"] or 0
+            for row in (
+                Emerging_Table.fully_emerging()
+                .exclude(eme_primary_key__f_Referral_Date__isnull=True)
+                .annotate(year=ExtractYear("eme_primary_key__f_Referral_Date"))
+                .values("year")
+                .annotate(count=Count("id"))
+                .order_by("year")
+            )
+        }
+        final_emerging_years = {
+            row["year"]: row["count"] or 0
+            for row in (
+                Final_Data.objects
+                .filter(Q(f_Spec_Emerging=True) | Q(f_Emerging_Flag_Age=True))
+                .exclude(f_Referral_Date__isnull=True)
+                .annotate(year=ExtractYear("f_Referral_Date"))
+                .values("year")
+                .annotate(count=Count("id"))
+                .order_by("year")
+            )
+        }
+        concordance_years = {
+            row["year"]: row["report_count"] or 0
+            for row in concordance_kpi_year_rows
+        }
+        tat_overdue_years = {
+            row["year"]: row["overdue"] or 0
+            for row in tat_yearly_status_rows
+        }
+        referral_years = set(
+            Referred_Data.objects
+            .exclude(Referral_Date__isnull=True)
+            .annotate(year=ExtractYear("Referral_Date"))
+            .values_list("year", flat=True)
+            .distinct()
+        )
+        available_dashboard_years = {
+            year_value for year_value in tat_years if year_value
+        } | referral_years
+        for year_value in sorted(
+            available_dashboard_years
+            | set(linked_wgs_years)
+            | set(emerging_years)
+            | set(final_emerging_years)
+            | set(concordance_years)
+            | set(tat_overdue_years)
+        ):
+            linked_row = linked_wgs_years.get(year_value, {})
+            surveillance_snapshot_year_rows.append({
+                "year": year_value,
+                "wgs_projects": linked_row.get("wgs_projects", 0),
+                "wgs_matched": linked_row.get("wgs_matched", 0),
+                "wgs_unmatched": "",
+                "wgs_active_pipelines": wgs_active_pipeline_count,
+                "emerging_records": emerging_years.get(year_value, 0),
+                "final_emerging_flags": final_emerging_years.get(year_value, 0),
+                "concordance_reports": concordance_years.get(year_value, 0),
+                "tat_overdue": tat_overdue_years.get(year_value, 0),
+            })
+        if wgs_unmatched_count:
+            surveillance_snapshot_year_rows.append({
+                "year": "No linked accession year",
+                "wgs_projects": "",
+                "wgs_matched": "",
+                "wgs_unmatched": wgs_unmatched_count,
+                "wgs_active_pipelines": "",
+                "emerging_records": "",
+                "final_emerging_flags": "",
+                "concordance_reports": "",
+                "tat_overdue": "",
+            })
+
     # Include all context variables
     context = {
         'isolates': isolates,
@@ -860,6 +1233,18 @@ def index(request):
         'tat_year': tat_year,
         'tat_status_counts': tat_status_counts,
         'dashboard_year_label': "All Years" if tat_year == "all" else tat_year,
+        'concordance_kpis': concordance_kpis,
+        'concordance_kpis_json': json.dumps([concordance_kpis]),
+        'concordance_kpi_year_rows_json': json.dumps(concordance_kpi_year_rows),
+        'site_concordance_rows': site_concordance_rows,
+        'site_concordance_rows_json': json.dumps(site_concordance_rows),
+        'site_concordance_year_rows_json': json.dumps(site_concordance_year_rows),
+        'monthly_referral_rows': monthly_referral_rows,
+        'monthly_referral_rows_json': json.dumps(monthly_referral_rows),
+        'surveillance_snapshot': surveillance_snapshot,
+        'surveillance_snapshot_json': json.dumps([surveillance_snapshot]),
+        'surveillance_snapshot_year_rows_json': json.dumps(surveillance_snapshot_year_rows),
+        'dashboard_all_years': tat_year == "all",
     }
 
     return render(request, 'home/index.html', context)
@@ -1856,9 +2241,15 @@ def ajax_filter_antibiotics(request):
 
     # build payload JSON
     payload = []
+    seen_payload_codes = set()
 
     for abx in antibiotics:
         code = (abx.Whonet_Abx or "").strip().upper()
+        method_key = "disk" if abx.Disk_Abx else "mic"
+        payload_key = (code, method_key)
+        if not code or payload_key in seen_payload_codes:
+            continue
+        seen_payload_codes.add(payload_key)
         entry = entry_map.get(code)
 
         if retest:
@@ -2453,16 +2844,46 @@ def show_data(request):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    page_batch_ids = [
+        item.get("Batch_id")
+        for item in page_obj.object_list
+        if item.get("Batch_id")
+    ]
+    page_batch_codes = [
+        (item.get("batch_code") or item.get("fallback_batch_code") or "").strip()
+        for item in page_obj.object_list
+        if (item.get("batch_code") or item.get("fallback_batch_code") or "").strip()
+    ]
+    tat_by_batch_id = {
+        tat.tat_Batch_Isolates_id: {
+            "days": tat.tat_Running_TAT,
+            "pressure": _tat_pressure_for_days(tat.tat_Running_TAT, tat.tat_Target_Days),
+        }
+        for tat in TATform.objects.filter(tat_Batch_Isolates_id__in=page_batch_ids)
+    }
+    tat_by_batch_code = {
+        tat.tat_Batch_Code.strip(): {
+            "days": tat.tat_Running_TAT,
+            "pressure": _tat_pressure_for_days(tat.tat_Running_TAT, tat.tat_Target_Days),
+        }
+        for tat in TATform.objects.filter(tat_Batch_Code__in=page_batch_codes)
+        if tat.tat_Batch_Code
+    }
+
     page_groups = []
     for batch_summary in page_obj.object_list:
         raw_batch_code = batch_summary.get("batch_code") or batch_summary.get("fallback_batch_code") or ""
         batch_code = raw_batch_code.strip() or "Unbatched"
+        batch_id = batch_summary.get("Batch_id") or ""
+        tat_summary = tat_by_batch_id.get(batch_id, tat_by_batch_code.get(batch_code, {}))
         page_groups.append({
-            "batch_id": batch_summary.get("Batch_id") or "",
+            "batch_id": batch_id,
             "code": batch_code,
             "batch_code": raw_batch_code,
             "count": batch_summary["record_count"],
             "site_code": batch_summary.get("site_code") or "",
+            "tat_days": tat_summary.get("days"),
+            "tat_pressure": tat_summary.get("pressure", "none"),
         })
 
     # Get available years
@@ -4929,6 +5350,80 @@ def generate_batch_pdf(request, id):
 #    return render (request, 'home/search_results.html',{'items': items, 'query':query})
 
 
+def _attach_global_search_actions(referred_items, final_items):
+    raw_accessions = {
+        (item.AccessionNo or "").strip()
+        for item in referred_items
+        if (item.AccessionNo or "").strip()
+    }
+    final_accessions = {
+        (item.f_AccessionNo or "").strip()
+        for item in final_items
+        if (item.f_AccessionNo or "").strip()
+    }
+
+    matched_finals = {}
+    for item in (
+        Final_Data.objects
+        .filter(f_AccessionNo__in=raw_accessions)
+        .select_related("f_Batch_id")
+        .order_by("-id")
+    ):
+        matched_finals.setdefault((item.f_AccessionNo or "").strip(), item)
+
+    matched_raw = {}
+    for item in (
+        Referred_Data.objects
+        .filter(AccessionNo__in=final_accessions)
+        .select_related("Batch_id")
+        .order_by("-id")
+    ):
+        matched_raw.setdefault((item.AccessionNo or "").strip(), item)
+
+    all_final_ids = {item.id for item in final_items}
+    all_final_ids.update(item.id for item in matched_finals.values())
+
+    raw_batch_ids = {item.Batch_id_id for item in referred_items if item.Batch_id_id}
+    final_batch_ids = {item.f_Batch_id_id for item in final_items if item.f_Batch_id_id}
+    final_batch_ids.update(
+        item.f_Batch_id_id for item in matched_finals.values() if item.f_Batch_id_id
+    )
+    all_batch_ids = raw_batch_ids | final_batch_ids
+
+    accession_report_ids = {}
+    for report in (
+        ConcordanceReport.objects
+        .filter(final_data_id__in=all_final_ids)
+        .exclude(final_data__isnull=True)
+        .order_by("final_data_id", "-created_at", "-id")
+    ):
+        accession_report_ids.setdefault(report.final_data_id, report.id)
+
+    batch_report_ids = {}
+    for report in (
+        ConcordanceReport.objects
+        .filter(batch_id__in=all_batch_ids, final_data__isnull=True)
+        .order_by("batch_id", "-created_at", "-id")
+    ):
+        batch_report_ids.setdefault(report.batch_id, report.id)
+
+    for item in referred_items:
+        accession = (item.AccessionNo or "").strip()
+        matched_final = matched_finals.get(accession)
+        item.search_matched_final = matched_final
+        item.search_accession_concordance_id = (
+            accession_report_ids.get(matched_final.id) if matched_final else None
+        )
+        item.search_batch_concordance_id = batch_report_ids.get(item.Batch_id_id)
+
+    for item in final_items:
+        accession = (item.f_AccessionNo or "").strip()
+        matched_raw_item = matched_raw.get(accession)
+        item.search_matched_raw = matched_raw_item
+        item.search_accession_concordance_id = accession_report_ids.get(item.id)
+        item.search_batch_concordance_id = batch_report_ids.get(item.f_Batch_id_id)
+
+
 # Quick Search for both
 @login_required(login_url="login")
 def search(request):
@@ -4940,11 +5435,13 @@ def search(request):
     if query:
         referred_items = Referred_Data.objects.filter(
             AccessionNo__icontains=query
-        ).order_by("-id")
+        ).select_related("Batch_id").order_by("-id")
 
         final_items = Final_Data.objects.filter(
             f_AccessionNo__icontains=query
-        ).order_by("-id")
+        ).select_related("f_Batch_id").order_by("-id")
+
+        _attach_global_search_actions(referred_items, final_items)
 
     return render(
         request,
@@ -9427,8 +9924,12 @@ def upload_organisms(request):
                 created_count = 0
                 duplicate_count = 0
 
+                def clean_upload_value(column_name, uppercase=False):
+                    value = str(row.get(column_name, "")).strip()
+                    return value.upper() if uppercase else value
+
                 for _, row in df.iterrows():
-                    org_code = str(row.get("Whonet_Org_Code", "")).strip().upper()
+                    org_code = str(row.get("Whonet_Org_Code", "")).strip().lower()
                     if not org_code:
                         continue
                     if Organism_List.objects.filter(Whonet_Org_Code__iexact=org_code).exists():
@@ -9437,20 +9938,20 @@ def upload_organisms(request):
 
                     Organism_List.objects.create(
                         Whonet_Org_Code=org_code,
-                        Replaced_by=row.get("Replaced_by", ""),
-                        Organism=row.get("Organism", ""),
-                        Organism_Type=row.get("Organism_Type", ""),
-                        Family_Code=row.get("Family_Code", ""),
-                        Genus_Group=row.get("Genus_Group", ""),
-                        Genus_Code=row.get("Genus_Code", ""),
-                        Species_Group=row.get("Species_Group", ""),
-                        Serovar_Group=row.get("Serovar_Group", ""),
-                        Kingdom=row.get("Kingdom", ""),
-                        Phylum=row.get("Phylum", ""),
-                        Class=row.get("Class", ""),
-                        Order=row.get("Order", ""),
-                        Family=row.get("Family", ""),
-                        Genus=row.get("Genus", ""),
+                        Replaced_by=clean_upload_value("Replaced_by"),
+                        Organism=clean_upload_value("Organism"),
+                        Organism_Type=clean_upload_value("Organism_Type"),
+                        Family_Code=clean_upload_value("Family_Code", uppercase=True),
+                        Genus_Group=clean_upload_value("Genus_Group", uppercase=True),
+                        Genus_Code=clean_upload_value("Genus_Code", uppercase=True),
+                        Species_Group=clean_upload_value("Species_Group", uppercase=True),
+                        Serovar_Group=clean_upload_value("Serovar_Group", uppercase=True),
+                        Kingdom=clean_upload_value("Kingdom"),
+                        Phylum=clean_upload_value("Phylum"),
+                        Class=clean_upload_value("Class"),
+                        Order=clean_upload_value("Order"),
+                        Family=clean_upload_value("Family"),
+                        Genus=clean_upload_value("Genus"),
                     )
                     created_count += 1
 
@@ -10358,6 +10859,23 @@ def _get_tat_effective_days(tat):
     return tat.tat_Running_TAT
 
 
+def _tat_pressure_for_days(days, target_days=None):
+    display_target_days = target_days or 40
+
+    if days is None or not display_target_days:
+        return "none"
+
+    remaining_days = display_target_days - days
+    tat_ratio = days / display_target_days
+    if days > display_target_days:
+        return "overdue"
+    if 0 <= remaining_days <= 5:
+        return "near"
+    if tat_ratio >= 0.75:
+        return "watch"
+    return "safe"
+
+
 def _build_tat_running_rows(tat_records, configs):
     rows = []
     default_display_target_days = 40
@@ -10383,17 +10901,7 @@ def _build_tat_running_rows(tat_records, configs):
             if display_remaining_days < 0:
                 days_past_target = abs(display_remaining_days)
 
-        tat_pressure = "none"
-        if effective_days is not None and display_target_days:
-            tat_ratio = effective_days / display_target_days
-            if effective_days > display_target_days:
-                tat_pressure = "overdue"
-            elif display_remaining_days is not None and 0 <= display_remaining_days <= 5:
-                tat_pressure = "near"
-            elif tat_ratio >= 0.75:
-                tat_pressure = "watch"
-            else:
-                tat_pressure = "safe"
+        tat_pressure = _tat_pressure_for_days(effective_days, target_days)
 
         rows.append({
             "tat": tat,
@@ -10441,6 +10949,91 @@ def _build_tat_running_rows(tat_records, configs):
     return rows
 
 
+TAT_RUNNING_SORT_FIELDS = {
+    "batch_code": "tat_Batch_Code",
+    "site_code": "tat_SiteCode",
+    "referral_date": "tat_Referral_Date",
+    "num_isolates": "tat_Num_Isolate",
+    "batch_number": "tat_BatchNumber",
+    "total_batch": "tat_Total_Batch",
+    "running_tat": "tat_Running_TAT",
+    "location": "tat_Batch_Location",
+    "date_received": "first_date_received",
+    "tat_status": "tat_Status_Release",
+    "scanning_raw": "tat_Scanning_raw",
+    "scanning_ws": "tat_Scanning_ws",
+    "scanning_final": "tat_Scanning_final",
+    "action_taken": "current_step_type",
+    "assigned_to": "current_step_staff",
+    "date_released": "tat_Date_Released",
+    "final_tat": "tat_Final_TAT",
+    "release_status": "tat_Status_Release",
+    "remarks": "tat_Remarks",
+    "last_update": "tat_Date_Last_Update",
+}
+
+TAT_RUNNING_DESC_DEFAULTS = {
+    "referral_date",
+    "running_tat",
+    "date_received",
+    "date_released",
+    "final_tat",
+    "last_update",
+}
+
+
+def _tat_running_sort_context(request, default_sort="referral_date", default_order="desc"):
+    current_sort = request.GET.get("sort", default_sort)
+    if current_sort not in TAT_RUNNING_SORT_FIELDS:
+        current_sort = default_sort
+
+    current_order = request.GET.get("order", default_order).lower()
+    if current_order not in {"asc", "desc"}:
+        current_order = default_order
+
+    order_field = TAT_RUNNING_SORT_FIELDS[current_sort]
+    order_by = [f"-{order_field}" if current_order == "desc" else order_field]
+    if order_field != "tat_Batch_Code":
+        order_by.append("tat_Batch_Code")
+    order_by.append("pk")
+
+    base_params = request.GET.copy()
+    base_params.pop("page", None)
+    sort_links = {}
+    for key in TAT_RUNNING_SORT_FIELDS:
+        next_order = "desc" if key in TAT_RUNNING_DESC_DEFAULTS else "asc"
+        if key == current_sort:
+            next_order = "asc" if current_order == "desc" else "desc"
+        params = base_params.copy()
+        params["sort"] = key
+        params["order"] = next_order
+        sort_links[key] = {
+            "url": f"?{params.urlencode()}",
+            "active": key == current_sort,
+            "indicator": "down" if current_order == "desc" else "up",
+        }
+
+    page_params = request.GET.copy()
+    page_params.pop("page", None)
+
+    return {
+        "current_sort": current_sort,
+        "current_order": current_order,
+        "order_by": order_by,
+        "sort_links": sort_links,
+        "page_query": page_params.urlencode(),
+    }
+
+
+def _annotate_tat_running_sort_fields(tat_records):
+    latest_step = TATStep.objects.filter(tat=OuterRef("pk")).order_by("-id")
+    return tat_records.annotate(
+        first_date_received=Min("steps__date_received"),
+        current_step_type=Subquery(latest_step.values("step_type")[:1]),
+        current_step_staff=Subquery(latest_step.values("performed_by__Staff_Name")[:1]),
+    )
+
+
 def _tat_excel_value(row, index, default=None):
     if index >= len(row):
         return default
@@ -10448,6 +11041,31 @@ def _tat_excel_value(row, index, default=None):
     if pd.isna(value):
         return default
     return value
+
+
+def _normalize_tat_column_name(value):
+    return re.sub(r"[^a-z0-9]+", "", str(value or "").strip().lower())
+
+
+def _tat_column_map(df):
+    column_map = {}
+    for index, column in enumerate(df.columns):
+        key = _normalize_tat_column_name(column)
+        if key:
+            column_map.setdefault(key, index)
+    return column_map
+
+
+def _tat_value_by_alias(row, column_map, aliases, default_index=None, default=None):
+    for alias in aliases:
+        index = column_map.get(_normalize_tat_column_name(alias))
+        if index is not None:
+            value = _tat_excel_value(row, index, default)
+            if value not in ("", None):
+                return value
+    if default_index is None:
+        return default
+    return _tat_excel_value(row, default_index, default)
 
 
 def _tat_text(row, index):
@@ -10478,8 +11096,46 @@ def _tat_bool(row, index):
     return str(value).strip().lower() in {"1", "true", "yes", "y", "checked", "x"}
 
 
+def _tat_text_by_alias(row, column_map, aliases, default_index=None):
+    value = _tat_value_by_alias(row, column_map, aliases, default_index, "")
+    if value is None:
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value).strip()
+
+
+def _tat_int_by_alias(row, column_map, aliases, default_index=None):
+    value = _tat_value_by_alias(row, column_map, aliases, default_index)
+    if value in ("", None):
+        return None
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _tat_bool_by_alias(row, column_map, aliases, default_index=None):
+    value = _tat_value_by_alias(row, column_map, aliases, default_index, "")
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(int(value))
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "checked", "x"}
+
+
 def _tat_date(row, index):
     value = _tat_excel_value(row, index)
+    if value in ("", None):
+        return None
+    parsed = pd.to_datetime(value, errors="coerce")
+    if pd.isna(parsed):
+        return None
+    return parsed.date()
+
+
+def _tat_date_by_alias(row, column_map, aliases, default_index=None):
+    value = _tat_value_by_alias(row, column_map, aliases, default_index)
     if value in ("", None):
         return None
     parsed = pd.to_datetime(value, errors="coerce")
@@ -10501,22 +11157,20 @@ def _tat_location_value(raw_value, existing_value="n/a"):
     return configured.get(value.lower(), existing_value or "n/a")
 
 
-def _find_running_tat_sheet(uploaded_file):
+def _find_running_tat_sheets(uploaded_file):
     sheets = read_tabular_upload_sheets(uploaded_file)
-    current_year = str(timezone.localdate().year)
-    preferred = [current_year, "RUNNING TAT", "Running TAT", "RunningTAT"]
-
-    for sheet_name in preferred:
-        if sheet_name in sheets:
-            return sheet_name, sheets[sheet_name]
+    valid_sheets = []
 
     for sheet_name, df in sheets.items():
         normalized = {str(col).strip().lower() for col in df.columns}
         if "batchcode" in normalized and "sitecode" in normalized:
-            return sheet_name, df
+            valid_sheets.append((sheet_name, df))
+
+    if valid_sheets:
+        return valid_sheets
 
     first_name = next(iter(sheets))
-    return first_name, sheets[first_name]
+    return [(first_name, sheets[first_name])]
 
 
 @login_required(login_url="login")
@@ -10528,121 +11182,178 @@ def upload_running_tat(request):
         return redirect("tat_running_list")
 
     try:
-        sheet_name, df = _find_running_tat_sheet(uploaded_file)
+        running_sheets = _find_running_tat_sheets(uploaded_file)
         imported_count = 0
         skipped_count = 0
 
         with transaction.atomic():
-            for _, row in df.iterrows():
-                batch_code = _tat_text(row, 0)
-                if not batch_code or batch_code.lower() in {"nan", "batchcode"}:
-                    skipped_count += 1
-                    continue
+            for sheet_name, df in running_sheets:
+                column_map = _tat_column_map(df)
+                for _, row in df.iterrows():
+                    batch_code = _tat_text_by_alias(row, column_map, ["BatchCode"], 0)
+                    if not batch_code or batch_code.lower() in {"nan", "batchcode"}:
+                        skipped_count += 1
+                        continue
 
-                site_code = _tat_text(row, 1)
-                referral_date = _tat_date(row, 5)
-                batch_number = _tat_text(row, 7)
-                total_batch = _tat_text(row, 8)
-                num_isolates = _tat_int(row, 6)
+                    site_code = _tat_text_by_alias(row, column_map, ["SiteCode"], 1)
+                    referral_date = _tat_date_by_alias(row, column_map, ["RefDate", "Referral Date"], 5)
+                    batch_number = _tat_text_by_alias(row, column_map, ["BatchNumber"], 7)
+                    total_batch = _tat_text_by_alias(row, column_map, ["TotalBatchNumber", "Total Batch"], 8)
+                    num_isolates = _tat_int_by_alias(row, column_map, ["No_Isolates", "No Isolates"], 6)
 
-                batch = (
-                    Batch_Table.objects
-                    .filter(Q(bat_Batch_Name=batch_code) | Q(bat_Batch_Code=batch_code))
-                    .first()
-                )
-                if not batch:
-                    batch = Batch_Table.objects.create(
-                        bat_Batch_Name=batch_code,
-                        bat_Batch_Code=batch_code,
-                        bat_SiteCode=site_code,
-                        bat_Referral_Date=referral_date,
-                        bat_BatchNo=batch_number,
-                        bat_Total_batch=total_batch,
+                    batch = (
+                        Batch_Table.objects
+                        .filter(Q(bat_Batch_Name=batch_code) | Q(bat_Batch_Code=batch_code))
+                        .first()
                     )
-                else:
-                    batch.bat_SiteCode = site_code or batch.bat_SiteCode
-                    batch.bat_Referral_Date = referral_date or batch.bat_Referral_Date
-                    batch.bat_BatchNo = batch_number or batch.bat_BatchNo
-                    batch.bat_Total_batch = total_batch or batch.bat_Total_batch
-                    batch.save(update_fields=[
-                        "bat_SiteCode",
-                        "bat_Referral_Date",
-                        "bat_BatchNo",
-                        "bat_Total_batch",
-                    ])
+                    if not batch:
+                        batch = Batch_Table.objects.create(
+                            bat_Batch_Name=batch_code,
+                            bat_Batch_Code=batch_code,
+                            bat_SiteCode=site_code,
+                            bat_Referral_Date=referral_date,
+                            bat_BatchNo=batch_number,
+                            bat_Total_batch=total_batch,
+                        )
+                    else:
+                        batch.bat_SiteCode = site_code or batch.bat_SiteCode
+                        batch.bat_Referral_Date = referral_date or batch.bat_Referral_Date
+                        batch.bat_BatchNo = batch_number or batch.bat_BatchNo
+                        batch.bat_Total_batch = total_batch or batch.bat_Total_batch
+                        batch.save(update_fields=[
+                            "bat_SiteCode",
+                            "bat_Referral_Date",
+                            "bat_BatchNo",
+                            "bat_Total_batch",
+                        ])
 
-                tat, _ = TATform.objects.get_or_create(
-                    tat_Batch_Isolates=batch,
-                    defaults={
-                        "tat_SiteCode": site_code,
-                        "tat_Batch_Code": batch_code,
-                        "tat_Referral_Date": referral_date,
-                        "tat_BatchNumber": batch_number,
-                        "tat_Total_Batch": total_batch,
-                        "tat_Num_Isolate": num_isolates,
-                    },
-                )
-
-                batch_location = _tat_location_value(_tat_text(row, 10), tat.tat_Batch_Location)
-                date_received = _tat_date(row, 11)
-                date_released = _tat_date(row, 17) or _tat_date(row, 13) or date_received
-                status = _tat_text(row, 19) or _tat_text(row, 18)
-                if status.lower() not in {"released", "ongoing", "overdue"}:
-                    status = "Released" if date_released else "Ongoing"
-                else:
-                    status = status.title()
-
-                TATform.objects.filter(pk=tat.pk).update(
-                    tat_SiteCode=site_code,
-                    tat_Batch_Code=batch_code,
-                    tat_Referral_Date=referral_date,
-                    tat_BatchNumber=batch_number,
-                    tat_Total_Batch=total_batch,
-                    tat_Num_Isolate=num_isolates,
-                    tat_Running_TAT=_tat_int(row, 9),
-                    tat_Batch_Location=batch_location,
-                    tat_Date_Released=date_released if status == "Released" else None,
-                    tat_Final_TAT=_tat_int(row, 18) if status == "Released" else None,
-                    tat_Status_Release=status,
-                    tat_Remarks=_tat_text(row, 12),
-                    tat_Scanning_raw=_tat_bool(row, 14),
-                    tat_Scanning_ws=_tat_bool(row, 15),
-                    tat_Scanning_final=_tat_bool(row, 16),
-                    tat_Date_Last_Update=timezone.localdate(),
-                )
-
-                action_taken = _tat_text(row, 12)
-                if action_taken:
-                    config, _ = TATStepConfig.objects.get_or_create(
-                        step_type=action_taken,
-                        step_owner="n/a",
+                    tat, _ = TATform.objects.get_or_create(
+                        tat_Batch_Isolates=batch,
                         defaults={
-                            "target_days": 0,
-                            "order": (TATStepConfig.objects.aggregate(Max("order")).get("order__max") or 0) + 1,
+                            "tat_SiteCode": site_code,
+                            "tat_Batch_Code": batch_code,
+                            "tat_Referral_Date": referral_date,
+                            "tat_BatchNumber": batch_number,
+                            "tat_Total_Batch": total_batch,
+                            "tat_Num_Isolate": num_isolates,
                         },
                     )
-                    step, _ = TATStep.objects.get_or_create(
-                        tat_id=tat.pk,
-                        step_config=config,
-                        defaults={
-                            "step_type": config.step_type,
-                            "step_owner": config.step_owner,
-                        },
+
+                    batch_location = _tat_location_value(
+                        _tat_text_by_alias(
+                            row,
+                            column_map,
+                            [
+                                "Batch Location",
+                                "LAB/DMU/EXECUTIVE/ MEDICAL SPECIALIST",
+                                "LAB/DMU/EXECUTIVE/MEDICALSPECIALIST",
+                                "Process of:",
+                            ],
+                            10,
+                        ),
+                        tat.tat_Batch_Location,
                     )
-                    step.date_received = date_received
-                    step.date_finished = date_released if status == "Released" else None
-                    step.step_type = config.step_type
-                    step.step_owner = config.step_owner
-                    step.save()
+                    date_received = _tat_date_by_alias(
+                        row,
+                        column_map,
+                        [
+                            "Date Received",
+                            "As of",
+                            "AS OF = <Actual Date Received by DMU/LAB; start of TAT per draft>",
+                        ],
+                        11,
+                    )
+                    date_released = (
+                        _tat_date_by_alias(row, column_map, ["Date Released"], 17)
+                        or _tat_date_by_alias(row, column_map, ["STATUS/RELEASE"], 13)
+                        or date_received
+                    )
+                    status = (
+                        _tat_text_by_alias(row, column_map, ["STATUS/RELEASE"], 19)
+                        or _tat_text_by_alias(row, column_map, ["STATUS"], 18)
+                    )
+                    if status.lower() not in {"released", "ongoing", "overdue"}:
+                        status = "Released" if date_released else "Ongoing"
+                    else:
+                        status = status.title()
 
-                    tat.refresh_from_db()
-                    tat.save()
+                    TATform.objects.filter(pk=tat.pk).update(
+                        tat_SiteCode=site_code,
+                        tat_Batch_Code=batch_code,
+                        tat_Referral_Date=referral_date,
+                        tat_BatchNumber=batch_number,
+                        tat_Total_Batch=total_batch,
+                        tat_Num_Isolate=num_isolates,
+                        tat_Running_TAT=_tat_int_by_alias(row, column_map, ["RUNNING TAT"], 9),
+                        tat_Batch_Location=batch_location,
+                        tat_Date_Released=date_released if status == "Released" else None,
+                        tat_Final_TAT=_tat_int_by_alias(row, column_map, ["FINAL TAT"], 18) if status == "Released" else None,
+                        tat_Status_Release=status,
+                        tat_Remarks=_tat_text_by_alias(row, column_map, ["REMARKS", "STATUS"], 12),
+                        tat_Scanning_raw=_tat_bool_by_alias(row, column_map, ["Scanning (Raw)", "Scanning Raw"], 14),
+                        tat_Scanning_ws=_tat_bool_by_alias(row, column_map, ["Scanning (Worksheet)", "Scanning Worksheet"], 15),
+                        tat_Scanning_final=_tat_bool_by_alias(row, column_map, ["Scanning (FINAL)", "Scanning Final"], 16),
+                        tat_Date_Last_Update=timezone.localdate(),
+                    )
 
-                imported_count += 1
+                    recalculate_tat = False
+                    if date_received:
+                        first_config = TATStepConfig.objects.order_by("order", "id").first()
+                        if first_config:
+                            received_step, _ = TATStep.objects.get_or_create(
+                                tat_id=tat.pk,
+                                step_config=first_config,
+                                defaults={
+                                    "step_type": first_config.step_type,
+                                    "step_owner": first_config.step_owner,
+                                },
+                            )
+                            received_step.date_received = date_received
+                            received_step.date_finished = date_released if status == "Released" else None
+                            received_step.step_type = first_config.step_type
+                            received_step.step_owner = first_config.step_owner
+                            received_step.save()
+                            recalculate_tat = True
+
+                    action_taken = _tat_text_by_alias(
+                        row,
+                        column_map,
+                        ["ACTION TAKEN", "STATUS/RELEASE"],
+                        13,
+                    )
+                    if action_taken:
+                        config, _ = TATStepConfig.objects.get_or_create(
+                            step_type=action_taken,
+                            step_owner="n/a",
+                            defaults={
+                                "target_days": 0,
+                                "order": (TATStepConfig.objects.aggregate(Max("order")).get("order__max") or 0) + 1,
+                            },
+                        )
+                        step, _ = TATStep.objects.get_or_create(
+                            tat_id=tat.pk,
+                            step_config=config,
+                            defaults={
+                                "step_type": config.step_type,
+                                "step_owner": config.step_owner,
+                            },
+                        )
+                        step.date_received = date_received
+                        step.date_finished = date_released if status == "Released" else None
+                        step.step_type = config.step_type
+                        step.step_owner = config.step_owner
+                        step.save()
+                        recalculate_tat = True
+
+                    if recalculate_tat:
+                        tat.refresh_from_db()
+                        tat.save()
+
+                    imported_count += 1
 
         messages.success(
             request,
-            f"Running TAT upload complete from sheet '{sheet_name}'. {imported_count} imported, {skipped_count} skipped."
+            f"Running TAT upload complete from {len(running_sheets)} sheet(s). {imported_count} imported, {skipped_count} skipped."
         )
     except Exception as exc:
         messages.error(request, f"Running TAT upload failed: {exc}")
@@ -10671,6 +11382,24 @@ def tat_monitoring_view(request, batch_id):
             "tat_Total_Batch": batch.bat_Total_batch,
         }
     )
+
+    batch_sync_fields = []
+    batch_number = batch.bat_BatchNo or ""
+    total_batch = batch.bat_Total_batch or ""
+    if tat_obj.tat_BatchNumber != batch_number:
+        tat_obj.tat_BatchNumber = batch_number
+        batch_sync_fields.append("tat_BatchNumber")
+    if tat_obj.tat_Total_Batch != total_batch:
+        tat_obj.tat_Total_Batch = total_batch
+        batch_sync_fields.append("tat_Total_Batch")
+    if batch_sync_fields:
+        tat_obj.save(update_fields=[
+            *batch_sync_fields,
+            "tat_Running_TAT",
+            "tat_Final_TAT",
+            "tat_Status_Release",
+            "tat_Date_Last_Update",
+        ])
 
 
     if request.method == "POST":
@@ -10752,6 +11481,13 @@ def tat_monitoring_view(request, batch_id):
             "formset": formset,
             "batch": batch,
             "tat": tat_obj,
+            "tat_first_date_received": (
+                tat_obj.steps
+                .filter(date_received__isnull=False)
+                .order_by("date_received")
+                .values_list("date_received", flat=True)
+                .first()
+            ),
         }
     )
 
@@ -11064,6 +11800,227 @@ def _style_tat_export_sheet(ws):
         for cell in column:
             max_length = max(max_length, len(str(cell.value or "")))
         ws.column_dimensions[column_letter].width = min(max(max_length + 2, 12), 45)
+
+
+@login_required(login_url="login")
+def export_tat_analysis_tracking_excel(request):
+    date_from, date_to = _get_export_date_range(request)
+    year = request.GET.get("tat_year", request.GET.get("year", str(timezone.localdate().year))).strip()
+    status = request.GET.get("tat_status", request.GET.get("status", "")).strip()
+    q = request.GET.get("tat_q", request.GET.get("q", "")).strip()
+
+    tat_records = (
+        TATform.objects
+        .select_related("tat_Batch_Isolates")
+        .filter(tat_Referral_Date__isnull=False)
+        .order_by("tat_Referral_Date", "tat_Batch_Code")
+    )
+    if year and year != "all":
+        tat_records = tat_records.filter(tat_Referral_Date__year=year)
+    if status:
+        tat_records = tat_records.filter(tat_Status_Release=status)
+    if q:
+        tat_records = tat_records.filter(
+            Q(tat_Batch_Code__icontains=q)
+            | Q(tat_SiteCode__icontains=q)
+            | Q(tat_Batch_Isolates__bat_Batch_Name__icontains=q)
+            | Q(tat_Batch_Isolates__bat_RefNo__icontains=q)
+        )
+    tat_records = _apply_referral_date_range(tat_records, date_from, date_to)
+
+    monthly_rows = []
+    quarter_totals = {
+        quarter: {"total": 0, "within": 0}
+        for quarter in range(1, 5)
+    }
+
+    records_by_month = defaultdict(list)
+    for tat in tat_records:
+        records_by_month[tat.tat_Referral_Date.month].append(tat)
+
+    for month in range(1, 13):
+        month_records = records_by_month.get(month, [])
+        batch_count = len(month_records)
+        isolate_count = sum(tat.tat_Num_Isolate or 0 for tat in month_records)
+        ongoing_count = sum(1 for tat in month_records if tat.tat_Status_Release != "Released" and not tat.tat_Date_Released)
+        released_count = sum(1 for tat in month_records if tat.tat_Status_Release == "Released" or tat.tat_Date_Released)
+        effective_tats = []
+        within_count = 0
+        out_count = 0
+
+        for tat in month_records:
+            effective_tat = (
+                tat.tat_Final_TAT
+                if (tat.tat_Status_Release == "Released" or tat.tat_Date_Released) and tat.tat_Final_TAT is not None
+                else tat.tat_Running_TAT
+            )
+            if effective_tat is not None:
+                effective_tats.append(effective_tat)
+            if effective_tat is not None and tat.tat_Target_Days is not None:
+                if effective_tat <= tat.tat_Target_Days:
+                    within_count += 1
+                else:
+                    out_count += 1
+
+        average_tat = round(sum(effective_tats) / len(effective_tats), 2) if effective_tats else ""
+        denominator = within_count + out_count
+        within_pct = within_count / denominator if denominator else ""
+        out_pct = out_count / denominator if denominator else ""
+        quarter = ((month - 1) // 3) + 1
+        quarter_totals[quarter]["total"] += batch_count
+        quarter_totals[quarter]["within"] += within_count
+
+        monthly_rows.append({
+            "month": calendar.month_name[month],
+            "batch_count": batch_count,
+            "isolate_count": isolate_count,
+            "average_tat": average_tat,
+            "ongoing_count": ongoing_count,
+            "released_count": released_count,
+            "within_count": within_count,
+            "out_count": out_count,
+            "within_pct": within_pct,
+            "out_pct": out_pct,
+            "quarter": quarter,
+        })
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "TAT Analysis Tracking"
+    ws.sheet_view.showGridLines = False
+
+    thin = Side(style="thin", color="000000")
+    medium = Side(style="medium", color="000000")
+    table_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    header_fill = PatternFill("solid", fgColor="F2F2F2")
+
+    headers = [
+        "Month",
+        "Expected Number of\nBatches",
+        "Expected Total\nNumber of Isolates",
+        "Average TAT",
+        "Ongoing\nBatches",
+        "Released\nBatches",
+        "Within TAT",
+        "Out of TAT",
+        "% Within TAT",
+        "% Out of TAT",
+        "TOTAL Quarterly",
+        "Within TAT",
+        "Quarterly",
+    ]
+
+    ws.merge_cells("A1:M1")
+    ws["A1"] = "TAT Analysis Tracking"
+    ws["A1"].font = Font(bold=True, size=12)
+    ws["A1"].border = Border(left=medium, right=medium, top=medium, bottom=medium)
+
+    report_year = year if year and year != "all" else "All Years"
+    ws.merge_cells("D2:M2")
+    ws["D2"] = f"TAT Analysis Tracking {report_year}"
+    ws["D2"].font = Font(bold=True, size=10)
+    ws["D2"].alignment = Alignment(horizontal="center")
+    ws["D2"].border = table_border
+
+    if date_from or date_to:
+        subtitle = f"Referrals Dated {date_from or 'Start'} to {date_to or 'End'}"
+    elif year and year != "all":
+        subtitle = f"Referrals Dated January to December {year}"
+    else:
+        subtitle = "Referrals Dated All Years"
+    ws.merge_cells("D3:M3")
+    ws["D3"] = subtitle
+    ws["D3"].font = Font(bold=True, size=9)
+    ws["D3"].alignment = Alignment(horizontal="center")
+    ws["D3"].border = table_border
+
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=4, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = Font(size=9)
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = table_border
+
+    start_row = 5
+    for idx, row_data in enumerate(monthly_rows):
+        row = start_row + idx
+        values = [
+            row_data["month"],
+            row_data["batch_count"] or "",
+            row_data["isolate_count"] or "",
+            row_data["average_tat"],
+            row_data["ongoing_count"] or "",
+            row_data["released_count"] or "",
+            row_data["within_count"] or "",
+            row_data["out_count"] or "",
+            row_data["within_pct"],
+            row_data["out_pct"],
+            "",
+            "",
+            "",
+        ]
+        for col, value in enumerate(values, start=1):
+            cell = ws.cell(row=row, column=col, value=value)
+            cell.border = table_border
+            cell.alignment = Alignment(horizontal="left" if col == 1 else "center", vertical="center")
+            if col in {9, 10} and value != "":
+                cell.number_format = "0.00%"
+
+    for quarter in range(1, 5):
+        first_row = start_row + ((quarter - 1) * 3)
+        last_row = first_row + 2
+        total = quarter_totals[quarter]["total"]
+        within = quarter_totals[quarter]["within"]
+        pct = within / total if total else ""
+        for col, value in ((11, total or ""), (12, within or ""), (13, pct)):
+            ws.merge_cells(start_row=first_row, start_column=col, end_row=last_row, end_column=col)
+            cell = ws.cell(row=first_row, column=col, value=value)
+            cell.border = table_border
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            if col == 13 and value != "":
+                cell.number_format = "0%"
+            for merged_row in range(first_row, last_row + 1):
+                ws.cell(row=merged_row, column=col).border = table_border
+
+    totals_row = start_row + 13
+    total_batches = sum(row["batch_count"] for row in monthly_rows)
+    total_isolates = sum(row["isolate_count"] for row in monthly_rows)
+    ws.cell(totals_row, 2, total_batches).font = Font(bold=True)
+    ws.cell(totals_row, 3, total_isolates).font = Font(bold=True)
+    ws.cell(totals_row + 1, 2, "Total # of Batches").font = Font(italic=True, size=9)
+    ws.cell(totals_row + 1, 3, "Total # of Isolates").font = Font(italic=True, size=9)
+    ws.cell(totals_row + 2, 2, f"as of {now().strftime('%B %-d, %Y') if os.name != 'nt' else now().strftime('%B %#d, %Y')}").font = Font(italic=True, size=9)
+
+    signature_row = totals_row + 6
+    for offset, label in ((0, "Prepared By:"), (4, "Noted By:"), (8, "Approved By:")):
+        row = signature_row + offset
+        ws.cell(row, 1, label)
+        ws.cell(row, 1).font = Font(size=9)
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=4)
+        ws.cell(row, 2).border = Border(bottom=thin)
+
+    widths = {
+        "A": 13, "B": 20, "C": 20, "D": 14, "E": 12, "F": 12, "G": 12,
+        "H": 12, "I": 13, "J": 13, "K": 16, "L": 12, "M": 12,
+    }
+    for col, width in widths.items():
+        ws.column_dimensions[col].width = width
+    ws.row_dimensions[4].height = 52
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 1
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.print_area = f"A1:M{signature_row + 9}"
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    filename_year = year if year and year != "all" else "ALL_YEARS"
+    response["Content-Disposition"] = (
+        f'attachment; filename="TAT_ANALYSIS_TRACKING_{filename_year}_{now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+    )
+    wb.save(response)
+    return response
 
 
 def _completed_tat_steps(date_from=None, date_to=None, year=None, include_ongoing=None):
@@ -11471,6 +12428,14 @@ def tat_review_view(request):
     tat_site = request.GET.get("tat_site", "").strip()
     tat_year = request.GET.get("tat_year", str(current_year)).strip() or str(current_year)
     tat_status = request.GET.get("tat_status", "").strip()
+    tat_chart_site = request.GET.get("tat_chart_site", "").strip()
+    tat_chart_group = request.GET.get("tat_chart_group", "month").strip() or "month"
+    tat_chart_metric = request.GET.get("tat_chart_metric", "avg_tat").strip() or "avg_tat"
+    tat_chart_order = request.GET.get("tat_chart_order", "desc").strip() or "desc"
+    if tat_chart_order not in {"asc", "desc"}:
+        tat_chart_order = "desc"
+    if tat_chart_group not in {"month", "assigned", "site", "status"}:
+        tat_chart_group = "month"
 
     if tat_q:
         tat_records = tat_records.filter(
@@ -11565,6 +12530,142 @@ def tat_review_view(request):
     if current_year not in tat_years:
         tat_years.insert(0, current_year)
 
+    tat_site_choices = list(
+        TATform.objects
+        .exclude(tat_SiteCode__isnull=True)
+        .exclude(tat_SiteCode__exact="")
+        .values_list("tat_SiteCode", flat=True)
+        .distinct()
+        .order_by("tat_SiteCode")
+    )
+    chart_metric_options = [
+        {"value": "avg_tat", "label": "Average TAT Days"},
+        {"value": "within_rate", "label": "Within TAT %"},
+        {"value": "released", "label": "Released Batches"},
+        {"value": "ongoing", "label": "Ongoing Batches"},
+        {"value": "overdue", "label": "Overdue Batches"},
+    ]
+    chart_metric_labels = {item["value"]: item["label"] for item in chart_metric_options}
+    if tat_chart_metric not in chart_metric_labels:
+        tat_chart_metric = "avg_tat"
+    chart_group_options = [
+        {"value": "month", "label": "Month"},
+        {"value": "assigned", "label": "Assigned Person"},
+        {"value": "site", "label": "Site"},
+        {"value": "status", "label": "Status"},
+    ]
+    chart_group_labels = {item["value"]: item["label"] for item in chart_group_options}
+
+    chart_records = (
+        TATform.objects
+        .select_related("tat_Batch_Isolates")
+        .prefetch_related("steps__performed_by")
+        .order_by("tat_SiteCode")
+    )
+    if tat_year and tat_year != "all":
+        chart_records = chart_records.filter(tat_Referral_Date__year=tat_year)
+    if tat_status:
+        chart_records = chart_records.filter(tat_Status_Release=tat_status)
+    if tat_chart_group == "site" and tat_chart_site:
+        chart_records = chart_records.filter(tat_SiteCode=tat_chart_site)
+
+    chart_buckets = {}
+    for tat in chart_records:
+        if tat_chart_group == "month":
+            if tat.tat_Referral_Date:
+                bucket_label = tat.tat_Referral_Date.strftime("%b %Y")
+            else:
+                bucket_label = "No referral date"
+        elif tat_chart_group == "assigned":
+            steps = list(tat.steps.all())
+            latest_step = max(steps, key=lambda step: step.id, default=None)
+            bucket_label = str(latest_step.performed_by) if latest_step and latest_step.performed_by else "Unassigned"
+        elif tat_chart_group == "status":
+            bucket_label = tat.tat_Status_Release or "No status"
+        else:
+            bucket_label = tat.tat_SiteCode or "No site"
+
+        bucket = chart_buckets.setdefault(bucket_label, {
+            "label": bucket_label,
+            "total": 0,
+            "isolates": 0,
+            "released": 0,
+            "ongoing": 0,
+            "overdue": 0,
+            "within": 0,
+            "tat_total": 0,
+            "tat_count": 0,
+        })
+        effective_days = _get_tat_effective_days(tat)
+        bucket["total"] += 1
+        bucket["isolates"] += tat.tat_Num_Isolate or 0
+        if effective_days is not None:
+            bucket["tat_total"] += effective_days
+            bucket["tat_count"] += 1
+        if tat.tat_Status_Release == "Released":
+            bucket["released"] += 1
+            if effective_days is not None and tat.tat_Target_Days and effective_days <= tat.tat_Target_Days:
+                bucket["within"] += 1
+        elif tat.tat_Status_Release == "Overdue":
+            bucket["overdue"] += 1
+        elif tat.tat_Status_Release == "Ongoing":
+            bucket["ongoing"] += 1
+
+    tat_chart_rows = []
+    for row in chart_buckets.values():
+        released_count = row["released"]
+        within_rate = round((row["within"] / released_count) * 100, 1) if released_count else 0
+        avg_tat_value = round(row["tat_total"] / row["tat_count"], 1) if row["tat_count"] else 0
+        metric_values = {
+            "avg_tat": avg_tat_value,
+            "within_rate": within_rate,
+            "released": row["released"],
+            "ongoing": row["ongoing"],
+            "overdue": row["overdue"],
+        }
+        tat_chart_rows.append({
+            "label": row["label"],
+            "site": row["label"],
+            "total": row["total"],
+            "isolates": row["isolates"],
+            "avg_tat": avg_tat_value,
+            "within_rate": within_rate,
+            "released": row["released"],
+            "ongoing": row["ongoing"],
+            "overdue": row["overdue"],
+            "metric_value": metric_values[tat_chart_metric],
+        })
+
+    tat_chart_rows = sorted(
+        tat_chart_rows,
+        key=lambda item: (item["metric_value"], item["total"]),
+        reverse=tat_chart_order == "desc",
+    )[:12]
+    chart_max_value = max([row["metric_value"] for row in tat_chart_rows] or [0])
+    for row in tat_chart_rows:
+        row["bar_pct"] = round((row["metric_value"] / chart_max_value) * 100, 1) if chart_max_value else 0
+
+    chart_totals = chart_records.aggregate(
+        total=Count("id"),
+        isolates=Sum("tat_Num_Isolate"),
+        avg_tat=Avg("tat_Running_TAT"),
+        released=Count("id", filter=Q(tat_Status_Release="Released")),
+        ongoing=Count("id", filter=Q(tat_Status_Release="Ongoing")),
+        overdue=Count("id", filter=Q(tat_Status_Release="Overdue")),
+        within=Count(
+            "id",
+            filter=Q(
+                tat_Status_Release="Released",
+                tat_Running_TAT__lte=F("tat_Target_Days"),
+            ),
+        ),
+    )
+    chart_released_total = chart_totals["released"] or 0
+    chart_within_rate = (
+        round(((chart_totals["within"] or 0) / chart_released_total) * 100, 1)
+        if chart_released_total else 0
+    )
+
     context = {
         "configs": configs,
         "tat_records": tat_records,
@@ -11574,14 +12675,25 @@ def tat_review_view(request):
         "tat_year": tat_year,
         "tat_status": tat_status,
         "tat_status_choices": ["Ongoing", "Released", "Overdue"],
-        "tat_sites": (
-            TATform.objects
-            .exclude(tat_SiteCode__isnull=True)
-            .exclude(tat_SiteCode__exact="")
-            .values_list("tat_SiteCode", flat=True)
-            .distinct()
-            .order_by("tat_SiteCode")
-        ),
+        "tat_sites": tat_site_choices,
+        "tat_chart_site": tat_chart_site,
+        "tat_chart_group": tat_chart_group,
+        "tat_chart_metric": tat_chart_metric,
+        "tat_chart_order": tat_chart_order,
+        "tat_chart_metric_label": chart_metric_labels[tat_chart_metric],
+        "tat_chart_metric_options": chart_metric_options,
+        "tat_chart_group_label": chart_group_labels[tat_chart_group],
+        "tat_chart_group_options": chart_group_options,
+        "tat_site_chart_rows": tat_chart_rows,
+        "tat_chart_totals": {
+            "total": chart_totals["total"] or 0,
+            "isolates": chart_totals["isolates"] or 0,
+            "avg_tat": round(chart_totals["avg_tat"] or 0, 1),
+            "released": chart_released_total,
+            "ongoing": chart_totals["ongoing"] or 0,
+            "overdue": chart_totals["overdue"] or 0,
+            "within_rate": chart_within_rate,
+        },
         "tat_years": tat_years,
         "current_year": current_year,
         "tat_year_label": "All Years" if tat_year == "all" else tat_year,
@@ -11610,7 +12722,6 @@ def tat_running_list(request):
         TATform.objects
         .select_related("tat_Batch_Isolates")
         .prefetch_related("steps__step_config")
-        .order_by("-tat_Referral_Date", "tat_Batch_Code")
     )
 
     q = request.GET.get("q", "").strip()
@@ -11630,6 +12741,9 @@ def tat_running_list(request):
 
     if year and year != "all":
         tat_records = tat_records.filter(tat_Referral_Date__year=year)
+
+    sort_context = _tat_running_sort_context(request)
+    tat_records = _annotate_tat_running_sort_fields(tat_records).order_by(*sort_context["order_by"])
 
     paginator = Paginator(tat_records, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -11669,6 +12783,10 @@ def tat_running_list(request):
             "years": years,
             "status_choices": ["Ongoing", "Released", "Overdue"],
             "tat_location_choices": tat_location_choices,
+            "sort_links": sort_context["sort_links"],
+            "current_sort": sort_context["current_sort"],
+            "current_order": sort_context["current_order"],
+            "page_query": sort_context["page_query"],
         },
     )
 
@@ -11680,7 +12798,6 @@ def tat_running_process_list(request):
         TATform.objects
         .select_related("tat_Batch_Isolates")
         .prefetch_related("steps__step_config")
-        .order_by("-tat_Referral_Date", "tat_Batch_Code")
     )
 
     q = request.GET.get("q", "").strip()
@@ -11700,6 +12817,9 @@ def tat_running_process_list(request):
 
     if year and year != "all":
         tat_records = tat_records.filter(tat_Referral_Date__year=year)
+
+    sort_context = _tat_running_sort_context(request)
+    tat_records = _annotate_tat_running_sort_fields(tat_records).order_by(*sort_context["order_by"])
 
     paginator = Paginator(tat_records, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -11726,6 +12846,10 @@ def tat_running_process_list(request):
             "year": year,
             "years": years,
             "status_choices": ["Ongoing", "Released", "Overdue"],
+            "sort_links": sort_context["sort_links"],
+            "current_sort": sort_context["current_sort"],
+            "current_order": sort_context["current_order"],
+            "page_query": sort_context["page_query"],
         },
     )
 
@@ -11840,9 +12964,30 @@ def edit_tat_step_config(request, pk):
 
 
 @login_required(login_url="login")
+@role_required(ROLE_ADMIN, ROLE_CHECKER)
+def update_tat_overall_setting(request):
+    if request.method != "POST":
+        return redirect("/settings/?tab=tat_config")
+
+    setting = TATOverallSetting.get_solo()
+    form = TATOverallSettingForm(request.POST, instance=setting)
+
+    if form.is_valid():
+        setting = form.save()
+        for tat in TATform.objects.all().iterator():
+            tat.tat_Target_Days = setting.target_days
+            tat.save()
+        messages.success(request, "Overall TAT target days updated successfully.")
+    else:
+        messages.warning(request, _first_form_error(form, "Failed to update overall TAT target days."))
+
+    return redirect("/settings/?tab=tat_config")
+
+
+@login_required(login_url="login")
 def add_tat_location(request):
     if request.method != "POST":
-        return redirect("/settings/?tab=tat_location")
+        return redirect("/settings/?tab=tat_config")
 
     form = TATLocationForm(request.POST)
 
@@ -11852,7 +12997,7 @@ def add_tat_location(request):
     else:
         messages.warning(request, _first_form_error(form, "Failed to add TAT location."))
 
-    return redirect("/settings/?tab=tat_location")
+    return redirect("/settings/?tab=tat_config")
 
 
 @login_required(login_url="login")
@@ -11860,7 +13005,7 @@ def edit_tat_location(request, pk):
     location = get_object_or_404(TATLocation, pk=pk)
 
     if request.method != "POST":
-        return redirect("/settings/?tab=tat_location")
+        return redirect("/settings/?tab=tat_config")
 
     form = TATLocationForm(request.POST, instance=location)
 
@@ -11870,7 +13015,7 @@ def edit_tat_location(request, pk):
     else:
         messages.warning(request, _first_form_error(form, "Failed to update TAT location."))
 
-    return redirect("/settings/?tab=tat_location")
+    return redirect("/settings/?tab=tat_config")
 
 
 @login_required(login_url="login")
@@ -11888,7 +13033,7 @@ def delete_tat_location(request, pk):
         location.delete()
         messages.success(request, "TAT location deleted successfully.")
 
-    return redirect("/settings/?tab=tat_location")
+    return redirect("/settings/?tab=tat_config")
 
 
 
@@ -12017,10 +13162,38 @@ def add_non_working_day(request):
 
 
 @login_required(login_url="login")
+def edit_non_working_day(request, pk):
+    day = get_object_or_404(NonWorkingDay, pk=pk)
+
+    if request.method != "POST":
+        return redirect(f"/settings/?tab=non_working&edit_non_working={pk}")
+
+    form = NonWorkingDayForm(request.POST, instance=day)
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Non-working day updated successfully.")
+    else:
+        messages.warning(request, _first_form_error(form, "Failed to update non-working day."))
+        return redirect(f"/settings/?tab=non_working&edit_non_working={pk}")
+
+    return redirect("/settings/?tab=non_working")
+
+
+@login_required(login_url="login")
 def delete_non_working_day(request, pk):
     day = get_object_or_404(NonWorkingDay, pk=pk)
     day.delete()
     messages.success(request, "Non-working day deleted.")
+    return redirect("/settings/?tab=non_working")
+
+
+@login_required(login_url="login")
+@require_POST
+def delete_all_non_working_days(request):
+    deleted_count = NonWorkingDay.objects.count()
+    NonWorkingDay.objects.all().delete()
+    messages.success(request, f"Deleted {deleted_count} configured non-working day(s).")
     return redirect("/settings/?tab=non_working")
 
 

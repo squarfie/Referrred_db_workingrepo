@@ -572,6 +572,106 @@ def normalize_wgs_sample_identity(value):
     return os.path.splitext(base)[0].strip()
 
 
+def build_wgs_sample_identity_variants(value):
+    normalized = normalize_wgs_sample_identity(value)
+    text = upload_text_or_none(value) or ""
+    variants = [text, normalized]
+    if normalized:
+        variants.extend([
+            normalized.replace("-", "_"),
+            normalized.replace("_", "-"),
+        ])
+
+    unique_variants = []
+    seen = set()
+    for variant in variants:
+        variant = str(variant or "").strip()
+        if not variant:
+            continue
+        key = variant.upper()
+        if key not in seen:
+            seen.add(key)
+            unique_variants.append(variant)
+    return unique_variants
+
+
+def format_wgs_accession_from_sample_name(raw_name, site_codes=None, batch_code=""):
+    """
+    Normalize WGS sample names to the app accession format.
+
+    Only extracts accessions from standard names that contain the ARS accession
+    prefix, such as 26ARS-ZMC0005-20260822A. Nonstandard batch/sample names are
+    still imported by each uploader, but their accession is intentionally blank.
+    """
+    if not raw_name:
+        return ""
+
+    site_codes = {
+        str(code or "").strip().upper()
+        for code in (site_codes or SiteData.objects.values_list("SiteCode", flat=True))
+        if str(code or "").strip()
+    }
+    name = normalize_wgs_sample_identity(raw_name).upper()
+    name = re.sub(r"\s+", "", name)
+    if not name or any(skip in name for skip in ("UTPR", "UTPN", "BL")):
+        return ""
+
+    direct_match = re.search(
+        r"(?P<prefix>\d{2,4}ARS)[-_]?(?P<site>[A-Z]{2,6})[-_]?(?P<number>\d{3,6})",
+        name,
+    )
+    if direct_match:
+        site = direct_match.group("site")
+        if not site_codes or site in site_codes:
+            return f"{direct_match.group('prefix')}_{site}{direct_match.group('number')}"
+
+    parts = re.split(r"[-_]", name)
+    if not parts:
+        return ""
+
+    prefix = next((part for part in parts if re.match(r"^\d{2,4}ARS$", part)), "")
+    if prefix:
+        for part in parts:
+            match = re.match(r"^([A-Z]{2,6})(\d{3,6})", part)
+            if match and match.group(1) in site_codes:
+                return f"{prefix}_{match.group(1)}{match.group(2)}"
+
+        for index, part in enumerate(parts):
+            if part in site_codes:
+                digits = ""
+                if index + 1 < len(parts):
+                    digit_match = re.search(r"(\d{3,6})", parts[index + 1])
+                    if digit_match:
+                        digits = digit_match.group(1)
+                return f"{prefix}_{part}{digits}" if digits else f"{prefix}_{part}"
+
+    return ""
+
+
+def resolve_wgs_accession_from_sample_name(raw_name, site_codes=None, batch_code=""):
+    accession = format_wgs_accession_from_sample_name(raw_name, site_codes, batch_code=batch_code)
+    if accession:
+        return accession
+
+    normalized = normalize_wgs_sample_identity(raw_name).upper()
+    if not re.search(r"\d{2,4}ARS", normalized):
+        return ""
+
+    variants = build_wgs_sample_identity_variants(raw_name)
+    if not variants:
+        return ""
+
+    sampleinfo = (
+        SampleInformation.objects
+        .filter(sample_name__in=variants)
+        .exclude(sample_accession__isnull=True)
+        .exclude(sample_accession="")
+        .order_by("-Date_uploaded_si", "-pk")
+        .first()
+    )
+    return (sampleinfo.sample_accession or "").strip() if sampleinfo else ""
+
+
 def build_wgs_sample_identity_filter(link_config, sample_name):
     sample_name = (sample_name or "").strip()
     normalized = normalize_wgs_sample_identity(sample_name)
@@ -658,10 +758,7 @@ def sync_wgs_record_from_sampleinfo(record):
     candidates = {
         identity
         for raw_identity in identities
-        for identity in (
-            (str(raw_identity).strip() if raw_identity is not None else ""),
-            normalize_wgs_sample_identity(raw_identity),
-        )
+        for identity in build_wgs_sample_identity_variants(raw_identity)
         if identity
     }
     if not candidates:
@@ -703,6 +800,70 @@ def relink_all_wgs_records_from_sampleinfo():
     for sampleinfo in SampleInformation.objects.exclude(sample_name__isnull=True).exclude(sample_name=""):
         linked_count += sync_wgs_records_from_sampleinfo(sampleinfo)
     return linked_count
+
+
+def build_wgs_search_terms(query):
+    query = (query or "").strip()
+    if not query:
+        return []
+
+    raw_terms = {
+        query,
+        query.replace("_", "-"),
+        query.replace("-", "_"),
+        query.replace(" ", ""),
+        query.replace(" ", "-"),
+        query.replace(" ", "_"),
+        re.sub(r"[\s_-]+", "", query),
+    }
+    search_terms = []
+    seen_terms = set()
+    for term in raw_terms:
+        term = str(term or "").strip()
+        if not term:
+            continue
+        key = term.upper()
+        if key not in seen_terms:
+            seen_terms.add(key)
+            search_terms.append(term)
+    return search_terms
+
+
+def apply_wgs_text_search(queryset, query):
+    search_terms = build_wgs_search_terms(query)
+    if not search_terms:
+        return queryset
+
+    model = queryset.model
+    searchable_fields = [
+        field.name
+        for field in model._meta.fields
+        if isinstance(field, (models.CharField, models.TextField))
+    ]
+    search_filter = Q()
+    for term in search_terms:
+        for field_name in searchable_fields:
+            search_filter |= Q(**{f"{field_name}__icontains": term})
+    return queryset.filter(search_filter)
+
+
+def apply_wgs_related_accession_search(queryset, query, related_accession_lookup):
+    search_terms = build_wgs_search_terms(query)
+    if not search_terms:
+        return queryset
+
+    model = queryset.model
+    searchable_fields = [
+        field.name
+        for field in model._meta.fields
+        if isinstance(field, (models.CharField, models.TextField))
+    ]
+    search_filter = Q()
+    for term in search_terms:
+        search_filter |= Q(**{f"{related_accession_lookup}__icontains": term})
+        for field_name in searchable_fields:
+            search_filter |= Q(**{f"{field_name}__icontains": term})
+    return queryset.filter(search_filter)
 
 
 def wgs_upload_overwrite_enabled(request):
@@ -748,6 +909,55 @@ def upload_bool_or_false(value):
     if isinstance(value, bool):
         return value
     return str(value).strip().lower() in {"1", "true", "yes", "y", "checked", "x"}
+
+
+def normalize_mlst_upload_dataframe(df):
+    df.columns = [
+        str(column).replace("\ufeff", "").strip().replace(".", "")
+        if column is not None else ""
+        for column in df.columns
+    ]
+    df = df.loc[:, [column for column in df.columns if column and column.lower() != "nan"]]
+
+    column_lookup = {
+        str(column).strip().lower(): column
+        for column in df.columns
+    }
+
+    def add_alias(target, *sources):
+        if target in df.columns:
+            return
+        for source in sources:
+            source_column = column_lookup.get(source.lower())
+            if source_column:
+                df[target] = df[source_column]
+                return
+        df[target] = ""
+
+    add_alias("FILE", "FILE", "file", "name")
+    add_alias("SCHEME", "SCHEME", "scheme")
+    add_alias("ST", "ST", "MLST", "mlst")
+    add_alias("STATUS", "STATUS", "status")
+    add_alias("SCORE", "SCORE", "score")
+
+    if "ALLELES" not in df.columns:
+        allele_columns = [
+            column for column in df.columns
+            if re.match(r"^allele\d+$", str(column), re.IGNORECASE)
+        ]
+        if allele_columns:
+            df["ALLELES"] = df[allele_columns].apply(
+                lambda row: ";".join(
+                    text for value in row
+                    for text in [upload_text_or_none(value)]
+                    if text
+                ),
+                axis=1,
+            )
+        else:
+            df["ALLELES"] = ""
+
+    return df
 
 
 def has_tested_antibiotic_value(*values):
@@ -1356,14 +1566,18 @@ def custom_pipeline_records(request, slug):
 
     records = pipeline.records.select_related("upload_batch", "matched_final_data")
     if q:
-        records = records.filter(
-            Q(accession__icontains=q)
-            | Q(sample_name__icontains=q)
-            | Q(matched_final_data__f_AccessionNo__icontains=q)
-        )
+        search_filter = Q()
+        for term in build_wgs_search_terms(q):
+            search_filter |= (
+                Q(accession__icontains=term)
+                | Q(sample_name__icontains=term)
+                | Q(matched_final_data__f_AccessionNo__icontains=term)
+            )
+        records = records.filter(search_filter)
     if match_status in {"matched", "unmatched", "invalid"}:
         records = records.filter(match_status=match_status)
 
+    filtered_records = records.count()
     paginator = Paginator(records, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
     for record in page_obj.object_list:
@@ -1385,6 +1599,7 @@ def custom_pipeline_records(request, slug):
             "q": q,
             "match_status": match_status,
             "preserved_params": params.urlencode(),
+            "filtered_records": filtered_records,
         },
     )
 
@@ -1487,15 +1702,22 @@ def export_builtin_wgs_pipeline(request, pipeline_key):
 
 @login_required
 def show_wgs_projects(request):
-    # Get all Referred_Data that have associated WGS projects
-    referred_with_wgs = Final_Data.objects.filter(
-        f_AccessionNo__isnull=False
-    ).distinct()
-    
+    q = (request.GET.get("q") or "").strip()
+    projects = WGS_Project.objects.select_related("Ref_Accession").order_by("-id")
+    total_records = projects.count()
+    projects = apply_wgs_related_accession_search(projects, q, "Ref_Accession__f_AccessionNo")
+    filtered_records = projects.count()
+
+    paginator = Paginator(projects, 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
     context = {
-        'referred_list': referred_with_wgs,
+        "page_obj": page_obj,
+        "q": q,
+        "total_records": total_records,
+        "filtered_records": filtered_records,
     }
-    return render(request, 'wgs_app/view_match.html', context)
+    return render(request, 'wgs_app/show_wgs_proj.html', context)
 
 
 @login_required
@@ -1622,9 +1844,9 @@ def upload_gambit(request):
                     or upload_text_or_none(row.get("query"))
                     or ""
                 )
-                gambit_accession = format_gambit_accession(sample_name, site_codes)
+                gambit_accession = resolve_wgs_accession_from_sample_name(sample_name, site_codes)
 
-                if not sample_name or not gambit_accession:
+                if not sample_name:
                     skipped_count += 1
                     continue
 
@@ -1717,7 +1939,9 @@ def upload_gambit(request):
 
 @login_required
 def show_gambit(request):
+    q = (request.GET.get("q") or "").strip()
     gambit_summaries = Gambit.objects.all().order_by('-Date_uploaded_g')
+    gambit_summaries = apply_wgs_text_search(gambit_summaries, q)
     upload_dates = (
         Gambit.objects.exclude(Date_uploaded_g__isnull=True)
         .values_list('Date_uploaded_g', flat=True)
@@ -1726,6 +1950,7 @@ def show_gambit(request):
     )
 
     total_records = Gambit.objects.count()
+    filtered_records = gambit_summaries.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(gambit_summaries, 20)
     page_number = request.GET.get('page')
@@ -1735,6 +1960,8 @@ def show_gambit(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "filtered_records": filtered_records,
+        "q": q,
         "gambit_fields": Gambit.FIELD_LABELS,
         "gambit_colspan": len(Gambit.FIELD_LABELS) + 3,
     })
@@ -1841,8 +2068,8 @@ def upload_mlst(request):
         mlst_form = MlstUploadForm(request.POST, request.FILES)
         try:
             upload = mlst_form.save()
-            df = read_uploaded_file(upload.Mlstfile, sheet_name=["mlst", "mlst_new"])
-            df.columns = df.columns.str.strip().str.replace(".", "", regex=False)
+            df = read_uploaded_file(upload.Mlstfile, sheet_name=["mlst_new", "mlst"])
+            df = normalize_mlst_upload_dataframe(df)
         except Exception as e:
             messages.error(request, f"Error processing MLST file: {e}")
             return render(request, "wgs_app/Add_wgs.html", {
@@ -1922,7 +2149,7 @@ def upload_mlst(request):
         # === Loop through rows ===
         for _, row in df.iterrows():
             full_path = str(row.get("FILE", "")).strip()
-            mlst_accession = format_mlst_accession(full_path, site_codes)
+            mlst_accession = resolve_wgs_accession_from_sample_name(full_path, site_codes)
             scheme = row.get("SCHEME", "")
 
             existing_mlst = find_existing_wgs_module_record_by_fields(
@@ -1942,13 +2169,15 @@ def upload_mlst(request):
                 if mlst_accession else None
             )
 
-            connect_project = get_or_create_wgs_project_for_upload(
-                mlst_accession,
-                referred_obj,
-                "WGS_Mlst_Acc",
-                "WGS_MlstSummary",
-                existing_project=existing_mlst.mlst_project if existing_mlst else None,
-            )
+            connect_project = None
+            if mlst_accession:
+                connect_project = get_or_create_wgs_project_for_upload(
+                    mlst_accession,
+                    referred_obj,
+                    "WGS_Mlst_Acc",
+                    "WGS_MlstSummary",
+                    existing_project=existing_mlst.mlst_project if existing_mlst else None,
+                )
 
             save_or_update_wgs_module_record(
                 existing_mlst,
@@ -1991,7 +2220,9 @@ def upload_mlst(request):
 
 @login_required
 def show_mlst(request):
+    q = (request.GET.get("q") or "").strip()
     mlst_summaries = Mlst.objects.all().order_by('-Date_uploaded_m')
+    mlst_summaries = apply_wgs_text_search(mlst_summaries, q)
     upload_dates = (
         Mlst.objects.exclude(Date_uploaded_m__isnull=True)
         .values_list('Date_uploaded_m', flat=True)
@@ -2000,6 +2231,7 @@ def show_mlst(request):
     )
 
     total_records = Mlst.objects.count()
+    filtered_records = mlst_summaries.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(mlst_summaries, 20)
     page_number = request.GET.get('page')
@@ -2009,6 +2241,8 @@ def show_mlst(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "filtered_records": filtered_records,
+        "q": q,
         "mlst_fields": Mlst.FIELD_LABELS,
     })
 
@@ -2193,7 +2427,7 @@ def upload_checkm2(request):
 
         for _, row in df.iterrows():
             sample_name = str(row.get("Name", "")).strip().replace(".fna", "")
-            checkm2_accession = format_checkm2_accession(sample_name)
+            checkm2_accession = resolve_wgs_accession_from_sample_name(sample_name, site_codes)
 
             existing_checkm2 = find_existing_wgs_module_record(
                 Checkm2,
@@ -2211,13 +2445,15 @@ def upload_checkm2(request):
                 if checkm2_accession else None
             )
 
-            connect_project = get_or_create_wgs_project_for_upload(
-                checkm2_accession,
-                referred_obj,
-                "WGS_Checkm2_Acc",
-                "WGS_Checkm2Summary",
-                existing_project=existing_checkm2.checkm2_project if existing_checkm2 else None,
-            )
+            connect_project = None
+            if checkm2_accession:
+                connect_project = get_or_create_wgs_project_for_upload(
+                    checkm2_accession,
+                    referred_obj,
+                    "WGS_Checkm2_Acc",
+                    "WGS_Checkm2Summary",
+                    existing_project=existing_checkm2.checkm2_project if existing_checkm2 else None,
+                )
 
             checkm2_values = {
                 "_model": Checkm2,
@@ -2260,7 +2496,9 @@ def upload_checkm2(request):
 
 @login_required
 def show_checkm2(request):
+    q = (request.GET.get("q") or "").strip()
     checkm2_summaries = Checkm2.objects.all().order_by('-Date_uploaded_c')
+    checkm2_summaries = apply_wgs_text_search(checkm2_summaries, q)
     upload_dates = (
         Checkm2.objects.exclude(Date_uploaded_c__isnull=True)
         .values_list('Date_uploaded_c', flat=True)
@@ -2269,6 +2507,7 @@ def show_checkm2(request):
     )
 
     total_records = Checkm2.objects.count()
+    filtered_records = checkm2_summaries.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(checkm2_summaries, 20)
     page_number = request.GET.get('page')
@@ -2278,6 +2517,8 @@ def show_checkm2(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "filtered_records": filtered_records,
+        "q": q,
         "checkm2_fields": Checkm2.FIELD_LABELS,
     })
 
@@ -2462,7 +2703,7 @@ def upload_assembly(request):
 
         for _, row in df.iterrows():
             sample_name = str(row.get("sample", "")).strip()
-            assembly_accession = format_assembly_accession(sample_name)
+            assembly_accession = resolve_wgs_accession_from_sample_name(sample_name, site_codes)
 
             existing_assembly = find_existing_wgs_module_record(
                 AssemblyScan,
@@ -2480,13 +2721,15 @@ def upload_assembly(request):
                 if assembly_accession else None
             )
 
-            connect_project = get_or_create_wgs_project_for_upload(
-                assembly_accession,
-                referred_obj,
-                "WGS_Assembly_Acc",
-                "WGS_AssemblySummary",
-                existing_project=existing_assembly.assembly_project if existing_assembly else None,
-            )
+            connect_project = None
+            if assembly_accession:
+                connect_project = get_or_create_wgs_project_for_upload(
+                    assembly_accession,
+                    referred_obj,
+                    "WGS_Assembly_Acc",
+                    "WGS_AssemblySummary",
+                    existing_project=existing_assembly.assembly_project if existing_assembly else None,
+                )
 
             save_or_update_wgs_module_record(
                 existing_assembly,
@@ -2547,7 +2790,9 @@ def upload_assembly(request):
 
 @login_required
 def show_assembly(request):
+    q = (request.GET.get("q") or "").strip()
     assembly_summaries = AssemblyScan.objects.all().order_by('-Date_uploaded_as')
+    assembly_summaries = apply_wgs_text_search(assembly_summaries, q)
     upload_dates = (
         AssemblyScan.objects.exclude(Date_uploaded_as__isnull=True)
         .values_list('Date_uploaded_as', flat=True)
@@ -2556,6 +2801,7 @@ def show_assembly(request):
     )
 
     total_records = AssemblyScan.objects.count()
+    filtered_records = assembly_summaries.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(assembly_summaries, 20)
     page_number = request.GET.get('page')
@@ -2565,6 +2811,8 @@ def show_assembly(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "filtered_records": filtered_records,
+        "q": q,
     })
 
 
@@ -2753,7 +3001,7 @@ def upload_amrfinder(request):
 
         for _, row in df.iterrows():
             sample_name = upload_text_or_none(row.get("Name", "")) or ""
-            amrfinder_accession = format_amrfinder_accession(sample_name)
+            amrfinder_accession = resolve_wgs_accession_from_sample_name(sample_name, site_codes)
             amrfinder_values = {
                 field: upload_text_or_none(row.get(label, "")) or ""
                 for label, field in amrfinder_source_columns.items()
@@ -2786,16 +3034,18 @@ def upload_amrfinder(request):
                 if amrfinder_accession else None
             )
 
-            connect_project = get_or_create_wgs_project_for_upload(
-                amrfinder_accession,
-                referred_obj,
-                "WGS_Amrfinder_Acc",
-                "WGS_AmrfinderSummary",
-                existing_project=(
-                    existing_amrfinder.amrfinder_project
-                    if existing_amrfinder else None
-                ),
-            )
+            connect_project = None
+            if amrfinder_accession:
+                connect_project = get_or_create_wgs_project_for_upload(
+                    amrfinder_accession,
+                    referred_obj,
+                    "WGS_Amrfinder_Acc",
+                    "WGS_AmrfinderSummary",
+                    existing_project=(
+                        existing_amrfinder.amrfinder_project
+                        if existing_amrfinder else None
+                    ),
+                )
 
             amrfinder_values.update({
                 "_model": Amrfinderplus,
@@ -2835,7 +3085,9 @@ def upload_amrfinder(request):
 
 @login_required
 def show_amrfinder(request):
+    q = (request.GET.get("q") or "").strip()
     amrfinder_summaries = Amrfinderplus.objects.all().order_by('-Date_uploaded_am')
+    amrfinder_summaries = apply_wgs_text_search(amrfinder_summaries, q)
     upload_dates = (
         Amrfinderplus.objects.exclude(Date_uploaded_am__isnull=True)
         .values_list('Date_uploaded_am', flat=True)
@@ -2844,6 +3096,7 @@ def show_amrfinder(request):
     )
 
     total_records = Amrfinderplus.objects.count()
+    filtered_records = amrfinder_summaries.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(amrfinder_summaries, 20)
     page_number = request.GET.get('page')
@@ -2853,6 +3106,8 @@ def show_amrfinder(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "filtered_records": filtered_records,
+        "q": q,
         "amrfinder_fields": Amrfinderplus.FIELD_LABELS,
     })
 
@@ -3046,8 +3301,12 @@ def upload_sample_information(request):
 
             sample_name = str(row.get("sample_name", "")).strip()
 
-            sample_accession = format_sample_accession(sample_name)
             batch_code = row.get("batch_code", "")
+            sample_accession = resolve_wgs_accession_from_sample_name(
+                sample_name,
+                site_codes,
+                batch_code=batch_code,
+            )
 
             existing_sample = find_existing_wgs_module_record_by_fields(
                 SampleInformation,
@@ -3074,13 +3333,15 @@ def upload_sample_information(request):
                     Class_AccessionNo=sample_accession
                 ).first()
 
-            connect_project = get_or_create_wgs_project_for_upload(
-                sample_accession,
-                referred_obj,
-                "WGS_SampleInfo_Acc",
-                "WGS_SampleInfoSummary",
-                existing_project=existing_sample.sample_project if existing_sample else None,
-            )
+            connect_project = None
+            if sample_accession:
+                connect_project = get_or_create_wgs_project_for_upload(
+                    sample_accession,
+                    referred_obj,
+                    "WGS_SampleInfo_Acc",
+                    "WGS_SampleInfoSummary",
+                    existing_project=existing_sample.sample_project if existing_sample else None,
+                )
 
             def row_bool(*column_names):
                 for column_name in column_names:
@@ -3173,7 +3434,40 @@ def relink_sample_information_matches(request):
 @login_required
 def show_sample_information(request):
 
+    q = (request.GET.get("q") or "").strip()
+    search_terms = []
+    if q:
+        raw_terms = {
+            q,
+            q.replace("_", "-"),
+            q.replace("-", "_"),
+            q.replace(" ", ""),
+            q.replace(" ", "-"),
+            q.replace(" ", "_"),
+            re.sub(r"[\s_-]+", "", q),
+        }
+        seen_terms = set()
+        for term in raw_terms:
+            term = str(term or "").strip()
+            if not term:
+                continue
+            key = term.upper()
+            if key not in seen_terms:
+                seen_terms.add(key)
+                search_terms.append(term)
+
     records = SampleInformation.objects.all().order_by('-Date_uploaded_si')
+
+    if q:
+        search_filter = Q()
+        for term in search_terms:
+            search_filter |= (
+                Q(sample_name__icontains=term)
+                | Q(sample_accession__icontains=term)
+                | Q(batch_code__icontains=term)
+                | Q(status__icontains=term)
+            )
+        records = records.filter(search_filter)
 
     upload_dates = (
         SampleInformation.objects
@@ -3184,6 +3478,7 @@ def show_sample_information(request):
     )
 
     total_records = SampleInformation.objects.count()
+    filtered_records = records.count()
 
     paginator = Paginator(records, 20)
 
@@ -3198,6 +3493,8 @@ def show_sample_information(request):
         "upload_dates": upload_dates,
 
         "total_records": total_records,
+        "filtered_records": filtered_records,
+        "q": q,
 
     })
 
@@ -3379,7 +3676,7 @@ def upload_bactscout(request):
             sample_id = upload_text_or_none(row.get("sample_id"))
             sample_id = str(sample_id or "").strip()
 
-            bactscout_accession = format_bactscout_accession(sample_id)
+            bactscout_accession = resolve_wgs_accession_from_sample_name(sample_id, site_codes)
 
             existing_bactscout = (
                 BactScout.objects
@@ -3397,16 +3694,18 @@ def upload_bactscout(request):
                 if bactscout_accession else None
             )
 
-            connect_project = get_or_create_wgs_project_for_upload(
-                bactscout_accession,
-                referred_obj,
-                "WGS_BactScout_Acc",
-                "WGS_BactScoutSummary",
-                existing_project=(
-                    existing_bactscout.bactscout_project
-                    if existing_bactscout else None
-                ),
-            )
+            connect_project = None
+            if bactscout_accession:
+                connect_project = get_or_create_wgs_project_for_upload(
+                    bactscout_accession,
+                    referred_obj,
+                    "WGS_BactScout_Acc",
+                    "WGS_BactScoutSummary",
+                    existing_project=(
+                        existing_bactscout.bactscout_project
+                        if existing_bactscout else None
+                    ),
+                )
 
             bactscout_defaults = {
                 "bactscout_project": connect_project,
@@ -3503,7 +3802,9 @@ def upload_bactscout(request):
 @login_required
 def show_bactscout(request):
 
+    q = (request.GET.get("q") or "").strip()
     records = BactScout.objects.all().order_by('-Date_uploaded_bs')
+    records = apply_wgs_text_search(records, q)
 
     upload_dates = (
         BactScout.objects.exclude(Date_uploaded_bs__isnull=True)
@@ -3513,6 +3814,7 @@ def show_bactscout(request):
     )
 
     total_records = BactScout.objects.count()
+    filtered_records = records.count()
 
     paginator = Paginator(records, 20)
 
@@ -3525,6 +3827,8 @@ def show_bactscout(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "filtered_records": filtered_records,
+        "q": q,
         "bactscout_fields": BactScout.FIELD_LABELS,
         "bactscout_colspan": len(BactScout.FIELD_LABELS) + 3,
 
@@ -3693,7 +3997,7 @@ def upload_gtdbtk(request):
 
             user_genome = str(row.get("user_genome", "")).strip()
 
-            gtdbtk_accession = format_gtdbtk_accession(user_genome)
+            gtdbtk_accession = resolve_wgs_accession_from_sample_name(user_genome, site_codes)
 
             existing_gtdbtk = find_existing_wgs_module_record(
                 GtdbTk,
@@ -3710,13 +4014,15 @@ def upload_gtdbtk(request):
                 if gtdbtk_accession else None
             )
 
-            connect_project = get_or_create_wgs_project_for_upload(
-                gtdbtk_accession,
-                referred_obj,
-                "WGS_GtdbTk_Acc",
-                "WGS_GtdbTkSummary",
-                existing_project=existing_gtdbtk.gtdbtk_project if existing_gtdbtk else None,
-            )
+            connect_project = None
+            if gtdbtk_accession:
+                connect_project = get_or_create_wgs_project_for_upload(
+                    gtdbtk_accession,
+                    referred_obj,
+                    "WGS_GtdbTk_Acc",
+                    "WGS_GtdbTkSummary",
+                    existing_project=existing_gtdbtk.gtdbtk_project if existing_gtdbtk else None,
+                )
 
             save_or_update_wgs_module_record(
                 existing_gtdbtk,
@@ -3777,7 +4083,9 @@ def upload_gtdbtk(request):
 @login_required
 def show_gtdbtk(request):
 
+    q = (request.GET.get("q") or "").strip()
     records = GtdbTk.objects.all().order_by('-Date_uploaded_gt')
+    records = apply_wgs_text_search(records, q)
 
     upload_dates = (
         GtdbTk.objects.exclude(Date_uploaded_gt__isnull=True)
@@ -3787,6 +4095,7 @@ def show_gtdbtk(request):
     )
 
     total_records = GtdbTk.objects.count()
+    filtered_records = records.count()
 
     paginator = Paginator(records, 20)
 
@@ -3799,6 +4108,8 @@ def show_gtdbtk(request):
         "page_obj": page_obj,
         "upload_dates": upload_dates,
         "total_records": total_records,
+        "filtered_records": filtered_records,
+        "q": q,
 
     })
 
@@ -7050,9 +7361,12 @@ def upload_referred_table(request):
 
 @login_required
 def show_final_data(request):
+    q = (request.GET.get("q") or "").strip()
     finaldata_summaries = Final_Data.objects.all().order_by("f_Referral_Date")  # optional ordering
+    finaldata_summaries = apply_wgs_text_search(finaldata_summaries, q)
 
     total_records = Final_Data.objects.count()
+    filtered_records = finaldata_summaries.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(finaldata_summaries, 20)
     page_number = request.GET.get('page')
@@ -7064,6 +7378,8 @@ def show_final_data(request):
         "wgs_app/show_final_data.html",
         {"page_obj": page_obj,
          "total_records": total_records,
+         "filtered_records": filtered_records,
+         "q": q,
          },  # only send page_obj
     )
 
@@ -7071,9 +7387,12 @@ def show_final_data(request):
 
 @login_required
 def show_referred_data(request):
+    q = (request.GET.get("q") or "").strip()
     rawdata_summaries = Referred_Data.objects.all().order_by("Referral_Date")  # optional ordering
+    rawdata_summaries = apply_wgs_text_search(rawdata_summaries, q)
 
     total_records = Referred_Data.objects.count()
+    filtered_records = rawdata_summaries.count()
      # Paginate the queryset to display 20 records per page
     paginator = Paginator(rawdata_summaries, 20)
     page_number = request.GET.get('page')
@@ -7085,6 +7404,8 @@ def show_referred_data(request):
         "wgs_app/show_referred_data.html",
         {"page_obj": page_obj,
          "total_records": total_records,
+         "filtered_records": filtered_records,
+         "q": q,
          },  # only send page_obj
     )
 
@@ -9200,11 +9521,26 @@ def upload_raw_antibiotics(request):
 # updated version
 @login_required
 def show_final_antibiotic(request):
+    q = (request.GET.get("q") or "").strip()
 
     entries = (
         Final_AntibioticEntry.objects
         .select_related("ab_idNum_f_referred")
         .order_by("ab_idNum_f_referred__f_AccessionNo")
+    )
+    total_records = (
+        entries
+        .exclude(ab_Abx_code__isnull=True)
+        .exclude(ab_Abx_code="")
+        .exclude(ab_idNum_f_referred__isnull=True)
+        .values_list("ab_idNum_f_referred__f_AccessionNo", flat=True)
+        .distinct()
+        .count()
+    )
+    entries = apply_wgs_related_accession_search(
+        entries,
+        q,
+        "ab_idNum_f_referred__f_AccessionNo",
     )
 
     abx_data = {}
@@ -9255,7 +9591,9 @@ def show_final_antibiotic(request):
             "page_obj": page_obj,
             "abx_data": dict(page_obj.object_list),
             "abx_codes": abx_columns,
-            "total_records": len(abx_data),  # number of isolates
+            "total_records": total_records,  # number of isolates
+            "filtered_records": len(abx_data),
+            "q": q,
         }
     )
 
@@ -9264,11 +9602,26 @@ def show_final_antibiotic(request):
 # updated version
 @login_required
 def show_raw_antibiotic(request):
+    q = (request.GET.get("q") or "").strip()
 
     entries = (
         AntibioticEntry.objects
         .select_related("ab_idNum_referred")
         .order_by("ab_idNum_referred__AccessionNo")
+    )
+    total_records = (
+        entries
+        .exclude(ab_Abx_code__isnull=True)
+        .exclude(ab_Abx_code="")
+        .exclude(ab_idNum_referred__isnull=True)
+        .values_list("ab_idNum_referred__AccessionNo", flat=True)
+        .distinct()
+        .count()
+    )
+    entries = apply_wgs_related_accession_search(
+        entries,
+        q,
+        "ab_idNum_referred__AccessionNo",
     )
 
     abx_data = {}
@@ -9319,7 +9672,9 @@ def show_raw_antibiotic(request):
             "page_obj": page_obj,
             "abx_data": dict(page_obj.object_list),
             "abx_codes": abx_columns,
-            "total_records": len(abx_data),  # number of isolates
+            "total_records": total_records,  # number of isolates
+            "filtered_records": len(abx_data),
+            "q": q,
         }
     )
 

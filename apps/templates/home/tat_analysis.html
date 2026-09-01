@@ -21,7 +21,7 @@
     inset: 0;
     background:
         linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
-        url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+        url("/static/assets/img/theme/micros_2.png") center 36% / cover no-repeat;
     opacity: .42;
     pointer-events: none;
 }
@@ -534,6 +534,14 @@
                     style="background:#123a63;color:#fff;border:none;border-radius:20px;font-weight:800;padding:.45rem 1rem;text-transform:uppercase;letter-spacing:.04em;">
                 <i class="bi bi-file-excel me-1"></i>
                 Running TAT
+            </button>
+
+            <button type="submit"
+                    formaction="{% url 'export_tat_analysis_tracking_excel' %}"
+                    class="btn btn-sm"
+                    style="background:#1f9d55;color:#fff;border:none;border-radius:20px;font-weight:800;padding:.45rem 1rem;text-transform:uppercase;letter-spacing:.04em;">
+                <i class="bi bi-graph-up me-1"></i>
+                TAT Tracking
             </button>
 
             <button type="submit"

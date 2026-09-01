@@ -11,7 +11,9 @@
 .page-wrapper {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #0f1423 0%, #172740 48%, #0d747f 100%);
+  background:
+    linear-gradient(180deg, rgba(244, 247, 251, 0.88), rgba(244, 247, 251, 0.95)),
+    url("/static/assets/img/theme/micros_2.png") center 36% / cover fixed;
   min-height: 100vh;
   padding: 2rem 0 4rem;
 }
@@ -27,8 +29,8 @@
   inset: 0;
   background:
     linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
-    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
-  opacity: .42;
+    url("/static/assets/img/theme/micros_2.png") center 36% / cover no-repeat;
+  opacity: .18;
 }
 
 .concordance-report-wrapper::after {
@@ -44,12 +46,12 @@
 
 /* ── Page Header ─────────────────────────────────────────── */
 .page-header {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(12px);
-  border-radius: 20px;
+  border-radius: 8px;
   padding: 2rem 2.5rem;
   border: 1px solid rgba(0, 188, 212, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 12px 32px rgba(18, 58, 99, 0.09);
   margin-bottom: 1.75rem;
 }
 
@@ -57,10 +59,7 @@
   font-size: 2rem;
   font-weight: 800;
   margin: 0 0 0.25rem;
-  background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #123a63;
   letter-spacing: 0.3px;
   display: flex;
   align-items: center;
@@ -79,7 +78,7 @@
 }
 
 .page-subtitle {
-  color: rgba(200, 220, 255, 0.65);
+  color: #607d9a;
   font-size: 0.95rem;
   margin: 0;
   font-weight: 400;
@@ -135,9 +134,9 @@
 }
 
 .btn-back {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(200, 220, 255, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #eef8fb;
+  color: #118386;
+  border: 1px solid #d6edf3;
   padding: 0.7rem 1.5rem;
   border-radius: 50px;
   font-weight: 600;
@@ -153,9 +152,9 @@
 }
 
 .btn-back:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: white;
-  border-color: rgba(255,255,255,0.3);
+  background: #def3f7;
+  color: #083f52;
+  border-color: #c6e7ef;
   transform: translateY(-2px);
 }
 
@@ -724,7 +723,7 @@
         <table class="table detail-table">
           <thead>
             <tr>
-              <th><i class="fas fa-fingerprint me-1"></i>Isolate ID</th>
+              <th><i class="fas fa-fingerprint me-1"></i>Accession Number</th>
               <th><i class="fas fa-bacteria me-1"></i>Organism</th>
               <th><i class="fas fa-capsules me-1"></i>Antibiotic</th>
               <th class="text-center">Site RIS</th>
@@ -739,7 +738,7 @@
         {% with has_rows=True %}
         <tr>
 
-          <td class="isolate-cell">{{ row.isolate_id }}</td>
+          <td class="isolate-cell">{{ row.accession_no }}</td>
 
           <td class="organism-cell">
             {{ row.organism }}
@@ -832,7 +831,7 @@
     <table class="table detail-table">
       <thead>
         <tr>
-          <th>Isolate ID</th>
+          <th>Accession Number</th>
           <th>Organism</th>
           <th>Antibiotic</th>
           <th class="text-center">Site RIS</th>
@@ -846,7 +845,7 @@
         <tr>
 
           <td class="isolate-cell">
-            {{ row.isolate_id }}
+            {{ row.accession_no }}
           </td>
 
           <td class="organism-cell">

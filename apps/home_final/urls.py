@@ -27,8 +27,12 @@ urlpatterns = [
 
         ### add starting here for concordance analysis
         path("concordance_analysis/", views.concordance_analysis_view, name="concordance_analysis"),
+        path("concordance_analysis/site-export/", views.export_concordance_site_table, name="export_concordance_site_table"),
         
         path("concordance/batch/generate/", views.concordance_generate_batch, name="concordance_generate_batch"),
+        path("concordance/settings/update/", views.update_concordance_settings, name="update_concordance_settings"),
+        path("concordance/settings/<int:pk>/edit/", views.edit_concordance_setting, name="edit_concordance_setting"),
+        path("concordance/settings/<int:pk>/delete/", views.delete_concordance_setting, name="delete_concordance_setting"),
         path("concordance/batch/<int:report_id>/", views.concordance_batch_detail, name="concordance_batch_detail"),
         
         path("concordance/accession/generate/", views.concordance_generate_accession, name="concordance_generate_accession"),

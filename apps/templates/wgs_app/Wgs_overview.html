@@ -213,18 +213,74 @@
     }
 
     .wgs-toolbar-row-2 {
+      margin-top: 0.55rem;
+      border-top: 1px solid rgba(15, 58, 95, 0.08);
+    }
+
+    .wgs-filter-panel {
+      width: 100%;
+      border: 1px solid rgba(15, 58, 95, 0.1);
+      border-radius: 8px;
+      background: rgba(248, 252, 254, 0.82);
+      overflow: hidden;
+    }
+
+    .wgs-filter-summary {
       display: flex;
       align-items: center;
-      gap: 0.6rem;
-      margin-top: 0.55rem;
-      padding-top: 0.55rem;
+      justify-content: space-between;
+      gap: 0.75rem;
+      min-height: 38px;
+      padding: 0.45rem 0.75rem;
+      color: #24466f;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .wgs-filter-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .wgs-filter-summary-main,
+    .wgs-filter-summary-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+    }
+
+    .wgs-filter-summary-title {
+      font-size: 0.78rem;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .wgs-filter-summary-hint {
+      color: #7890a6;
+      font-size: 0.72rem;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .wgs-filter-chevron {
+      color: #08798a;
+      font-size: 0.72rem;
+      transition: transform 0.16s ease;
+    }
+
+    .wgs-filter-panel[open] .wgs-filter-chevron {
+      transform: rotate(180deg);
+    }
+
+    .wgs-filter-panel-body {
+      padding: 0.35rem 0.65rem 0.6rem;
       border-top: 1px solid rgba(15, 58, 95, 0.08);
-      flex-wrap: wrap;
+      background: #ffffff;
     }
 
     .wgs-filter-label {
-      font-size: 0.78rem;
-      font-weight: 700;
+      font-size: 0.72rem;
+      font-weight: 850;
       color: #24466f;
       white-space: nowrap;
     }
@@ -257,7 +313,7 @@
     }
 
     .wgs-page-header .header-body {
-      min-height: 98px;
+      min-height: 76px;
       display: flex;
       align-items: center;
       width: 100%;
@@ -269,11 +325,11 @@
 
     @media (max-width: 991.98px) {
       .wgs-page-header {
-        min-height: 98px !important;
+        min-height: 88px !important;
       }
 
       .wgs-page-header .header-body {
-        min-height: 100px;
+        min-height: 82px;
       }
     }
 
@@ -389,29 +445,12 @@
       color: #52697c !important;
     }
 
-/* added for scrollable */
-.wgs-toolbar-row-2 {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.5rem;
-  width: 100%;
-  min-width: 0;
-}
-
-.wgs-filter-label {
-  display: block;
-  width: 100%;
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
 .wgs-filter-scroll {
   width: 100%;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 0.4rem;
+  padding-bottom: 0.28rem;
   scrollbar-width: thin;
 }
 
@@ -457,7 +496,7 @@
 
 {% block content %}
 <!-- Header Section -->
-<div class="header bg-primary pb-3 wgs-page-header" style="min-height: 128px; background-image: url(/static/assets/img/theme/microbial.jpg); background-size: cover; background-position: center center;">
+<div class="header bg-primary pb-2 wgs-page-header" style="min-height: 96px; background-image: url(/static/assets/img/theme/micros_2.png); background-size: cover; background-position: center center;">
   <span class="mask bg-gradient-default opacity-3"></span>
   <div class="container-fluid">
     <div class="header-body">
@@ -482,7 +521,7 @@
 </div>
 
 <!-- Main Content -->
-<div class="container-fluid wgs-overview-page">
+<div class="container-fluid wgs-overview-page py-3">
 
   <div class="card shadow wgs-overview-card">
 
@@ -547,45 +586,21 @@
           </button>
         </div>
 
-        <!-- <div class="wgs-toolbar-row-2">
-          <span class="wgs-filter-label"><i class="ni ni-ui-04 mr-1"></i>View / Filter:</span>
-          <div class="d-flex gap-2 flex-wrap">
-            {% if "bactscout" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-success filter-btn" data-filter="bactscout">
-              <i class="fas fa-bacteria mr-1"></i>BactScout
-            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="bactscout" checked> Show</label></div>{% endif %}
-            {% if "gambit" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-primary filter-btn" data-filter="gambit">
-              <i class="ni ni-chart-bar-32 mr-1"></i>Gambit
-            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="gambit" checked> Show</label></div>{% endif %}
-            {% if "mlst" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-warning filter-btn" data-filter="mlst">
-              <i class="ni ni-atom mr-1"></i>MLST
-            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="mlst" checked> Show</label></div>{% endif %}
-            {% if "checkm2" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-info filter-btn" data-filter="checkm2">
-              <i class="ni ni-check-bold mr-1"></i>CheckM2
-            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="checkm2" checked> Show</label></div>{% endif %}
-            {% if "assembly" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-danger filter-btn" data-filter="assembly">
-              <i class="ni ni-settings mr-1"></i>Assembly
-            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="assembly" checked> Show</label></div>{% endif %}
-            {% if "amrfinder" in visible_builtin_overview_keys %}<div class="pipeline-control"><button class="btn btn-sm btn-outline-purple filter-btn" data-filter="amrfinder">
-              <i class="ni ni-lock-circle-open mr-1"></i>AMRFinder
-            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle" data-column="amrfinder" checked> Show</label></div>{% endif %}
-            {% for pipeline in selected_custom_pipelines %}
-            <div class="pipeline-control"><button class="btn btn-sm btn-outline-custom-pipeline filter-btn" data-filter="custom{{ pipeline.id }}">
-              <i class="ni ni-bullet-list-67 mr-1"></i>{{ pipeline.name }}
-            </button><label class="pipeline-show-toggle"><input type="checkbox" class="pipeline-column-toggle custom-pipeline-toggle" data-column="custom{{ pipeline.id }}" value="{{ pipeline.slug }}" checked> Show</label></div>
-            {% endfor %}
-            <button class="btn btn-sm btn-secondary" id="clear-filter">
-              <i class="ni ni-fat-remove mr-1"></i>Clear Filter
-            </button>
-          </div>
-        </div> -->
-
-        <!-- scrollable filters -->
-                <div class="wgs-toolbar-row-2">
-                  <span class="wgs-filter-label">
-                    <i class="ni ni-ui-04 mr-1"></i>View / Filter:
-                  </span>
-
-                  <div class="wgs-filter-scroll">
+        <div class="wgs-toolbar-row-2">
+          <details class="wgs-filter-panel">
+            <summary class="wgs-filter-summary">
+              <span class="wgs-filter-summary-main">
+                <i class="ni ni-ui-04"></i>
+                <span class="wgs-filter-summary-title">View / Filter Pipelines</span>
+                <span class="wgs-filter-summary-hint" id="wgs-filter-summary-status">All pipelines visible</span>
+              </span>
+              <span class="wgs-filter-summary-meta">
+                <span class="wgs-filter-label">Pipeline controls</span>
+                <i class="ni ni-bold-down wgs-filter-chevron"></i>
+              </span>
+            </summary>
+            <div class="wgs-filter-panel-body">
+              <div class="wgs-filter-scroll">
                     <div class="d-flex gap-2 flex-nowrap wgs-filter-controls">
 
                       {% if "bactscout" in visible_builtin_overview_keys %}
@@ -746,8 +761,10 @@
                       </button>
 
                     </div>
-                  </div>
-                </div>
+              </div>
+            </div>
+          </details>
+        </div>
 
 
       </div>
@@ -1022,6 +1039,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const dataRows = document.querySelectorAll('.data-row');
   const counterText = document.querySelector('.counter-text');
   const columnToggles = document.querySelectorAll('.pipeline-column-toggle');
+  const filterSummaryStatus = document.getElementById('wgs-filter-summary-status');
   const activeFilters = new Set();
   const filterLabels = {};
   const columnVisibilityStorageKey = 'wgsOverviewColumnVisibility:v1:user:{{ request.user.pk|default:"anon" }}';
@@ -1104,12 +1122,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function updateCounter() {
     const visibleCount = Array.from(dataRows).filter(r => r.style.display !== 'none').length;
+    const selectedFilters = Array.from(activeFilters);
     if (counterText) {
-      const selectedFilters = Array.from(activeFilters);
       const label = selectedFilters.length
         ? `matching all: ${selectedFilters.map(filterType => filterLabels[filterType] || filterType.toUpperCase()).join(', ')}`
         : 'in Total';
       counterText.innerHTML = `<strong>${visibleCount}</strong> Accession(s) ${label}`;
+    }
+    if (filterSummaryStatus) {
+      filterSummaryStatus.textContent = selectedFilters.length
+        ? `${selectedFilters.length} active filter${selectedFilters.length === 1 ? '' : 's'}`
+        : 'All pipelines visible';
     }
   }
 

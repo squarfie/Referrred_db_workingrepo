@@ -180,6 +180,10 @@
   }
 
   function makeTableSortable(table) {
+    if (table.matches(SORTABLE_SKIP_SELECTOR)) {
+      return;
+    }
+
     if (table.dataset.sortableReady === "true") {
       return;
     }

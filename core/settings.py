@@ -144,8 +144,8 @@ TIME_ZONE = "Asia/Manila"
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 20000
 PHONENUMBER_DEFAULT_REGION = 'PH'
 
-# logout automatically after 15 minutes of inactivity
-SESSION_COOKIE_AGE = 900
+# # logout automatically after 15 minutes of inactivity
+# SESSION_COOKIE_AGE = 900
+# # Set SESSION_SAVE_EVERY_REQUEST to True to reset the session expiration time on every request
+# SESSION_SAVE_EVERY_REQUEST = True
 
-# Save the session to the database on every request, even if it wasn't modified. This is useful for tracking user activity and ensuring that the session expiration is reset with each request.
-SESSION_SAVE_EVERY_REQUEST = True

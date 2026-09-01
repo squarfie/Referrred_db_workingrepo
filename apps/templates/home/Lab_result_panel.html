@@ -103,7 +103,6 @@ table.report-table tr {
 
 table.report-table tr.recommendation-row {
     height: auto !important;
-    page-break-inside: avoid;
 }
 
 table.report-table .mic {
@@ -148,14 +147,20 @@ th, td {
     page-break-before: always;
 }
 
-.report-table,
-.signature-row {
-    page-break-inside: avoid;
-}
-
 .signature-gap td {
     height: 6px !important;
     line-height: 6px !important;
+}
+
+.signature-bottom-spacer td {
+    height: 28px !important;
+    line-height: 28px !important;
+    border: none !important;
+}
+
+.single-isolate-signature-spacer td {
+    height: 560px !important;
+    line-height: 560px !important;
 }
 
 .patient-info-box {
@@ -167,7 +172,7 @@ th, td {
 }
 
 .patient-info-box strong {
-    font-size: 9px;
+    font-size: 10px;
 }
 
 .lab-box {
@@ -176,11 +181,17 @@ th, td {
     line-height: 0.9;
 }
 
+.lab-box strong,
+.lab-box span {
+    font-size: 11px !important;
+    line-height: 1.05 !important;
+    font-weight: bold !important;
+}
+
 /* ================= RECOMMENDATION ================= */
 
 .recommendation-row {
     height: auto !important;
-    page-break-inside: avoid;
 }
 
 .recommendation-cell {
@@ -249,6 +260,9 @@ th, td {
     font-size: 9px !important;
     line-height: 1.1 !important;
     padding: 1px 1px 0 0 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
 }
 .result-cell strong,
 .result-cell span {
@@ -258,10 +272,12 @@ th, td {
 
 .enris-cell,
 .enris-cell.mic {
-    font-size: 8.5px !important;
+    font-size: 9.4px !important;
     font-weight: bold !important;
     line-height: 1 !important;
     font-weight: bold !important;
+    text-align: center !important;
+    vertical-align: middle !important;
     white-space: nowrap !important;
     overflow: visible !important;
     padding-left: 0 !important;
@@ -282,6 +298,18 @@ th, td {
 
 .compact-pdf-page .header-container img {
     height: 44px !important;
+}
+
+.compact-pdf-page .report-title-gap {
+    height: 4px;
+    line-height: 4px;
+    font-size: 4px;
+}
+
+.compact-pdf-page .report-table,
+.compact-pdf-page .signature-row,
+.compact-pdf-page .recommendation-row {
+    page-break-inside: avoid;
 }
 
 .compact-pdf-page table.report-table th,
@@ -310,8 +338,18 @@ th, td {
 }
 
 .compact-pdf-page .signature-gap td {
-    height: 4px !important;
-    line-height: 4px !important;
+    height: 6px !important;
+    line-height: 6px !important;
+}
+
+.compact-pdf-page .signature-bottom-spacer td {
+    height: 16px !important;
+    line-height: 16px !important;
+}
+
+.compact-pdf-page .single-isolate-signature-spacer td {
+    height: 440px !important;
+    line-height: 440px !important;
 }
 
 .compact-pdf-page .patient-info-box {
@@ -321,6 +359,13 @@ th, td {
 
 .compact-pdf-page .lab-box {
     padding: 0.5px 0;
+    line-height: 1.02 !important;
+}
+
+.compact-pdf-page .lab-box strong,
+.compact-pdf-page .lab-box span {
+    font-size: 9.2px !important;
+    line-height: 1.02 !important;
 }
 
 .compact-pdf-page .recommendation-label {
@@ -335,9 +380,71 @@ th, td {
 
 .compact-pdf-page .result-cell,
 .compact-pdf-page .result-cell.mic {
-    line-height: 0.95 !important;
-    padding: 0.3px 0.5px 0 0 !important;
+    font-size: 9.8px !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    vertical-align: middle !important;
 }
+
+table.report-table td.result-cell,
+table.report-table td.result-cell.mic {
+    font-size: 9.5px !important;
+    line-height: 13px !important;
+    padding: 0 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+}
+
+table.report-table td.result-cell.enris-cell,
+table.report-table td.result-cell.mic.enris-cell {
+    font-size: 9.6px !important;
+    line-height: 13px !important;
+}
+
+table.report-table td.result-cell .result-value,
+table.report-table td.mic.enris-cell .result-value {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 1.4px 0 0 0;
+    text-align: center;
+    line-height: 1;
+    font-size: inherit;
+    font-weight: bold;
+}
+
+.compact-pdf-page table.report-table td.result-cell .result-value,
+.compact-pdf-page table.report-table td.mic.enris-cell .result-value {
+    padding-top: 1.1px;
+}
+
+table.report-table td.result-cell.mic,
+.compact-pdf-page table.report-table td.result-cell.mic {
+    white-space: normal !important;
+}
+
+table.report-table td.result-cell.mic .result-value {
+    white-space: normal;
+    word-wrap: normal;
+}
+
+.compact-pdf-page table.report-table td.result-cell,
+.compact-pdf-page table.report-table td.result-cell.mic {
+    font-size: 10.4px !important;
+    line-height: 12px !important;
+    padding: 0 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+
+.compact-pdf-page table.report-table td.result-cell.enris-cell,
+.compact-pdf-page table.report-table td.result-cell.mic.enris-cell {
+    font-size: 10px !important;
+    line-height: 12px !important;
+}
+
+
 
 
 </style>
@@ -439,16 +546,16 @@ th, td {
                         <div style="height:5px; line-height:5px;">&nbsp;</div>
                                                 
                         <div class="lab-box">
-                            <strong style="font-size:10px;">Lab No:</strong>
-                            &nbsp;&nbsp;<span style="font-size:11px;"> {{ isolate.AccessionNo }}</span>
+                            <strong>Lab No:</strong>
+                            &nbsp;<span>{{ isolate.AccessionNo }}</span>
                             <br>
-                            <strong style="font-size:10px;">Ref Date:</strong>
-                            &nbsp;&nbsp;<span style="font-size:11px;">{{ isolate.Referral_Date|date:"m/d/Y" }}</span>
+                            <strong>Ref Date:</strong>
+                            &nbsp;<span>{{ isolate.Referral_Date|date:"m/d/Y" }}</span>
                         </div>
                         <br>
                                     <div class="patient-info-box">
                                         <strong >Patient ID:</strong>
-                                        &nbsp; <span style="font-size:10px;">{{ isolate.Patient_ID|blank_none }} </span>
+                                        &nbsp; {{ isolate.Patient_ID|blank_none }} 
                                         <br>
                                         <strong >Date of Birth:</strong>
                                         &nbsp;{{ isolate.Date_Birth|date:"m/d/Y"|blank_none }}
@@ -541,7 +648,7 @@ th, td {
             
                     {% for abx, data in row %}
                         <td class="result-cell">
-                            {{ data.disk.ab_Disk_value|default_if_none:"&nbsp;"|safe }}<br>
+                            <div class="result-value">{{ data.disk.ab_Disk_value|default_if_none:"&nbsp;"|safe }}</div>
                         </td>
                     {% endfor %}
 
@@ -573,7 +680,7 @@ th, td {
             <tr>
                                 {% for abx, data in row %}
                                     <td class="result-cell enris-cell">
-                                     {%if data.disk.ab_Disk_enRIS %}  {{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe }} {% else %} &nbsp; {% endif %}
+                                     {%if data.disk.ab_Disk_enRIS %}<div class="result-value">{{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe }}</div>{% else %}<div class="result-value">&nbsp;</div>{% endif %}
                                     </td>
                                 {% endfor %}
 
@@ -610,8 +717,7 @@ th, td {
 
                 {% for abx, data in row %}
                     <td class="result-cell mic">
-                        {{ data.mic.ab_MIC_operand }}
-                        {{ data.mic.ab_MIC_value|mic_format|default_if_none:"&nbsp;"|safe }}<br>
+                        <div class="result-value">{{ data.mic.ab_MIC_operand }} {{ data.mic.ab_MIC_value|mic_format|default_if_none:"&nbsp;"|safe }}</div>
                     </td>
                 {% endfor %}
 
@@ -637,7 +743,7 @@ th, td {
 
                 {% for abx, data in row %}
                     <td class="result-cell mic enris-cell">
-                        {{ data.mic.ab_MIC_enRIS|default_if_none:"&nbsp;"|safe }}
+                        <div class="result-value">{{ data.mic.ab_MIC_enRIS|default_if_none:"&nbsp;"|safe }}</div>
                     </td>
                 {% endfor %}
 
@@ -742,7 +848,7 @@ th, td {
                             {% endif %}
                             {% for abx, data in row %}
                                 <td class="result-cell">
-                                    {{ data.disk.ab_Retest_DiskValue|default_if_none:"&nbsp;"|safe }}<br>
+                                    <div class="result-value">{{ data.disk.ab_Retest_DiskValue|default_if_none:"&nbsp;"|safe }}</div>
                                 </td>
                             {% endfor %}
 
@@ -782,7 +888,7 @@ th, td {
                             {% for abx, data in row %}
                                 <td class="result-cell enris-cell">
                                {% if data.disk.ab_Retest_Disk_enRIS %}
-                                    {{ data.disk.ab_Retest_Disk_enRIS|default_if_none:"&nbsp;"|safe }} {% else %} &nbsp; {% endif %}
+                                    <div class="result-value">{{ data.disk.ab_Retest_Disk_enRIS|default_if_none:"&nbsp;"|safe }}</div>{% else %}<div class="result-value">&nbsp;</div>{% endif %}
         
                                 </td>
                             {% endfor %}
@@ -816,8 +922,7 @@ th, td {
 
                                 {% for abx, data in row %}
                                     <td class="result-cell mic">
-                                         {{ data.mic.ab_Retest_MIC_operand }}
-                                        {{ data.mic.ab_Retest_MICValue|mic_format|default_if_none:"&nbsp;"|default:"&nbsp;"|safe }}<br>
+                                        <div class="result-value">{{ data.mic.ab_Retest_MIC_operand }} {{ data.mic.ab_Retest_MICValue|mic_format|default_if_none:"&nbsp;"|default:"&nbsp;"|safe }}</div>
                                     </td>
                                 {% endfor %}
 
@@ -854,8 +959,8 @@ th, td {
                         <!-- interpretation row for MIC -->
                         <tr>
                                 {% for abx, data in row %}
-                                    <td class="mic enris-cell">
-                                   {% if data.mic.ab_Retest_MIC_enRIS %} {{ data.mic.ab_Retest_MIC_enRIS|default_if_none:"&nbsp;"|safe }} {% else %} &nbsp; {% endif %}
+                                    <td class="result-cell mic enris-cell">
+                                   {% if data.mic.ab_Retest_MIC_enRIS %}<div class="result-value">{{ data.mic.ab_Retest_MIC_enRIS|default_if_none:"&nbsp;"|safe }}</div>{% else %}<div class="result-value">&nbsp;</div>{% endif %}
                                     </td>
                                 {% endfor %}
                                 {% with abx_count=row|length %}
@@ -910,8 +1015,12 @@ th, td {
 {% endfor %}
 
 {% if page|length == 1 %}
-<tr class="signature-row">
-    <td colspan="42" style="height: 300px; border: none;"></td>
+<tr class="signature-row signature-bottom-spacer single-isolate-signature-spacer">
+    <td colspan="42">&nbsp;</td>
+</tr>
+{% else %}
+<tr class="signature-row signature-bottom-spacer">
+    <td colspan="42">&nbsp;</td>
 </tr>
 {% endif %}
 

@@ -11,6 +11,11 @@
     <div class="row align-items-center">
       <div class="col">
         <h1 class="text-white mb-0">{{ pipeline.name }} Records</h1>
+        {% if q %}
+        <span class="badge badge-info badge-lg mt-2">
+          <strong>{{ filtered_records }}</strong>&nbsp; Match{{ filtered_records|pluralize:"es" }}
+        </span>
+        {% endif %}
       </div>
       <div class="col text-right">
         {% if user_access.can_wgs_create %}

@@ -771,7 +771,6 @@ class Antibiotic_List(models.Model):
     Potency=models.CharField(max_length=100, blank=True, default="")
     Class=models.CharField(max_length=100, blank=True, default="")
     Subclass=models.CharField(max_length=100, blank=True, default="")
-    Method_specific = models.BooleanField(default=False)
     Date_Modified=models.DateField(auto_now_add=True, null=True)
 
     class Meta:
@@ -804,7 +803,26 @@ class Organism_List(models.Model):
     Order = models.CharField(max_length=100, null=True, blank=True)
     Family= models.CharField(max_length=100, null=True, blank=True)
     Genus = models.CharField(max_length=100, null=True, blank=True)
-    No_serotyping = models.BooleanField(default=False)
+
+    UPPERCASE_CODE_FIELDS = (
+        "Family_Code",
+        "Genus_Code",
+        "Genus_Group",
+        "Species_Group",
+        "Serovar_Group",
+    )
+
+    def save(self, *args, **kwargs):
+        if self.Whonet_Org_Code:
+            self.Whonet_Org_Code = self.Whonet_Org_Code.strip().lower()
+
+        for field in self.UPPERCASE_CODE_FIELDS:
+            value = getattr(self, field, None)
+            if value:
+                setattr(self, field, value.strip().upper())
+
+        super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f"{self.Whonet_Org_Code}"
@@ -903,6 +921,32 @@ class TATLocation(models.Model):
         return self.name
 
 
+class TATOverallSetting(models.Model):
+    target_days = models.PositiveIntegerField(default=40)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1, defaults={"target_days": 40})
+        return obj
+
+    @classmethod
+    def get_target_days(cls):
+        return cls.get_solo().target_days
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    class Meta:
+        db_table = "TATOverallSetting"
+        verbose_name = "TAT Overall Setting"
+        verbose_name_plural = "TAT Overall Settings"
+
+    def __str__(self):
+        return f"Overall target: {self.target_days} days"
+
+
 class TATform(models.Model):
 
     tat_Batch_Isolates = models.OneToOneField(
@@ -949,6 +993,7 @@ class TATform(models.Model):
     def save(self, *args, **kwargs):
 
         today = timezone.now().date()
+        self.tat_Target_Days = TATOverallSetting.get_target_days()
         receipt_date = self.tat_Referral_Date
         if self.pk:
             first_step_received = (
@@ -1162,6 +1207,10 @@ class NonWorkingDay(models.Model):
         max_length=10,
         choices=APPLIES_TO_CHOICES,
         default='ALL'
+    )
+    is_recurring = models.BooleanField(
+        default=False,
+        help_text="Apply this non-working day every year using the same month and day.",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

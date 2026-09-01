@@ -219,6 +219,10 @@ def working_days(start_date, end_date, step_owner=None):
         h.date: h.applies_to
         for h in holidays
     }
+    recurring_holidays = [
+        (h.date.month, h.date.day, h.applies_to)
+        for h in NonWorkingDay.objects.filter(is_recurring=True)
+    ]
 
     day_count = 0
     current = start_date
@@ -232,6 +236,11 @@ def working_days(start_date, end_date, step_owner=None):
 
         # Skip holidays
         holiday_type = holiday_map.get(current)
+        if not holiday_type:
+            for month, day, applies_to in recurring_holidays:
+                if current.month == month and current.day == day:
+                    holiday_type = applies_to
+                    break
 
         if holiday_type:
             if holiday_type == "ALL":

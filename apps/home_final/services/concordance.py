@@ -5,8 +5,10 @@ from collections import defaultdict
 from django.db import transaction
 
 from apps.home.models import Batch_Table
+from apps.home.models import Organism_List
 from apps.home_final.models import (
     ConcordanceDetail,
+    ConcordanceOptions,
     ConcordanceReport,
     Final_AntibioticEntry,
     Final_Data,
@@ -15,6 +17,9 @@ from apps.home_final.models import (
 
 MIXED_INDICATORS = ("mixed", "culture", "multiple", "various")
 NONVIABLE_INDICATORS = ("not viable", "nonviable", "no growth")
+NONVIABLE_CODES = {"nv"}
+NO_IDENTIFICATION_VALUES = {"", "n/a", "na", "none", "null", "-"}
+ALL_ORGANISMS_OPTION = "__ALL_ORGANISMS__"
 
 
 def clean_str(value):
@@ -51,9 +56,68 @@ def normalize_ast_pair_code(value):
     return code
 
 
+def normalize_code(value):
+    return clean_str(value).upper()
+
+
+def ast_base_code(value):
+    pair_code = normalize_ast_pair_code(value)
+    match = re.match(r"^(.+)_N[DM]$", pair_code)
+    return match.group(1) if match else pair_code
+
+
+def split_option_codes(value):
+    if value in (None, ""):
+        return set()
+    if isinstance(value, (list, tuple, set)):
+        raw_values = value
+    else:
+        raw_values = re.split(r"[,;|]\s*", str(value))
+    return {normalize_code(item) for item in raw_values if normalize_code(item)}
+
+
 def _contains_any(text, indicators):
     text = clean_str(text).lower()
     return any(indicator in text for indicator in indicators)
+
+
+def _is_no_identification_value(value):
+    return clean_str(value).lower() in NO_IDENTIFICATION_VALUES
+
+
+def _is_nonviable_identification(*values):
+    cleaned_values = [clean_str(value) for value in values]
+    if any(value.lower() in NONVIABLE_CODES for value in cleaned_values):
+        return True
+    return _contains_any(" ".join(cleaned_values), NONVIABLE_INDICATORS)
+
+
+def _is_nonviable_ars_organism(isolate):
+    return _is_nonviable_identification(
+        getattr(isolate, "f_ars_OrgCode", ""),
+        getattr(isolate, "f_ars_OrgName", ""),
+    )
+
+
+def resolve_ars_concordance_identification(isolate):
+    ars_pre_edit = clean_str(getattr(isolate, "f_ars_Pre_ed", ""))
+    ars_pre = clean_str(getattr(isolate, "f_ars_Pre", ""))
+    ars_org = clean_str(getattr(isolate, "f_ars_OrgName", ""))
+    preferred_ars_pre = ars_pre_edit or ars_pre
+
+    if _is_nonviable_identification(preferred_ars_pre):
+        return "Not viable"
+    if _is_no_identification_value(ars_org) and not _is_no_identification_value(preferred_ars_pre):
+        return preferred_ars_pre
+    if _is_no_identification_value(preferred_ars_pre):
+        return ars_org
+    return preferred_ars_pre or ars_org
+
+
+def _is_explicit_no_identification(ars_pre, ars_post=""):
+    pre = clean_str(ars_pre).lower()
+    post = clean_str(ars_post).lower()
+    return "no" in pre and ("recovered" in (pre + " " + post) or "isolated" in (pre + " " + post))
 
 
 def _genus_name(organism_name):
@@ -67,7 +131,7 @@ def _species_name(organism_name):
     return " ".join(parts[1:]).lower() if len(parts) > 1 else ""
 
 
-def classify_id_concordance(site_org, ars_pre, ars_org, ars_post=""):
+def classify_id_concordance(site_org, ars_pre, ars_org, ars_post="", no_serotyping=False):
     site = clean_str(site_org).lower()
     ars = clean_str(ars_org).lower()
     pre = clean_str(ars_pre).lower()
@@ -77,11 +141,17 @@ def classify_id_concordance(site_org, ars_pre, ars_org, ars_post=""):
         return "M", "M"
 
     # "No ... recovered or isolated" is a discordant identification, not a non-viable isolate.
-    if "no" in pre and ("recovered" in (pre + " " + post) or "isolated" in (pre + " " + post)):
+    if _is_explicit_no_identification(pre, post):
         return "X", "X"
 
-    if _contains_any(" ".join([ars, pre, post]), NONVIABLE_INDICATORS):
+    if _is_nonviable_identification(ars):
+        return "X", "X"
+
+    if _is_nonviable_identification(pre, post):
         return "N", "N"
+
+    if site and _is_no_identification_value(ars):
+        return "X", "X"
 
     if not site or not ars:
         return None, None
@@ -98,6 +168,9 @@ def classify_id_concordance(site_org, ars_pre, ars_org, ars_post=""):
 
     if genus_con != "G":
         return "X", "X"
+
+    if no_serotyping:
+        return "G", "S"
 
     if site_species and ars_species and (
         site_species == ars_species
@@ -157,7 +230,28 @@ def get_ars_antibiotic_code(entry):
     return clean_str(entry.ab_Retest_Abx_code).upper()
 
 
-def build_ast_result_maps(isolate):
+def _method_for_pair_code(pair_code):
+    if pair_code.endswith("_ND"):
+        return "disk"
+    if pair_code.endswith("_NM"):
+        return "mic"
+    return ""
+
+
+def _set_result_once(results, names, key, ris, antibiotic_name):
+    ris = normalize_result(ris)
+    if key and ris and key not in results:
+        results[key] = ris
+        names.setdefault(key, antibiotic_name or key)
+
+
+def _tested_result(value, ris):
+    if value is None:
+        return None
+    return normalize_result(ris)
+
+
+def _build_standard_ast_result_maps(isolate):
     site_results = {}
     ars_results = {}
     antibiotic_names = {}
@@ -165,35 +259,363 @@ def build_ast_result_maps(isolate):
     for entry in isolate.final_entries.all():
         site_code = get_site_antibiotic_code(entry)
         ars_code = get_ars_antibiotic_code(entry)
-        site_pair_code = normalize_ast_pair_code(site_code)
-        ars_pair_code = normalize_ast_pair_code(ars_code)
+        site_base_code = ast_base_code(site_code)
+        ars_base_code = ast_base_code(ars_code)
+        site_method = _method_for_pair_code(normalize_ast_pair_code(site_code))
+        ars_method = _method_for_pair_code(normalize_ast_pair_code(ars_code))
 
-        site_ris = get_site_ris(entry, site_code)
-        ars_ris = get_ars_ris(entry, ars_code)
-
-        if site_pair_code and site_ris and site_pair_code not in site_results:
-            site_results[site_pair_code] = site_ris
-            antibiotic_names[site_pair_code] = entry.ab_Antibiotic or site_code
-
-        if ars_pair_code and ars_ris and ars_pair_code not in ars_results:
-            ars_results[ars_pair_code] = ars_ris
-            antibiotic_names.setdefault(
-                ars_pair_code,
-                entry.ab_Retest_Antibiotic or ars_code,
+        if site_method in {"", "disk"}:
+            _set_result_once(
+                site_results,
+                antibiotic_names,
+                f"{site_base_code}_ND" if site_base_code else "",
+                _tested_result(entry.ab_Disk_value, entry.ab_Disk_enRIS),
+                entry.ab_Antibiotic or site_base_code,
+            )
+        if site_method in {"", "mic"}:
+            _set_result_once(
+                site_results,
+                antibiotic_names,
+                f"{site_base_code}_NM" if site_base_code else "",
+                _tested_result(entry.ab_MIC_value, entry.ab_MIC_enRIS),
+                entry.ab_Antibiotic or site_base_code,
+            )
+        if ars_method in {"", "disk"}:
+            _set_result_once(
+                ars_results,
+                antibiotic_names,
+                f"{ars_base_code}_ND" if ars_base_code else "",
+                _tested_result(entry.ab_Retest_DiskValue, entry.ab_Retest_Disk_enRIS),
+                entry.ab_Retest_Antibiotic or ars_base_code,
+            )
+        if ars_method in {"", "mic"}:
+            _set_result_once(
+                ars_results,
+                antibiotic_names,
+                f"{ars_base_code}_NM" if ars_base_code else "",
+                _tested_result(entry.ab_Retest_MICValue, entry.ab_Retest_MIC_enRIS),
+                entry.ab_Retest_Antibiotic or ars_base_code,
             )
 
     return site_results, ars_results, antibiotic_names
 
 
-def calculate_isolate_concordance(isolate):
-    genus_con, species_con = classify_id_concordance(
-        isolate.f_Site_OrgName,
-        isolate.f_ars_Pre,
-        isolate.f_ars_OrgName,
-        isolate.f_ars_Post,
+def _preferred_retest_ris(entry, preferred_method):
+    if preferred_method == "mic":
+        return (
+            _tested_result(entry.ab_Retest_MICValue, entry.ab_Retest_MIC_enRIS)
+            or _tested_result(entry.ab_Retest_DiskValue, entry.ab_Retest_Disk_enRIS)
+        )
+    return (
+        _tested_result(entry.ab_Retest_DiskValue, entry.ab_Retest_Disk_enRIS)
+        or _tested_result(entry.ab_Retest_MICValue, entry.ab_Retest_MIC_enRIS)
     )
 
-    site_results, ars_results, antibiotic_names = build_ast_result_maps(isolate)
+
+def _build_site_prioritized_ast_result_maps(isolate, preferred_method):
+    site_results = {}
+    ars_results = {}
+    antibiotic_names = {}
+
+    for entry in isolate.final_entries.all():
+        site_code = get_site_antibiotic_code(entry)
+        ars_code = get_ars_antibiotic_code(entry)
+        site_base_code = ast_base_code(site_code)
+        ars_base_code = ast_base_code(ars_code)
+
+        if (
+            site_base_code
+            and site_base_code not in site_results
+        ):
+            site_ris = (
+                _tested_result(entry.ab_MIC_value, entry.ab_MIC_enRIS)
+                if preferred_method == "mic"
+                else _tested_result(entry.ab_Disk_value, entry.ab_Disk_enRIS)
+            )
+            if site_ris:
+                site_results[site_base_code] = site_ris
+                antibiotic_names[site_base_code] = entry.ab_Antibiotic or site_code
+
+        if ars_base_code and ars_base_code not in ars_results:
+            ars_ris = _preferred_retest_ris(entry, preferred_method)
+            if ars_ris:
+                ars_results[ars_base_code] = ars_ris
+                antibiotic_names.setdefault(
+                    ars_base_code,
+                    entry.ab_Retest_Antibiotic or ars_code,
+                )
+
+    return site_results, ars_results, antibiotic_names
+
+
+def build_ast_result_maps(isolate, rule_context=None):
+    rule_context = rule_context or {}
+    if rule_context.get("prioritize_mic_site"):
+        return _build_site_prioritized_ast_result_maps(isolate, "mic")
+    if rule_context.get("prioritize_disk_site"):
+        return _build_site_prioritized_ast_result_maps(isolate, "disk")
+    return _build_standard_ast_result_maps(isolate)
+
+
+def _serialize_option_groups(value):
+    return ",".join(sorted(split_option_codes(value)))
+
+
+def normalize_applied_org(value):
+    value = normalize_code(value)
+    if value in {"", "-", "N/A", "NA"}:
+        return ""
+    if value in {"ALL", "ALL ORGANISMS", ALL_ORGANISMS_OPTION}:
+        return ALL_ORGANISMS_OPTION
+    return value
+
+
+def is_all_organisms_option(value):
+    return normalize_applied_org(value) == ALL_ORGANISMS_OPTION
+
+
+def _option_defaults(options_data):
+    return {
+        "prioritize_mic_site": bool(options_data.get("prioritize_mic_site")),
+        "prioritize_disk_site": bool(options_data.get("prioritize_disk_site")),
+        "no_serotyping": bool(options_data.get("no_serotyping")),
+        "applied_org": normalize_applied_org(options_data.get("applied_org")),
+        "applied_org_grp": _serialize_option_groups(options_data.get("applied_org_grp")),
+        "is_active": bool(options_data.get("is_active", True)),
+    }
+
+
+def _options_to_dict(options):
+    if not options:
+        return {}
+    return {
+        "prioritize_mic_site": options.prioritize_mic_site,
+        "prioritize_disk_site": options.prioritize_disk_site,
+        "no_serotyping": options.no_serotyping,
+        "applied_org": options.applied_org,
+        "applied_org_grp": options.applied_org_grp,
+        "is_active": options.is_active,
+    }
+
+
+def get_global_concordance_options():
+    return (
+        ConcordanceOptions.objects
+        .filter(report__isnull=True)
+        .order_by("id")
+        .first()
+    )
+
+
+def get_global_concordance_rules():
+    return (
+        ConcordanceOptions.objects
+        .filter(report__isnull=True)
+        .order_by("id")
+    )
+
+
+def _options_queryset_to_data(options):
+    return [
+        _options_to_dict(option)
+        for option in options
+    ]
+
+
+def get_global_concordance_options_data():
+    return _options_queryset_to_data(
+        get_global_concordance_rules().filter(is_active=True)
+    )
+
+
+def save_global_concordance_options(options_data):
+    return ConcordanceOptions.objects.create(
+        report=None,
+        **_option_defaults(options_data),
+    )
+
+
+def update_global_concordance_options(option, options_data):
+    defaults = _option_defaults(options_data)
+    for field, value in defaults.items():
+        setattr(option, field, value)
+    option.save(update_fields=list(defaults))
+    return option
+
+
+def _existing_options_for_batch(batch):
+    return get_global_concordance_options_data()
+
+
+def _existing_options_for_isolate(isolate):
+    return get_global_concordance_options_data()
+
+
+def _normalize_options_data(options_data):
+    if not options_data:
+        return []
+    if isinstance(options_data, dict):
+        return [options_data]
+    return list(options_data)
+
+
+def _build_rule_matcher(options_data):
+    rule_rows = [
+        row
+        for row in _normalize_options_data(options_data)
+        if row.get("is_active", True)
+        and any(row.get(field) for field in ("prioritize_mic_site", "prioritize_disk_site", "no_serotyping"))
+        and (
+            is_all_organisms_option(row.get("applied_org"))
+            or normalize_applied_org(row.get("applied_org"))
+            or split_option_codes(row.get("applied_org_grp"))
+        )
+    ]
+
+    if not rule_rows:
+        return lambda isolate: {}
+
+    org_group_cache = {}
+    org_name_code_cache = {}
+
+    def get_org_group(org_code):
+        org_code = normalize_code(org_code)
+        if not org_code:
+            return ""
+        if org_code not in org_group_cache:
+            org_group_cache[org_code] = normalize_code(
+                Organism_List.objects
+                .filter(Whonet_Org_Code__iexact=org_code)
+                .values_list("Genus_Code", flat=True)
+                .first()
+            )
+        return org_group_cache[org_code]
+
+    def get_org_code_from_name(org_name):
+        org_name = clean_str(org_name).lower()
+        if not org_name:
+            return ""
+        if org_name not in org_name_code_cache:
+            org_name_code_cache[org_name] = normalize_code(
+                Organism_List.objects
+                .filter(Organism__iexact=org_name)
+                .values_list("Whonet_Org_Code", flat=True)
+                .first()
+            )
+        return org_name_code_cache[org_name]
+
+    def matcher(isolate):
+        site_codes = {
+            code
+            for code in (
+                normalize_code(getattr(isolate, "f_Site_Org", "")),
+                get_org_code_from_name(getattr(isolate, "f_Site_OrgName", "")),
+            )
+            if code
+        }
+        ars_codes = {
+            code
+            for code in (
+                normalize_code(getattr(isolate, "f_ars_OrgCode", "")),
+                get_org_code_from_name(getattr(isolate, "f_ars_OrgName", "")),
+            )
+            if code
+        }
+        isolate_codes = site_codes | ars_codes
+        matched_context = {
+            "prioritize_mic_site": False,
+            "prioritize_disk_site": False,
+            "no_serotyping": False,
+            "force_id_concordance": False,
+        }
+
+        for row in rule_rows:
+            applied_org = normalize_applied_org(row.get("applied_org"))
+            applied_groups = split_option_codes(row.get("applied_org_grp"))
+            organism_matches = (
+                is_all_organisms_option(applied_org)
+                or (applied_org and applied_org in isolate_codes)
+            )
+            group_matches = applied_groups and bool(
+                (isolate_codes | {get_org_group(code) for code in isolate_codes}) & applied_groups
+            )
+            if not (organism_matches or group_matches):
+                continue
+
+            if row.get("no_serotyping"):
+                matched_context["no_serotyping"] = True
+                matched_context["force_id_concordance"] = True
+
+            if (
+                not matched_context["prioritize_mic_site"]
+                and not matched_context["prioritize_disk_site"]
+            ):
+                matched_context["prioritize_mic_site"] = bool(row.get("prioritize_mic_site"))
+                matched_context["prioritize_disk_site"] = bool(row.get("prioritize_disk_site"))
+
+        return matched_context
+
+    return matcher
+
+
+def _persist_report_options(report, options_data):
+    if options_data is None:
+        return
+    if not isinstance(options_data, dict):
+        ConcordanceOptions.objects.filter(report=report).delete()
+        return
+    ConcordanceOptions.objects.update_or_create(
+        report=report,
+        defaults=_option_defaults(options_data),
+    )
+
+
+def calculate_isolate_concordance(isolate, rule_context=None):
+    rule_context = rule_context or {}
+    ars_concordance_identification = resolve_ars_concordance_identification(isolate)
+    id_text = " ".join([
+        clean_str(isolate.f_Site_OrgName),
+        clean_str(isolate.f_ars_OrgName),
+        clean_str(ars_concordance_identification),
+        clean_str(isolate.f_ars_Post),
+    ])
+
+    if rule_context.get("force_id_concordance"):
+        if _contains_any(id_text, MIXED_INDICATORS):
+            genus_con, species_con = "M", "M"
+        elif _is_explicit_no_identification(ars_concordance_identification, isolate.f_ars_Post):
+            genus_con, species_con = "X", "X"
+        elif _is_nonviable_ars_organism(isolate):
+            genus_con, species_con = "X", "X"
+        elif _is_nonviable_identification(
+            ars_concordance_identification,
+            isolate.f_ars_Post,
+        ):
+            genus_con, species_con = "N", "N"
+        elif clean_str(isolate.f_Site_OrgName) and _is_no_identification_value(isolate.f_ars_OrgName):
+            genus_con, species_con = "X", "X"
+        elif (
+            clean_str(isolate.f_Site_OrgName)
+            or clean_str(isolate.f_ars_OrgName)
+            or clean_str(isolate.f_Site_Org)
+            or clean_str(isolate.f_ars_OrgCode)
+        ):
+            genus_con, species_con = "G", "S"
+        else:
+            genus_con, species_con = None, None
+    else:
+        genus_con, species_con = classify_id_concordance(
+            isolate.f_Site_OrgName,
+            ars_concordance_identification,
+            isolate.f_ars_OrgName,
+            isolate.f_ars_Post,
+            no_serotyping=rule_context.get("no_serotyping", False),
+        )
+
+    site_results, ars_results, antibiotic_names = build_ast_result_maps(
+        isolate,
+        rule_context,
+    )
 
     total_pairs = 0
     concordant_pairs = 0
@@ -265,7 +687,7 @@ def pct(numerator, denominator):
     return round((numerator / denominator) * 100, 2) if denominator else 0
 
 
-def build_id_stats(isolates):
+def build_id_stats(isolates, options_data=None):
     stats = {
         "total_isolates": 0,
         "genus_match": 0,
@@ -276,9 +698,11 @@ def build_id_stats(isolates):
         "discordant_rows": [],
     }
 
+    rule_matcher = _build_rule_matcher(options_data)
+
     for isolate in isolates:
         stats["total_isolates"] += 1
-        result = calculate_isolate_concordance(isolate)
+        result = calculate_isolate_concordance(isolate, rule_matcher(isolate))
 
         stats["genus_match"] += result["genus_match"]
         stats["species_match"] += result["species_match"]
@@ -287,18 +711,7 @@ def build_id_stats(isolates):
         stats["different_org"] += result["different_org"]
 
         if result["different_org"]:
-            ars_identification = (
-                isolate.f_ars_OrgName
-                if _contains_any(
-                    " ".join([
-                        clean_str(isolate.f_ars_OrgName),
-                        clean_str(isolate.f_ars_Pre),
-                        clean_str(isolate.f_ars_Post),
-                    ]),
-                    NONVIABLE_INDICATORS,
-                )
-                else isolate.f_ars_Pre
-            )
+            ars_identification = resolve_ars_concordance_identification(isolate)
             stats["discordant_rows"].append({
                 "refno": isolate.f_RefNo,
                 "bat_seq": isolate.f_bat_seq if isolate.f_bat_seq is not None else "",
@@ -343,15 +756,16 @@ def _report_defaults_from_totals(totals, user=None):
     }
 
 
-def summarize_isolates(isolates):
+def summarize_isolates(isolates, options_data=None):
     totals = defaultdict(int)
     detail_objects = []
 
     isolate_list = list(isolates)
     totals["total_isolates"] = len(isolate_list)
+    rule_matcher = _build_rule_matcher(options_data)
 
     for isolate in isolate_list:
-        result = calculate_isolate_concordance(isolate)
+        result = calculate_isolate_concordance(isolate, rule_matcher(isolate))
 
         totals["genus_match"] += result["genus_match"]
         totals["species_match"] += result["species_match"]
@@ -374,14 +788,16 @@ def summarize_isolates(isolates):
 
 
 @transaction.atomic
-def generate_concordance_for_batch(batch_id, user=None):
+def generate_concordance_for_batch(batch_id, user=None, options_data=None):
     batch = Batch_Table.objects.get(id=batch_id)
+    if options_data is None:
+        options_data = _existing_options_for_batch(batch)
     isolates = (
         Final_Data.objects
         .filter(f_Batch_id=batch)
         .prefetch_related("final_entries")
     )
-    totals, detail_objects = summarize_isolates(isolates)
+    totals, detail_objects = summarize_isolates(isolates, options_data)
     defaults = _report_defaults_from_totals(totals, user)
 
     report, _ = ConcordanceReport.objects.update_or_create(
@@ -394,12 +810,13 @@ def generate_concordance_for_batch(batch_id, user=None):
     for obj in detail_objects:
         obj.report = report
     ConcordanceDetail.objects.bulk_create(detail_objects)
+    _persist_report_options(report, options_data)
 
     return report
 
 
 @transaction.atomic
-def generate_concordance_for_isolate(isolate, user=None):
+def generate_concordance_for_isolate(isolate, user=None, options_data=None):
     isolate = (
         Final_Data.objects
         .filter(pk=isolate.pk)
@@ -409,7 +826,10 @@ def generate_concordance_for_isolate(isolate, user=None):
     if not isolate:
         return None
 
-    result = calculate_isolate_concordance(isolate)
+    if options_data is None:
+        options_data = _existing_options_for_isolate(isolate)
+    rule_matcher = _build_rule_matcher(options_data)
+    result = calculate_isolate_concordance(isolate, rule_matcher(isolate))
     totals = defaultdict(int)
     totals.update({
         "total_isolates": 1,
@@ -437,15 +857,142 @@ def generate_concordance_for_isolate(isolate, user=None):
     for obj in result["details"]:
         obj.report = report
     ConcordanceDetail.objects.bulk_create(result["details"])
+    _persist_report_options(report, options_data)
 
     return report
 
 
-def collect_concordance_dashboard(year=None):
+@transaction.atomic
+def refresh_saved_concordance_reports(user=None):
+    options_data = get_global_concordance_options_data()
+    refreshed = 0
+
+    batch_ids = (
+        ConcordanceReport.objects
+        .filter(final_data__isnull=True, batch__isnull=False)
+        .values_list("batch_id", flat=True)
+        .distinct()
+    )
+    for batch_id in batch_ids:
+        generate_concordance_for_batch(batch_id, user, options_data=options_data)
+        refreshed += 1
+
+    isolates = (
+        Final_Data.objects
+        .filter(concordance_reports__final_data__isnull=False)
+        .distinct()
+        .prefetch_related("final_entries")
+    )
+    for isolate in isolates:
+        generate_concordance_for_isolate(isolate, user, options_data=options_data)
+        refreshed += 1
+
+    return refreshed
+
+
+def collect_concordance_dashboard(
+    year=None,
+    site_filter="",
+    metric="ast_rate",
+    sort_order="desc",
+    min_pairs=0,
+):
     isolates = Final_Data.objects.prefetch_related("final_entries")
     if year not in (None, "", "all"):
         isolates = isolates.filter(f_Referral_Date__year=year)
-    totals, _ = summarize_isolates(isolates)
+    totals, _ = summarize_isolates(
+        isolates,
+        get_global_concordance_options_data(),
+    )
+
+    report_qs = ConcordanceReport.objects.select_related("final_data", "batch")
+    if year not in (None, "", "all"):
+        report_qs = report_qs.filter(final_data__f_Referral_Date__year=year)
+
+    site_choices = sorted({
+        clean_str(report.final_data.f_SiteCode)
+        for report in report_qs
+        if report.final_data and clean_str(report.final_data.f_SiteCode)
+    })
+    if site_filter:
+        report_qs = report_qs.filter(final_data__f_SiteCode=site_filter)
+
+    site_buckets = {}
+    for report in report_qs:
+        isolate = report.final_data
+        site_code = clean_str(getattr(isolate, "f_SiteCode", "")) or "N/A"
+        site_name = clean_str(getattr(isolate, "f_Site_Name", ""))
+        bucket = site_buckets.setdefault(site_code, {
+            "site_code": site_code,
+            "site_name": site_name,
+            "report_count": 0,
+            "total_isolates": 0,
+            "total_pairs": 0,
+            "concordant_pairs": 0,
+            "vmd": 0,
+            "md": 0,
+            "minor": 0,
+            "total_deviation": 0,
+            "genus_match": 0,
+            "species_match": 0,
+        })
+        bucket["report_count"] += 1
+        bucket["total_isolates"] += report.total_isolates or 0
+        bucket["total_pairs"] += report.total_pairs or 0
+        bucket["concordant_pairs"] += report.concordant_pairs or 0
+        bucket["vmd"] += report.vmd or 0
+        bucket["md"] += report.md or 0
+        bucket["minor"] += report.minor or 0
+        bucket["total_deviation"] += report.total_deviation or 0
+        bucket["genus_match"] += report.genus_match or 0
+        bucket["species_match"] += report.species_match or 0
+        if not bucket["site_name"] and site_name:
+            bucket["site_name"] = site_name
+
+    site_metric_labels = {
+        "ast_rate": "AST Concordance %",
+        "genus_rate": "Genus Concordance %",
+        "species_rate": "Species Concordance %",
+        "total_deviation": "Total Deviations",
+        "critical_deviation": "Critical Deviations",
+        "total_pairs": "AST Pairs",
+        "report_count": "Reports",
+    }
+    if metric not in site_metric_labels:
+        metric = "ast_rate"
+    if sort_order not in {"asc", "desc"}:
+        sort_order = "desc"
+
+    site_rows = []
+    for row in site_buckets.values():
+        row["ast_rate"] = pct(row["concordant_pairs"], row["total_pairs"])
+        row["genus_rate"] = pct(row["genus_match"], row["total_isolates"])
+        row["species_rate"] = pct(row["species_match"], row["total_isolates"])
+        row["critical_deviation"] = (row["vmd"] or 0) + (row["md"] or 0)
+        row["metric_value"] = row[metric]
+        if row["total_pairs"] >= min_pairs:
+            site_rows.append(row)
+
+    site_rows = sorted(
+        site_rows,
+        key=lambda item: (item["metric_value"], item["total_pairs"], item["report_count"]),
+        reverse=sort_order == "desc",
+    )
+    site_chart_rows = site_rows[:12]
+    max_metric_value = max([row["metric_value"] for row in site_chart_rows] or [0])
+    for row in site_chart_rows:
+        row["bar_pct"] = round((row["metric_value"] / max_metric_value) * 100, 1) if max_metric_value else 0
+
+    site_summary = {
+        "site_count": len(site_rows),
+        "report_count": sum(row["report_count"] for row in site_rows),
+        "total_pairs": sum(row["total_pairs"] for row in site_rows),
+        "total_deviation": sum(row["total_deviation"] for row in site_rows),
+        "avg_ast_rate": pct(
+            sum(row["concordant_pairs"] for row in site_rows),
+            sum(row["total_pairs"] for row in site_rows),
+        ),
+    }
 
     return {
         "total_isolates": totals["total_isolates"],
@@ -466,6 +1013,19 @@ def collect_concordance_dashboard(year=None):
         "minor": totals["minor"],
         "minor_rate": pct(totals["minor"], totals["total_pairs"]),
         "isolates": isolates,
+        "site_filter": site_filter,
+        "site_metric": metric,
+        "site_sort_order": sort_order,
+        "site_min_pairs": min_pairs,
+        "site_metric_label": site_metric_labels[metric],
+        "site_metric_options": [
+            {"value": value, "label": label}
+            for value, label in site_metric_labels.items()
+        ],
+        "site_choices": site_choices,
+        "site_concordance_rows": site_rows,
+        "site_concordance_chart_rows": site_chart_rows,
+        "site_concordance_summary": site_summary,
     }
 
 

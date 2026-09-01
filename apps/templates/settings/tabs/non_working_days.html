@@ -10,7 +10,7 @@
 
     <h5 class="card-title mb-0">
       <i class="fas fa-calendar-times mr-2"></i>
-      Add Non-Working Day
+      {% if non_working_editing %}Edit Non-Working Day{% else %}Add Non-Working Day{% endif %}
     </h5>
 
   </div>
@@ -18,37 +18,53 @@
   <!-- BODY -->
   <div class="card-body">
 
-    <form method="POST" action="{% url 'add_non_working_day' %}" id="nonWorkingDayForm" novalidate>
+    <form method="POST"
+          action="{% if non_working_editing %}{% url 'edit_non_working_day' edit_non_working_day.id %}{% else %}{% url 'add_non_working_day' %}{% endif %}"
+          id="nonWorkingDayForm"
+          novalidate>
       {% csrf_token %}
 
       <div class="row">
 
-        <div class="col-md-4 mb-3">
+        <div class="col-lg-3 col-md-6 mb-3">
           <label>Date</label>
           {{ non_working_form.date }}
           <small class="helper-text">
             <i class="fas fa-info-circle mr-1"></i>
-             Indicate non-working days & Holidays
+             Indicate non-working days and holidays
           </small>
 
         </div>
 
-        <div class="col-md-4 mb-3">
+        <div class="col-lg-4 col-md-6 mb-3">
           <label>Description</label>
           {{ non_working_form.description }}
         </div>
 
-        <div class="col-md-4 mb-3">
+        <div class="col-lg-3 col-md-6 mb-3">
           <label>Applies To</label>
           {{ non_working_form.applies_to }}
+        </div>
+
+        <div class="col-lg-2 col-md-6 mb-3 d-flex align-items-center">
+          <div class="form-check mt-4">
+            {{ non_working_form.is_recurring }}
+            <label class="form-check-label ml-1" for="{{ non_working_form.is_recurring.id_for_label }}">
+              Recurring yearly
+            </label>
+            <small class="d-block text-muted">Same month/day every year.</small>
+          </div>
         </div>
 
       </div>
 
       <div class="text-center mt-3">
         <button type="submit" class="btn btn-warning px-4">
-          <i class="fas fa-save mr-2"></i>Save
+          <i class="fas fa-save mr-2"></i>{% if non_working_editing %}Save Changes{% else %}Save{% endif %}
         </button>
+        {% if non_working_editing %}
+          <a href="?tab=non_working" class="btn btn-light px-4 ml-2">Cancel</a>
+        {% endif %}
       </div>
 
     </form>
@@ -61,17 +77,40 @@
 
 <div class="card shadow-sm mt-4">
 
-  <div class="card-header"
+  <div class="card-header d-flex justify-content-between align-items-center flex-wrap"
        style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-              border-bottom: 2px solid #dee2e6;">
+              border-bottom: 2px solid #dee2e6; gap:.75rem;">
 
     <h5 class="mb-0">
       <i class="fas fa-list mr-2"></i>Configured Non-Working Days
     </h5>
 
+    {% if non_working_total %}
+      <form method="POST"
+            action="{% url 'delete_all_non_working_days' %}"
+            class="mb-0"
+            onsubmit="return confirm('Delete all listed non-working days? This cannot be undone.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-danger">
+          <i class="fas fa-trash-alt mr-1"></i>Delete All
+        </button>
+      </form>
+    {% endif %}
+
   </div>
 
-  <div class="card-body table-responsive">
+  <div class="card-body">
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-3" style="gap:.75rem;">
+      <small class="text-muted font-weight-bold">
+        Showing {{ non_working_days.start_index }} to {{ non_working_days.end_index }} of {{ non_working_total }} days
+      </small>
+      <small class="text-muted">
+        Page {{ non_working_days.number }} of {{ non_working_days.paginator.num_pages }}
+      </small>
+    </div>
+
+    <div class="table-responsive">
 
     <table class="table table-striped">
       <thead>
@@ -79,6 +118,7 @@
           <th>Date</th>
           <th>Description</th>
           <th>Applies To</th>
+          <th>Recurring</th>
           <th>Action</th>
         </tr>
       </thead>
@@ -89,6 +129,17 @@
           <td>{{ day.description }}</td>
           <td>{{ day.applies_to }}</td>
           <td>
+            {% if day.is_recurring %}
+              <span class="badge badge-success">Every year</span>
+            {% else %}
+              <span class="text-muted">No</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="?tab=non_working&edit_non_working={{ day.id }}"
+               class="btn btn-sm btn-primary mr-1">
+               <i class="fas fa-edit"></i>
+            </a>
             <a href="{% url 'delete_non_working_day' day.id %}"
                class="btn btn-sm btn-danger"
                onclick="return confirm('Delete this non-working day?');">
@@ -98,13 +149,55 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="4" class="text-center text-muted">
+          <td colspan="5" class="text-center text-muted">
             No non-working days configured.
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+
+    </div>
+
+    {% if non_working_days.paginator.num_pages > 1 %}
+      <nav aria-label="Non-working days pagination" class="mt-3">
+        <ul class="pagination pagination-sm justify-content-end mb-0">
+          {% if non_working_days.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?tab=non_working&non_working_page=1">&laquo;</a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?tab=non_working&non_working_page={{ non_working_days.previous_page_number }}">&lsaquo;</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+            <li class="page-item disabled"><span class="page-link">&lsaquo;</span></li>
+          {% endif %}
+
+          {% for page_number in non_working_days.paginator.page_range %}
+            {% if page_number == non_working_days.number %}
+              <li class="page-item active"><span class="page-link">{{ page_number }}</span></li>
+            {% elif page_number >= non_working_days.number|add:"-2" and page_number <= non_working_days.number|add:"2" %}
+              <li class="page-item">
+                <a class="page-link" href="?tab=non_working&non_working_page={{ page_number }}">{{ page_number }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+
+          {% if non_working_days.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?tab=non_working&non_working_page={{ non_working_days.next_page_number }}">&rsaquo;</a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?tab=non_working&non_working_page={{ non_working_days.paginator.num_pages }}">&raquo;</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">&rsaquo;</span></li>
+            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+          {% endif %}
+        </ul>
+      </nav>
+    {% endif %}
 
   </div>
 </div>

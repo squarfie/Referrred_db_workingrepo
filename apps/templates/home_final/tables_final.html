@@ -102,7 +102,7 @@
       overflow-x: auto;
       background:
         linear-gradient(90deg, rgba(224,248,252,0.84) 0%, rgba(255,255,255,0.7) 48%, rgba(224,248,252,0.84) 100%),
-        url("{% static 'assets/img/theme/microbial.jpg' %}") center 36% / cover no-repeat;
+        url("{% static 'assets/img/theme/micros_2.png' %}") center 36% / cover no-repeat;
     }
     .table-responsive::-webkit-scrollbar { width: 5px; height: 5px; }
     .table-responsive::-webkit-scrollbar-track { background: #f1f1f1; }
@@ -202,6 +202,53 @@
       font-weight: 900;
       margin-left: 0.5rem;
       text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+    }
+    .batch-tat-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.28rem;
+      min-width: 34px;
+      height: 22px;
+      padding: 0 9px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      font-size: 0.72rem;
+      font-weight: 900;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+    .batch-tat-safe {
+      background: #d8f3c8;
+      border-color: #9fd58a;
+      color: #1f5d2b;
+    }
+    .batch-tat-watch {
+      background: #fff1a8;
+      border-color: #f0cf51;
+      color: #755400;
+    }
+    .batch-tat-near {
+      background: #ffc078;
+      border-color: #f59d3d;
+      color: #6b3400;
+    }
+    .batch-tat-overdue {
+      background: #e67f68;
+      border-color: #d85d45;
+      color: #4f120b;
+    }
+    .batch-accordion-inner {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+    }
+    .batch-accordion-title {
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+      flex: 0 1 auto;
     }
     .batch-child-row { display: none; }
     .batch-child-row.is-visible { display: table-row; }
@@ -543,12 +590,21 @@
                 data-load-url="{% url 'final_batch_rows' %}"
                 aria-expanded="false">
               <td colspan="10" class="batch-accordion-cell">
-                <span class="batch-toggle-icon"><i class="fas fa-chevron-right"></i></span>
-                <i class="fas fa-layer-group mr-2"></i>{{ batch_group.code }}
-                {% if batch_group.site_code %}
-                  <span class="batch-site-code">{{ batch_group.site_code }}</span>
+                <div class="batch-accordion-inner">
+                  <span class="batch-toggle-icon"><i class="fas fa-chevron-right"></i></span>
+                  <span class="batch-accordion-title">
+                    <i class="fas fa-layer-group mr-2"></i>{{ batch_group.code }}
+                    {% if batch_group.site_code %}
+                      <span class="batch-site-code">{{ batch_group.site_code }}</span>
+                    {% endif %}
+                    <span class="batch-count-badge">{{ batch_group.count }}</span>
+                  </span>
+                {% if batch_group.tat_days is not None %}
+                  <span class="batch-tat-badge batch-tat-{{ batch_group.tat_pressure|default:'none' }}" title="Running TAT">
+                    <i class="fas fa-clock"></i>{{ batch_group.tat_days }} days
+                  </span>
                 {% endif %}
-                <span class="batch-count-badge">{{ batch_group.count }}</span>
+                </div>
               </td>
             </tr>
             {% if batch_group.records %}

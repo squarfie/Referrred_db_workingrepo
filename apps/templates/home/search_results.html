@@ -35,15 +35,45 @@
                 <a href="{% url 'edit_data' referred.id %}" class="btn btn-sm btn-outline-primary w-100" style="padding: 5px; margin-bottom: 2px;">
                   <i class="fas fa-edit"></i> Edit Raw
                 </a>
-                <a href="{% url 'generate_batch_pdf' referred.Batch_id.id %}" class="btn btn-sm btn-outline-warning w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
-                  <i class="fas fa-print"></i> Raw Result
-                </a>
+                {% if referred.Batch_id %}
+                  <a href="{% url 'generate_batch_pdf' referred.Batch_id.id %}" class="btn btn-sm btn-outline-warning w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
+                    <i class="fas fa-print"></i> Print Raw
+                  </a>
+                  <a href="{% url 'batch_edit_view' referred.Batch_id.id %}" class="btn btn-sm btn-outline-info w-100" style="padding: 5px; margin-bottom: 2px;">
+                    <i class="fas fa-layer-group"></i> Edit Batch
+                  </a>
+                {% endif %}
+                {% if referred.search_matched_final %}
+                  <a href="{% url 'edit_final_data' referred.search_matched_final.id %}" class="btn btn-sm btn-outline-success w-100" style="padding: 5px; margin-bottom: 2px;">
+                    <i class="fas fa-edit"></i> Edit Final
+                  </a>
+                  {% if referred.search_matched_final.f_Batch_id %}
+                    <a href="{% url 'generate_final_batch_pdf' referred.search_matched_final.f_Batch_id.id %}" class="btn btn-sm btn-outline-danger w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
+                      <i class="fas fa-print"></i> Print Final
+                    </a>
+                  {% endif %}
+                {% endif %}
+                {% if referred.search_accession_concordance_id %}
+                  <a href="{% url 'concordance_accession_detail' referred.search_accession_concordance_id %}" class="btn btn-sm btn-outline-secondary w-100" style="padding: 5px; margin-bottom: 2px;">
+                    <i class="fas fa-eye"></i> View Concordance
+                  </a>
+                  <a href="{% url 'export_concordance_accession_excel' referred.search_accession_concordance_id %}" class="btn btn-sm btn-outline-success w-100" style="padding: 5px; margin-bottom: 2px;">
+                    <i class="fas fa-file-excel"></i> Print Concordance
+                  </a>
+                {% elif referred.search_batch_concordance_id %}
+                  <a href="{% url 'concordance_batch_detail' referred.search_batch_concordance_id %}" class="btn btn-sm btn-outline-secondary w-100" style="padding: 5px; margin-bottom: 2px;">
+                    <i class="fas fa-eye"></i> View Concordance
+                  </a>
+                  <a href="{% url 'export_concordance_report_pdf' referred.search_batch_concordance_id %}" class="btn btn-sm btn-outline-danger w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
+                    <i class="fas fa-file-pdf"></i> Print Concordance
+                  </a>
+                {% endif %}
               </td>
               
             </tr>
             {% empty %}
             <tr>
-              <td colspan="4" class="text-center text-muted">
+              <td colspan="6" class="text-center text-muted">
                 No Record Found.
               </td>
             </tr>
@@ -60,14 +90,44 @@
                 <a href="{% url 'edit_final_data' final.id %}" class="btn btn-sm btn-outline-primary w-100" style="padding: 5px; margin-bottom: 2px;">
                   <i class="fas fa-edit"></i> Edit Final
                 </a>
-                <a href="{% url 'generate_final_batch_pdf' final.f_Batch_id.id %}" class="btn btn-sm btn-outline-warning w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
-                  <i class="fas fa-print"></i> Final Result
-                </a>
+                {% if final.f_Batch_id %}
+                  <a href="{% url 'generate_final_batch_pdf' final.f_Batch_id.id %}" class="btn btn-sm btn-outline-warning w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
+                    <i class="fas fa-print"></i> Print Final
+                  </a>
+                  <a href="{% url 'batch_edit_view' final.f_Batch_id.id %}" class="btn btn-sm btn-outline-info w-100" style="padding: 5px; margin-bottom: 2px;">
+                    <i class="fas fa-layer-group"></i> Edit Batch
+                  </a>
+                {% endif %}
+                {% if final.search_matched_raw %}
+                  <a href="{% url 'edit_data' final.search_matched_raw.id %}" class="btn btn-sm btn-outline-success w-100" style="padding: 5px; margin-bottom: 2px;">
+                    <i class="fas fa-edit"></i> Edit Raw
+                  </a>
+                  {% if final.search_matched_raw.Batch_id %}
+                    <a href="{% url 'generate_batch_pdf' final.search_matched_raw.Batch_id.id %}" class="btn btn-sm btn-outline-danger w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
+                      <i class="fas fa-print"></i> Print Raw
+                    </a>
+                  {% endif %}
+                {% endif %}
+                {% if final.search_accession_concordance_id %}
+                  <a href="{% url 'concordance_accession_detail' final.search_accession_concordance_id %}" class="btn btn-sm btn-outline-secondary w-100" style="padding: 5px; margin-bottom: 2px;">
+                    <i class="fas fa-eye"></i> View Concordance
+                  </a>
+                  <a href="{% url 'export_concordance_accession_excel' final.search_accession_concordance_id %}" class="btn btn-sm btn-outline-success w-100" style="padding: 5px; margin-bottom: 2px;">
+                    <i class="fas fa-file-excel"></i> Print Concordance
+                  </a>
+                {% elif final.search_batch_concordance_id %}
+                  <a href="{% url 'concordance_batch_detail' final.search_batch_concordance_id %}" class="btn btn-sm btn-outline-secondary w-100" style="padding: 5px; margin-bottom: 2px;">
+                    <i class="fas fa-eye"></i> View Concordance
+                  </a>
+                  <a href="{% url 'export_concordance_report_pdf' final.search_batch_concordance_id %}" class="btn btn-sm btn-outline-danger w-100" style="padding: 5px; margin-bottom: 2px;" target="_blank">
+                    <i class="fas fa-file-pdf"></i> Print Concordance
+                  </a>
+                {% endif %}
               </td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="4" class="text-center text-muted">
+              <td colspan="6" class="text-center text-muted">
                 No Record Found.
               </td>
             </tr>

@@ -219,7 +219,7 @@
       <table class="table table-hover mb-0">
         <thead class="table-light">
           <tr>
-            <th><span class="fw-bold text-white "> Batch Number </span></th>
+            <th><span class="fw-bold text-white "> Accession Number </span></th>
             <th> <span class="fw-bold text-white "> Organism </span></th>
             <th> <span class="fw-bold text-white "> Antibiotic </span></th>
             <th class="text-center text-white">  Site RIS</th>
@@ -230,7 +230,7 @@
         <tbody>
           {% for row in details %}
           <tr>
-            <td style="font-weight:700;color:#00bcd4;font-size:.9rem;">{{ row.report.batch.bat_Batch_Name }}</td>
+            <td style="font-weight:700;color:#00bcd4;font-size:.9rem;">{{ row.accession_no }}</td>
             <td style="font-style:italic;color:#455a64;font-weight:500;">{{ row.organism }}</td>
             <td class="fw-semibold" style="color:#1e3a5f;">{{ row.antibiotic }}</td>
 

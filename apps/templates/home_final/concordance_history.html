@@ -17,12 +17,12 @@
 
 /* ── Page Header ─────────────────────────────────────────── */
 .page-header {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(12px);
-  border-radius: 20px;
+  border-radius: 8px;
   padding: 2rem 2.5rem;
   border: 1px solid rgba(0, 188, 212, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 12px 32px rgba(18, 58, 99, 0.09);
   margin-bottom: 1.75rem;
 }
 
@@ -30,10 +30,7 @@
   font-size: 2.2rem;
   font-weight: 800;
   margin: 0 0 0.25rem;
-  background: linear-gradient(135deg, #00bcd4 0%, #1abc9c 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #123a63;
   letter-spacing: 0.3px;
   display: flex;
   align-items: center;
@@ -41,7 +38,7 @@
 }
 
 .page-subtitle {
-  color: rgba(200, 220, 255, 0.65);
+  color: #607d9a;
   font-size: 1rem;
   margin: 0;
   font-weight: 400;
@@ -74,10 +71,10 @@
 
 /* ── Info Banner ─────────────────────────────────────────── */
 .info-banner {
-  background: rgba(0, 188, 212, 0.08);
+  background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(0, 188, 212, 0.25);
   border-left: 4px solid #00bcd4;
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 1.5rem 2rem;
   margin-bottom: 1.75rem;
   backdrop-filter: blur(8px);
@@ -96,7 +93,7 @@
 }
 
 .info-banner p {
-  color: rgba(200, 220, 255, 0.75);
+  color: #536f88;
   font-size: 0.92rem;
   margin: 0 0 0.4rem;
   line-height: 1.6;
@@ -112,14 +109,14 @@
 /* ── Main Card ───────────────────────────────────────────── */
 .report-card {
   background: white;
-  border-radius: 24px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(18, 58, 99, 0.09);
   overflow: hidden;
   border: none;
 }
 
 .report-card-header {
-  background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%);
+  background: linear-gradient(135deg, #123a63 0%, #0f8b8d 100%);
   padding: 1.5rem 2rem;
   display: flex;
   justify-content: space-between;
@@ -137,13 +134,13 @@
 }
 
 .record-count-badge {
-  background: rgba(0, 188, 212, 0.25);
-  color: #00bcd4;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
   padding: 0.4rem 1rem;
   border-radius: 50px;
   font-weight: 700;
   font-size: 0.8rem;
-  border: 1px solid rgba(0, 188, 212, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.34);
   letter-spacing: 0.5px;
 }
 
@@ -489,7 +486,7 @@
 .concordance-history-wrapper::before {
   background:
     linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
-    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat !important;
+    url("/static/assets/img/theme/micros_2.png") center 36% / cover no-repeat !important;
   opacity: .42 !important;
 }
 
@@ -510,23 +507,26 @@
 
 .concordance-history-wrapper .breadcrumb a,
 .concordance-history-wrapper .breadcrumb-item {
-  color: rgba(174, 195, 255, 0.84);
+  color: #2e4d68;
   font-weight: 600;
 }
 
 .concordance-history-wrapper .page-header {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
   border: 1px solid rgba(0, 188, 212, 0.2) !important;
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 1.5rem 2rem;
   margin: 0 0 1.25rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 32px rgba(18, 58, 99, 0.09);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
 
 .concordance-history-wrapper .page-title {
   font-size: 2rem;
+  color: #123a63;
+  background: none;
+  -webkit-text-fill-color: currentColor;
 }
 
 .concordance-history-wrapper .btn-back {
@@ -537,9 +537,9 @@
 }
 
 .concordance-history-wrapper .info-banner {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
   border-color: rgba(0, 188, 212, 0.2) !important;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 1rem 1.25rem;
   margin-bottom: 1.25rem;
   backdrop-filter: blur(10px);
@@ -547,12 +547,20 @@
 }
 
 .concordance-history-wrapper .report-card {
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(18, 58, 99, 0.09);
+  transition: none !important;
+  transform: none !important;
+}
+
+.concordance-history-wrapper .report-card:hover {
+  border-color: var(--arsp-border, #e5edf5) !important;
+  box-shadow: 0 12px 32px rgba(18, 58, 99, 0.09) !important;
+  transform: none !important;
 }
 
 .concordance-history-wrapper .report-card-header {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: linear-gradient(135deg, #123a63 0%, #0f8b8d 100%) !important;
   border-bottom: 1px solid rgba(0, 188, 212, 0.22);
   padding: 1rem 1.25rem;
   backdrop-filter: blur(10px);
@@ -581,6 +589,20 @@
 
 .concordance-history-wrapper .concordance-table thead th {
   background: var(--arsp-table-head-cell-bg, rgba(18, 63, 78, 0.92)) !important;
+}
+
+.concordance-history-wrapper .history-table-scroll .concordance-table tbody tr,
+.concordance-history-wrapper .history-table-scroll .concordance-table tbody tr:hover {
+  transition: none !important;
+  transform: none !important;
+}
+
+.concordance-history-wrapper .history-table-scroll .btn-view,
+.concordance-history-wrapper .history-table-scroll .btn-print,
+.concordance-history-wrapper .history-table-scroll .btn-view:hover,
+.concordance-history-wrapper .history-table-scroll .btn-print:hover {
+  transition: none !important;
+  transform: none !important;
 }
 </style>
 

@@ -34,7 +34,7 @@
   inset: 0;
   background:
     linear-gradient(90deg, rgba(8, 18, 32, .9) 0%, rgba(13, 42, 58, .76) 48%, rgba(0, 120, 135, .7) 100%),
-    url("/static/assets/img/theme/microbial.jpg") center 36% / cover no-repeat;
+    url("/static/assets/img/theme/micros_2.png") center 36% / cover no-repeat;
   opacity: .42;
 }
 
@@ -81,7 +81,7 @@
 
 .btn-history {
   background: rgba(0, 188, 212, 0.12);
-  color: #00bcd4;
+  color: #ffffff !important;
   border: 1px solid rgba(0, 188, 212, 0.35);
   padding: 0.75rem 1.75rem;
   border-radius: 50px;
@@ -101,9 +101,14 @@
 .btn-history:hover {
   background: rgba(0, 188, 212, 0.25);
   border-color: rgba(0, 188, 212, 0.6);
-  color: #00bcd4;
+  color: #ffffff !important;
   box-shadow: 0 6px 20px rgba(0, 188, 212, 0.25);
   transform: translateY(-2px);
+}
+
+.btn-history i,
+.btn-history span {
+  color: inherit !important;
 }
 
 .year-filter-card {
@@ -391,6 +396,200 @@
   justify-content: center;
 }
 
+.site-performance-panel {
+  background: #fff;
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.site-performance-toolbar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: .7rem;
+  justify-content: flex-end;
+  max-width: 100%;
+}
+
+.site-performance-toolbar > div {
+  min-width: 150px;
+}
+
+.site-performance-toolbar label {
+  color: #eaf8fb;
+  display: block;
+  font-size: .68rem;
+  font-weight: 800;
+  margin-bottom: .25rem;
+  text-transform: uppercase;
+}
+
+.concordance-dashboard-wrapper .site-performance-toolbar select.form-control,
+.concordance-dashboard-wrapper .site-performance-toolbar input.form-control,
+.site-performance-toolbar .form-control {
+  background: #fff !important;
+  border: 1px solid #d8eaf1 !important;
+  color: #123a63 !important;
+  -webkit-text-fill-color: #123a63 !important;
+  font-weight: 700;
+  min-width: 150px;
+  width: 100%;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.concordance-dashboard-wrapper .site-performance-toolbar select.form-control option,
+.concordance-dashboard-wrapper .site-performance-toolbar select.form-control option:checked,
+.site-performance-toolbar .form-control option,
+.site-performance-toolbar .form-control option:checked {
+  background: #fff !important;
+  color: #123a63 !important;
+  -webkit-text-fill-color: #123a63 !important;
+}
+
+.site-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: .75rem;
+  padding: 1rem 1.15rem 0;
+}
+
+.site-summary-tile {
+  background: #f8fbfd;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  padding: .85rem 1rem;
+}
+
+.site-summary-tile strong {
+  color: #123a63;
+  display: block;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.site-summary-tile span {
+  color: #718096;
+  display: block;
+  font-size: .68rem;
+  font-weight: 800;
+  margin-top: .35rem;
+  text-transform: uppercase;
+}
+
+.site-bar-list {
+  padding: 1rem 1.15rem .5rem;
+}
+
+.site-bar-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) minmax(150px, 1fr) 88px minmax(180px, 240px);
+  align-items: start;
+  gap: .9rem;
+  min-height: 68px;
+  padding: .8rem 0;
+}
+
+.site-bar-row + .site-bar-row {
+  border-top: 1px solid #edf3f8;
+}
+
+.site-bar-label {
+  color: #24466f;
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+  padding-top: .02rem;
+  white-space: normal;
+  word-break: normal;
+}
+
+.site-bar-label small {
+  color: #426288 !important;
+  font-size: .76rem;
+  font-weight: 650;
+  line-height: 1.2;
+  margin-top: .18rem;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.site-bar-track {
+  background: linear-gradient(90deg, #e8f2f7 0%, #f4fafc 100%);
+  border: 1px solid #d8eaf1;
+  border-radius: 999px;
+  height: 13px;
+  margin-top: .25rem;
+  overflow: hidden;
+}
+
+.site-bar-fill {
+  background: linear-gradient(90deg, #168f96 0%, #1c6cab 52%, #21b487 100%);
+  border-radius: inherit;
+  height: 100%;
+  min-width: 3px;
+}
+
+.site-bar-value {
+  color: #123a63;
+  font-weight: 850;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.site-bar-meta {
+  color: #718096;
+  font-size: .75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  padding-top: .02rem;
+}
+
+.site-table-wrap {
+  margin: .5rem 1.15rem 1.15rem;
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+}
+
+.site-table {
+  margin: 0;
+  min-width: 980px;
+}
+
+.site-table thead th {
+  background: #123f4e !important;
+  color: #fff !important;
+  font-size: .75rem;
+  font-weight: 850;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-transform: uppercase;
+}
+
+.site-table tbody td {
+  color: #24466f;
+  font-weight: 650;
+}
+
+@media (max-width: 992px) {
+  .site-summary-grid {
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+  }
+  .site-bar-row {
+    grid-template-columns: minmax(210px, 280px) minmax(140px, 1fr) 76px;
+  }
+  .site-bar-meta {
+    grid-column: 2 / 4;
+  }
+}
+
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 992px) {
   .ast-stats-grid {
@@ -482,9 +681,19 @@
   padding: 0.55rem 1rem;
   border-radius: 6px;
   background: #11cdef;
-  color: #fff;
+  color: #073642 !important;
   border: 0;
   box-shadow: none;
+}
+
+.concordance-dashboard-wrapper .btn-history:hover,
+.concordance-dashboard-wrapper .btn-history:focus {
+  color: #073642 !important;
+}
+
+.concordance-dashboard-wrapper .btn-history i,
+.concordance-dashboard-wrapper .btn-history span {
+  color: inherit !important;
 }
 
 .concordance-dashboard-wrapper .kpi-card {
@@ -549,12 +758,17 @@
 
       <div class="year-filter-card">
         <form method="get" class="d-flex align-items-center">
+          <input type="hidden" name="site" value="{{ site_filter }}">
+          <input type="hidden" name="site_metric" value="{{ site_metric }}">
+          <input type="hidden" name="site_sort" value="{{ site_sort_order }}">
+          <input type="hidden" name="min_pairs" value="{{ site_min_pairs }}">
           <select id="concordance-year" name="year" class="form-control">
             <option value="all" {% if selected_year == "all" %}selected{% endif %}>All Years</option>
             {% for year in year_options %}
               <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
             {% endfor %}
           </select>
+          &nbsp;
           <button type="submit" class="btn-history">
             <i class="fas fa-filter"></i>
             Year
@@ -759,6 +973,130 @@
     </div>
 
     <!-- ══════════════ CHARTS ══════════════ -->
+    <div class="site-performance-panel mb-4">
+      <div class="content-card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:.75rem;">
+        <h5 class="mb-0">
+          <i class="fas fa-hospital"></i>
+          Site Concordance Performance
+          <span class="badge ml-2">{{ site_metric_label }}</span>
+        </h5>
+        <form method="get" class="site-performance-toolbar mb-0">
+          <input type="hidden" name="year" value="{{ selected_year }}">
+          <div>
+            <label>Site</label>
+            <select name="site" class="form-control form-control-md">
+              <option value="">All Sites</option>
+              {% for site in site_choices %}
+                <option value="{{ site }}" {% if site_filter == site %}selected{% endif %}>{{ site }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>Metric</label>
+            <select name="site_metric" class="form-control form-control-md">
+              {% for metric in site_metric_options %}
+                <option value="{{ metric.value }}" {% if site_metric == metric.value %}selected{% endif %}>{{ metric.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>Sort</label>
+            <select name="site_sort" class="form-control form-control-md">
+              <option value="desc" {% if site_sort_order == "desc" %}selected{% endif %}>Highest to lowest</option>
+              <option value="asc" {% if site_sort_order == "asc" %}selected{% endif %}>Lowest to highest</option>
+            </select>
+          </div>
+          <div>
+            <label>Min Pairs</label>
+            <input type="number" name="min_pairs" value="{{ site_min_pairs }}" min="0" class="form-control form-control-md" style="width:110px;">
+          </div>
+          <button type="submit" class="btn-history">
+            <i class="fas fa-filter"></i>
+            Apply
+          </button>
+          <button type="submit" class="btn-history" formaction="site-export/">
+            <i class="fas fa-file-excel"></i>
+            Export
+          </button>
+          <a href="?year={{ selected_year }}" class="btn-history">
+            <i class="fas fa-sync-alt"></i>
+            Reset
+          </a>
+        </form>
+      </div>
+
+      <div class="site-summary-grid">
+        <div class="site-summary-tile"><strong>{{ site_concordance_summary.site_count }}</strong><span>Sites shown</span></div>
+        <div class="site-summary-tile"><strong>{{ site_concordance_summary.report_count }}</strong><span>Reports</span></div>
+        <div class="site-summary-tile"><strong>{{ site_concordance_summary.total_pairs }}</strong><span>AST pairs</span></div>
+        <div class="site-summary-tile"><strong>{{ site_concordance_summary.avg_ast_rate }}%</strong><span>AST concordance</span></div>
+      </div>
+
+      <div class="site-bar-list">
+        {% if site_concordance_chart_rows %}
+          {% for row in site_concordance_chart_rows %}
+            <div class="site-bar-row">
+              <div class="site-bar-label">
+                {{ row.site_code }}
+                {% if row.site_name %}<small class="d-block">{{ row.site_name }}</small>{% endif %}
+              </div>
+              <div class="site-bar-track">
+                <div class="site-bar-fill" style="width: {{ row.bar_pct }}%;"></div>
+              </div>
+              <div class="site-bar-value">
+                {{ row.metric_value }}{% if "rate" in site_metric %}%{% endif %}
+              </div>
+              <div class="site-bar-meta">
+                {{ row.report_count }} reports · {{ row.total_pairs }} pairs · {{ row.total_deviation }} deviations
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center p-4 text-muted">No site concordance data found for the selected filters.</div>
+        {% endif %}
+      </div>
+
+      {% if site_concordance_rows %}
+      <div class="site-table-wrap">
+        <table class="table site-table">
+          <thead>
+            <tr>
+              <th>Site</th>
+              <th>Reports</th>
+              <th>Total Pairs</th>
+              <th>AST %</th>
+              <th>Genus %</th>
+              <th>Species %</th>
+              <th>VMD</th>
+              <th>MD</th>
+              <th>Minor</th>
+              <th>Total Dev</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in site_concordance_rows %}
+              <tr>
+                <td>
+                  <strong>{{ row.site_code }}</strong>
+                  {% if row.site_name %}<small class="d-block text-muted">{{ row.site_name }}</small>{% endif %}
+                </td>
+                <td>{{ row.report_count }}</td>
+                <td>{{ row.total_pairs }}</td>
+                <td>{{ row.ast_rate }}%</td>
+                <td>{{ row.genus_rate }}%</td>
+                <td>{{ row.species_rate }}%</td>
+                <td>{{ row.vmd }}</td>
+                <td>{{ row.md }}</td>
+                <td>{{ row.minor }}</td>
+                <td>{{ row.total_deviation }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+
     <div class="row g-4">
 
       <div class="col-md-6">

@@ -41,37 +41,56 @@
   box-shadow: 0 8px 28px rgba(15, 39, 68, .08);
 }
 
+.tat-server-sort {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  text-decoration: none;
+}
+
+.tat-server-sort:hover {
+  color: inherit;
+  text-decoration: none;
+  filter: brightness(1.12);
+}
+
+.tat-sort-indicator {
+  font-size: .68rem;
+  opacity: .9;
+}
+
 .tat-control-card {
   background: #fff;
   border: 1px solid #dbe4f0;
   border-radius: 8px;
-  box-shadow: 0 8px 28px rgba(15, 39, 68, .08);
+  box-shadow: 0 6px 18px rgba(15, 39, 68, .06);
+  padding: 0.9rem !important;
 }
 
 .tat-control-shell {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: minmax(560px, 1fr) minmax(680px, 1.15fr);
+  align-items: start;
+  gap: 0.85rem;
+}
+
+.tat-control-shell.mb-4 {
+  margin-bottom: 1rem !important;
 }
 
 .tat-filter-card {
-  flex: 1 1 47%;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
+  min-width: 0;
 }
 
 .tat-action-card {
-  flex: 1 1 53%;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  border-left: 0;
+  min-width: 0;
 }
 
 .tat-action-card-inner {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.7rem;
 }
 
 .tat-filter-form,
@@ -79,7 +98,7 @@
 .tat-export-form {
   display: flex;
   align-items: flex-end;
-  gap: 0.65rem;
+  gap: 0.5rem;
   min-width: 0;
   margin: 0;
 }
@@ -89,19 +108,22 @@
 }
 
 .tat-upload-form {
-  flex: 0 1 350px;
+  flex: 0 0 360px;
 }
 
 .tat-export-form {
-  flex: 1 1 440px;
-  padding-left: 0.9rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: 0.75rem;
   border-left: 1px solid #dbe4f0;
+  flex-wrap: wrap;
+  row-gap: 0.45rem;
 }
 
 .tat-control-field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.25rem;
   min-width: 0;
 }
 
@@ -116,7 +138,7 @@
 
 .tat-field-search { flex: 1 1 280px; }
 .tat-field-select { flex: 0 0 120px; }
-.tat-field-buttons { flex: 0 0 170px; }
+.tat-field-buttons { flex: 0 0 150px; }
 .tat-field-file { flex: 1 1 200px; }
 
 .tat-location-select {
@@ -136,15 +158,65 @@
   opacity: 0.65;
   cursor: wait;
 }
-.tat-field-date { flex: 0 0 108px; }
-.tat-field-export-buttons { flex: 0 0 200px; }
+.tat-field-date { flex: 0 0 132px; }
+.tat-field-date .form-control {
+  width: 132px;
+  min-width: 132px;
+}
+.tat-field-export-buttons {
+  flex: 1 1 100%;
+  min-width: 0;
+}
 
 .tat-control-field .d-flex {
-  gap: 0.45rem;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.tat-control-shell .btn {
+  border-radius: 6px;
+  min-height: 34px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 0.4rem 0.7rem;
+  box-shadow: 0 4px 10px rgba(15, 39, 68, .10);
+}
+
+.tat-control-shell .btn-primary,
+.tat-control-shell .btn-secondary,
+.tat-control-shell .btn-success,
+.tat-control-shell .btn-info {
+  color: #fff !important;
+}
+
+.tat-field-buttons .btn {
+  min-width: 0;
+}
+
+.tat-export-form .btn {
+  flex: 1 1 130px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.tat-export-form .btn-primary {
+  background: #174f82;
+  border-color: #174f82;
+}
+
+.tat-export-form .btn-secondary {
+  background: #53616f;
+  border-color: #53616f;
+}
+
+.tat-export-form .btn-info {
+  background: #0f9f8f;
+  border-color: #0f9f8f;
 }
 
 .tat-control-hint {
-  margin-top: 0.45rem;
+  margin-top: 0.25rem;
   color: #718096;
   font-size: 0.64rem;
   text-align: left;
@@ -295,21 +367,27 @@
   border-color: #174f82;
 }
 
-@media (max-width: 1600px) {
+@media (max-width: 1450px) {
   .tat-control-shell {
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    grid-template-columns: 1fr;
   }
+}
 
-  .tat-filter-card,
-  .tat-action-card {
-    flex: 1 1 100%;
-    border-radius: 8px;
-    border-left: 1px solid #dbe4f0;
-  }
-
+@media (max-width: 1200px) {
   .tat-action-card-inner {
-    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .tat-upload-form,
+  .tat-export-form {
+    flex-basis: 100%;
+  }
+
+  .tat-export-form {
+    padding-left: 0;
+    border-left: 0;
+    padding-top: 0.9rem;
+    border-top: 1px solid #dbe4f0;
   }
 }
 
@@ -332,10 +410,422 @@
   .tat-field-date,
   .tat-field-export-buttons {
     flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .tat-field-date .form-control {
+    width: 100%;
+    min-width: 0;
   }
 }
 
+/* ===== FILTER CONTROL SECTION ===== */
 
+.tat-control-shell {
+    display: grid;
+    grid-template-columns: minmax(560px, 1fr) minmax(680px, 1.15fr);
+    align-items: start;
+    gap: 0.85rem;
+    margin-bottom: 1rem !important;
+}
+
+.tat-control-card {
+    background: #ffffff;
+    border: 1px solid #dbe4f0;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(15, 39, 68, 0.06);
+    padding: 0.9rem !important;
+}
+
+.tat-filter-card {
+    min-width: 0;
+}
+
+.tat-action-card {
+    min-width: 0;
+}
+
+.tat-action-card-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+}
+
+/* ===== FILTER FORM ===== */
+.tat-filter-form,
+.tat-upload-form,
+.tat-export-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    min-width: 0;
+    margin: 0;
+}
+
+.tat-filter-form {
+    width: 100%;
+}
+
+.tat-upload-form {
+    flex: 0 0 360px;
+}
+
+.tat-export-form {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-left: 0.75rem;
+    border-left: 1px solid #dbe4f0;
+    flex-wrap: wrap;
+    row-gap: 0.45rem;
+}
+
+/* ===== FORM FIELDS ===== */
+.tat-control-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.tat-control-field label {
+    margin: 0;
+    color: #24466f;
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* FIELD SIZING */
+.tat-field-search { flex: 1 1 280px; }
+.tat-field-select { flex: 0 0 120px; }
+.tat-field-buttons { flex: 0 0 150px; }
+.tat-field-file { flex: 1 1 200px; }
+.tat-field-date { flex: 0 0 132px; }
+.tat-field-export-buttons { flex: 1 1 100%; min-width: 0; }
+
+.tat-field-date .form-control {
+    width: 132px;
+    min-width: 132px;
+}
+
+/* ===== INPUTS & SELECTS ===== */
+.tat-control-field .form-control,
+.tat-control-field .form-select {
+    height: 34px;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #cfe3f1;
+    border-radius: 6px;
+    background-color: #f8fcff;
+    color: #24466f;
+    font-size: 0.78rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+.tat-control-field .form-control::placeholder {
+    color: #999;
+    font-weight: 600;
+}
+
+.tat-control-field .form-control:focus,
+.tat-control-field .form-select:focus {
+    outline: none;
+    border-color: #00bcd4;
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+    background-color: white;
+}
+
+.tat-location-select {
+    min-width: 160px;
+    height: 30px;
+    padding: 3px 26px 3px 8px;
+    border: 1px solid #cfe3f1;
+    border-radius: 999px;
+    background-color: #f8fcff;
+    color: #24466f;
+    font-size: 0.78rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.tat-location-select:hover {
+    border-color: #00bcd4;
+    background-color: white;
+}
+
+.tat-location-select:focus {
+    outline: none;
+    border-color: #00bcd4;
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+.tat-location-select:disabled,
+.tat-location-select.is-saving {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+/* ===== BUTTONS ===== */
+.tat-control-field .d-flex {
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+
+.tat-control-shell .btn {
+    border-radius: 6px;
+    min-height: 34px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1.2;
+    padding: 0.4rem 0.7rem;
+    box-shadow: 0 4px 10px rgba(15, 39, 68, 0.10);
+    transition: all 0.2s ease;
+    border: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.tat-control-shell .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(15, 39, 68, 0.15);
+}
+
+.tat-control-shell .btn:active {
+    transform: translateY(0);
+}
+
+/* BUTTON COLORS */
+.tat-control-shell .btn-primary {
+    background: #174f82;
+    border-color: #174f82;
+    color: #ffffff !important;
+}
+
+.tat-control-shell .btn-primary:hover {
+    background: #0f3a5f;
+    border-color: #0f3a5f;
+}
+
+.tat-control-shell .btn-secondary {
+    background: #53616f;
+    border-color: #53616f;
+    color: #ffffff !important;
+}
+
+.tat-control-shell .btn-secondary:hover {
+    background: #3d4a58;
+    border-color: #3d4a58;
+}
+
+.tat-control-shell .btn-success {
+    background: #17a085;
+    border-color: #17a085;
+    color: #ffffff !important;
+}
+
+.tat-control-shell .btn-success:hover {
+    background: #0f7a6a;
+    border-color: #0f7a6a;
+}
+
+.tat-control-shell .btn-info {
+    background: #0f9f8f;
+    border-color: #0f9f8f;
+    color: #ffffff !important;
+}
+
+.tat-control-shell .btn-info:hover {
+    background: #0d7a6f;
+    border-color: #0d7a6f;
+}
+
+.tat-field-buttons .btn {
+    min-width: 0;
+}
+
+.tat-export-form .btn {
+    flex: 1 1 130px;
+    justify-content: center;
+}
+
+/* ===== CONTROL HINT ===== */
+.tat-control-hint {
+    margin-top: 0.25rem;
+    color: #718096;
+    font-size: 0.64rem;
+    text-align: left;
+}
+
+/* ===== FILE INPUT ===== */
+.tat-control-field input[type="file"] {
+    height: 34px;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #cfe3f1;
+    border-radius: 6px;
+    background-color: #f8fcff;
+    color: #24466f;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.tat-control-field input[type="file"]::file-selector-button {
+    background: #e8eef5;
+    color: #24466f;
+    border: none;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.7rem;
+    margin-right: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.tat-control-field input[type="file"]::file-selector-button:hover {
+    background: #d8dce8;
+}
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+
+/* Large screens */
+@media (max-width: 1450px) {
+    .tat-control-shell {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Medium screens */
+@media (max-width: 1200px) {
+    .tat-action-card-inner {
+        flex-wrap: wrap;
+    }
+
+    .tat-upload-form,
+    .tat-export-form {
+        flex-basis: 100%;
+    }
+
+    .tat-export-form {
+        padding-left: 0;
+        border-left: 0;
+        padding-top: 0.9rem;
+        border-top: 1px solid #dbe4f0;
+    }
+
+    .tat-field-export-buttons {
+        flex: 1 1 100%;
+    }
+}
+
+/* Tablets */
+@media (max-width: 768px) {
+    .tat-control-shell {
+        gap: 0.65rem;
+    }
+
+    .tat-action-card-inner,
+    .tat-filter-form,
+    .tat-upload-form,
+    .tat-export-form {
+        flex-wrap: wrap;
+        flex-basis: 100%;
+        padding-left: 0;
+        border-left: 0;
+    }
+
+    .tat-export-form {
+        padding-top: 0.65rem;
+        border-top: 1px solid #dbe4f0;
+    }
+
+    .tat-control-field,
+    .tat-field-search,
+    .tat-field-select,
+    .tat-field-buttons,
+    .tat-field-file,
+    .tat-field-date,
+    .tat-field-export-buttons {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .tat-control-field label {
+        font-size: 0.6rem;
+    }
+
+    .tat-control-field .form-control,
+    .tat-control-field .form-select {
+        height: 32px;
+        font-size: 0.75rem;
+    }
+
+    .tat-control-shell .btn {
+        min-height: 32px;
+        font-size: 0.75rem;
+        padding: 0.35rem 0.6rem;
+    }
+
+    .tat-export-form .btn {
+        flex: 1 1 auto;
+    }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+    .tat-control-shell {
+        gap: 0.5rem;
+    }
+
+    .tat-control-card {
+        padding: 0.7rem !important;
+    }
+
+    .tat-control-field,
+    .tat-field-search,
+    .tat-field-select,
+    .tat-field-buttons,
+    .tat-field-file,
+    .tat-field-date,
+    .tat-field-export-buttons {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .tat-field-date .form-control {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .tat-control-field label {
+        font-size: 0.55rem;
+    }
+
+    .tat-control-field .form-control,
+    .tat-control-field .form-select {
+        height: 30px;
+        font-size: 0.7rem;
+        padding: 0.3rem 0.5rem;
+    }
+
+    .tat-control-shell .btn {
+        min-height: 30px;
+        font-size: 0.7rem;
+        padding: 0.3rem 0.5rem;
+        flex: 1 1 auto;
+    }
+
+    .tat-export-form .btn {
+        flex: 1 1 auto;
+    }
+
+    .tat-location-select {
+        min-width: auto;
+        width: 100%;
+    }
+}
 </style>
 
 <div class="tat-page">
@@ -352,7 +842,7 @@
         <a href="{% url 'tat_analysis' %}" class="btn btn-outline-light btn-sm">
           <i class="fas fa-chart-pie me-1"></i> Analysis
         </a>
-        <a href="{% url 'tat_running_process_list' %}?{% if q %}q={{ q|urlencode }}&{% endif %}{% if status %}status={{ status|urlencode }}&{% endif %}{% if year %}year={{ year|urlencode }}{% endif %}"
+        <a href="{% url 'tat_running_process_list' %}{% if page_query %}?{{ page_query }}{% endif %}"
            class="btn btn-outline-light btn-sm">
           <i class="fas fa-columns me-1"></i> Process Columns
         </a>
@@ -377,7 +867,7 @@
     </div>
   </div>
 
-  <div class="container-fluid px-4 py-4">
+  <div class="container-fluid px-4 py-1">
       <div class="tat-control-shell mb-4">
         <div class="tat-control-card tat-filter-card p-3">
           <form method="get" class="tat-filter-form">
@@ -457,6 +947,9 @@
                   <button type="submit" class="btn btn-primary btn-sm text-nowrap">
                     <i class="fas fa-file-excel me-1"></i> Running TAT
                   </button>
+                  <button type="submit" formaction="{% url 'export_tat_analysis_tracking_excel' %}" class="btn btn-secondary btn-sm text-white text-nowrap">
+                    <i class="fas fa-chart-line me-1"></i> TAT Tracking
+                  </button>
                   <button type="submit" formaction="{% url 'download_tat_ipcr_template' %}" class="btn btn-info btn-sm text-white text-nowrap">
                     <i class="fas fa-download me-1"></i> IPCR Summary
                   </button>
@@ -491,30 +984,30 @@
       </div>
 
       <div class="tat-table-wrap">
-        <table class="table table-hover tat-running-table">
+        <table class="table table-hover tat-running-table" data-no-sort>
           <thead>
             <tr>
               <th>Action</th>
-              <th>BatchCode</th>
-              <th>SiteCode</th>
-              <th>RefDate</th>
-              <th>No_Isolates</th>
-              <th>BatchNumber</th>
-              <th>TotalBatch</th>
-              <th>Running TAT</th>
-              <th>Location</th>
-              <th>Date Received</th>
-              <th>TAT Status</th>
-              <th>Scanning Raw</th>
-              <th>Scanning Worksheet</th>
-              <th>Scanning Final</th>
-              <th>Action Taken</th>
-              <th>Assigned To</th>
-              <th>Date Released</th>
-              <th>Final TAT</th>
-              <th>Release Status</th>
-              <th>Remarks</th>
-              <th>Last Update</th>
+              <th><a class="tat-server-sort" href="{{ sort_links.batch_code.url }}">BatchCode{% if sort_links.batch_code.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.site_code.url }}">SiteCode{% if sort_links.site_code.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.referral_date.url }}">RefDate{% if sort_links.referral_date.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.num_isolates.url }}">No_Isolates{% if sort_links.num_isolates.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.batch_number.url }}">BatchNumber{% if sort_links.batch_number.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.total_batch.url }}">TotalBatch{% if sort_links.total_batch.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.running_tat.url }}">Running TAT{% if sort_links.running_tat.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.location.url }}">Location{% if sort_links.location.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.date_received.url }}">Date Received{% if sort_links.date_received.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.tat_status.url }}">TAT Status{% if sort_links.tat_status.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.scanning_raw.url }}">Scanning Raw{% if sort_links.scanning_raw.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.scanning_ws.url }}">Scanning Worksheet{% if sort_links.scanning_ws.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.scanning_final.url }}">Scanning Final{% if sort_links.scanning_final.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.action_taken.url }}">Action Taken{% if sort_links.action_taken.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.assigned_to.url }}">Assigned To{% if sort_links.assigned_to.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.date_released.url }}">Date Released{% if sort_links.date_released.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.final_tat.url }}">Final TAT{% if sort_links.final_tat.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.release_status.url }}">Release Status{% if sort_links.release_status.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.remarks.url }}">Remarks{% if sort_links.remarks.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.last_update.url }}">Last Update{% if sort_links.last_update.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
 
             </tr>
           </thead>
@@ -615,10 +1108,10 @@
           <ul class="pagination pagination-sm mb-0 tat-pagination">
             {% if page_obj.has_previous %}
               <li class="page-item">
-                <a class="page-link" href="?page=1{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&laquo;</a>
+                <a class="page-link" href="?page=1{% if page_query %}&{{ page_query }}{% endif %}">&laquo;</a>
               </li>
               <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&lsaquo;</a>
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if page_query %}&{{ page_query }}{% endif %}">&lsaquo;</a>
               </li>
             {% else %}
               <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
@@ -629,10 +1122,10 @@
 
             {% if page_obj.has_next %}
               <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&rsaquo;</a>
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if page_query %}&{{ page_query }}{% endif %}">&rsaquo;</a>
               </li>
               <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&raquo;</a>
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if page_query %}&{{ page_query }}{% endif %}">&raquo;</a>
               </li>
             {% else %}
               <li class="page-item disabled"><span class="page-link">&rsaquo;</span></li>

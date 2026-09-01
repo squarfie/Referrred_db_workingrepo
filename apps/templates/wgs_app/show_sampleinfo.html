@@ -3,7 +3,7 @@
 
 {% block content %}
 
-<div class="header bg-primary pb-3 wgs-page-header" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
+<div class="header bg-primary pb-3 wgs-page-header" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/micros_2.png); background-position: center bottom;">
   <span class="mask bg-gradient-default opacity-3"></span>
   <div class="container-fluid">
     <div class="header-body">
@@ -42,9 +42,14 @@
           </h3>
         </div>
         <div class="col text-right">
-          <span class="badge badge-light badge-lg">
-            <strong>{{ total_records }}</strong> Total Records
+          <span class="badge badge-light badge-lg text-secondary">
+            <strong>{{ total_records }}</strong>&nbsp; Total Records
           </span>
+          {% if q %}
+          <span class="badge badge-info badge-lg ml-2">
+            <strong>{{ filtered_records }}</strong>&nbsp; Match{{ filtered_records|pluralize:"es" }}
+          </span>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -52,17 +57,24 @@
     <div class="card-body border-bottom">
       <div class="row align-items-center">
         <div class="col-md-6 mb-3 mb-md-0">
-          <div class="input-group input-group-alternative">
-            <div class="input-group-prepend">
-              <span class="input-group-text"><i class="fas fa-search"></i></span>
+          <form method="get" class="mb-0">
+            <div class="input-group input-group-alternative">
+              <div class="input-group-prepend">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+              </div>
+              <input id="search-input" name="q" value="{{ q }}" class="form-control" placeholder="Search by sample, accession, batch, or status..." type="text">
+              <div class="input-group-append">
+                <button class="btn btn-primary" type="submit">
+                  <i class="fas fa-search mr-1"></i>Search
+                </button>
+                {% if q %}
+                <a class="btn btn-outline-secondary" href="{% url 'show_sample_information' %}">
+                  <i class="fas fa-times mr-1"></i>Clear
+                </a>
+                {% endif %}
+              </div>
             </div>
-            <input id="search-input" class="form-control" placeholder="Search by sample, accession, batch, or status..." type="text" onkeyup="searchTable()">
-            <div class="input-group-append">
-              <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-          </div>
+          </form>
         </div>
 
         <div class="col-md-6">
@@ -126,7 +138,13 @@
           <tr>
             <td colspan="7" class="text-center py-5">
               <i class="ni ni-folder-17 text-muted" style="font-size: 3rem;"></i>
-              <p class="text-muted mt-3 mb-0">No Sample Information records found</p>
+              <p class="text-muted mt-3 mb-0">
+                {% if q %}
+                  No Sample Information records found for "{{ q }}"
+                {% else %}
+                  No Sample Information records found
+                {% endif %}
+              </p>
             </td>
           </tr>
           {% endfor %}
@@ -138,6 +156,7 @@
       <div class="row align-items-center">
         <div class="col-md-4">
           <form method="get" class="form-inline">
+            {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
             <label class="mr-2 mb-0 text-primary">Go to page:</label>
             <input type="number" name="page" min="1" max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}" class="form-control form-control-sm mr-2" style="width: 70px;">
             <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-arrow-right"></i></button>
@@ -150,15 +169,15 @@
           <nav aria-label="Page navigation">
             <ul class="pagination justify-content-end mb-0">
               {% if page_obj.has_previous %}
-                <li class="page-item"><a class="page-link" href="?page=1"><i class="fas fa-angle-double-left"></i></a></li>
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}"><i class="fas fa-angle-left"></i></a></li>
+                <li class="page-item"><a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page=1"><i class="fas fa-angle-double-left"></i></a></li>
+                <li class="page-item"><a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}"><i class="fas fa-angle-left"></i></a></li>
               {% else %}
                 <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-left"></i></span></li>
                 <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-left"></i></span></li>
               {% endif %}
               {% if page_obj.has_next %}
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}"><i class="fas fa-angle-right"></i></a></li>
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}"><i class="fas fa-angle-double-right"></i></a></li>
+                <li class="page-item"><a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}"><i class="fas fa-angle-right"></i></a></li>
+                <li class="page-item"><a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page_obj.paginator.num_pages }}"><i class="fas fa-angle-double-right"></i></a></li>
               {% else %}
                 <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-right"></i></span></li>
                 <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-right"></i></span></li>
@@ -227,32 +246,6 @@ thead.thead-light { background-color: #f6f9fc; }
 
 {% block javascripts %}
 <script>
-function searchTable() {
-  var input = document.getElementById("search-input");
-  var filter = input.value.toLowerCase();
-  var table = document.getElementById("sampleinfo-table");
-  var rows = table.querySelectorAll("tbody tr");
-
-  rows.forEach(row => {
-    if (row.cells.length > 1) {
-      var searchable = Array.from(row.cells).slice(1).map(cell => cell.textContent.toLowerCase()).join(" ");
-      row.style.display = searchable.includes(filter) ? "" : "none";
-    }
-  });
-}
-
-function clearSearch() {
-  document.getElementById("search-input").value = "";
-  searchTable();
-}
-
-document.getElementById("search-input").addEventListener("keypress", function(event) {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    searchTable();
-  }
-});
-
 $(document).ready(function(){
   $('.delete-btn').click(function(){
     var url = $(this).data('url');

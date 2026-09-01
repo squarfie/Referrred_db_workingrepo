@@ -471,17 +471,6 @@ input.form-control[readonly] {
                 {% endif %}
               </div>
 
-              <div class="col-md-6 form-group">
-                <label class="form-control-label">Target Days</label>
-                {{ form.tat_Target_Days|add_class:"form-control" }}
-                {% if form.tat_Target_Days.errors %}
-                  <ul class="errorlist">
-                    {% for error in form.tat_Target_Days.errors %}
-                      <li>{{ error }}</li>
-                    {% endfor %}
-                  </ul>
-                {% endif %}
-              </div>
             </div>
           </div>
         </div>
@@ -723,6 +712,12 @@ input.form-control[readonly] {
                 {% endif %}
               </div>
 
+              <div class="col-md-4 form-group">
+                <label class="form-control-label">Date Received</label>
+                <input type="text" class="form-control bg-light" value="{{ tat_first_date_received|date:'M d, Y'|default:'-' }}" readonly>
+                <small class="text-muted">Derived from the earliest process step date received.</small>
+              </div>
+
               {% if form.instance.tat_Running_TAT %}
               <div class="col-md-12 text-center">
                 <div class="badge badge-lg">
@@ -742,16 +737,28 @@ input.form-control[readonly] {
           </div>
           <div class="card-body">
             <div class="row">
-              <div class="col-md-6 form-group">
-                <label class="form-control-label">Release Status</label>
-                {{ form.tat_Status_Release|add_class:"form-control" }}
-                {% if form.tat_Status_Release.errors %}
-                  <ul class="errorlist">
-                    {% for error in form.tat_Status_Release.errors %}
-                      <li>{{ error }}</li>
-                    {% endfor %}
-                  </ul>
-                {% endif %}
+              <div class="col-md-4 form-group">
+                <label class="form-control-label">Scanning Raw</label>
+                <div class="form-check mt-2">
+                  {{ form.tat_Scanning_raw }}
+                  <label class="form-check-label ml-2">Completed</label>
+                </div>
+              </div>
+
+              <div class="col-md-4 form-group">
+                <label class="form-control-label">Scanning Worksheet</label>
+                <div class="form-check mt-2">
+                  {{ form.tat_Scanning_ws }}
+                  <label class="form-check-label ml-2">Completed</label>
+                </div>
+              </div>
+
+              <div class="col-md-4 form-group">
+                <label class="form-control-label">Scanning Final</label>
+                <div class="form-check mt-2">
+                  {{ form.tat_Scanning_final }}
+                  <label class="form-check-label ml-2">Completed</label>
+                </div>
               </div>
 
               <div class="col-md-12 form-group">
@@ -856,7 +863,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateReleasedInput = document.querySelector('input[name="tat_Date_Released"]');
     const finalTatInput = document.querySelector('input[name="tat_Final_TAT"]');
     const runningTatInput = document.querySelector('input[name="tat_Running_TAT"]');
-    const statusInput = document.querySelector('select[name="tat_Status_Release"]');
     const warningBox = document.getElementById('tat-date-warning');
 
     function showTatWarning(message) {
@@ -886,8 +892,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 finalTatInput.value = diffDays < 0 ? 0 : diffDays;
                 runningTatInput.value = diffDays < 0 ? 0 : diffDays;
                 
-                // Update status to 'Released'
-                if (statusInput) statusInput.value = "Released";
             }
         } else if (refDateVal && !relDateVal) {
             // Logic for Running TAT based on 'today' if date released is cleared
@@ -898,7 +902,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             runningTatInput.value = diffDays > 0 ? diffDays : 0;
             finalTatInput.value = "";
-            if (statusInput) statusInput.value = "Ongoing";
         }
     }
 

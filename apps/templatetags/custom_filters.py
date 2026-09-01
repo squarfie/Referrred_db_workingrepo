@@ -61,15 +61,27 @@ def make_tuple(value1, value2):
 @register.simple_tag
 def get_existing_value(existing_entries, entry_id, value_type):
     """
-    Retrieves the existing value for a given breakpoint entry.
-    Supports main and retest antibiotics.
+    Retrieves an existing antibiotic value by breakpoint ID or WHONET code.
     """
-    # Try to fetch main entry first
-    entry = existing_entries.filter(ab_breakpoints_id=entry_id, ab_Abx_code__isnull=False).first()
+    entry = None
+    identifier = str(entry_id or "").strip()
 
-    # If not found, try retest entry
-    if not entry:
-        entry = existing_entries.filter(ab_breakpoints_id=entry_id, ab_Retest_Abx_code__isnull=False).first()
+    if identifier.isdigit():
+        entry = existing_entries.filter(
+            ab_breakpoints_id=identifier,
+            ab_Abx_code__isnull=False,
+        ).first()
+        if not entry:
+            entry = existing_entries.filter(
+                ab_breakpoints_id=identifier,
+                ab_Retest_Abx_code__isnull=False,
+            ).first()
+    else:
+        code = identifier.upper()
+        if value_type.startswith("retest_"):
+            entry = existing_entries.filter(ab_Retest_Abx_code__iexact=code).first()
+        else:
+            entry = existing_entries.filter(ab_Abx_code__iexact=code).first()
     
     if entry:
         if value_type == 'disk':

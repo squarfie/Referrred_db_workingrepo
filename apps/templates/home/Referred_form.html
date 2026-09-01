@@ -162,7 +162,7 @@ label.form-control-label{
 
 
 <div class="header pb-6 d-flex align-items-center"
-     style="min-height: 200px; background-size: auto; background-image: url(/static/assets/img/theme/microbial.jpg); background-size: cover; background-position: center bottom;">
+     style="min-height: 200px; background-size: auto; background-image: url(/static/assets/img/theme/micros_2.png); background-size: cover; background-position: center bottom;">
   <!-- Mask -->
   <span class="mask bg-gradient-default opacity-6"></span>
   <!-- Header container -->
@@ -1384,7 +1384,14 @@ function loadAntibiotics(org, retest = false) {
         micTbody.innerHTML  = "";
       }
 
+      const seenAntibiotics = new Set();
+
       data.antibiotics.forEach(abx => {
+        const code = (abx.whonet || "").trim().toUpperCase();
+        const methodKey = abx.is_disk ? "disk" : "mic";
+        const dedupeKey = `${retest ? "retest" : "main"}:${methodKey}:${code}`;
+        if (!code || seenAntibiotics.has(dedupeKey)) return;
+        seenAntibiotics.add(dedupeKey);
 
         // ======================
         // SENTINEL SITE
@@ -1394,9 +1401,9 @@ function loadAntibiotics(org, retest = false) {
             diskTbody.insertAdjacentHTML("beforeend", `
               <tr>
                 <td>${abx.name}</td>
-                <td>${abx.whonet}</td>
-                <td><input name="disk_${abx.whonet}" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" data-autotab-length="2" data-min-disk-value="6" style="width:80px" class="form-control form-control-sm text-center mx-auto antibiotic-disk-autotab"></td>
-                <td><input name="disk_enris_${abx.whonet}" type="text" maxlength="4" style="width:70px" oninput="this.value = this.value.toUpperCase();"
+                <td>${code}</td>
+                <td><input name="disk_${code}" value="${abx.disk ?? ""}" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" data-autotab-length="2" data-min-disk-value="6" style="width:80px" class="form-control form-control-sm text-center mx-auto antibiotic-disk-autotab"></td>
+                <td><input name="disk_enris_${code}" value="${abx.disk_enris ?? ""}" type="text" maxlength="4" style="width:70px" oninput="this.value = this.value.toUpperCase();"
                  list="enris-options" class="form-control form-control-sm text-center mx-auto"></td>
               </tr>
             `);
@@ -1404,16 +1411,16 @@ function loadAntibiotics(org, retest = false) {
             micTbody.insertAdjacentHTML("beforeend", `
               <tr>
                 <td>${abx.name}</td>
-                <td>${abx.whonet}</td>
+                <td>${code}</td>
                 <td>
                   <div style="display:flex; gap:6px;">
-                  <input name="mic_operand_${abx.whonet}" type="text" style="width:70px" class="form-control form-control-sm text-center mx-auto">
-                <input name="mic_${abx.whonet}" type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" style="width:80px" class="form-control form-control-sm text-center mx-auto">
+                  <input name="mic_operand_${code}" value="${abx.mic_operand ?? ""}" type="text" style="width:70px" class="form-control form-control-sm text-center mx-auto">
+                <input name="mic_${code}" value="${abx.mic ?? ""}" type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" style="width:80px" class="form-control form-control-sm text-center mx-auto">
                   </div>
                 </td>
-                <td><input name="mic_enris_${abx.whonet}" type="text" maxlength="4" style="width:70px" oninput="this.value = this.value.toUpperCase();"
+                <td><input name="mic_enris_${code}" value="${abx.mic_enris ?? ""}" type="text" maxlength="4" style="width:70px" oninput="this.value = this.value.toUpperCase();"
                  list="enris-options" class="form-control form-control-sm text-center mx-auto"></td>
-                <td><input type="checkbox" name="alert_mic_${abx.whonet}"></td>
+                <td><input type="checkbox" name="alert_mic_${code}" ${abx.alert_mic ? "checked" : ""}></td>
               </tr>
             `);
           }
@@ -1427,9 +1434,9 @@ function loadAntibiotics(org, retest = false) {
             retestDiskTbody.insertAdjacentHTML("beforeend", `
               <tr>
                 <td>${abx.name}</td>
-                <td>${abx.whonet}</td>
-                <td><input name="retest_disk_${abx.whonet}" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" data-autotab-length="2" data-min-disk-value="6" style="width:80px" class="form-control form-control-sm text-center mx-auto antibiotic-disk-autotab"></td>
-                <td><input name="retest_disk_enris_${abx.whonet}" type="text" maxlength="4" style="width:70px" oninput="this.value = this.value.toUpperCase();"
+                <td>${code}</td>
+                <td><input name="retest_disk_${code}" value="${abx.disk ?? ""}" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" data-autotab-length="2" data-min-disk-value="6" style="width:80px" class="form-control form-control-sm text-center mx-auto antibiotic-disk-autotab"></td>
+                <td><input name="retest_disk_enris_${code}" value="${abx.disk_enris ?? ""}" type="text" maxlength="4" style="width:70px" oninput="this.value = this.value.toUpperCase();"
                  list="enris-options" class="form-control form-control-sm text-center mx-auto"></td>
               </tr>
             `);
@@ -1437,16 +1444,16 @@ function loadAntibiotics(org, retest = false) {
             retestMicTbody.insertAdjacentHTML("beforeend", `
               <tr>
                 <td>${abx.name}</td>
-                <td>${abx.whonet}</td>
+                <td>${code}</td>
                 <td>
                   <div style="display:flex; gap:6px;">
-                  <input name="retest_mic_operand_${abx.whonet}" type="text" style="width:70px" class="form-control form-control-sm text-center mx-auto">
-                  <input name="retest_mic_${abx.whonet}" type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" style="width:80px" class="form-control form-control-sm text-center mx-auto">
+                  <input name="retest_mic_operand_${code}" value="${abx.mic_operand ?? ""}" type="text" style="width:70px" class="form-control form-control-sm text-center mx-auto">
+                  <input name="retest_mic_${code}" value="${abx.mic ?? ""}" type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" style="width:80px" class="form-control form-control-sm text-center mx-auto">
                   </div>
                 </td>
-                <td><input name="retest_mic_enris_${abx.whonet}" type="text" maxlength="4" style="width:70px" oninput="this.value = this.value.toUpperCase();"
+                <td><input name="retest_mic_enris_${code}" value="${abx.mic_enris ?? ""}" type="text" maxlength="4" style="width:70px" oninput="this.value = this.value.toUpperCase();"
                  list="enris-options" class="form-control form-control-sm text-center mx-auto"></td>
-                <td><input type="checkbox" name="retest_alert_mic_${abx.whonet}"></td>
+                <td><input type="checkbox" name="retest_alert_mic_${code}" ${abx.alert_mic ? "checked" : ""}></td>
               </tr>
             `);
           }

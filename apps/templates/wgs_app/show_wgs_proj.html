@@ -7,7 +7,7 @@
 
 {% block content %}
 
-<div class="header bg-primary pb-3 wgs-page-header" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/microbial.jpg); background-position: center bottom;">
+<div class="header bg-primary pb-3 wgs-page-header" style="min-height: 180px; background-size: cover; background-image: url(/static/assets/img/theme/micros_2.png); background-position: center bottom;">
     <span class="mask bg-gradient-default opacity-3"></span>
     <div class="container-fluid">
       <div class="header-body">
@@ -38,22 +38,32 @@
         <div class="card wgs-list-card">
           <!-- Card header -->
           <div class="card-header border-0 wgs-list-card-header">
-            <div class="row">
-             
-              <div class="col md-6 d-flex justify-content-end">
-                <form class="navbar-search navbar-search-light form-inline mr-sm-3 " id="navbar-search-main">
+            <div class="row align-items-center">
+              <div class="col">
+                <h3 class="mb-0 text-white">WGS Project Records</h3>
+                <span class="badge badge-info badge-lg mt-2">
+                  <strong>{{ total_records }}</strong>&nbsp; Total Records
+                </span>
+                {% if q %}
+                <span class="badge badge-info badge-lg mt-2 ml-2">
+                  <strong>{{ filtered_records }}</strong>&nbsp; Match{{ filtered_records|pluralize:"es" }}
+                </span>
+                {% endif %}
+              </div>
+              <div class="col-md-6 d-flex justify-content-end">
+                <form method="get" class="navbar-search navbar-search-light form-inline mr-sm-3 mb-0" id="navbar-search-main">
                   <div class="form-group mb-0">
                     <div class="input-group input-group-alternative input-group-merge">
                       <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                       </div>
-                      <input class="form-control" placeholder="Search" type="text">
+                      <input class="form-control" name="q" value="{{ q }}" placeholder="Search accession..." type="text">
                     </div>
                   </div>
-                  <button type="button" class="close" data-action="search-close" data-target="#navbar-search-main" aria-label="Close">
-                    <span aria-hidden="true">x</span>
-                  </button>
-                  
+                  <button type="submit" class="btn btn-sm btn-primary ml-2">Search</button>
+                  {% if q %}
+                  <a href="{% url 'show_wgs_projects' %}" class="btn btn-sm btn-secondary ml-2">Clear</a>
+                  {% endif %}
                 </form>
               </div>
             </div>
@@ -115,6 +125,16 @@
 
               </tr>
               
+               {% empty %}
+               <tr>
+                <td colspan="12" class="text-center text-muted py-4">
+                  {% if q %}
+                  No WGS project records found for "{{ q }}"
+                  {% else %}
+                  No WGS project records found.
+                  {% endif %}
+                </td>
+               </tr>
                {% endfor %}
               </tbody>
             </table>
@@ -145,29 +165,34 @@
           </div>
           <!-- Card footer -->
           <div class="card-footer py-4">
-            <nav aria-label="...">
-              <ul class="pagination justify-content-end mb-0">
-                <li class="page-item disabled">
-                  <a class="page-link" href="#" tabindex="-1">
-                    <i class="fas fa-angle-left"></i>
-                    <span class="sr-only">Previous</span>
-                  </a>
-                </li>
-                <li class="page-item active">
-                  <a class="page-link" href="#">1</a>
-                </li>
-                <li class="page-item">
-                  <a class="page-link" href="#">2 <span class="sr-only">(current)</span></a>
-                </li>
-                <li class="page-item"><a class="page-link" href="#">3</a></li>
-                <li class="page-item">
-                  <a class="page-link" href="#">
-                    <i class="fas fa-angle-right"></i>
-                    <span class="sr-only">Next</span>
-                  </a>
-                </li>
-              </ul>
-            </nav>
+            <div class="row align-items-center">
+              <div class="col text-muted">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+              </div>
+              <div class="col-auto">
+                <nav aria-label="WGS project pagination">
+                  <ul class="pagination justify-content-end mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page=1"><i class="fas fa-angle-double-left"></i></a></li>
+                    <li class="page-item"><a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}"><i class="fas fa-angle-left"></i></a></li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-left"></i></span></li>
+                    <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-left"></i></span></li>
+                    {% endif %}
+
+                    <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}"><i class="fas fa-angle-right"></i></a></li>
+                    <li class="page-item"><a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page_obj.paginator.num_pages }}"><i class="fas fa-angle-double-right"></i></a></li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-right"></i></span></li>
+                    <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-right"></i></span></li>
+                    {% endif %}
+                  </ul>
+                </nav>
+              </div>
+            </div>
           </div>
         </div>
       </div>

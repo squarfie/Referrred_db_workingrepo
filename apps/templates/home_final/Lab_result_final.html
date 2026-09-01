@@ -7,8 +7,7 @@
 <style>
 @page {
     size: legal landscape;
-    margin: 0.54cm;
-    margin-top: 0.5cm;
+    margin: 0.50cm;
 }
 
 html, body {
@@ -65,7 +64,7 @@ html, body {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
-    margin-top: 10px;
+    margin-top: 0;
 }
 
 .report-title-gap {
@@ -83,29 +82,29 @@ table {
 th,
 td {
     border: 0.6px solid #000;
-    font-size: 8px;
+    font-size: 10px;
     text-align: center;
     vertical-align: middle;
-    padding: 0.8px 1px 0 0;
-    line-height: 1.05;
+    padding: 0.5px;
+    line-height: 0.98;
 }
 
 table.report-table th,
 table.report-table td {
-    padding: 0.8px 1px 0 0 !important;
-    line-height: 1 !important;
+    padding: 0.4px;
+    line-height: 0.88;
     width: auto;
 }
 
 table.patient-name-table td.patient-seq {
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.3 !important;
     padding: 1.5px 0 !important;
     vertical-align: middle !important;
 }
 
 table.report-table tr {
-    height: 13.8px;
+    height: 13px;
     width: auto;
 }
 
@@ -113,45 +112,42 @@ table.report-table tr {
 
 .abx-header {
     font-weight: bold;
-    font-size: 9.5px !important;
+    font-size: 9.5px;
     vertical-align: middle !important;
     text-align: center !important;
-    padding: 1px 0 1px 0 !important;
-    line-height: 1.05 !important;
+    padding: 1px 2px !important;
+    line-height: 1 !important;
 }
 
 .mic {
     background: #e8e3e3;
-    font-size: 8.6px !important;
-    font-weight: 600 !important;
-    line-height: 1.05 !important;
+    font-size: 8.6px;
+    font-weight: 600;
 }
 
 table.report-table .mic {
-    line-height: 1.05 !important;
+    line-height: 0.88;
 }
 
 /* ================= GRAY HEADER CELLS ================= */
 
 .gray-background {
-    padding: 5px 0 0 4px 0;
     background: gray;
     font-weight: bold;
     color: #f4ebeb;
+    font-size: 11px;
 }
 
 /* ================= PATIENT INFORMATION SECTION ================= */
 
 .patient-cell {
-    font-size: 13px !important;
+    font-size: 10px !important;
     text-align: left !important;
     border-right: 1px solid gray;
     border-bottom: 0;
     border-left: 1px solid black;
     vertical-align: top !important;
     padding-top: 1px !important;
-    padding-left: 2px !important;
-    padding-right: 2px !important;
     line-height: 1.2 !important;
 }
 
@@ -194,16 +190,17 @@ table.report-table td.patient-cell .patient-full-name {
 
 /* Lab number / Ref date gray box */
 .lab-box {
-    text-align: center !important;
-    line-height: 3 !important;
-    font-size: 14px !important;
-    padding: 4px 0 2px 0;
+    padding: 2px 0;
+    text-align: center;
+    line-height: 0.9;
+    font-size: 12px !important;
 }
 
 .lab-box strong,
 .lab-box span {
-    font-size: 12px !important;
-    line-height: 1.1 !important;
+    font-size: 11px !important;
+    line-height: 1.05 !important;
+    font-weight: bold !important;
 }
 
 /* Patient detail rows */
@@ -211,14 +208,14 @@ table.report-table td.patient-cell .patient-full-name {
     padding-left: 4px !important;
     padding-top: 2px !important;
     text-align: left !important;
-    line-height: 1.35 !important;
-    font-size: 14px !important;
+    line-height: 1.5 !important;
+    font-size: 11px !important;
 }
 
 .patient-info-box strong {
-    font-size: 11.5px !important;
-    line-height: 1.35 !important;
-    font-weight: bold !important;
+    font-size: 10px !important;
+    /* line-height: 1.35 !important;
+    font-weight: bold !important; */
 }
 
 
@@ -244,7 +241,6 @@ td[colspan="4"] div {
 
 .recommendation-row {
     height: auto !important;
-    page-break-inside: avoid;
 }
 
 .recommendation-cell {
@@ -284,14 +280,20 @@ td[colspan="4"] div {
     line-height: 0.2px;
 }
 
-.report-table,
-.signature-row {
-    page-break-inside: avoid;
-}
-
 .signature-gap td {
     height: 6px !important;
     line-height: 6px !important;
+}
+
+.signature-bottom-spacer td {
+    height: 28px !important;
+    line-height: 28px !important;
+    border: none !important;
+}
+
+.single-isolate-signature-spacer td {
+    height: 560px !important;
+    line-height: 560px !important;
 }
 
 .page-break {
@@ -303,9 +305,12 @@ td[colspan="4"] div {
 
 .result-cell,
 .result-cell.mic {
-    font-size: 10px !important;
+    font-size: 9px !important;
     line-height: 1.1 !important;
-    padding: 0.2px 0.2px 0 0 !important;
+    padding: 1px 1px 0 0 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
 }
 .result-cell strong,
 .result-cell span {
@@ -315,9 +320,11 @@ td[colspan="4"] div {
 
 .enris-cell,
 .enris-cell.mic {
-    font-size: 7px !important;
+    font-size: 9.4px !important;
     line-height: 1 !important;
     font-weight: bold !important;
+    text-align: center !important;
+    vertical-align: middle !important;
     white-space: nowrap !important;
     overflow: visible !important;
     padding-left: 0 !important;
@@ -363,47 +370,59 @@ td[colspan="4"] div {
 }
 
 .compact-pdf-page .report-table {
-    margin-top: 2px;
+    margin-top: 0;
+}
+
+.compact-pdf-page .report-title-gap {
+    height: 4px;
+    line-height: 4px;
+    font-size: 4px;
+}
+
+.compact-pdf-page .report-table,
+.compact-pdf-page .signature-row,
+.compact-pdf-page .recommendation-row {
+    page-break-inside: avoid;
 }
 
 .compact-pdf-page th,
 .compact-pdf-page td {
-    padding: 0.3px 0.5px 0 0;
-    line-height: 0.92;
+    padding: 0.2px 0.3px;
+    line-height: 0.86;
 }
 
 .compact-pdf-page table.report-table th,
 .compact-pdf-page table.report-table td {
-    padding: 0.3px 0.5px 0 0 !important;
-    line-height: 0.9 !important;
+    padding: 0.2px 0.3px;
+    line-height: 0.82;
 }
 
 .compact-pdf-page table.report-table tr {
-    height: 12.2px;
+    height: 12px;
 }
 
 .compact-pdf-page .abx-header {
-    padding: 0.3px 0 !important;
-    line-height: 0.92 !important;
+    padding: 0.2px 0.5px !important;
+    line-height: 0.88 !important;
 }
 
 .compact-pdf-page .mic,
 .compact-pdf-page table.report-table .mic {
-    line-height: 0.92 !important;
+    line-height: 0.82 !important;
 }
 
 .compact-pdf-page .lab-box {
-    line-height: 1.2 !important;
-    padding: 1px 0 0 0;
+    padding: 0.5px 0;
+    line-height: 1.02 !important;
 }
 
 .compact-pdf-page .patient-info-box {
     padding-top: 0.5px !important;
-    line-height: 1.12 !important;
+    line-height: 1.18 !important;
 }
 
 .compact-pdf-page .patient-info-box strong {
-    line-height: 1.12 !important;
+    line-height: 1.18 !important;
 }
 
 .compact-pdf-page .org-cell,
@@ -417,14 +436,84 @@ td[colspan="4"] div {
 }
 
 .compact-pdf-page .signature-gap td {
-    height: 4px !important;
-    line-height: 4px !important;
+    height: 6px !important;
+    line-height: 6px !important;
+}
+
+.compact-pdf-page .signature-bottom-spacer td {
+    height: 16px !important;
+    line-height: 16px !important;
+}
+
+.compact-pdf-page .single-isolate-signature-spacer td {
+    height: 440px !important;
+    line-height: 440px !important;
 }
 
 .compact-pdf-page .result-cell,
 .compact-pdf-page .result-cell.mic {
-    line-height: 0.95 !important;
-    padding: 0.1px 0.1px 0 0 !important;
+    font-size: 9.8px !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    vertical-align: middle !important;
+}
+
+table.report-table td.result-cell,
+table.report-table td.result-cell.mic {
+    font-size: 9.5px !important;
+    line-height: 13px !important;
+    padding: 0 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+}
+
+table.report-table td.result-cell.enris-cell,
+table.report-table td.result-cell.mic.enris-cell {
+    font-size: 9.6px !important;
+    line-height: 13px !important;
+}
+
+table.report-table td.result-cell .result-value,
+table.report-table td.mic.enris-cell .result-value {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 1.4px 0 0 0;
+    text-align: center;
+    line-height: 1;
+    font-size: inherit;
+    font-weight: bold;
+}
+
+.compact-pdf-page table.report-table td.result-cell .result-value,
+.compact-pdf-page table.report-table td.mic.enris-cell .result-value {
+    padding-top: 1.1px;
+}
+
+table.report-table td.result-cell.mic,
+.compact-pdf-page table.report-table td.result-cell.mic {
+    white-space: normal !important;
+}
+
+table.report-table td.result-cell.mic .result-value {
+    white-space: normal;
+    word-wrap: normal;
+}
+
+.compact-pdf-page table.report-table td.result-cell,
+.compact-pdf-page table.report-table td.result-cell.mic {
+    font-size: 10.4px !important;
+    line-height: 12px !important;
+    padding: 0 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+
+.compact-pdf-page table.report-table td.result-cell.enris-cell,
+.compact-pdf-page table.report-table td.result-cell.mic.enris-cell {
+    font-size: 10px !important;
+    line-height: 12px !important;
 }
 
 .patient-name-inline {
@@ -444,28 +533,42 @@ td[colspan="4"] div {
     height: auto !important;
     vertical-align: top !important;
     text-align: left;
-    font-size: 15px !important;
+    font-size: 12px !important;
 }
 
-.patient-seq {
-    font-size: auto !important;
-    line-height: 1.3 !important;
-    padding: 1.5px 0 !important;
+.patient-seq,
+.patient-seq-no {
+    font-size: 13px !important;
+    line-height: 1 !important;
+    padding: 0 !important;
 }
 
 
 /* Force Lab No / Ref Date size */
 table.report-table td.patient-cell .lab-box {
-    font-size: 15px !important;
-    line-height: 1.15 !important;
-    padding: 3px 0 2px 0 !important;
+    font-size: 11px !important;
+    line-height: 1.05 !important;
+    padding: 2px 0 !important;
     text-align: center !important;
 }
 
 table.report-table td.patient-cell .lab-box strong,
 table.report-table td.patient-cell .lab-box span {
-    font-size: 14px !important;
-    line-height: 1.15 !important;
+    font-size: 11px !important;
+    line-height: 1.05 !important;
+    font-weight: bold !important;
+}
+
+.compact-pdf-page table.report-table td.patient-cell .lab-box {
+    font-size: 9.4px !important;
+    line-height: 1.05 !important;
+    padding: 1px 0 0 0 !important;
+}
+
+.compact-pdf-page table.report-table td.patient-cell .lab-box strong,
+.compact-pdf-page table.report-table td.patient-cell .lab-box span {
+    font-size: 9.4px !important;
+    line-height: 1.05 !important;
     font-weight: bold !important;
 }
 
@@ -554,7 +657,7 @@ table.report-table td.patient-cell .lab-box span {
                     <td colspan="5" rowspan="{{ isolate_data.patient_rowspan }}" class="patient-cell">
 
 
-                        <div style="height:16px; line-height:16px;">&nbsp;</div>
+                        <div style="height:3px; line-height:3px;">&nbsp;</div>
 
                         <table class="patient-name-table" style="width:100%; border-collapse:collapse;">
                             <tr>
@@ -567,22 +670,21 @@ table.report-table td.patient-cell .lab-box span {
                             </tr>
                         </table>
 
-                        <div style="height:2px; line-height:2px;">&nbsp;</div>
+                        <div style="height:5px; line-height:5px;">&nbsp;</div>
                             
                                                 
                     
                         <div class="lab-box">
-                            <span style="height:3px; line-height:3px;">&nbsp;</span>
-                            <strong >Lab No:</strong>
-                            &nbsp;&nbsp;<span > {{ isolate.f_AccessionNo }}</span>
-                            <span style="height:1.5px; line-height:1.5px;">&nbsp;</span>
+  
+                            <strong >Lab No:</strong>&nbsp;<span >{{ isolate.f_AccessionNo }}</span> <br>
+
                             <strong >Ref Date:</strong>
-                            &nbsp;&nbsp;<span >{{ isolate.f_Referral_Date|date:"m/d/Y" }}</span> <br>
+                            &nbsp;<span >{{ isolate.f_Referral_Date|date:"m/d/Y" }}</span> <br>
                         </div>
                         <br>
                                     <div class="patient-info-box">
                                         <strong >Patient ID:</strong>
-                                        &nbsp;<span style="font-size:11.5px;">{{ isolate.f_Patient_ID|blank_empty }} </span>
+                                        &nbsp;{{ isolate.f_Patient_ID|blank_empty }}
                                         <br>
                                         <strong >Date of Birth:</strong>
                                         &nbsp;{{ isolate.f_Date_Birth|date:"m/d/Y"|blank_empty }}
@@ -675,11 +777,11 @@ table.report-table td.patient-cell .lab-box span {
                                 <div style="font-size:9px; line-height:1;">
                                  {{ isolate.f_Site_Pre_ed|prefer_text:isolate.f_Site_Pre }}
                                 </div>
-
+                                <div style="height:5px; line-height:5px;">&nbsp;</div>
                                 <div style="font-size:10.5px; line-height:1; font-weight:bold;">
                                     <i>{{ isolate.f_Site_OrgName|scientific_name }}</i>
                                 </div>
-
+                                <div style="height:5px; line-height:5px;">&nbsp;</div>
                                 <div style="font-size:9px; line-height:1;">
                                     {{ isolate.f_Site_Pos_ed|prefer_text:isolate.f_Site_Pos }}
                                 </div>
@@ -698,7 +800,11 @@ table.report-table td.patient-cell .lab-box span {
             
                     {% for abx, data in row %}
                         <td class="result-cell">
-                            {{ data.disk.ab_Disk_value|default_if_none:"&nbsp;"|safe }}<br>
+                            {% if data.disk_show_value %}
+                                <div class="result-value">{{ data.disk.ab_Disk_value|default_if_none:"&nbsp;"|safe }}</div>
+                            {% else %}
+                                <div class="result-value">&nbsp;</div>
+                            {% endif %}
                         </td>
                     {% endfor %}
 
@@ -730,7 +836,7 @@ table.report-table td.patient-cell .lab-box span {
             <tr>
                                 {% for abx, data in row %}
                                     <td class="result-cell enris-cell">
-                                     {% if data.disk.ab_Disk_enRIS %}{{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe }}{% else %}&nbsp;{% endif %}
+                                     {% if data.disk_show_value and data.disk.ab_Disk_enRIS %}<div class="result-value">{{ data.disk.ab_Disk_enRIS|default_if_none:"&nbsp;"|safe }}</div>{% else %}<div class="result-value">&nbsp;</div>{% endif %}
                                     </td>
                                 {% endfor %}
 
@@ -767,8 +873,11 @@ table.report-table td.patient-cell .lab-box span {
 
                 {% for abx, data in row %}
                     <td class="result-cell mic">
-                        {{ data.mic.ab_MIC_operand }}
-                        {{ data.mic.ab_MIC_value|mic_format|default_if_none:"&nbsp;"|safe }}<br>
+                        {% if data.mic_show_value %}
+                            <div class="result-value">{{ data.mic.ab_MIC_operand }} {{ data.mic.ab_MIC_value|mic_format|default_if_none:"&nbsp;"|safe }}</div>
+                        {% else %}
+                            <div class="result-value">&nbsp;</div>
+                        {% endif %}
                     </td>
                 {% endfor %}
 
@@ -794,7 +903,11 @@ table.report-table td.patient-cell .lab-box span {
 
                 {% for abx, data in row %}
                     <td class="result-cell mic enris-cell">
-                        {{ data.mic.ab_MIC_enRIS|default_if_none:"&nbsp;"|safe }}
+                        {% if data.mic_show_value %}
+                            <div class="result-value">{{ data.mic.ab_MIC_enRIS|default_if_none:"&nbsp;"|safe }}</div>
+                        {% else %}
+                            <div class="result-value">&nbsp;</div>
+                        {% endif %}
                     </td>
                 {% endfor %}
 
@@ -889,11 +1002,11 @@ table.report-table td.patient-cell .lab-box span {
                                         <div style="font-size:9px; line-height:1;">
                                          {{ isolate.f_ars_Pre_ed|prefer_text:isolate.f_ars_Pre }}
                                         </div>
-
+                                        <div style="height:5px; line-height:5px;">&nbsp;</div>
                                         <div style="font-size:10.5px; line-height:1; font-weight:bold;">
                                             <i>{{ isolate.f_ars_OrgName|scientific_name }}</i>
                                         </div>
-
+                                        <div style="height:5px; line-height:5px;">&nbsp;</div>
                                         <div style="font-size:9px; line-height:1;">
                                             {{ isolate.f_ars_Post_ed|prefer_text:isolate.f_ars_Post }}
                                         </div>
@@ -907,7 +1020,11 @@ table.report-table td.patient-cell .lab-box span {
                             {% endif %}
                             {% for abx, data in row %}
                                 <td class="result-cell">
-                                    {{ data.disk.ab_Retest_DiskValue|default_if_none:"&nbsp;"|safe }}<br>
+                                    {% if data.disk_show_value %}
+                                        <div class="result-value">{{ data.disk.ab_Retest_DiskValue|default_if_none:"&nbsp;"|safe }}</div>
+                                    {% else %}
+                                        <div class="result-value">&nbsp;</div>
+                                    {% endif %}
                                 </td>
                             {% endfor %}
 
@@ -946,8 +1063,8 @@ table.report-table td.patient-cell .lab-box span {
 
                             {% for abx, data in row %}
                                 <td class="result-cell enris-cell">
-                               {% if data.disk.ab_Retest_Disk_enRIS %}
-                                    {{ data.disk.ab_Retest_Disk_enRIS|default_if_none:"&nbsp;"|safe }} {% else %} &nbsp; {% endif %}
+                               {% if data.disk_show_value and data.disk.ab_Retest_Disk_enRIS %}
+                                    <div class="result-value">{{ data.disk.ab_Retest_Disk_enRIS|default_if_none:"&nbsp;"|safe }}</div>{% else %}<div class="result-value">&nbsp;</div>{% endif %}
         
                                 </td>
                             {% endfor %}
@@ -981,8 +1098,11 @@ table.report-table td.patient-cell .lab-box span {
 
                                 {% for abx, data in row %}
                                     <td class="result-cell mic">
-                                         {{ data.mic.ab_Retest_MIC_operand }}
-                                        {{ data.mic.ab_Retest_MICValue|mic_format|default_if_none:"&nbsp;"|default:"&nbsp;"|safe }}<br>
+                                        {% if data.mic_show_value %}
+                                            <div class="result-value">{{ data.mic.ab_Retest_MIC_operand }} {{ data.mic.ab_Retest_MICValue|mic_format|default_if_none:"&nbsp;"|default:"&nbsp;"|safe }}</div>
+                                        {% else %}
+                                            <div class="result-value">&nbsp;</div>
+                                        {% endif %}
                                     </td>
                                 {% endfor %}
 
@@ -1020,7 +1140,7 @@ table.report-table td.patient-cell .lab-box span {
                         <tr>
                                 {% for abx, data in row %}
                                     <td class="result-cell mic enris-cell">
-                                   {% if data.mic.ab_Retest_MIC_enRIS %} {{ data.mic.ab_Retest_MIC_enRIS|default_if_none:"&nbsp;"|safe }} {% else %} &nbsp; {% endif %}
+                                   {% if data.mic_show_value and data.mic.ab_Retest_MIC_enRIS %}<div class="result-value">{{ data.mic.ab_Retest_MIC_enRIS|default_if_none:"&nbsp;"|safe }}</div>{% else %}<div class="result-value">&nbsp;</div>{% endif %}
                                     </td>
                                 {% endfor %}
                                 {% with abx_count=row|length %}
@@ -1067,8 +1187,12 @@ table.report-table td.patient-cell .lab-box span {
 {% endfor %}
 
 {% if page|length == 1 %}
-<tr class="signature-row">
-    <td colspan="42" style="height: 300px; border: none;"></td>
+<tr class="signature-row signature-bottom-spacer single-isolate-signature-spacer">
+    <td colspan="42">&nbsp;</td>
+</tr>
+{% else %}
+<tr class="signature-row signature-bottom-spacer">
+    <td colspan="42">&nbsp;</td>
 </tr>
 {% endif %}
 

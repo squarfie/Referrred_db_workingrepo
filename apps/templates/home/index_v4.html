@@ -1,0 +1,1783 @@
+{% extends 'layouts/base.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block title %} Dashboard {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<link rel="stylesheet" href="{% static 'assets/css/header.css' %}"> 
+<link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
+<style>
+:root {
+  --dashboard-overlay-head: #13263f;
+  --dashboard-overlay-head-deep: #0f2638;
+  --dashboard-overlay-border: rgba(0, 207, 232, 0.42);
+
+
+}
+
+/* =========================================================
+   PAGE LAYOUT
+   ========================================================= */
+
+html,
+body {
+  background: #eef9fd !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#panel,
+.main-content {
+  background: #eef9fd !important;
+  min-height: 100vh !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.footer {
+  display: none !important;
+}
+
+
+/* =========================================================
+   TOP HEADER
+   ========================================================= */
+
+.header-container {
+  min-height: 188px;
+}
+
+.header-index {
+  width: calc(100% - 360px);
+  max-width: 1120px;
+}
+
+.header-index h1 {
+  font-size: 38px;
+}
+
+.header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.header-title-copy {
+  min-width: 0;
+}
+
+.header-stats {
+  position: absolute;
+  top: 88px;
+  right: 34px;
+  margin-left: 0 !important;
+  margin-right: 0;
+  gap: 30px;
+  padding-top: 0;
+}
+
+.header-index .header-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.header-index .badge-group {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.header-index .btn-new-crf {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  color: #0a0e1a;
+  text-decoration: none;
+  white-space: nowrap;
+  transform: none;
+  flex: 0 0 auto;
+  margin-left: 0.25rem;
+}
+
+.header-index .btn-new-crf:hover {
+  color: #0a0e1a;
+  transform: translateY(-2px);
+}
+
+.header-year-scope {
+  color: rgba(230, 245, 255, 0.78);
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+
+/* =========================================================
+   SLIDESHOW / PREVIEW CARD HEADER
+   ========================================================= */
+
+#slideshow-header {
+  min-height: 0 !important;
+  padding-bottom: 1.35rem !important;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(10, 18, 38, 0.72),
+      rgba(10, 55, 82, 0.5)
+    ),
+    url("{% static 'assets/img/theme/micros_2.png' %}")
+      center 58% / cover no-repeat !important;
+}
+
+#slideshow-header .mask {
+  background: rgba(10, 18, 38, 0.18) !important;
+  opacity: 1 !important;
+}
+
+#slideshow-header::after {
+  opacity: 0.08 !important;
+}
+
+#slideshow-header .row.align-items-center.py-4 {
+  padding-top: 1.05rem !important;
+  padding-bottom: 0.7rem !important;
+}
+
+#slideshow-header .row.g-3.mb-6 {
+  margin-bottom: 1.05rem !important;
+}
+
+#slideshow-header .preview-card {
+  height: 170px;
+}
+
+#slideshow-header .card-content {
+  padding: 1.35rem 1.45rem;
+}
+
+#slideshow-header .card-icon {
+  font-size: 2.15rem;
+}
+
+#slideshow-header .card-title {
+  font-size: 1.12rem;
+}
+
+#slideshow-header .card-description {
+  font-size: 0.875rem;
+}
+
+
+/* =========================================================
+   LOWER DASHBOARD CONTAINER
+   Removes spaces on the left, right, and bottom
+   ========================================================= */
+
+.index-content-panel {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  min-width: 0;
+  min-height: clamp(300px, 36vh, 430px);
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  background: linear-gradient(
+    180deg,
+    rgba(224, 246, 251, 0.2) 0%,
+    rgba(245, 251, 253, 0.92) 78%
+  );
+
+  overflow: hidden;
+}
+
+.main-content > .container-fluid.index-content-panel {
+  max-width: none !important;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Remove Bootstrap row margin */
+.index-content-panel > .row,
+.index-content-panel > .tat-dashboard-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1 1 auto;
+
+  width: 100%;
+  min-width: 0;
+  min-height: clamp(300px, 36vh, 430px);
+
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Remove Bootstrap column padding */
+.tat-dashboard-column {
+  display: flex;
+  flex: 1 1 auto;
+
+  width: 100%;
+  min-width: 0;
+  min-height: inherit;
+
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Supports either the old card class or the new section class */
+.tat-dashboard-card,
+.tat-dashboard-section {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  
+  width: 100%;
+  min-width: 0;
+  min-height: clamp(300px, 36vh, 430px);
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(9, 20, 36, 0.82) 0%,
+      rgba(9, 24, 40, 0.68) 45%,
+      rgba(9, 20, 36, 0.9) 100%
+    ),
+    url("{% static 'assets/img/theme/micros_2.png' %}") center 30% / cover no-repeat fixed;
+  overflow: hidden;
+}
+
+
+/* =========================================================
+   OPTIONAL BACKGROUND ANIMATION
+   ========================================================= */
+
+.index-content-panel .dashboard-animation-wrapper {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  width: 100%;
+  min-height: 100%;
+
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  transparent !important;
+}
+
+.index-content-panel .grid-bg,
+.index-content-panel .particles,
+.index-content-panel .scanner,
+.index-content-panel .glow-orb,
+.index-content-panel .overlay {
+  z-index: 0 !important;
+}
+
+.index-content-panel .grid-bg {
+  opacity: 0.28;
+}
+
+.index-content-panel .particles {
+  opacity: 0.2;
+}
+
+.index-content-panel .scanner {
+  border-color: rgba(0, 188, 212, 0.13);
+  opacity: 0.34;
+}
+
+.index-content-panel .glow-orb {
+  opacity: 0.18;
+}
+
+.index-content-panel .overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(16, 26, 52, 0.2) 0%,
+    rgba(224, 246, 251, 0.5) 45%,
+    rgba(245, 251, 253, 0.88) 100%
+  );
+}
+
+
+/* =========================================================
+   TAT DASHBOARD HEADER
+   ========================================================= */
+
+.tat-dashboard-header {
+  flex: 0 0 auto;
+
+  width: 100%;
+  margin: 0;
+  padding: 0.8rem 1rem;
+  height: 89px;
+  color: #ffffff;
+  background: rgba(19, 38, 63, 0.5);
+  background-image: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(0, 207, 232, 0.42);
+  border-bottom: 1px solid var(--dashboard-overlay-border);
+}
+
+.tat-dashboard-header h3 {
+  font-size: 1rem;
+}
+
+.tat-dashboard-header small {
+  font-size: 0.75rem;
+}
+
+.tat-dashboard-header .btn {
+  padding: 0.38rem 0.75rem;
+  font-size: 0.78rem;
+}
+
+
+/* =========================================================
+   TAT FILTER PANEL
+   ========================================================= */
+
+.tat-filter-panel {
+  flex: 0 0 auto;
+  height: 95px;
+  width: 100%;
+  margin: 0;
+  padding: 0.78rem 1rem;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-bottom: 1px solid #dbe4f0;
+}
+
+.tat-filter-panel .row {
+  margin-left: -15px;
+  margin-right: -15px;
+}
+
+.tat-filter-panel label {
+  color: #24466f;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tat-filter-panel .form-control {
+  height: 35px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+.tat-filter-panel .btn {
+  padding: 0.38rem 0.75rem;
+  font-size: 0.78rem;
+}
+
+
+/* =========================================================
+   STATUS STRIP
+   ========================================================= */
+
+.tat-status-strip {
+  flex: 0 0 auto;
+
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  align-items: stretch;
+  gap: 0.65rem;
+  height: 150px;
+  width: 100%;
+  margin: 0;
+  padding: 0.72rem 1rem;
+
+  background: linear-gradient(
+    135deg,
+    rgba(19, 38, 63, 0.55) 0%,
+    rgba(15, 38, 56, 0.55) 100%
+  );
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+
+  border-bottom: 1px solid #dbe4f0;
+}
+
+.tat-status-tile {
+  position: relative;
+  min-height: 89px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.15rem;
+
+  min-width: 0;
+  min-height: 88px;
+  padding: 0.75rem 0.9rem 0.7rem;
+
+  background: linear-gradient(
+    135deg,
+    rgba(70, 108, 156, 0.55) 0%,
+    rgba(50, 84, 128, 0.55) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 3px solid var(--tile-color, #64c8ff);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  overflow: hidden;
+
+  box-shadow: 0 4px 14px rgba(6, 20, 36, 0.22);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.tat-status-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(6, 20, 36, 0.3);
+}
+
+.tat-status-tile::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0) 45%
+  );
+  pointer-events: none;
+}
+
+.tat-status-tile::after {
+  content: var(--tile-icon, "");
+
+  position: absolute;
+  right: 6px;
+  bottom: -6px;
+
+  color: var(--tile-color, #64c8ff);
+  font-family: "Font Awesome 5 Free";
+  font-size: 2.1rem;
+  font-weight: 900;
+
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.tat-status-tile strong {
+  display: block;
+
+  color: var(--tile-color, #ffffff);
+  font-size: 1.4rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.tat-status-tile span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tat-status-tile small {
+  color: rgba(255, 255, 255, 0.55) !important;
+  font-weight: 600;
+}
+
+.tat-tile-total {
+  --tile-color: #64c8ff;
+}
+
+.tat-tile-ongoing {
+  --tile-color: #f5a623;
+}
+
+.tat-tile-near {
+  --tile-color: #ffd166;
+}
+
+.tat-tile-overdue {
+  --tile-color: #fb6340;
+}
+
+.tat-tile-released {
+  --tile-color: #2dce89;
+}
+
+
+/* =========================================================
+   TABLE TOGGLE BAR
+   ========================================================= */
+
+.tat-table-toggle-bar {
+  flex: 0 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  width: 100%;
+  margin: 0;
+  padding: 0.58rem 1rem;
+
+  background: linear-gradient(
+    90deg,
+    rgba(232, 248, 252, 0.96) 0%,
+    rgba(247, 253, 255, 0.98) 58%,
+    rgba(226, 246, 251, 0.96) 100%
+  );
+
+  border-top: 1px solid rgba(0, 188, 212, 0.18);
+  border-bottom: 1px solid rgba(0, 188, 212, 0.22);
+
+  box-shadow: inset 4px 0 0 #00bcd4;
+}
+
+.tat-table-toggle-bar span {
+  color: #0f3a5f;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tat-table-toggle-bar small {
+  color: #64819a !important;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.btn-toggle-table {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+
+  flex: 0 0 auto;
+
+  padding: 0.3rem 0.85rem;
+
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  background: linear-gradient(
+    135deg,
+    #0f5568 0%,
+    #07889a 100%
+  );
+
+  border: 1px solid rgba(0, 188, 212, 0.45);
+  border-radius: 999px;
+
+  cursor: pointer;
+
+  box-shadow: 0 5px 14px rgba(15, 85, 104, 0.18);
+
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.btn-toggle-table:hover {
+  color: #ffffff;
+
+  background: linear-gradient(
+    135deg,
+    #0d4960 0%,
+    #0697a8 100%
+  );
+
+  border-color: rgba(0, 188, 212, 0.75);
+
+  transform: translateY(-1px);
+
+  box-shadow: 0 8px 18px rgba(15, 85, 104, 0.24);
+}
+
+.btn-toggle-table .toggle-icon {
+  display: inline-block;
+  font-size: 0.7rem;
+  transition: transform 0.3s ease;
+}
+
+.btn-toggle-table.collapsed .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+
+/* =========================================================
+   MAIN TAT TABLE
+   Expands into all remaining vertical space
+   ========================================================= */
+
+.tat-main-table-wrap {
+  flex: 1 1 auto;
+
+  width: 100%;
+  min-width: 0;
+  height: clamp(420px, calc(100vh - 385px), 900px);
+  min-height: 420px;
+  max-height: 900px;
+
+  margin: 0;
+  padding: 0;
+
+  overflow: auto;
+
+  background: #f8fcfd;
+
+  border-top: 1px solid rgba(12, 68, 56, 0.12);
+
+  transition:
+    max-height 0.4s ease,
+    opacity 0.3s ease;
+}
+
+/* Collapsed state */
+.tat-main-table-wrap.table-hidden {
+  flex: 0 0 0;
+
+  width: 100%;
+  min-height: 0;
+  max-height: 0;
+
+  opacity: 0;
+  overflow: hidden;
+
+  border: 0;
+}
+
+/* Table uses full available width */
+.tat-main-table {
+  width: 100%;
+  min-width: 1550px;
+
+  margin: 0 !important;
+
+  font-size: 0.76rem;
+  background: #ffffff;
+}
+
+.tat-main-table > thead {
+  background: var(--dashboard-overlay-head-deep) !important;
+  background-image: none !important;
+
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+}
+
+.tat-main-table > thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+
+  padding: 0.78rem 0.65rem;
+
+  color: #ffffff;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  background: var(--dashboard-overlay-head-deep) !important;
+  background-image: none !important;
+
+  border: 0;
+  border-bottom: 1px solid var(--dashboard-overlay-border);
+
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+}
+
+.tat-main-table td {
+  padding: 0.9rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.tat-main-table > thead > tr > th:nth-child(n+14) {
+  background: var(--dashboard-overlay-head-deep) !important;
+  background-image: none !important;
+  border-left: 1px solid rgba(0, 207, 232, 0.28);
+}
+
+.tat-main-table > tbody > tr > td:nth-child(n+14) {
+  background: inherit;
+  border-left: 1px solid rgba(17, 205, 239, 0.16);
+}
+
+.tat-main-table tbody tr:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(9, 184, 198, 0.06),
+    rgba(18, 58, 99, 0.04)
+  );
+}
+
+
+/* =========================================================
+   STATUS PILLS
+   ========================================================= */
+
+.tat-pill {
+  display: inline-block;
+
+  padding: 0.24rem 0.55rem;
+
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+
+  border-radius: 999px;
+}
+
+.tat-pill-running {
+  color: #075f43;
+  background: #bdf3d5;
+  border: 1px solid #27c78c;
+}
+
+.tat-pill-ongoing {
+  color: #7d4e00;
+  background: #fff0c7;
+  border: 1px solid #f5a623;
+}
+
+.tat-pill-released {
+  color: #0f5132;
+  background: #d4f4dd;
+  border: 1px solid #2dce89;
+}
+
+.tat-pill-overdue {
+  color: #8a1f16;
+  background: #ffd7d7;
+  border: 1px solid #fb6340;
+}
+
+.tat-pill-near {
+  color: #035f70;
+  background: #d8f4fb;
+  border: 1px solid #11cdef;
+}
+
+
+/* =========================================================
+   RESPONSIVE LAYOUT
+   ========================================================= */
+
+@media (max-width: 1200px) {
+  .header-index {
+    width: 100%;
+    max-width: none;
+  }
+
+  .header-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+}
+
+@media (max-width: 992px) {
+  .tat-status-strip {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .tat-dashboard-header {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .index-content-panel,
+  .index-content-panel > .row,
+  .index-content-panel > .tat-dashboard-row,
+  .tat-dashboard-column,
+  .tat-dashboard-card,
+  .tat-dashboard-section {
+    min-height: 0;
+  }
+
+  .tat-dashboard-header,
+  .tat-filter-panel,
+  .tat-status-strip,
+  .tat-table-toggle-bar {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .tat-table-toggle-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .btn-toggle-table {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 576px) {
+  .tat-status-strip {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .tat-status-tile {
+    padding: 0.6rem;
+  }
+
+  .tat-status-tile strong {
+    font-size: 1.15rem;
+  }
+}
+
+.dashboard-v4 {
+  --v4-primary: #2E7D76;
+  --v4-secondary: #2C3E50;
+  --v4-accent: #1ABC9C;
+  --v4-dark-bg: #0f1419;
+  --v4-card-bg: #1a2a3a;
+  --v4-text-light: #e0e6ed;
+  --v4-text-muted: #8ea0b4;
+  background: linear-gradient(135deg, var(--v4-dark-bg) 0%, #1a2f4a 100%);
+  color: var(--v4-text-light);
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  min-height: calc(100vh - 80px);
+  overflow-x: hidden;
+}
+
+.dashboard-v4 a {
+  text-decoration: none;
+}
+
+.dashboard-v4 .dashboard-hero {
+  padding: 80px 40px 60px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-v4 .dashboard-hero::before {
+  content: '';
+  position: absolute;
+  top: -220px;
+  left: 50%;
+  width: 800px;
+  height: 800px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(26, 188, 156, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.dashboard-v4 .hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.dashboard-v4 .hero-title {
+  color: var(--v4-text-light);
+  font-size: 3.2rem;
+  font-weight: 900;
+  line-height: 1.18;
+  margin-bottom: 16px;
+}
+
+.dashboard-v4 .hero-title .accent {
+  color: var(--v4-accent);
+}
+
+.dashboard-v4 .hero-subtitle {
+  color: var(--v4-text-muted);
+  font-size: 1.2rem;
+  line-height: 1.6;
+  margin: 0 auto 32px;
+  max-width: 760px;
+}
+
+.dashboard-v4 .hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.dashboard-v4 .btn-primary-hero,
+.dashboard-v4 .btn-secondary-hero {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  font-size: 0.95rem;
+  font-weight: 700;
+  gap: 8px;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 30px;
+  transition: all 0.3s ease;
+}
+
+.dashboard-v4 .btn-primary-hero {
+  background: linear-gradient(135deg, var(--v4-primary) 0%, var(--v4-accent) 100%);
+  border: 0;
+  color: #fff;
+}
+
+.dashboard-v4 .btn-primary-hero:hover {
+  box-shadow: 0 16px 40px rgba(26, 188, 156, 0.3);
+  color: #fff;
+  transform: translateY(-4px);
+}
+
+.dashboard-v4 .btn-secondary-hero {
+  background: transparent;
+  border: 2px solid var(--v4-accent);
+  color: var(--v4-accent);
+}
+
+.dashboard-v4 .btn-secondary-hero:hover {
+  background: rgba(26, 188, 156, 0.1);
+  color: var(--v4-accent);
+  transform: translateY(-4px);
+}
+
+.dashboard-v4 .stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin: 0 auto 70px;
+  max-width: 1400px;
+  padding: 0 40px;
+}
+
+.dashboard-v4 .stat-card,
+.dashboard-v4 .feature-card,
+.dashboard-v4 .quick-card {
+  background: linear-gradient(135deg, rgba(30, 50, 70, 0.64) 0%, rgba(20, 40, 60, 0.44) 100%);
+  border: 1px solid rgba(26, 188, 156, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.dashboard-v4 .stat-card {
+  padding: 28px;
+  text-align: center;
+}
+
+.dashboard-v4 .stat-card:hover,
+.dashboard-v4 .feature-card:hover,
+.dashboard-v4 .quick-card:hover {
+  border-color: var(--v4-accent);
+  box-shadow: 0 16px 40px rgba(26, 188, 156, 0.15);
+  transform: translateY(-8px);
+}
+
+.dashboard-v4 .stat-number {
+  color: var(--v4-accent);
+  font-size: 2.4rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.dashboard-v4 .stat-label {
+  color: var(--v4-text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.dashboard-v4 .features-section,
+.dashboard-v4 .quick-access {
+  padding: 70px 40px;
+}
+
+.dashboard-v4 .features-section {
+  background: rgba(10, 20, 30, 0.35);
+}
+
+.dashboard-v4 .section-title {
+  color: var(--v4-text-light);
+  font-size: 2.4rem;
+  font-weight: 850;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.dashboard-v4 .section-subtitle {
+  color: var(--v4-text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 auto 44px;
+  max-width: 720px;
+  text-align: center;
+}
+
+.dashboard-v4 .features-grid,
+.dashboard-v4 .quick-grid {
+  display: grid;
+  gap: 24px;
+  margin: 0 auto;
+  max-width: 1400px;
+}
+
+.dashboard-v4 .features-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.dashboard-v4 .quick-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.dashboard-v4 .feature-card {
+  padding: 32px;
+}
+
+.dashboard-v4 .feature-icon,
+.dashboard-v4 .quick-icon {
+  align-items: center;
+  background: linear-gradient(135deg, var(--v4-primary) 0%, var(--v4-accent) 100%);
+  border-radius: 10px;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.dashboard-v4 .feature-icon {
+  font-size: 1.6rem;
+  height: 58px;
+  width: 58px;
+}
+
+.dashboard-v4 .feature-card h3,
+.dashboard-v4 .quick-card h3 {
+  color: var(--v4-text-light);
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.dashboard-v4 .feature-card p,
+.dashboard-v4 .quick-card p {
+  color: var(--v4-text-muted);
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+.dashboard-v4 .quick-card {
+  color: inherit;
+  display: block;
+  min-height: 188px;
+  padding: 28px;
+}
+
+.dashboard-v4 .quick-card:hover {
+  color: inherit;
+}
+
+.dashboard-v4 .quick-icon {
+  font-size: 1.25rem;
+  height: 48px;
+  width: 48px;
+}
+
+.dashboard-v4 .cta-section {
+  background: linear-gradient(135deg, var(--v4-primary) 0%, var(--v4-accent) 100%);
+  margin: 70px 40px;
+  padding: 56px 40px;
+  text-align: center;
+}
+
+.dashboard-v4 .cta-section h2 {
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 850;
+  margin-bottom: 12px;
+}
+
+.dashboard-v4 .cta-section p {
+  color: rgba(255, 255, 255, 0.88);
+  margin-bottom: 26px;
+}
+
+.dashboard-v4 .dashboard-footer {
+  background: rgba(10, 20, 30, 0.62);
+  border-top: 1px solid rgba(26, 188, 156, 0.12);
+  padding: 38px 40px;
+  text-align: center;
+}
+
+.dashboard-v4 .footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.dashboard-v4 .footer-links a {
+  color: var(--v4-text-muted);
+  font-weight: 650;
+}
+
+.dashboard-v4 .footer-links a:hover {
+  color: var(--v4-accent);
+}
+
+.dashboard-v4 .footer-text {
+  color: var(--v4-text-muted);
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .dashboard-v4 .dashboard-hero {
+    padding: 56px 20px 44px;
+  }
+
+  .dashboard-v4 .hero-title {
+    font-size: 2.15rem;
+  }
+
+  .dashboard-v4 .hero-subtitle {
+    font-size: 1rem;
+  }
+
+  .dashboard-v4 .stats-row,
+  .dashboard-v4 .features-section,
+  .dashboard-v4 .quick-access {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .dashboard-v4 .cta-section {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+}
+</style>
+
+{% endblock stylesheets %}
+
+{% block content %}
+
+<div class="dashboard-v4">
+  <section class="dashboard-hero">
+    <div class="hero-content">
+      <h1 class="hero-title">
+        Antimicrobial Resistance <span class="accent">Surveillance</span> Program
+      </h1>
+      <p class="hero-subtitle">
+        Laboratory surveillance dashboard for AST results, referral monitoring, WGS data,
+        and concordance review.
+      </p>
+      <div class="hero-buttons">
+        <a href="{% url 'show_data' %}" class="btn-primary-hero">
+          <i class="fas fa-table"></i>
+          View Records
+        </a>
+        <a href="{% url 'upload_wgs_view' %}" class="btn-secondary-hero">
+          <i class="fas fa-upload"></i>
+          Upload Data
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-row" aria-label="Dashboard summary">
+    <div class="stat-card">
+      <div class="stat-number">{{ record_count|default:"0" }}</div>
+      <div class="stat-label">Total Records</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ site_count|default:"0" }}</div>
+      <div class="stat-label">Active Sites</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ current_year|default:"2026" }}</div>
+      <div class="stat-label">Referral Year</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">ARSP</div>
+      <div class="stat-label">Surveillance System</div>
+    </div>
+  </section>
+
+  <section class="features-section">
+    <h2 class="section-title">Core Monitoring Areas</h2>
+    <p class="section-subtitle">
+      A consolidated workspace for referral data management, confirmatory testing,
+      concordance checks, and genomic surveillance.
+    </p>
+
+    <div class="features-grid">
+      <article class="feature-card">
+        <div class="feature-icon"><i class="fas fa-database"></i></div>
+        <h3>AST Results Management</h3>
+        <p>Review raw and final AST records, monitor organism results, and manage referral datasets.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon"><i class="fas fa-vials"></i></div>
+        <h3>Concordance Review</h3>
+        <p>Compare sentinel site and ARSRL results across organism identification and AST interpretations.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon"><i class="fas fa-dna"></i></div>
+        <h3>WGS Surveillance</h3>
+        <p>Track sequencing outputs and genomic data linked to referred isolates.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="quick-access">
+    <h2 class="section-title">Quick Access</h2>
+    <p class="section-subtitle">
+      Jump directly to common database workflows.
+    </p>
+
+    <div class="quick-grid">
+      <a href="{% url 'show_data' %}" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-layer-group"></i></div>
+        <h3>Raw Data</h3>
+        <p>Open sentinel site referral records.</p>
+      </a>
+
+      <a href="{% url 'show_final_table' %}" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-check-square"></i></div>
+        <h3>Final Data</h3>
+        <p>Open verified final laboratory results.</p>
+      </a>
+
+      <a href="{% url 'upload_wgs_view' %}" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-file-upload"></i></div>
+        <h3>Upload Data</h3>
+        <p>Import raw, final, and supporting datasets.</p>
+      </a>
+
+      <a href="{% url 'view_wgs_overview' %}" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-atom"></i></div>
+        <h3>WGS Data</h3>
+        <p>Review genome sequencing records.</p>
+      </a>
+
+      <a href="{% url 'concordance_analysis' %}" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-chart-bar"></i></div>
+        <h3>Concordance</h3>
+        <p>Generate and inspect concordance reports.</p>
+      </a>
+
+      <a href="{% url 'settings_page' %}" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-cogs"></i></div>
+        <h3>Settings</h3>
+        <p>Configure organisms, breakpoints, and system rules.</p>
+      </a>
+    </div>
+  </section>
+
+  <section class="cta-section">
+    <h2>Continue Surveillance Review</h2>
+    <p>Open the TAT monitor to check pending batches and released referral records.</p>
+    <a href="{% url 'tat_review_view' %}" class="btn-secondary-hero">
+      <i class="fas fa-clock"></i>
+      View TAT Monitoring
+    </a>
+  </section>
+
+  <footer class="dashboard-footer">
+    <nav class="footer-links" aria-label="Dashboard footer">
+      <a href="{% url 'view_wgs_overview' %}">WGS</a>
+      <a href="{% url 'tat_review_view' %}">TAT</a>
+      <a href="{% url 'concordance_analysis' %}">Concordance</a>
+      <a href="{% url 'settings_page' %}">Settings</a>
+    </nav>
+    <p class="footer-text">&copy; Research Institute for Tropical Medicine. ARSP Database.</p>
+  </footer>
+</div>
+
+{% comment %}
+<div class="header-container">
+      <!-- <div class="background-animation-wrapper" aria-hidden="true">
+      <div class="grid-bg"></div>
+      <div class="particles">
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+      </div>
+      <div class="scanner"></div>
+      <div class="scanner"></div>
+      <div class="scanner"></div>
+      <div class="glow-orb"></div>
+      <div class="glow-orb"></div>
+      <div class="overlay"></div>
+  </div> -->
+
+<div class="header-index">
+      <div class="header-title-row">
+        <div class="header-title-copy">
+          <h1>Antimicrobial Resistance Surveillance Program</h1>
+          <p style="font-size: 17px; font-weight: 300;">AST Results Management System</p>
+        </div>
+      
+      </div>
+
+        <div class="header-action-row">
+          <div class="badge-group">
+            <a href="{% url 'emerging_list_view' %}" class="badge badge-pill badge-primary text-decoration-none"><span class="badge-icon">🔬</span>Emerging Pathogens  </a>
+            <div class="badge"><span class="badge-icon">📊</span>Real-time Data</div>
+            <a href="{% url 'tat_review_view' %}" class="badge badge-pill badge-primary text-decoration-none">
+              <span class="badge-icon mr-1">⚡</span>
+              TAT Monitoring
+            </a>
+            <a href="{% url 'concordance_analysis' %}"
+              class="badge badge-pill badge-success text-decoration-none">
+              <span class="badge-icon mr-1">🔄</span>
+              Concordance Dashboard
+            </a>
+             <a href="{% url 'batch_create_view' %}"
+              class="badge badge-pill badge-secondary">
+              <span class="badge-icon mr-1">+</span>
+             Add New
+            </a>
+          </div>
+
+        </div>
+    </div>
+
+
+    <div class="header-stats index-font">
+  <!-- <a href="{% url 'batch_create_view' %}" class="btn-new-crf index-font">+ Add New</a> -->
+        <div class="stat-item">
+            <span class="stat-number">{{ record_count }}</span>
+            <span class="stat-label">Total Records</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ site_count }}</span>
+            <span class="stat-label">Active Sites</span>
+        </div>
+
+    </div>
+
+
+</div> 
+
+    <!-- Header -->
+    <div id="slideshow-header" class="header bg-primary pb-6 g-gradient-default align-items-center index-font" style="min-height: 145px; background-size: cover; background-image: url(/static/assets/img/theme/arsp-hero.png); background-position: center center;">
+      <span class="mask bg-gradient-default opacity-3"></span>
+      <div class="container-fluid">
+        <div class="header-body">
+                                   <div class="header-year-scope">Referral year: {{ dashboard_year_label }}</div>
+          <div class="row align-items-center py-4">
+
+            <div class="col-lg-6 col-7">
+              <h6 class="h2 text-white d-inline-block mb-0">Home</h6>
+              <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+                <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+                  <li class="breadcrumb-item"><a href="#"><i class="fas fa-home"></i></a></li>
+                  <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                </ol>
+              </nav>
+            </div>
+            <div class="col-lg-6 col-12 text-right">
+              <span style="color: rgba(255,255,255,0.7); font-size: .85rem; font-weight: 500;">
+                <i class="ni ni-calendar-grid-58 mr-2"></i>
+                <span id="current-date"></span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Preview Cards -->
+          <div class="row g-3 mb-6">
+
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="{% url 'view_wgs_overview' %}" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #2dce89 0%, #11cdef 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="ni ni-atom"></i></div>
+                    <h5 class="card-title">WGS Overview</h5>
+                    <p class="card-description">Whole Genome Sequencing Results</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="{% url 'antibiotics_view' %}" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #11cdef 0%, #64c8ff 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="fas fa-medkit"></i></div>
+                    <h5 class="card-title">Antibiotics</h5>
+                    <p class="card-description">View Antibiotics</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="{% url 'review_batches' %}" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #64c8ff 0%, #5e72e4 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="fa fa-cubes"></i></div>
+                    <h5 class="card-title">Batches</h5>
+                    <p class="card-description">Batch Management System</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-12">
+              <a href="#" class="preview-card-link">
+                <div class="preview-card">
+                  <div class="card-background" style="--card-color: linear-gradient(135deg, #fb6340 0%, #fbc658 100%);"></div>
+                  <div class="card-content">
+                    <div class="card-icon"><i class="ni ni-chart-pie-35"></i></div>
+                    <h5 class="card-title">Reports</h5>
+                    <p class="card-description">Generate Reports</p>
+                    <div class="card-arrow"><i class="ni ni-curved-next"></i></div>
+                  </div>
+                  <div class="card-shine"></div>
+                </div>
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+<div class="container-fluid index-font index-content-panel">
+  <div class="row no-gutters tat-dashboard-row">
+    <div class="col-12 tat-dashboard-column">
+      <div class="tat-dashboard-section">
+
+            <!-- ── Card header ── -->
+            <div class="tat-dashboard-header d-flex justify-content-between align-items-center flex-wrap">
+              <div>
+                <h3 class="mb-0 text-white">
+                  <i class="ni ni-time-alarm mr-2"></i>RUNNING TAT
+                </h3>
+                <small style="color:#d7f7ff;">Running status view for batches currently monitored for TAT.</small>
+              </div>
+              <div class="d-flex align-items-center mt-2 mt-md-0">
+                <a href="{% url 'tat_running_list' %}" class="btn btn-sm btn-light mr-2">
+                  <i class="fas fa-list mr-1"></i> Full List
+                </a>
+                <form method="get" action="{% url 'export_tat_excel' %}" class="d-flex align-items-center flex-wrap justify-content-end" style="gap:0.35rem;">
+                  <input type="hidden" name="tat_q" value="{{ tat_q }}">
+                  <input type="hidden" name="tat_status" value="{{ tat_status }}">
+                  <input type="hidden" name="tat_year" value="{{ tat_year }}">
+                  <input type="date" name="date_from" class="form-control form-control-sm" title="Referral date from" style="width:135px;">
+                  <input type="date" name="date_to" class="form-control form-control-sm" title="Referral date to" style="width:135px;">
+
+                  <button type="submit" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-download mr-1"></i> Export
+                  </button>
+                  <!-- <small class="w-100 text-right" style="font-size:0.7rem; color:#d7f7ff;">
+                    Filtered by: TAT Referral Date.
+                  </small> -->
+                </form>
+
+              </div>
+
+            </div>
+
+            <!-- ── Filters ── -->
+            <form method="get" class="tat-filter-panel">
+              <div class="row align-items-end">
+                <div class="col-lg-5 col-md-12 mb-3 mb-lg-0">
+                  <label>Search</label>
+                  <input class="form-control" name="tat_q" value="{{ tat_q }}" placeholder="Batch, site, or accession range" type="text">
+                </div>
+                <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+                  <label>Status</label>
+                  <select class="form-control" name="tat_status">
+                    <option value="">All Status</option>
+                    {% for item in tat_status_choices %}
+                      <option value="{{ item }}" {% if tat_status == item %}selected{% endif %}>{{ item }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-lg-2 col-md-4 mb-3 mb-lg-0">
+                  <label>Year</label>
+                  <select class="form-control" name="tat_year">
+                    <option value="all" {% if tat_year == "all" %}selected{% endif %}>All Years</option>
+                    {% for item in tat_years %}
+                      <option value="{{ item }}" {% if tat_year == item|stringformat:"s" %}selected{% endif %}>{{ item }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-lg-3 col-md-4 d-flex">
+                  <button class="btn btn-primary flex-fill mr-2" type="submit">
+                    <i class="fas fa-search mr-1"></i> Filter
+                  </button>
+                  <a href="{% url 'home' %}" class="btn btn-secondary">Reset</a>
+                </div>
+              </div>
+            </form>
+
+            <!-- ── Status strip ── -->
+            <div class="tat-status-strip">
+
+              <div class="tat-status-tile tat-tile-total">
+                <span>Total</span>
+                <strong style="font-size: 1.78rem;">{{ tat_status_counts.total }}</strong>
+                <small style="font-size:.90rem;margin-top:.15rem;">All batches</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-ongoing">
+                <span>Ongoing</span>
+                <strong style="font-size: 1.78rem;">{{ tat_status_counts.ongoing }}</strong>
+                <small style="font-size:.90rem;margin-top:.15rem;">In progress</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-near">
+                <span>Near Due</span>
+                <strong style="font-size:1.78rem;">{{ tat_status_counts.near_due }}</strong>
+                <small style="font-size:.90rem;margin-top:.15rem;">Approaching deadline</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-overdue">
+                <span>Overdue</span>
+                <strong style="font-size:1.78rem;">{{ tat_status_counts.overdue }}</strong>
+                <small style="font-size:.90rem;margin-top:.15rem;">Past deadline</small>
+              </div>
+
+              <div class="tat-status-tile tat-tile-released">
+                <span>Released</span>
+                <strong style="font-size:1.78rem;">{{ tat_status_counts.released }}</strong>
+                <small style="font-size:.90rem;margin-top:.15rem;">Completed</small>
+              </div>
+
+            </div>
+
+            <!-- ── Toggle bar ── -->
+            <div class="tat-table-toggle-bar">
+              <span>
+                <i class="fas fa-table mr-1"></i> TAT Records Table
+                <small class="text-muted ml-2">
+                  Showing latest {{ tat_running_rows|length }}{% if tat_running_total %} of {{ tat_running_total }}{% endif %}
+                </small>
+              </span>
+              <button class="btn-toggle-table collapsed" id="tatTableToggle" type="button" onclick="toggleTatTable()">
+                <span class="toggle-icon text-white">&#9654;</span>
+                <span class="toggle-label text-white">View TAT Table</span>
+              </button>
+            </div>
+
+            <!-- ── Main table ── -->
+            <div class="tat-main-table-wrap table-hidden" id="tatTableWrap">
+              <table class="table table-hover tat-main-table">
+                <thead>
+                  <tr>
+                    <th>Batch</th>
+                    <th>Site</th>
+                    <th>Accessions</th>
+                    <th>Referral Date</th>
+                    <th>No. Isolates</th>
+                    <th>Running TAT</th>
+                    <th>Status</th>
+                    <th>Action Taken</th>
+                    <th>Assigned To</th>
+                    <th>Location</th>
+                    <th>Date Released</th>
+                    <th>Final TAT</th>
+                    <th>Action</th>
+                    {% for config in tat_configs|slice:":4" %}
+                      <th>{{ config.step_type }} Days</th>
+                      <th>Within</th>
+                    {% endfor %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in tat_running_rows %}
+                  <tr>
+                    <td class="font-weight-bold text-primary">{{ row.batch_name|default:"-" }}</td>
+                    <td>{{ row.site_code|default:"-" }}</td>
+                    <td>{{ row.accessions|default:"-" }}</td>
+                    <td>{{ row.referral_date|date:"M d, Y"|default:"-" }}</td>
+                    <td class="text-center">{{ row.num_isolates|default:"-" }}</td>
+                    <td class="text-center">
+                      <span class="tat-pill tat-pill-running">{{ row.effective_days|default:"-" }} days</span>
+                    </td>
+                    <td class="text-center">
+                      {% if row.is_overdue %}
+                        <span class="tat-pill tat-pill-overdue">Overdue</span>
+                      {% elif row.near_due %}
+                        <span class="tat-pill tat-pill-near">Near Due</span>
+                      {% elif row.tat.tat_Status_Release == "Released" %}
+                        <span class="tat-pill tat-pill-released">Released</span>
+                      {% else %}
+                        <span class="tat-pill tat-pill-ongoing">{{ row.tat.tat_Status_Release }}</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ row.action_taken|default:"-" }}</td>
+                    <td>{{ row.assigned_to|default:"-" }}</td>
+                    <td>{{ row.location|default:"-" }}</td>
+                    <td>{{ row.tat.tat_Date_Released|date:"M d, Y"|default:"-" }}</td>
+                    <td class="text-center">{{ row.tat.tat_Final_TAT|default:"-" }}</td>
+                    <td>
+                      {% if row.batch %}
+                        <a href="{% url 'tat_monitoring_view' row.batch.id %}" class="btn btn-sm btn-primary">
+                          <i class="fas fa-tasks mr-1 text-white"></i>  <span class="text-white">Update Process</span>
+                        </a>
+                      {% else %}
+                        <span class="text-muted">-</span>
+                      {% endif %}
+                    </td>
+                    {% for cell in row.step_cells|slice:":4" %}
+                      <td class="text-center">{{ cell.step.step_days_count|default:"-" }}</td>
+                      <td class="text-center">
+                        {% if cell.step.within_tat %}
+                          <span class="text-success font-weight-bold">Yes</span>
+                        {% elif cell.step.within_tat == False %}
+                          <span class="text-danger font-weight-bold">No</span>
+                        {% else %}
+                          <span class="text-muted">-</span>
+                        {% endif %}
+                      </td>
+                    {% endfor %}
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="19" class="text-center text-muted py-5">No TAT records found.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <!-- /table wrap -->
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+{% endcomment %}
+{% endblock content %}
+
+{% block javascripts %}
+{% comment %}
+<script src="/static/assets/vendor/chart.js/dist/Chart.min.js"></script>
+<script src="/static/assets/vendor/chart.js/dist/Chart.extension.js"></script>
+
+<script>
+  /* ── Table toggle ── */
+  function toggleTatTable() {
+    const wrap   = document.getElementById('tatTableWrap');
+    const btn    = document.getElementById('tatTableToggle');
+    const label  = btn.querySelector('.toggle-label');
+    const icon   = btn.querySelector('.toggle-icon');
+    const hidden = wrap.classList.toggle('table-hidden');
+
+    label.textContent = hidden ? 'View TAT Table' : 'Hide TAT Table';
+    icon.innerHTML    = hidden ? '&#9654;' : '&#9660;';
+    btn.classList.toggle('collapsed', hidden);
+  }
+</script>
+
+<script>
+  function searchTable() {
+    var input  = document.querySelector("#search-input input");
+    var filter = input.value.toLowerCase();
+    var rows   = document.querySelectorAll(".tat-main-table tbody tr");
+    rows.forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
+    });
+  }
+</script>
+
+<!-- <script>
+  const images = [
+    '/static/assets/img/theme/resistance1.jpg',
+    '/static/assets/img/theme/resistance3.jpg',
+    '/static/assets/img/theme/resistance4.jpg',
+    '/static/assets/img/theme/resistance5.jpg',
+    '/static/assets/img/theme/viruses.jpg',
+    '/static/assets/img/theme/micros_2.png'
+  ];
+  let index = 0;
+  const header = document.getElementById('slideshow-header');
+  function changeBackground() {
+    header.style.backgroundImage = `url(${images[index]})`;
+    index = (index + 1) % images.length;
+  }
+  changeBackground();
+  setInterval(changeBackground, 15000);
+</script> -->
+
+<script>
+  document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+  });
+</script>
+
+{% endcomment %}
+{% endblock javascripts %}

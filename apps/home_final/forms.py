@@ -309,3 +309,83 @@ class ConcordanceReportFilterForm(forms.Form):
             raise forms.ValidationError("Start date cannot be after end date.")
 
         return cleaned_data
+
+
+class ConcordanceOptionsForm(forms.ModelForm):
+    ALL_ORGANISMS_VALUE = "__ALL_ORGANISMS__"
+
+    applied_org = forms.ChoiceField(
+        required=False,
+        label="Organism",
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+    applied_org_grp = forms.MultipleChoiceField(
+        required=False,
+        label="Organism groups",
+        widget=forms.SelectMultiple(attrs={"class": "form-control", "size": "6"}),
+    )
+
+    class Meta:
+        model = ConcordanceOptions
+        fields = [
+            "prioritize_mic_site",
+            "prioritize_disk_site",
+            "no_serotyping",
+            "applied_org",
+            "applied_org_grp",
+            "is_active",
+        ]
+        widgets = {
+            "prioritize_mic_site": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "prioritize_disk_site": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "no_serotyping": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        org_choices = [
+            ("", "n/a"),
+            (self.ALL_ORGANISMS_VALUE, "All organisms"),
+        ]
+        org_choices.extend(
+            (org.Whonet_Org_Code, f"{org.Whonet_Org_Code} - {org.Organism}")
+            for org in Organism_List.objects.all().order_by("Whonet_Org_Code")
+        )
+        self.fields["applied_org"].choices = org_choices
+        group_codes = (
+            Organism_List.objects
+            .exclude(Genus_Code__isnull=True)
+            .exclude(Genus_Code="")
+            .values_list("Genus_Code", flat=True)
+            .distinct()
+            .order_by("Genus_Code")
+        )
+        self.fields["applied_org_grp"].choices = [
+            (code, code)
+            for code in group_codes
+        ]
+        if self.instance and self.instance.pk:
+            if (self.instance.applied_org or "").strip().upper() in {"-", "N/A", "NA"}:
+                self.initial["applied_org"] = ""
+            self.initial["applied_org_grp"] = [
+                code.strip()
+                for code in (self.instance.applied_org_grp or "").split(",")
+                if code.strip()
+            ]
+        elif not self.is_bound:
+            self.initial["is_active"] = True
+
+    def clean(self):
+        cleaned_data = super().clean()
+        has_rule = any(
+            cleaned_data.get(field)
+            for field in ("prioritize_mic_site", "prioritize_disk_site", "no_serotyping")
+        )
+        if not has_rule:
+            raise forms.ValidationError("Select at least one concordance rule option.")
+        if cleaned_data.get("prioritize_mic_site") and cleaned_data.get("prioritize_disk_site"):
+            raise forms.ValidationError("Choose either MIC priority or disk priority, not both.")
+        if has_rule and not cleaned_data.get("applied_org") and not cleaned_data.get("applied_org_grp"):
+            raise forms.ValidationError("Select an organism or at least one organism group for the special rule.")
+        return cleaned_data

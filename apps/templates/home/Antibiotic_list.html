@@ -10,6 +10,39 @@
   <link rel="stylesheet" href="{% static 'assets/css/header.css' %}">
   <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
 
+  <style>
+    .option-help {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      margin-left: 4px;
+      border-radius: 50%;
+      background: #e5f8fb;
+      color: #0b7285;
+      font-size: 10px;
+      cursor: help;
+      z-index: 1000;
+    }
+
+    .option-help-popup {
+      position: fixed;
+      z-index: 2147483647;
+      width: 245px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      background: #123f4a;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.25;
+      text-align: left;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+      pointer-events: none;
+    }
+  </style>
 
 
 {% endblock stylesheets %}
@@ -83,10 +116,11 @@
         <div class="checkbox-container mb-4">
           <div class="row mt-3">
 
-            <div class="col-md-4">
+            <div class="col-md-2">
               <div class="checkbox-wrapper">
                 <label class="form-control-label mb-2" for="Show">
                   <i class="fas fa-eye mr-1" style="color: #2d9cad;"></i>Show Antibiotics
+                  <span class="option-help" tabindex="0" aria-label="Shows this antibiotic in the main site antibiotic entry form." data-help="Shows this antibiotic in the main Site antibiotic entry form. If unchecked, it will not appear for Site result encoding.">?</span>
                 </label>
                 <input id="Show" type="checkbox" name="Show" {% if form.Show.value %}checked{% endif %} />
               </div>
@@ -95,6 +129,7 @@
               <div class="checkbox-wrapper">
                 <label class="form-control-label mb-2" for="Retest">
                   <i class="fas fa-redo mr-1" style="color: #2d9cad;"></i>Retest Required
+                  <span class="option-help" tabindex="0" aria-label="Shows this antibiotic in the ARS or retest entry form." data-help="Shows this antibiotic in the ARS or retest entry form. If unchecked, users cannot encode it under ARSRL results.">?</span>
                 </label>
                 <input id="Retest" type="checkbox" name="Retest" {% if form.Retest.value %}checked{% endif %} />
               </div>
@@ -103,6 +138,7 @@
               <div class="checkbox-wrapper">
                 <label class="form-control-label mb-2" for="Show_Site">
                   <i class="fa fa-envelope-open mr-1" style="color: #2d9cad;"></i>Show in Site Result
+                  <span class="option-help" tabindex="0" aria-label="Allows this antibiotic column to print in Sentinel Site results." data-help="Allows this antibiotic column to print in Sentinel Site results in both raw and final printouts, when it belongs to the printable panel or has encoded data.">?</span>
                 </label>
                 <input id="Show" type="checkbox" name="Show_Site" {% if form.Show_Site.value %}checked{% endif %} />
               </div>
@@ -111,6 +147,7 @@
               <div class="checkbox-wrapper">
                 <label class="form-control-label mb-2" for="Show_Ars">
                   <i class="fa fa-folder-open mr-1" style="color: #2d9cad;"></i>Show in Ars Result
+                  <span class="option-help" tabindex="0" aria-label="Allows this antibiotic column to print in ARSRL results." data-help="Allows this antibiotic column to print in ARSRL results in both raw and final printouts, when it belongs to the printable panel or has encoded data.">?</span>
                 </label>
                 <input id="Show" type="checkbox" name="Show_Ars" {% if form.Show_Ars.value %}checked{% endif %} />
               </div>
@@ -120,8 +157,19 @@
               <div class="checkbox-wrapper">
                 <label class="form-control-label mb-2" for="Disk_Abx">
                   <i class="fas fa-circle mr-1" style="color: #2d9cad;"></i>Disk Diffusion Method
+                  <span class="option-help" tabindex="0" aria-label="Places this antibiotic in the disk diffusion entry table." data-help="Places this antibiotic in the Disk Diffusion table. This is automatically checked when Test Method is DISK and unchecked when Test Method is MIC.">?</span>
                 </label>
                 <input id="Disk_Abx" type="checkbox" name="Disk_Abx" {% if form.Disk_Abx.value %}checked{% endif %} />
+              </div>
+            </div>
+
+            <div class="col-md-2">
+              <div class="checkbox-wrapper">
+                <label class="form-control-label mb-2" for="Show_Value">
+                  <i class="fas fa-list-ol mr-1" style="color: #2d9cad;"></i>Show Value
+                  <span class="option-help" tabindex="0" aria-label="Controls whether encoded values and RIS are printed in final results." data-help="Controls final printing only. If unchecked, the antibiotic column can still appear, but the encoded value and RIS are blanked in the final result printout.">?</span>
+                </label>
+                <input id="Show_Value" type="checkbox" name="Show_Value" {% if form.Show_Value.value %}checked{% endif %} />
               </div>
             </div>
 
@@ -152,6 +200,7 @@
             <div class="form-group">
               <label class="form-control-label" for="Test_Method">
                 <i class="fas fa-vial mr-1"></i>Test Method
+                <span class="option-help" tabindex="0" aria-label="Selects whether this antibiotic is encoded as DISK or MIC." data-help="Select DISK for disk diffusion zone sizes, or MIC for MIC values. The Disk Diffusion checkbox follows this selection automatically.">?</span>
               </label>
               <select name="Test_Method" class="form-control">
                 <option value="" disabled selected>Select Test Method</option>
@@ -299,6 +348,61 @@
 </div>
 
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("antibioticsform");
+  const testMethod = form?.querySelector('[name="Test_Method"]');
+  const diskCheckbox = form?.querySelector('[name="Disk_Abx"]');
+
+  if (testMethod && diskCheckbox) {
+    function syncDiskCheckbox() {
+      diskCheckbox.checked = (testMethod.value || "").trim().toUpperCase() === "DISK";
+    }
+
+    testMethod.addEventListener("change", syncDiskCheckbox);
+    syncDiskCheckbox();
+  }
+
+  let activeHelpPopup = null;
+
+  function hideHelpPopup() {
+    if (activeHelpPopup) {
+      activeHelpPopup.remove();
+      activeHelpPopup = null;
+    }
+  }
+
+  function showHelpPopup(trigger) {
+    hideHelpPopup();
+    const helpText = trigger.getAttribute("data-help");
+    if (!helpText) return;
+
+    activeHelpPopup = document.createElement("div");
+    activeHelpPopup.className = "option-help-popup";
+    activeHelpPopup.textContent = helpText;
+    document.body.appendChild(activeHelpPopup);
+
+    const triggerRect = trigger.getBoundingClientRect();
+    const popupRect = activeHelpPopup.getBoundingClientRect();
+    let left = triggerRect.left + (triggerRect.width / 2) - (popupRect.width / 2);
+    let top = triggerRect.bottom + 8;
+
+    left = Math.max(8, Math.min(left, window.innerWidth - popupRect.width - 8));
+    if (top + popupRect.height > window.innerHeight - 8) {
+      top = triggerRect.top - popupRect.height - 8;
+    }
+
+    activeHelpPopup.style.left = `${left}px`;
+    activeHelpPopup.style.top = `${top}px`;
+  }
+
+  document.querySelectorAll(".option-help").forEach(function (help) {
+    help.addEventListener("mouseenter", function () { showHelpPopup(help); });
+    help.addEventListener("focus", function () { showHelpPopup(help); });
+    help.addEventListener("mouseleave", hideHelpPopup);
+    help.addEventListener("blur", hideHelpPopup);
+  });
+});
+
 function refresh() {
   if (confirm('Are you sure you want to clear all form fields?')) {
     document.getElementById("antibioticsform").reset();

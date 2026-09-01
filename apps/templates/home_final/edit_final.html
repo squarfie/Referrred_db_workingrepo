@@ -173,7 +173,7 @@ label.form-control-label{
 
 
 <div class="header pb-6 d-flex align-items-center"
-     style="min-height: 200px; background-size: auto; background-image: url(/static/assets/img/theme/microbial.jpg); background-size: cover; background-position: center bottom;">
+     style="min-height: 200px; background-size: auto; background-image: url(/static/assets/img/theme/micros_2.png); background-size: cover; background-position: center bottom;">
   <!-- Mask -->
   <span class="mask bg-gradient-default opacity-6"></span>
   <!-- Header container -->
@@ -1895,9 +1895,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 diskTbody.innerHTML = "";
                 micTbody.innerHTML = "";
 
+                const seenAntibiotics = new Set();
+
                 data.antibiotics.forEach(abx => {
                     const prefix = retest ? "retest_" : "";
-                    const code = abx.whonet;
+                    const code = (abx.whonet || "").trim().toUpperCase();
+                    const methodKey = abx.is_disk ? "disk" : "mic";
+                    const dedupeKey = `${prefix}${methodKey}:${code}`;
+                    if (!code || seenAntibiotics.has(dedupeKey)) return;
+                    seenAntibiotics.add(dedupeKey);
 
                     if (abx.is_disk) {
                         diskTbody.insertAdjacentHTML("beforeend", `

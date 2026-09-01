@@ -65,10 +65,10 @@
                                 <i class="fas fa-users-cog mr-2"></i> Accounts
                             </a>
                         {% endif %}
-                        <a class="list-group-item list-group-item-action"
+                        <!-- <a class="list-group-item list-group-item-action"
                             data-toggle="list" href="#emerging_tab" role="tab">
                             <i class="fa fa-exclamation-triangle mr-2"></i> Flag Age <small>(Emerging Resistance)</small>
-                        </a>
+                        </a> -->
 
                         <a class="list-group-item list-group-item-action"
                             data-toggle="list" href="#pheno_pre_tab" role="tab">
@@ -87,15 +87,15 @@
                         
                         <a class="list-group-item list-group-item-action"
                             data-toggle="list" href="#tat_config_tab" role="tab">
-                            <i class="fas fa-clock mr-2"></i> TAT Configuration
-                        </a>
-                        <a class="list-group-item list-group-item-action"
-                            data-toggle="list" href="#tat_location_tab" role="tab">
-                            <i class="fas fa-map-marker-alt mr-2"></i> TAT Locations
+                            <i class="fas fa-clock mr-2"></i> TAT Settings
                         </a>
                         <a class="list-group-item list-group-item-action"
                             data-toggle="list" href="#non_working_tab" role="tab">
                             <i class="fas fa-clock mr-2"></i> TAT Non-working Days
+                        </a>
+                        <a class="list-group-item list-group-item-action"
+                            data-toggle="list" href="#concordance_settings_tab" role="tab">
+                            <i class="fas fa-sliders-h mr-2"></i> Concordance Settings
                         </a>
                         <a class="list-group-item list-group-item-action"
                             data-toggle="list" href="#wgs_pipeline_tab" role="tab">
@@ -178,14 +178,16 @@
                 <!-- TAT Configuration -->
                 <div class="tab-pane fade" id="tat_config_tab" role="tabpanel">
                     {% include "settings/tabs/tat_config_tab.html" %}
-                </div>
-                <!-- TAT Location Dropdown -->
-                <div class="tab-pane fade" id="tat_location_tab" role="tabpanel">
                     {% include "settings/tabs/tat_location_tab.html" %}
                 </div>
+
                 <!-- TAT Non-working days -->
                 <div class="tab-pane fade" id="non_working_tab" role="tabpanel">
                     {% include "settings/tabs/non_working_days.html" %}
+                </div>
+                                <!-- Concordance Settings -->
+                <div class="tab-pane fade" id="concordance_settings_tab" role="tabpanel">
+                    {% include "settings/tabs/concordance_settings_tab.html" %}
                 </div>
                 <!-- WGS Pipeline Visibility -->
                 <div class="tab-pane fade" id="wgs_pipeline_tab" role="tabpanel">
@@ -204,7 +206,8 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const params = new URLSearchParams(window.location.search);
-    const tab = params.get("tab");
+    let tab = params.get("tab");
+    if (tab === "tat_location") tab = "tat_config";
 
     if (tab) {
         const trigger = document.querySelector(

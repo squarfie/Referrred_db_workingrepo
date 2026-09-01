@@ -42,6 +42,25 @@
   box-shadow: 0 8px 28px rgba(15, 39, 68, .08);
 }
 
+.tat-server-sort {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  text-decoration: none;
+}
+
+.tat-server-sort:hover {
+  color: inherit;
+  text-decoration: none;
+  filter: brightness(1.12);
+}
+
+.tat-sort-indicator {
+  font-size: .68rem;
+  opacity: .9;
+}
+
 .tat-filter-form {
   display: flex;
   align-items: flex-end;
@@ -158,7 +177,7 @@
         <p class="tat-subtitle">Review per-process days and status separately from the main running list</p>
       </div>
       <div class="d-flex flex-wrap justify-content-end gap-2">
-        <a href="{% url 'tat_running_list' %}?{% if q %}q={{ q|urlencode }}&{% endif %}{% if status %}status={{ status|urlencode }}&{% endif %}{% if year %}year={{ year|urlencode }}{% endif %}"
+        <a href="{% url 'tat_running_list' %}{% if page_query %}?{{ page_query }}{% endif %}"
            class="btn btn-light btn-sm">
           <i class="fas fa-arrow-left me-1"></i> Running List
         </a>
@@ -220,17 +239,17 @@
       </div>
 
       <div class="tat-process-wrap">
-        <table class="table table-hover tat-process-table">
+        <table class="table table-hover tat-process-table" data-no-sort>
           <thead>
             <tr>
-              <th>BatchCode</th>
-              <th>SiteCode</th>
-              <th>RefDate</th>
-              <th>Running TAT</th>
-              <th>Location</th>
-              <th>Action Taken</th>
-              <th>Assigned To</th>
-              <th>Status/Release</th>
+              <th><a class="tat-server-sort" href="{{ sort_links.batch_code.url }}">BatchCode{% if sort_links.batch_code.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.site_code.url }}">SiteCode{% if sort_links.site_code.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.referral_date.url }}">RefDate{% if sort_links.referral_date.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.running_tat.url }}">Running TAT{% if sort_links.running_tat.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.location.url }}">Location{% if sort_links.location.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.action_taken.url }}">Action Taken{% if sort_links.action_taken.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.assigned_to.url }}">Assigned To{% if sort_links.assigned_to.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
+              <th><a class="tat-server-sort" href="{{ sort_links.release_status.url }}">Status/Release{% if sort_links.release_status.active %}<span class="tat-sort-indicator">{% if current_order == "desc" %}&#9660;{% else %}&#9650;{% endif %}</span>{% endif %}</a></th>
               <th>Action</th>
               {% for config in configs %}
                 <th>{{ config.step_type }} Days</th>
@@ -293,10 +312,10 @@
           <ul class="pagination pagination-sm mb-0 tat-pagination">
             {% if page_obj.has_previous %}
               <li class="page-item">
-                <a class="page-link" href="?page=1{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&laquo;</a>
+                <a class="page-link" href="?page=1{% if page_query %}&{{ page_query }}{% endif %}">&laquo;</a>
               </li>
               <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&lsaquo;</a>
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if page_query %}&{{ page_query }}{% endif %}">&lsaquo;</a>
               </li>
             {% else %}
               <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
@@ -307,10 +326,10 @@
 
             {% if page_obj.has_next %}
               <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&rsaquo;</a>
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if page_query %}&{{ page_query }}{% endif %}">&rsaquo;</a>
               </li>
               <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}{% if year %}&year={{ year|urlencode }}{% endif %}">&raquo;</a>
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if page_query %}&{{ page_query }}{% endif %}">&raquo;</a>
               </li>
             {% else %}
               <li class="page-item disabled"><span class="page-link">&rsaquo;</span></li>

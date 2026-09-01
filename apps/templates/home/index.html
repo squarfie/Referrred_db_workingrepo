@@ -14,6 +14,8 @@
   --dashboard-overlay-head: #13263f;
   --dashboard-overlay-head-deep: #0f2638;
   --dashboard-overlay-border: rgba(0, 207, 232, 0.42);
+
+
 }
 
 /* =========================================================
@@ -672,7 +674,7 @@ body {
 
   background: #f8fcfd;
 
-  border-top: 1px solid rgba(15, 58, 95, 0.12);
+  border-top: 1px solid rgba(12, 68, 56, 0.12);
 
   transition:
     max-height 0.4s ease,
@@ -882,14 +884,886 @@ body {
     font-size: 1.15rem;
   }
 }
+
+.dashboard-redesign {
+  --dash-bg: var(--arsp-bg, #f4f7fb);
+  --dash-panel: var(--arsp-panel, #ffffff);
+  --dash-border: var(--arsp-border, #e5edf5);
+  --dash-text: var(--arsp-text, #14304a);
+  --dash-muted: var(--arsp-muted, #7b8ba0);
+  --dash-teal: var(--arsp-teal, #118386);
+  --dash-blue: var(--arsp-blue, #1c5d99);
+  --dash-green: var(--arsp-green, #20b486);
+  --dash-orange: var(--arsp-orange, #f28f38);
+  --dash-red: var(--arsp-red, #e85b4a);
+  background:
+    linear-gradient(180deg, rgba(244, 247, 251, 0.88), rgba(244, 247, 251, 0.94)),
+    url("{% static 'assets/img/theme/micros_2.png' %}") center top / cover fixed;
+  color: var(--dash-text);
+  min-height: calc(100vh - 80px);
+  padding: 24px;
+}
+
+.dashboard-redesign * {
+  letter-spacing: 0;
+}
+
+.dashboard-redesign a {
+  text-decoration: none;
+}
+
+.dashboard-shell {
+  max-width: 1680px;
+  margin: 0 auto;
+}
+
+.dashboard-hero-card,
+.metric-card,
+.chart-card,
+.quick-link-card {
+  background: var(--dash-panel);
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(18, 49, 80, 0.06);
+}
+
+.dashboard-hero-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  margin-bottom: 18px;
+}
+
+.dashboard-eyebrow {
+  color: var(--dash-teal);
+  font-size: 0.74rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.dashboard-title {
+  color: var(--dash-text);
+  font-size: 1.75rem;
+  font-weight: 850;
+  margin-bottom: 6px;
+}
+
+.dashboard-subtitle {
+  color: var(--dash-muted);
+  margin: 0;
+}
+
+.dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pill-action {
+  align-items: center;
+  background: #eef8fb;
+  border: 1px solid #d6edf3;
+  border-radius: 999px;
+  color: #125a72;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 7px;
+  min-height: 34px;
+  padding: 8px 14px;
+}
+
+.pill-action:hover {
+  background: #def3f7;
+  color: #083f52;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.metric-card {
+  display: flex;
+  gap: 14px;
+  min-height: 112px;
+  padding: 18px;
+}
+
+.metric-icon {
+  align-items: center;
+  border-radius: 8px;
+  color: #fff;
+  display: flex;
+  flex: 0 0 42px;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.metric-icon.teal { background: var(--dash-teal); }
+.metric-icon.blue { background: var(--dash-blue); }
+.metric-icon.green { background: var(--dash-green); }
+.metric-icon.orange { background: var(--dash-orange); }
+.metric-icon.red { background: var(--dash-red); }
+
+.metric-label {
+  color: var(--dash-muted);
+  font-size: 0.73rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  color: var(--dash-text);
+  font-size: 1.7rem;
+  font-weight: 850;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.metric-note {
+  color: var(--dash-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.9fr);
+  gap: 18px;
+}
+
+.dashboard-main-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-filters-wide .chart-body {
+  padding-bottom: 20px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.4fr) minmax(160px, 0.7fr) minmax(160px, 0.7fr) minmax(190px, 0.8fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.chart-card {
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.chart-card-header {
+  align-items: center;
+  border-bottom: 1px solid var(--dash-border);
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.chart-title {
+  color: var(--dash-text);
+  font-size: 0.98rem;
+  font-weight: 850;
+  margin: 0;
+}
+
+.chart-subtitle {
+  color: var(--dash-muted);
+  font-size: 0.78rem;
+  margin: 3px 0 0;
+}
+
+.chart-controls {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.chart-select,
+.chart-download {
+  background: #fff;
+  border: 1px solid #dce7f1;
+  border-radius: 8px;
+  color: #35526c;
+  font-size: 0.78rem;
+  font-weight: 750;
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+.chart-download {
+  cursor: pointer;
+}
+
+.chart-download:hover,
+.chart-select:hover {
+  border-color: #b9d8e5;
+  color: var(--dash-teal);
+}
+
+.chart-body {
+  padding: 18px;
+}
+
+.site-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.site-bar-row {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) 64px;
+  gap: 10px;
+  align-items: center;
+}
+
+.site-label {
+  color: #44617c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-track {
+  background: linear-gradient(90deg, #e8f2f7 0%, #f4fafc 100%);
+  border: 1px solid #d8eaf1;
+  border-radius: 999px;
+  height: 13px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  background: linear-gradient(90deg, #168f96 0%, #1c6cab 52%, #21b487 100%);
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 4px 10px rgba(28, 108, 171, 0.14);
+  height: 100%;
+  min-width: 2px;
+}
+
+.bar-value {
+  color: #31516b;
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-align: right;
+}
+
+.mini-trend {
+  display: flex;
+  align-items: end;
+  gap: 11px;
+  min-height: 180px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+}
+
+.trend-bar-wrap {
+  display: flex;
+  flex: 1 0 78px;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 170px;
+  min-width: 78px;
+  text-align: center;
+}
+
+.trend-bar {
+  background: linear-gradient(180deg, #21b487 0%, #168f96 48%, #1c6cab 100%);
+  border-radius: 8px 8px 2px 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 8px 16px rgba(28, 108, 171, 0.14);
+  min-height: 4px;
+}
+
+.trend-value {
+  color: #24465e;
+  font-size: 0.72rem;
+  font-weight: 850;
+  margin: 7px 0 4px;
+}
+
+.trend-label {
+  color: var(--dash-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.tat-kpi-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.tat-mini-card {
+  align-items: center;
+  background: #f8fbfd;
+  border: 1px solid #e4edf4;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 13px 14px;
+  position: relative;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.tat-mini-card[aria-label] {
+  cursor: help;
+}
+
+.tat-mini-card[aria-label]:hover,
+.tat-mini-card[aria-label]:focus {
+  border-color: #b8d7ea;
+  box-shadow: 0 10px 24px rgba(15, 39, 68, .12);
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.tat-mini-card[aria-label]::before,
+.tat-mini-card[aria-label]::after {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transition: opacity .14s ease, transform .14s ease;
+  z-index: 20;
+}
+
+.tat-mini-card[aria-label]::before {
+  background: #10253f;
+  border-radius: 7px;
+  bottom: calc(100% + 9px);
+  color: #fff;
+  content: attr(aria-label);
+  font-size: 0.72rem;
+  font-weight: 700;
+  left: 14px;
+  line-height: 1.35;
+  max-width: min(330px, calc(100vw - 48px));
+  padding: 9px 11px;
+  text-transform: none;
+  transform: translateY(4px);
+  width: max-content;
+}
+
+.tat-mini-card[aria-label]::after {
+  border: 6px solid transparent;
+  border-top-color: #10253f;
+  bottom: calc(100% - 3px);
+  content: "";
+  left: 26px;
+  transform: translateY(4px);
+}
+
+.tat-mini-card[aria-label]:hover::before,
+.tat-mini-card[aria-label]:hover::after,
+.tat-mini-card[aria-label]:focus::before,
+.tat-mini-card[aria-label]:focus::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tat-mini-card span {
+  color: var(--dash-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.tat-mini-card strong {
+  color: var(--dash-text);
+  font-size: 1.25rem;
+}
+
+.tat-mini-card.overdue strong { color: var(--dash-red); }
+.tat-mini-card.near strong { color: var(--dash-orange); }
+.tat-mini-card.released strong { color: var(--dash-green); }
+
+.quick-link-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.quick-link-card {
+  color: var(--dash-text);
+  display: flex;
+  gap: 13px;
+  min-height: 92px;
+  padding: 16px;
+}
+
+.quick-link-card:hover {
+  border-color: #c7dfeb;
+  color: var(--dash-text);
+  transform: translateY(-2px);
+}
+
+.quick-link-card i {
+  align-items: center;
+  background: #eef8fb;
+  border-radius: 8px;
+  color: var(--dash-teal);
+  display: flex;
+  flex: 0 0 38px;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.quick-link-title {
+  font-size: 0.92rem;
+  font-weight: 850;
+  margin-bottom: 5px;
+}
+
+.quick-link-copy {
+  color: var(--dash-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.table-preview {
+  max-height: 310px;
+  overflow: auto;
+}
+
+.table-preview table {
+  margin-bottom: 0;
+}
+
+.table-preview th {
+  color: #536d83;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.table-preview td {
+  color: #28455e;
+  font-size: 0.78rem;
+  vertical-align: middle;
+}
+
+.status-pill-soft {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 850;
+  padding: 5px 9px;
+}
+
+.status-pill-soft.overdue { background: #ffe8e5; color: #c33b2d; }
+.status-pill-soft.near { background: #fff2df; color: #a86412; }
+.status-pill-soft.released { background: #dff8ef; color: #0e7a58; }
+.status-pill-soft.ongoing { background: #e5f2ff; color: #1c5d99; }
+
+@media (max-width: 1300px) {
+  .metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dashboard-grid,
+  .quick-link-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-redesign {
+    padding: 14px;
+  }
+
+  .dashboard-hero-card {
+    flex-direction: column;
+  }
+
+  .dashboard-actions {
+    justify-content: flex-start;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .site-bar-row {
+    grid-template-columns: 58px minmax(0, 1fr) 52px;
+  }
+
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-actions {
+    flex-direction: column;
+  }
+}
 </style>
 
 {% endblock stylesheets %}
 
 {% block content %}
 
+<div class="dashboard-redesign index-font">
+  <div class="dashboard-shell">
+    <section class="dashboard-hero-card">
+      <div>
+        <div class="dashboard-eyebrow">ARSP Dashboard</div>
+        <h1 class="dashboard-title">Antimicrobial Resistance Surveillance Program</h1>
+        <p class="dashboard-subtitle">
+          Referral year {{ dashboard_year_label }}. Monitor concordance, deviations, sites, and TAT status at a glance.
+        </p>
+      </div>
+      <div class="dashboard-actions">
+        <a class="pill-action" href="{% url 'concordance_analysis' %}">
+          <i class="fas fa-chart-bar"></i> Concordance
+        </a>
+        <a class="pill-action" href="{% url 'tat_review_view' %}">
+          <i class="fas fa-clock"></i> TAT
+        </a>
+        <a class="pill-action" href="{% url 'batch_create_view' %}">
+          <i class="fas fa-plus"></i> Add Batch
+        </a>
+        <button class="pill-action border-0" type="button" data-download="kpi">
+          <i class="fas fa-download"></i> KPI CSV
+        </button>
+      </div>
+    </section>
+
+    <section class="metric-grid" aria-label="Dashboard metrics">
+      <article class="metric-card">
+        <div class="metric-icon teal"><i class="fas fa-dna"></i></div>
+        <div>
+          <div class="metric-label">Genus Concordance</div>
+          <div class="metric-value">{{ concordance_kpis.genus_rate }}%</div>
+          <div class="metric-note">Average across batch reports</div>
+        </div>
+      </article>
+      <article class="metric-card">
+        <div class="metric-icon blue"><i class="fas fa-vial"></i></div>
+        <div>
+          <div class="metric-label">Species Concordance</div>
+          <div class="metric-value">{{ concordance_kpis.species_rate }}%</div>
+          <div class="metric-note">Identification at species level</div>
+        </div>
+      </article>
+      <article class="metric-card">
+        <div class="metric-icon green"><i class="fas fa-check-double"></i></div>
+        <div>
+          <div class="metric-label">AST Concordance</div>
+          <div class="metric-value">{{ concordance_kpis.ast_rate }}%</div>
+          <div class="metric-note">{{ concordance_kpis.total_pairs }} AST pairs analyzed</div>
+        </div>
+      </article>
+      <article class="metric-card">
+        <div class="metric-icon orange"><i class="fas fa-exclamation-triangle"></i></div>
+        <div>
+          <div class="metric-label">Total Deviations</div>
+          <div class="metric-value">{{ concordance_kpis.total_deviation }}</div>
+          <div class="metric-note">{{ concordance_kpis.critical_deviation }} critical deviations</div>
+        </div>
+      </article>
+      <article class="metric-card">
+        <div class="metric-icon red"><i class="fas fa-hospital"></i></div>
+        <div>
+          <div class="metric-label">Referral Records</div>
+          <div class="metric-value">{{ record_count }}</div>
+          <div class="metric-note">{{ site_count }} active sites</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard-grid">
+      <div class="dashboard-main-column">
+        <article class="chart-card">
+          <div class="chart-card-header">
+            <div>
+              <h2 class="chart-title">Concordance by Site</h2>
+              <p class="chart-subtitle">Site-level percentage, sorted by selected metric.</p>
+            </div>
+            <div class="chart-controls">
+              <select class="chart-select" id="siteMetricSelect" aria-label="Site concordance metric">
+                <option value="genus_rate">Genus</option>
+                <option value="species_rate">Species</option>
+                <option value="ast_rate">AST</option>
+                <option value="total_deviation">Total deviations</option>
+              </select>
+              <button class="chart-download" type="button" data-download="site">
+                <i class="fas fa-download mr-1"></i> CSV
+              </button>
+            </div>
+          </div>
+          <div class="chart-body">
+            <div class="site-bars" id="siteConcordanceBars">
+              {% for row in site_concordance_rows %}
+                <div class="site-bar-row">
+                  <div class="site-label" title="{{ row.site_name }}">{{ row.site_code }}</div>
+                  <div class="bar-track">
+                    <div class="bar-fill" style="width: {{ row.genus_rate }}%;"></div>
+                  </div>
+                  <div class="bar-value">{{ row.genus_rate }}%</div>
+                </div>
+              {% empty %}
+                <p class="text-muted mb-0">No concordance reports available for this year.</p>
+              {% endfor %}
+            </div>
+          </div>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-card-header">
+            <div>
+              <h2 class="chart-title">Monthly Referral Trend</h2>
+              <p class="chart-subtitle">Referred accession volume and active submitting sites by month.</p>
+            </div>
+            <div class="chart-controls">
+              <select class="chart-select" id="trendMetricSelect" aria-label="Monthly trend metric">
+                <option value="referrals">Referrals</option>
+                <option value="sites">Active sites</option>
+              </select>
+              <button class="chart-download" type="button" data-download="trend">
+                <i class="fas fa-download mr-1"></i> CSV
+              </button>
+            </div>
+          </div>
+          <div class="chart-body">
+            <div class="mini-trend" id="monthlyTrendBars">
+              {% for row in monthly_referral_rows %}
+                <div class="trend-bar-wrap">
+                  <div class="trend-bar" style="height: 40%;"></div>
+                  <div class="trend-value">{{ row.referrals }}</div>
+                  <div class="trend-label">{{ row.month }}</div>
+                </div>
+              {% empty %}
+                <p class="text-muted mb-0">No monthly referral data available.</p>
+              {% endfor %}
+            </div>
+          </div>
+        </article>
+
+        <article class="chart-card dashboard-filters-wide">
+          <div class="chart-card-header">
+            <div>
+              <h2 class="chart-title">Dashboard Filters</h2>
+              <p class="chart-subtitle">Applies to TAT and current-year dashboard counts.</p>
+            </div>
+          </div>
+          <div class="chart-body">
+            <form method="get" class="filter-grid">
+              <div class="form-group mb-0">
+                <label class="text-muted text-uppercase small font-weight-bold">Search</label>
+                <input class="form-control" name="tat_q" value="{{ tat_q }}" placeholder="Batch, site, or accession range" type="text">
+              </div>
+              <div class="form-group mb-0">
+                <label class="text-muted text-uppercase small font-weight-bold">Status</label>
+                <select class="form-control" name="tat_status">
+                  <option value="">All Status</option>
+                  {% for item in tat_status_choices %}
+                    <option value="{{ item }}" {% if tat_status == item %}selected{% endif %}>{{ item }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group mb-0">
+                <label class="text-muted text-uppercase small font-weight-bold">Year</label>
+                <select class="form-control" name="tat_year">
+                  <option value="all" {% if tat_year == "all" %}selected{% endif %}>All Years</option>
+                  {% for item in tat_years %}
+                    <option value="{{ item }}" {% if tat_year == item|stringformat:"s" %}selected{% endif %}>{{ item }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="filter-actions">
+                <button class="btn btn-primary flex-fill" type="submit">
+                  <i class="fas fa-search mr-1"></i> Filter
+                </button>
+                <a href="{% url 'home' %}" class="btn btn-outline-secondary flex-fill">Reset</a>
+              </div>
+            </form>
+          </div>
+        </article>
+      </div>
+
+      <aside>
+        <article class="chart-card">
+          <div class="chart-card-header">
+            <div>
+              <h2 class="chart-title">TAT Status</h2>
+              <p class="chart-subtitle">Current filtered running status.</p>
+            </div>
+            <div class="chart-controls">
+              <a class="chart-download" href="{% url 'tat_running_list' %}">
+                <i class="fas fa-list mr-1"></i> Full list
+              </a>
+            </div>
+          </div>
+          <div class="chart-body">
+            <div class="tat-kpi-grid">
+              <div class="tat-mini-card"><span>Total</span><strong>{{ tat_status_counts.total }}</strong></div>
+              <div class="tat-mini-card"><span>Ongoing</span><strong>{{ tat_status_counts.ongoing }}</strong></div>
+              <div class="tat-mini-card near"><span>Near Due</span><strong>{{ tat_status_counts.near_due }}</strong></div>
+              <div class="tat-mini-card overdue"><span>Overdue</span><strong>{{ tat_status_counts.overdue }}</strong></div>
+              <div class="tat-mini-card released"><span>Released</span><strong>{{ tat_status_counts.released }}</strong></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-card-header">
+            <div>
+              <h2 class="chart-title">Surveillance Snapshot</h2>
+              <p class="chart-subtitle">WGS, emerging, concordance, and TAT signals.</p>
+            </div>
+            <div class="chart-controls">
+              <button class="chart-download" type="button" data-download="surveillance">
+                <i class="fas fa-download mr-1"></i> CSV
+              </button>
+            </div>
+          </div>
+          <div class="chart-body">
+            <div class="tat-kpi-grid">
+              <div class="tat-mini-card" tabindex="0" aria-label="WGS records linked to final accessions. One accession can have more than one WGS record."><span>Total WGS Projects</span><strong>{{ surveillance_snapshot.wgs_projects }}</strong></div>
+              <div class="tat-mini-card released" tabindex="0" aria-label="Distinct / Deduplicated final accessions matched to WGS_Project records"><span>Matched Accessions</span><strong>{{ surveillance_snapshot.wgs_matched }}</strong></div>
+              <div class="tat-mini-card near" tabindex="0" aria-label="Count of Unmatched WGS Project records."><span>Unmatched Accessions</span><strong>{{ surveillance_snapshot.wgs_unmatched }}</strong></div>
+              <div class="tat-mini-card" tabindex="0" aria-label="WGS pipelines currently marked active."><span>Active WGS Pipelines</span><strong>{{ surveillance_snapshot.wgs_active_pipelines }}</strong></div>
+              <div class="tat-mini-card overdue" tabindex="0" aria-label="Final Data records marked as emerging "><span>Emerging Records</span><strong>{{ surveillance_snapshot.emerging_records }}</strong></div>
+              <div class="tat-mini-card" tabindex="0" aria-label="Saved concordance report snapshots"><span>Concordance Reports</span><strong>{{ surveillance_snapshot.concordance_reports }}</strong></div>
+            </div>
+          </div>
+        </article>
+      </aside>
+    </section>
+
+    <section class="quick-link-grid">
+      <a href="{% url 'view_wgs_overview' %}" class="quick-link-card">
+        <i class="ni ni-atom"></i>
+        <span>
+          <span class="quick-link-title d-block">WGS Overview</span>
+          <span class="quick-link-copy d-block">Whole genome sequencing results.</span>
+        </span>
+      </a>
+      <a href="{% url 'antibiotics_view' %}" class="quick-link-card">
+        <i class="fas fa-medkit"></i>
+        <span>
+          <span class="quick-link-title d-block">Antibiotics</span>
+          <span class="quick-link-copy d-block">Review antibiotic setup.</span>
+        </span>
+      </a>
+      <a href="{% url 'review_batches' %}" class="quick-link-card">
+        <i class="fa fa-cubes"></i>
+        <span>
+          <span class="quick-link-title d-block">Batches</span>
+          <span class="quick-link-copy d-block">Batch management system.</span>
+        </span>
+      </a>
+      <a href="{% url 'concordance_analysis' %}" class="quick-link-card">
+        <i class="fas fa-chart-line"></i>
+        <span>
+          <span class="quick-link-title d-block">Reports</span>
+          <span class="quick-link-copy d-block">Open concordance reporting.</span>
+        </span>
+      </a>
+    </section>
+
+    <article class="chart-card mt-3">
+      <div class="chart-card-header">
+        <div>
+          <h2 class="chart-title">Recent TAT Records</h2>
+          <p class="chart-subtitle">
+            Showing latest {{ tat_running_rows|length }}{% if tat_running_total %} of {{ tat_running_total }}{% endif %}.
+          </p>
+        </div>
+        <div class="chart-controls">
+          <form method="get" action="{% url 'export_tat_excel' %}">
+            <input type="hidden" name="tat_q" value="{{ tat_q }}">
+            <input type="hidden" name="tat_status" value="{{ tat_status }}">
+            <input type="hidden" name="tat_year" value="{{ tat_year }}">
+            <button type="submit" class="chart-download">
+              <i class="fas fa-download mr-1"></i> Excel
+            </button>
+          </form>
+        </div>
+      </div>
+      <div class="table-preview">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Batch</th>
+              <th>Site</th>
+              <th>Accessions</th>
+              <th>Referral Date</th>
+              <th>TAT</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in tat_running_rows %}
+              <tr>
+                <td class="font-weight-bold">{{ row.batch_name|default:"-" }}</td>
+                <td>{{ row.site_code|default:"-" }}</td>
+                <td>{{ row.accessions|default:"-" }}</td>
+                <td>{{ row.referral_date|date:"M d, Y"|default:"-" }}</td>
+                <td>{{ row.effective_days|default:"-" }} days</td>
+                <td>
+                  {% if row.is_overdue %}
+                    <span class="status-pill-soft overdue">Overdue</span>
+                  {% elif row.near_due %}
+                    <span class="status-pill-soft near">Near Due</span>
+                  {% elif row.tat.tat_Status_Release == "Released" %}
+                    <span class="status-pill-soft released">Released</span>
+                  {% else %}
+                    <span class="status-pill-soft ongoing">{{ row.tat.tat_Status_Release|default:"Ongoing" }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if row.batch %}
+                    <a href="{% url 'tat_monitoring_view' row.batch.id %}" class="btn btn-sm btn-outline-primary">Update</a>
+                  {% else %}
+                    <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">No TAT records found.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+</div>
+
+{% comment %}
 <div class="header-container">
-      <div class="background-animation-wrapper" aria-hidden="true">
+      <!-- <div class="background-animation-wrapper" aria-hidden="true">
       <div class="grid-bg"></div>
       <div class="particles">
           <div class="particle"></div>
@@ -908,7 +1782,7 @@ body {
       <div class="glow-orb"></div>
       <div class="glow-orb"></div>
       <div class="overlay"></div>
-  </div>
+  </div> -->
 
 <div class="header-index">
       <div class="header-title-row">
@@ -1050,26 +1924,6 @@ body {
     </div>
 
 <div class="container-fluid index-font index-content-panel">
-      <!-- <div class="dashboard-animation-wrapper" aria-hidden="true">
-        <div class="grid-bg"></div>
-        <div class="particles">
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-          <div class="particle"></div>
-        </div>
-        <div class="scanner"></div>
-        <div class="scanner"></div>
-        <div class="scanner"></div>
-        <div class="glow-orb"></div>
-        <div class="glow-orb"></div>
-        <div class="overlay"></div>
-      </div> -->
   <div class="row no-gutters tat-dashboard-row">
     <div class="col-12 tat-dashboard-column">
       <div class="tat-dashboard-section">
@@ -1276,9 +2130,146 @@ body {
       </div>
     </div>
 
+{% endcomment %}
 {% endblock content %}
 
 {% block javascripts %}
+<script>
+  const concordanceKpis = {{ concordance_kpis_json|safe }};
+  const concordanceKpiYearRows = {{ concordance_kpi_year_rows_json|safe }};
+  const surveillanceSnapshot = {{ surveillance_snapshot_json|safe }};
+  const surveillanceSnapshotYearRows = {{ surveillance_snapshot_year_rows_json|safe }};
+  const siteConcordanceRows = {{ site_concordance_rows_json|safe }};
+  const siteConcordanceYearRows = {{ site_concordance_year_rows_json|safe }};
+  const monthlyReferralRows = {{ monthly_referral_rows_json|safe }};
+  const dashboardAllYears = {{ dashboard_all_years|yesno:"true,false" }};
+
+  function metricLabel(metric) {
+    return {
+      genus_rate: 'Genus',
+      species_rate: 'Species',
+      ast_rate: 'AST',
+      total_deviation: 'Deviations',
+      referrals: 'Referrals',
+      sites: 'Sites'
+    }[metric] || metric;
+  }
+
+  function formatMetric(value, metric) {
+    const numeric = Number(value || 0);
+    if (metric === 'total_deviation' || metric === 'referrals' || metric === 'sites') {
+      return String(numeric);
+    }
+    return `${numeric.toFixed(numeric % 1 === 0 ? 0 : 2)}%`;
+  }
+
+  function renderSiteBars(metric) {
+    const mount = document.getElementById('siteConcordanceBars');
+    if (!mount) return;
+    const rows = [...siteConcordanceRows].sort((a, b) => Number(b[metric] || 0) - Number(a[metric] || 0));
+    if (!rows.length) {
+      mount.innerHTML = '<p class="text-muted mb-0">No concordance reports available for this year.</p>';
+      return;
+    }
+    const maxValue = metric === 'total_deviation'
+      ? Math.max(...rows.map(row => Number(row[metric] || 0)), 1)
+      : 100;
+    mount.innerHTML = rows.slice(0, 12).map(row => {
+      const value = Number(row[metric] || 0);
+      const width = Math.max(2, Math.min(100, (value / maxValue) * 100));
+      return `
+        <div class="site-bar-row">
+          <div class="site-label" title="${row.site_name || row.site_code}">${row.site_code}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${width}%;"></div></div>
+          <div class="bar-value">${formatMetric(value, metric)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderTrendBars(metric) {
+    const mount = document.getElementById('monthlyTrendBars');
+    if (!mount) return;
+    if (!monthlyReferralRows.length) {
+      mount.innerHTML = '<p class="text-muted mb-0">No monthly referral data available.</p>';
+      return;
+    }
+    const maxValue = Math.max(...monthlyReferralRows.map(row => Number(row[metric] || 0)), 1);
+    mount.innerHTML = monthlyReferralRows.map(row => {
+      const value = Number(row[metric] || 0);
+      const height = Math.max(10, Math.min(100, (value / maxValue) * 100));
+      return `
+        <div class="trend-bar-wrap">
+          <div class="trend-bar" style="height:${height}%;"></div>
+          <div class="trend-value">${formatMetric(value, metric)}</div>
+          <div class="trend-label">${row.month}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function downloadCsv(filename, rows) {
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => headers.map(header => {
+        const value = String(row[header] ?? '').replace(/"/g, '""');
+        return `"${value}"`;
+      }).join(','))
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const siteSelect = document.getElementById('siteMetricSelect');
+    const trendSelect = document.getElementById('trendMetricSelect');
+    renderSiteBars(siteSelect ? siteSelect.value : 'genus_rate');
+    renderTrendBars(trendSelect ? trendSelect.value : 'genus_rate');
+
+    if (siteSelect) {
+      siteSelect.addEventListener('change', () => renderSiteBars(siteSelect.value));
+    }
+    if (trendSelect) {
+      trendSelect.addEventListener('change', () => renderTrendBars(trendSelect.value));
+    }
+
+    document.querySelectorAll('[data-download]').forEach(button => {
+      button.addEventListener('click', () => {
+        const type = button.getAttribute('data-download');
+        if (type === 'site') {
+          const rows = dashboardAllYears && siteConcordanceYearRows.length ? siteConcordanceYearRows : siteConcordanceRows;
+          const scope = dashboardAllYears ? 'all_years' : '{{ dashboard_year_label|slugify }}';
+          downloadCsv(`concordance_by_site_${metricLabel(siteSelect.value).toLowerCase()}_${scope}.csv`, rows);
+        }
+        if (type === 'trend') {
+          const scope = dashboardAllYears ? 'all_years' : '{{ dashboard_year_label|slugify }}';
+          downloadCsv(`monthly_referrals_${metricLabel(trendSelect.value).toLowerCase()}_${scope}.csv`, monthlyReferralRows);
+        }
+        if (type === 'kpi') {
+          const rows = dashboardAllYears && concordanceKpiYearRows.length ? concordanceKpiYearRows : concordanceKpis;
+          const scope = dashboardAllYears ? 'all_years' : '{{ dashboard_year_label|slugify }}';
+          downloadCsv(`dashboard_concordance_kpis_${scope}.csv`, rows);
+        }
+        if (type === 'surveillance') {
+          const rows = dashboardAllYears && surveillanceSnapshotYearRows.length ? surveillanceSnapshotYearRows : surveillanceSnapshot;
+          const scope = dashboardAllYears ? 'all_years' : '{{ dashboard_year_label|slugify }}';
+          downloadCsv(`dashboard_surveillance_snapshot_${scope}.csv`, rows);
+        }
+      });
+    });
+  });
+</script>
+
+{% comment %}
 <script src="/static/assets/vendor/chart.js/dist/Chart.min.js"></script>
 <script src="/static/assets/vendor/chart.js/dist/Chart.extension.js"></script>
 
@@ -1315,7 +2306,7 @@ body {
     '/static/assets/img/theme/resistance4.jpg',
     '/static/assets/img/theme/resistance5.jpg',
     '/static/assets/img/theme/viruses.jpg',
-    '/static/assets/img/theme/microbial.jpg'
+    '/static/assets/img/theme/micros_2.png'
   ];
   let index = 0;
   const header = document.getElementById('slideshow-header');
@@ -1333,4 +2324,5 @@ body {
   });
 </script>
 
+{% endcomment %}
 {% endblock javascripts %}

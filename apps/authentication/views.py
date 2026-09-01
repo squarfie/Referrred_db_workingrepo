@@ -34,6 +34,10 @@ def login_view(request):
                     msg = "Your account is not linked to an approved ARSP staff record yet."
                     return render(request, "accounts/login.html", {"form": form, "msg": msg})
                 login(request, user)
+                if request.POST.get("remember_me") == "on":
+                    request.session.set_expiry(60 * 60 * 24 * 30)
+                else:
+                    request.session.set_expiry(0)
                 return redirect("/")
             elif User.objects.filter(username=username).exists():
                 account = User.objects.filter(username=username).first()

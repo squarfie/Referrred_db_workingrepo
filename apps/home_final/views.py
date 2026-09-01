@@ -4,6 +4,7 @@
 import os
 import re
 import csv
+import io
 from decimal import Decimal, InvalidOperation
 from datetime import date, datetime
 from collections import OrderedDict, defaultdict
@@ -284,7 +285,6 @@ def _final_antibiotics_for_panel(
             panel_filter |= _code_iexact_filter("Whonet_Abx", existing_whonet_codes)
         return qs.filter(panel_filter).distinct().order_by("Antibiotic", "Whonet_Abx")
 
-    qs = qs.filter(Show_All=True)
     return qs.order_by("Antibiotic", "Whonet_Abx")
 
 
@@ -635,6 +635,23 @@ def _final_sort_field(sort_by, order):
     return sort_by, order, f"-{sort_by}" if order == "desc" else sort_by
 
 
+def _tat_pressure_for_days(days, target_days=None):
+    display_target_days = target_days or 40
+
+    if days is None or not display_target_days:
+        return "none"
+
+    remaining_days = display_target_days - days
+    tat_ratio = days / display_target_days
+    if days > display_target_days:
+        return "overdue"
+    if 0 <= remaining_days <= 5:
+        return "near"
+    if tat_ratio >= 0.75:
+        return "watch"
+    return "safe"
+
+
 @login_required(login_url="login")
 def show_final_table(request):
 
@@ -676,16 +693,47 @@ def show_final_table(request):
     paginator = Paginator(batch_summaries, 20)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
+
+    page_batch_ids = [
+        item.get("f_Batch_id")
+        for item in page_obj.object_list
+        if item.get("f_Batch_id")
+    ]
+    page_batch_codes = [
+        (item.get("batch_code") or item.get("fallback_batch_code") or "").strip()
+        for item in page_obj.object_list
+        if (item.get("batch_code") or item.get("fallback_batch_code") or "").strip()
+    ]
+    tat_by_batch_id = {
+        tat.tat_Batch_Isolates_id: {
+            "days": tat.tat_Running_TAT,
+            "pressure": _tat_pressure_for_days(tat.tat_Running_TAT, tat.tat_Target_Days),
+        }
+        for tat in TATform.objects.filter(tat_Batch_Isolates_id__in=page_batch_ids)
+    }
+    tat_by_batch_code = {
+        tat.tat_Batch_Code.strip(): {
+            "days": tat.tat_Running_TAT,
+            "pressure": _tat_pressure_for_days(tat.tat_Running_TAT, tat.tat_Target_Days),
+        }
+        for tat in TATform.objects.filter(tat_Batch_Code__in=page_batch_codes)
+        if tat.tat_Batch_Code
+    }
+
     page_groups = []
     for batch_summary in page_obj.object_list:
         raw_batch_code = batch_summary.get("batch_code") or batch_summary.get("fallback_batch_code") or ""
         batch_code = raw_batch_code.strip() or "Unbatched"
+        batch_id = batch_summary.get("f_Batch_id") or ""
+        tat_summary = tat_by_batch_id.get(batch_id, tat_by_batch_code.get(batch_code, {}))
         page_groups.append({
-            "batch_id": batch_summary.get("f_Batch_id") or "",
+            "batch_id": batch_id,
             "code": batch_code,
             "batch_code": raw_batch_code,
             "count": batch_summary["record_count"],
             "site_code": batch_summary.get("site_code") or "",
+            "tat_days": tat_summary.get("days"),
+            "tat_pressure": tat_summary.get("pressure", "none"),
         })
 
     # Available years
@@ -1665,6 +1713,12 @@ def generate_final_batch_pdf_panel_old(request, id):
         AntibioticList.objects
         .values_list("Whonet_Abx", "Abx_code")
     )
+    show_value_by_whonet = {
+        (whonet or "").strip().upper(): show_value
+        for whonet, show_value in AntibioticList.objects
+        .exclude(Whonet_Abx__exact="")
+        .values_list("Whonet_Abx", "Show_Value")
+    }
     site_print_order = antibiotic_print_order(show_site=True)
     ars_print_order = antibiotic_print_order(show_ars=True)
     printable_abx_site = set(site_print_order)
@@ -1744,12 +1798,12 @@ def generate_final_batch_pdf_panel_old(request, id):
 
             # group the antibiotics based on panels
             grouped_site = {
-                abx: {"disk": None, "mic": None}
+                abx: {"disk": None, "mic": None, "disk_show_value": True, "mic_show_value": True}
                 for abx in site_abx_codes
             }
 
             grouped_ars = {
-                abx: {"disk": None, "mic": None}
+                abx: {"disk": None, "mic": None, "disk_show_value": True, "mic_show_value": True}
                 for abx in ars_abx_codes
             }
 
@@ -1758,25 +1812,31 @@ def generate_final_batch_pdf_panel_old(request, id):
 
                 # -sentinel site-
                 if e.ab_Abx_code:
-                    abx = abx_map.get(e.ab_Abx_code.strip().upper())
+                    site_whonet = e.ab_Abx_code.strip().upper()
+                    abx = abx_map.get(site_whonet)
                     if abx and abx in grouped_site:
                         # Prefer DISK if a disk value exists
                         if e.ab_Disk_value is not None:
                             grouped_site[abx]["disk"] = e
+                            grouped_site[abx]["disk_show_value"] = show_value_by_whonet.get(site_whonet, True)
 
                         # Otherwise assign MIC only if MIC value exists
                         elif e.ab_MIC_value is not None:
                             grouped_site[abx]["mic"] = e
+                            grouped_site[abx]["mic_show_value"] = show_value_by_whonet.get(site_whonet, True)
 
 
                 # -arsrl / retest-
                 if e.ab_Retest_Abx_code:
-                    abx = abx_map.get(e.ab_Retest_Abx_code.strip().upper())
+                    ars_whonet = e.ab_Retest_Abx_code.strip().upper()
+                    abx = abx_map.get(ars_whonet)
                     if abx and abx in grouped_ars:
                         if e.ab_Retest_DiskValue is not None:
                             grouped_ars[abx]["disk"] = e
+                            grouped_ars[abx]["disk_show_value"] = show_value_by_whonet.get(ars_whonet, True)
                         elif e.ab_Retest_MICValue is not None:
                             grouped_ars[abx]["mic"] = e
+                            grouped_ars[abx]["mic_show_value"] = show_value_by_whonet.get(ars_whonet, True)
 
 
             site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.f_Site_OrgName)
@@ -1885,6 +1945,12 @@ def generate_final_batch_pdf(request, id):
         for row in antibiotic_order
         if (row["Whonet_Abx"] or "").strip() and (row["Abx_code"] or "").strip()
     }
+    show_value_by_whonet = {
+        (row["Whonet_Abx"] or "").strip().upper(): row["Show_Value"]
+        for row in Antibiotic_List.objects
+        .exclude(Whonet_Abx__exact="")
+        .values("Whonet_Abx", "Show_Value")
+    }
     site_print_order = antibiotic_print_order(show_site=True)
     ars_print_order = antibiotic_print_order(show_ars=True)
     site_printable = set(site_print_order)
@@ -1950,23 +2016,35 @@ def generate_final_batch_pdf(request, id):
             site_abx_codes = aligned_abx_codes
             ars_abx_codes = aligned_abx_codes
 
-            grouped_site = {abx: {"disk": None, "mic": None} for abx in site_abx_codes}
-            grouped_ars = {abx: {"disk": None, "mic": None} for abx in ars_abx_codes}
+            grouped_site = {
+                abx: {"disk": None, "mic": None, "disk_show_value": True, "mic_show_value": True}
+                for abx in site_abx_codes
+            }
+            grouped_ars = {
+                abx: {"disk": None, "mic": None, "disk_show_value": True, "mic_show_value": True}
+                for abx in ars_abx_codes
+            }
 
             for e in entries:
-                site_abx = abx_map.get((e.ab_Abx_code or "").strip().upper())
+                site_whonet = (e.ab_Abx_code or "").strip().upper()
+                site_abx = abx_map.get(site_whonet)
                 if site_abx in grouped_site:
                     if e.ab_Disk_value is not None:
                         grouped_site[site_abx]["disk"] = e
+                        grouped_site[site_abx]["disk_show_value"] = show_value_by_whonet.get(site_whonet, True)
                     if e.ab_MIC_value is not None:
                         grouped_site[site_abx]["mic"] = e
+                        grouped_site[site_abx]["mic_show_value"] = show_value_by_whonet.get(site_whonet, True)
 
-                ars_abx = abx_map.get((e.ab_Retest_Abx_code or "").strip().upper())
+                ars_whonet = (e.ab_Retest_Abx_code or "").strip().upper()
+                ars_abx = abx_map.get(ars_whonet)
                 if ars_abx in grouped_ars:
                     if e.ab_Retest_DiskValue is not None:
                         grouped_ars[ars_abx]["disk"] = e
+                        grouped_ars[ars_abx]["disk_show_value"] = show_value_by_whonet.get(ars_whonet, True)
                     if e.ab_Retest_MICValue is not None:
                         grouped_ars[ars_abx]["mic"] = e
+                        grouped_ars[ars_abx]["mic_show_value"] = show_value_by_whonet.get(ars_whonet, True)
 
             site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.f_Site_OrgName)
             ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.f_ars_OrgName)
@@ -2382,9 +2460,15 @@ def ajax_filter_antibiotics(request):
 
     # ================= BUILD RESPONSE =================
     payload = []
+    seen_payload_codes = set()
 
     for abx in antibiotics:
         code = (abx.Whonet_Abx or "").strip().upper()
+        method_key = "disk" if abx.Disk_Abx else "mic"
+        payload_key = (code, method_key)
+        if not code or payload_key in seen_payload_codes:
+            continue
+        seen_payload_codes.add(payload_key)
         entry = entry_map.get(code)
 
         if retest:
@@ -3419,8 +3503,14 @@ def classify_id_concordance(site_org, ars_pre, ars_org):
     if "mixed culture of" in pre:
         return "M", "M"
 
-    if ars == "not viable":
+    if pre in {"nv", "not viable", "nonviable", "no growth"}:
         return "N", "N"
+
+    if ars == "not viable":
+        return "X", "X"
+
+    if site and ars in {"", "n/a", "na", "none", "null", "-"}:
+        return "X", "X"
 
     if site and ars and site == ars:
         return "G", "S"
@@ -3470,13 +3560,165 @@ def classify_ast_deviation(site_ris, ars_ris):
     return None, False
 
 
+def _concordance_pct(numerator, denominator):
+    if hasattr(concordance_service, "pct"):
+        return concordance_service.pct(numerator, denominator)
+    denominator = denominator or 0
+    if not denominator:
+        return 0
+    return round(((numerator or 0) / denominator) * 100, 2)
+
+
+def _add_site_concordance_context(context, year, site_filter="", metric="ast_rate", sort_order="desc", min_pairs=0):
+    site_metric_labels = {
+        "ast_rate": "AST Concordance %",
+        "genus_rate": "Genus Concordance %",
+        "species_rate": "Species Concordance %",
+        "total_deviation": "Total Deviations",
+        "critical_deviation": "Critical Deviations",
+        "total_pairs": "AST Pairs",
+        "report_count": "Reports",
+    }
+    if metric not in site_metric_labels:
+        metric = "ast_rate"
+    if sort_order not in {"asc", "desc"}:
+        sort_order = "desc"
+    min_pairs = max(min_pairs, 0)
+
+    report_qs = ConcordanceReport.objects.select_related("final_data", "batch").filter(final_data__isnull=False)
+    if year not in (None, "", "all"):
+        report_qs = report_qs.filter(final_data__f_Referral_Date__year=year)
+
+    site_choices = sorted({
+        str(report.final_data.f_SiteCode or "").strip()
+        for report in report_qs
+        if report.final_data and str(report.final_data.f_SiteCode or "").strip()
+    })
+    if site_filter:
+        report_qs = report_qs.filter(final_data__f_SiteCode=site_filter)
+
+    site_buckets = {}
+    for report in report_qs:
+        isolate = report.final_data
+        site_code = str(getattr(isolate, "f_SiteCode", "") or "").strip() or "N/A"
+        site_name = str(getattr(isolate, "f_Site_Name", "") or "").strip()
+        bucket = site_buckets.setdefault(site_code, {
+            "site_code": site_code,
+            "site_name": site_name,
+            "report_count": 0,
+            "total_isolates": 0,
+            "total_pairs": 0,
+            "concordant_pairs": 0,
+            "vmd": 0,
+            "md": 0,
+            "minor": 0,
+            "total_deviation": 0,
+            "genus_match": 0,
+            "species_match": 0,
+        })
+        bucket["report_count"] += 1
+        bucket["total_isolates"] += report.total_isolates or 0
+        bucket["total_pairs"] += report.total_pairs or 0
+        bucket["concordant_pairs"] += report.concordant_pairs or 0
+        bucket["vmd"] += report.vmd or 0
+        bucket["md"] += report.md or 0
+        bucket["minor"] += report.minor or 0
+        bucket["total_deviation"] += report.total_deviation or 0
+        bucket["genus_match"] += report.genus_match or 0
+        bucket["species_match"] += report.species_match or 0
+        if not bucket["site_name"] and site_name:
+            bucket["site_name"] = site_name
+
+    site_rows = []
+    for row in site_buckets.values():
+        row["ast_rate"] = _concordance_pct(row["concordant_pairs"], row["total_pairs"])
+        row["genus_rate"] = _concordance_pct(row["genus_match"], row["total_isolates"])
+        row["species_rate"] = _concordance_pct(row["species_match"], row["total_isolates"])
+        row["critical_deviation"] = (row["vmd"] or 0) + (row["md"] or 0)
+        row["metric_value"] = row[metric]
+        if row["total_pairs"] >= min_pairs:
+            site_rows.append(row)
+
+    site_rows = sorted(
+        site_rows,
+        key=lambda item: (item["metric_value"], item["total_pairs"], item["report_count"]),
+        reverse=sort_order == "desc",
+    )
+    site_chart_rows = site_rows[:12]
+    max_metric_value = max([row["metric_value"] for row in site_chart_rows] or [0])
+    for row in site_chart_rows:
+        row["bar_pct"] = round((row["metric_value"] / max_metric_value) * 100, 1) if max_metric_value else 0
+
+    context.update({
+        "site_filter": site_filter,
+        "site_metric": metric,
+        "site_sort_order": sort_order,
+        "site_min_pairs": min_pairs,
+        "site_metric_label": site_metric_labels[metric],
+        "site_metric_options": [
+            {"value": value, "label": label}
+            for value, label in site_metric_labels.items()
+        ],
+        "site_choices": site_choices,
+        "site_concordance_rows": site_rows,
+        "site_concordance_chart_rows": site_chart_rows,
+        "site_concordance_summary": {
+            "site_count": len(site_rows),
+            "report_count": sum(row["report_count"] for row in site_rows),
+            "total_pairs": sum(row["total_pairs"] for row in site_rows),
+            "total_deviation": sum(row["total_deviation"] for row in site_rows),
+            "avg_ast_rate": _concordance_pct(
+                sum(row["concordant_pairs"] for row in site_rows),
+                sum(row["total_pairs"] for row in site_rows),
+            ),
+        },
+    })
+    return context
+
+
+def _collect_concordance_dashboard_context(year, site_filter="", metric="ast_rate", sort_order="desc", min_pairs=0):
+    try:
+        return concordance_service.collect_concordance_dashboard(
+            year,
+            site_filter=site_filter,
+            metric=metric,
+            sort_order=sort_order,
+            min_pairs=max(min_pairs, 0),
+        )
+    except TypeError as exc:
+        if "site_filter" not in str(exc):
+            raise
+        context = concordance_service.collect_concordance_dashboard(year)
+        return _add_site_concordance_context(
+            context,
+            year,
+            site_filter=site_filter,
+            metric=metric,
+            sort_order=sort_order,
+            min_pairs=min_pairs,
+        )
+
+
 
 @login_required(login_url="login")
 def concordance_analysis_view(request):
     current_year = timezone.localdate().year
     selected_year = request.GET.get("year", str(current_year)).strip() or str(current_year)
     dashboard_year = None if selected_year == "all" else selected_year
-    context = concordance_service.collect_concordance_dashboard(dashboard_year)
+    site_filter = request.GET.get("site", "").strip()
+    site_metric = request.GET.get("site_metric", "ast_rate").strip() or "ast_rate"
+    site_sort_order = request.GET.get("site_sort", "desc").strip() or "desc"
+    try:
+        site_min_pairs = int(request.GET.get("min_pairs", "0") or 0)
+    except (TypeError, ValueError):
+        site_min_pairs = 0
+    context = _collect_concordance_dashboard_context(
+        dashboard_year,
+        site_filter=site_filter,
+        metric=site_metric,
+        sort_order=site_sort_order,
+        min_pairs=max(site_min_pairs, 0),
+    )
     year_options = list(
         Final_Data.objects
         .exclude(f_Referral_Date__isnull=True)
@@ -3499,6 +3741,139 @@ def concordance_analysis_view(request):
         "home_final/concordance_dashboard.html",
         context
     )
+
+
+@login_required(login_url="login")
+def export_concordance_site_table(request):
+    current_year = timezone.localdate().year
+    selected_year = request.GET.get("year", str(current_year)).strip() or str(current_year)
+    dashboard_year = None if selected_year == "all" else selected_year
+    site_filter = request.GET.get("site", "").strip()
+    site_metric = request.GET.get("site_metric", "ast_rate").strip() or "ast_rate"
+    site_sort_order = request.GET.get("site_sort", "desc").strip() or "desc"
+    try:
+        site_min_pairs = int(request.GET.get("min_pairs", "0") or 0)
+    except (TypeError, ValueError):
+        site_min_pairs = 0
+
+    context = _collect_concordance_dashboard_context(
+        dashboard_year,
+        site_filter=site_filter,
+        metric=site_metric,
+        sort_order=site_sort_order,
+        min_pairs=max(site_min_pairs, 0),
+    )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Site Concordance"
+
+    title = "Concordance Site Performance"
+    year_label = "All Years" if selected_year == "all" else selected_year
+    filter_label = (
+        f"Referral year: {year_label} | Site: {site_filter or 'All Sites'} | "
+        f"Metric: {context['site_metric_label']} | Sort: {site_sort_order.upper()} | "
+        f"Minimum pairs: {max(site_min_pairs, 0)}"
+    )
+
+    ws.merge_cells("A1:K1")
+    ws["A1"] = title
+    ws["A1"].font = XLFont(bold=True, size=14, color="FFFFFF")
+    ws["A1"].fill = PatternFill("solid", fgColor="123F4E")
+    ws["A1"].alignment = Alignment(horizontal="center")
+
+    ws.merge_cells("A2:K2")
+    ws["A2"] = filter_label
+    ws["A2"].font = XLFont(italic=True, color="24466F")
+    ws["A2"].alignment = Alignment(horizontal="center")
+
+    headers = [
+        "Site Code",
+        "Site Name",
+        "Reports",
+        "Total Pairs",
+        "AST %",
+        "Genus %",
+        "Species %",
+        "VMD",
+        "MD",
+        "Minor",
+        "Total Deviations",
+    ]
+    ws.append([])
+    ws.append(headers)
+
+    header_fill = PatternFill("solid", fgColor="0F6B78")
+    header_font = XLFont(bold=True, color="FFFFFF")
+    thin_border = Border(
+        left=Side(style="thin", color="D9E5EF"),
+        right=Side(style="thin", color="D9E5EF"),
+        top=Side(style="thin", color="D9E5EF"),
+        bottom=Side(style="thin", color="D9E5EF"),
+    )
+
+    for cell in ws[4]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = thin_border
+
+    for row in context["site_concordance_rows"]:
+        ws.append([
+            row["site_code"],
+            row["site_name"],
+            row["report_count"],
+            row["total_pairs"],
+            row["ast_rate"],
+            row["genus_rate"],
+            row["species_rate"],
+            row["vmd"],
+            row["md"],
+            row["minor"],
+            row["total_deviation"],
+        ])
+
+    for row in ws.iter_rows(min_row=5):
+        for index, cell in enumerate(row, start=1):
+            cell.border = thin_border
+            cell.alignment = Alignment(
+                horizontal="left" if index in {1, 2} else "center",
+                vertical="center",
+                wrap_text=index == 2,
+            )
+            if index in {5, 6, 7} and isinstance(cell.value, (int, float)):
+                cell.number_format = '0.00"%"'
+
+    column_widths = {
+        "A": 14,
+        "B": 42,
+        "C": 12,
+        "D": 14,
+        "E": 12,
+        "F": 12,
+        "G": 12,
+        "H": 10,
+        "I": 10,
+        "J": 10,
+        "K": 16,
+    }
+    for column, width in column_widths.items():
+        ws.column_dimensions[column].width = width
+    ws.freeze_panes = "A5"
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename_year = "all_years" if selected_year == "all" else selected_year
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="Concordance_Site_Performance_{filename_year}_{now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+    )
+    return response
 
     isolates = Final_Data.objects.prefetch_related("final_entries")
 
@@ -3694,6 +4069,70 @@ def concordance_analysis_view(request):
 @login_required(login_url="login")
 @require_POST
 @transaction.atomic
+@role_required(ROLE_ADMIN, ROLE_CHECKER)
+def update_concordance_settings(request):
+    options_form = ConcordanceOptionsForm(request.POST)
+    if options_form.is_valid():
+        concordance_service.save_global_concordance_options({
+            "prioritize_mic_site": options_form.cleaned_data["prioritize_mic_site"],
+            "prioritize_disk_site": options_form.cleaned_data["prioritize_disk_site"],
+            "no_serotyping": options_form.cleaned_data["no_serotyping"],
+            "applied_org": options_form.cleaned_data["applied_org"],
+            "applied_org_grp": options_form.cleaned_data["applied_org_grp"],
+            "is_active": options_form.cleaned_data["is_active"],
+        })
+        messages.success(request, "Concordance rule added successfully.")
+    else:
+        messages.warning(request, "Please review the concordance rule.")
+
+    return redirect("/settings/?tab=concordance_settings")
+
+
+@login_required(login_url="login")
+@require_POST
+@transaction.atomic
+@role_required(ROLE_ADMIN, ROLE_CHECKER)
+def edit_concordance_setting(request, pk):
+    rule = get_object_or_404(
+        ConcordanceOptions,
+        pk=pk,
+        report__isnull=True,
+    )
+    options_form = ConcordanceOptionsForm(request.POST, instance=rule)
+    if options_form.is_valid():
+        concordance_service.update_global_concordance_options(rule, {
+            "prioritize_mic_site": options_form.cleaned_data["prioritize_mic_site"],
+            "prioritize_disk_site": options_form.cleaned_data["prioritize_disk_site"],
+            "no_serotyping": options_form.cleaned_data["no_serotyping"],
+            "applied_org": options_form.cleaned_data["applied_org"],
+            "applied_org_grp": options_form.cleaned_data["applied_org_grp"],
+            "is_active": options_form.cleaned_data["is_active"],
+        })
+        messages.success(request, "Concordance rule updated successfully.")
+    else:
+        messages.warning(request, "Please review the concordance rule.")
+
+    return redirect("/settings/?tab=concordance_settings")
+
+
+@login_required(login_url="login")
+@transaction.atomic
+@role_required(ROLE_ADMIN, ROLE_CHECKER)
+def delete_concordance_setting(request, pk):
+    rule = get_object_or_404(
+        ConcordanceOptions,
+        pk=pk,
+        report__isnull=True,
+    )
+    rule.delete()
+    ConcordanceOptions.objects.filter(report__isnull=False).delete()
+    messages.success(request, "Concordance rule deleted successfully.")
+    return redirect("/settings/?tab=concordance_settings")
+
+
+@login_required(login_url="login")
+@require_POST
+@transaction.atomic
 def concordance_generate_batch(request):
 
     batch_id = request.POST.get("batch_id")
@@ -3856,7 +4295,7 @@ def concordance_generate_batch(request):
 def concordance_batch_detail(request, report_id):
 
     report = get_object_or_404(
-        ConcordanceReport.objects.select_related("batch", "created_by"),
+        ConcordanceReport.objects.select_related("batch", "created_by", "options"),
         id=report_id,
         final_data__isnull=True
     )
@@ -4357,9 +4796,17 @@ def _resolve_site_contact(batch, first_isolate=None):
 
 def _build_batch_concordance_context(report):
     batch = report.batch
+    options_data = concordance_service.get_global_concordance_options_data()
+    refreshed_report = concordance_service.generate_concordance_for_batch(
+        batch.id,
+        getattr(report, "created_by", None),
+        options_data=options_data,
+    )
+    if refreshed_report:
+        report = refreshed_report
     isolates = Final_Data.objects.filter(f_Batch_id=batch).order_by("f_bat_seq", "f_AccessionNo")
     first_isolate = isolates.first()
-    id_stats = concordance_service.build_id_stats(isolates)
+    id_stats = concordance_service.build_id_stats(isolates, options_data)
     details = report.details.all().order_by("isolate_id", "antibiotic")
     total_pairs = report.total_pairs or 0
     total_deviation = (report.vmd or 0) + (report.md or 0) + (report.minor or 0)
@@ -4534,7 +4981,10 @@ def export_concordance_batch_excel(request, report_id):
     genus_rate = round((genus_match / viable_pure) * 100, 2) if viable_pure else 0
     species_rate = round((species_match / viable_pure) * 100, 2) if viable_pure else 0
 
-    id_stats = concordance_service.build_id_stats(isolates)
+    id_stats = concordance_service.build_id_stats(
+        isolates,
+        concordance_service.get_global_concordance_options_data(),
+    )
     genus_match = id_stats["genus_match"]
     species_match = id_stats["species_match"]
     different_org = id_stats["different_org"]
@@ -4852,6 +5302,16 @@ def export_concordance_accession_excel(request, report_id):
     )
 
     isolate = report.final_data
+    active_options = concordance_service.get_global_concordance_options_data()
+    ConcordanceOptions.objects.filter(report=report).delete()
+    refreshed_report = concordance_service.generate_concordance_for_isolate(
+        isolate,
+        request.user,
+        options_data=active_options,
+    )
+    if refreshed_report:
+        report = refreshed_report
+        isolate = report.final_data
 
     # =====================================================
     # ORGANISM CONCORDANCE (USING YOUR EXACT RULES)
@@ -4879,7 +5339,7 @@ def export_concordance_accession_excel(request, report_id):
 
     genus_con, species_con = concordance_service.classify_id_concordance(
         isolate.f_Site_OrgName,
-        isolate.f_ars_Pre,
+        concordance_service.resolve_ars_concordance_identification(isolate),
         isolate.f_ars_OrgName,
         isolate.f_ars_Post,
     )
