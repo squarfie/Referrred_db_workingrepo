@@ -654,12 +654,14 @@
 
 .concordance-dashboard-wrapper .year-filter-card form {
   justify-content: flex-end;
+  gap: .5rem;
 }
 
 .concordance-dashboard-wrapper .year-filter-card .form-control {
   height: 38px;
   border-radius: 6px;
   font-weight: 700;
+  min-width: 130px;
 }
 
 .concordance-dashboard-wrapper .year-filter-card label,
@@ -758,7 +760,6 @@
 
       <div class="year-filter-card">
         <form method="get" class="d-flex align-items-center">
-          <input type="hidden" name="site" value="{{ site_filter }}">
           <input type="hidden" name="site_metric" value="{{ site_metric }}">
           <input type="hidden" name="site_sort" value="{{ site_sort_order }}">
           <input type="hidden" name="min_pairs" value="{{ site_min_pairs }}">
@@ -768,14 +769,19 @@
               <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
             {% endfor %}
           </select>
-          &nbsp;
+          <select id="concordance-site" name="site" class="form-control">
+            <option value="">All Sites</option>
+            {% for site in site_choices %}
+              <option value="{{ site }}" {% if site_filter == site %}selected{% endif %}>{{ site }}</option>
+            {% endfor %}
+          </select>
           <button type="submit" class="btn-history">
             <i class="fas fa-filter"></i>
-            Year
+            Filter
           </button>
         </form>
         <div style="font-size:.75rem; font-weight:800; color:#00cfe8; text-transform:uppercase; margin-top:.35rem;">
-          Referral year: {{ year_scope_label }}
+          Referral year: {{ year_scope_label }} | Site: {% if site_filter %}{{ site_filter }}{% else %}All Sites{% endif %}
         </div>
       </div>
     </div>
@@ -812,8 +818,8 @@
     <div class="year-filter-card d-none">
       <form method="get" class="row align-items-end">
         <div class="col-md-4 col-lg-3 mb-3 mb-md-0">
-          <label for="concordance-year">Referral Year</label>
-          <select id="concordance-year" name="year" class="form-control">
+          <label for="concordance-year-legacy">Referral Year</label>
+          <select id="concordance-year-legacy" name="year" class="form-control">
             <option value="all" {% if selected_year == "all" %}selected{% endif %}>All Years</option>
             {% for year in year_options %}
               <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>

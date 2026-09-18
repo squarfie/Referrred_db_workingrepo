@@ -769,7 +769,6 @@ class AssemblyUpload(models.Model):
 # Amrfinderplus
 class Amrfinderplus(models.Model):
     FIELD_LABELS = [
-        ("amrfinder_id", "ID"),
         ("name", "Name"),
         ("protein_id", "Protein id"),
         ("contig_id", "Contig id"),
@@ -793,10 +792,8 @@ class Amrfinderplus(models.Model):
         ("closest_reference_name", "Closest reference name"),
         ("hmm_accession", "HMM accession"),
         ("hmm_description", "HMM description"),
-        ("hierarchy_node", "Hierarchy node"),
     ]
     UPLOAD_FIELDS = (
-        "amrfinder_id",
         "name",
         "protein_id",
         "contig_id",
@@ -820,7 +817,6 @@ class Amrfinderplus(models.Model):
         "closest_reference_name",
         "hmm_accession",
         "hmm_description",
-        "hierarchy_node",
     )
 
     amrfinder_project = models.ForeignKey(

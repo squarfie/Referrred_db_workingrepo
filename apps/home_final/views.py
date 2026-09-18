@@ -31,6 +31,7 @@ from django.utils.timezone import now
 from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.db import IntegrityError, transaction
+from django.db.utils import ProgrammingError, OperationalError
 from django.db.models import (
     Q,
     Count,
@@ -90,7 +91,10 @@ from apps.home.permissions import (
     ROLE_VERIFIER,
     can_manage_batch,
     get_user_role,
+    get_user_roles,
     role_required,
+    role_flags,
+    verification_case_blocks_operational_outputs,
 )
 from apps.wgs_app.models import *
 from apps.wgs_app.forms import *
@@ -617,6 +621,69 @@ def _apply_final_table_filters(records, query="", year=None):
     return records
 
 
+def _verification_status_choices():
+    try:
+        VerificationCase = django_apps.get_model("verification", "VerificationCase")
+        return [
+            ("", "All status"),
+            ("none", "Pending submission"),
+            ("needs_correction", "Needs correction"),
+            *VerificationCase.WORKFLOW_FILTER_CHOICES,
+        ]
+    except (LookupError, ProgrammingError, OperationalError):
+        return [("", "All status"), ("none", "Pending submission"), ("needs_correction", "Needs correction")]
+
+
+def _filter_final_by_verification_status(records, status):
+    status = (status or "").strip()
+    if not status:
+        return records
+    try:
+        VerificationCase = django_apps.get_model("verification", "VerificationCase")
+        active_cases = VerificationCase.objects.filter(
+            final_batch__isnull=False,
+            final_accession__isnull=True,
+        ).exclude(status=VerificationCase.STATUS_WITHDRAWN)
+        if status == "none":
+            active_batch_ids = active_cases.values_list("final_batch_id", flat=True)
+            return records.filter(Q(f_Batch_id__isnull=True) | ~Q(f_Batch_id_id__in=active_batch_ids))
+        if status == "needs_correction":
+            VerificationComment = django_apps.get_model("verification", "VerificationComment")
+            returned_statuses = [
+                VerificationCase.STATUS_RETURNED_TO_ENCODER,
+                VerificationCase.STATUS_RETURNED_TO_CHECKER,
+            ]
+            correction_batch_ids = (
+                VerificationComment.objects
+                .filter(
+                    verification_case__final_batch__isnull=False,
+                    verification_case__final_accession__isnull=True,
+                    is_resolved=False,
+                )
+                .filter(
+                    Q(decision__in=[
+                        VerificationComment.DECISION_NEEDS_CORRECTION,
+                        VerificationComment.DECISION_RETURNED,
+                    ])
+                    | Q(verification_case__status__in=returned_statuses)
+                )
+                .exclude(
+                    resolution_status__in=[
+                        VerificationComment.RESOLUTION_HANDLED,
+                        VerificationComment.RESOLUTION_RESOLVED,
+                        VerificationComment.RESOLUTION_REJECTED,
+                    ]
+                )
+                .exclude(field_name__startswith="case-note:")
+                .values_list("verification_case__final_batch_id", flat=True)
+                .distinct()
+            )
+            return records.filter(f_Batch_id_id__in=correction_batch_ids)
+        return records.filter(f_Batch_id_id__in=active_cases.filter(status=status).values_list("final_batch_id", flat=True))
+    except (LookupError, ProgrammingError, OperationalError):
+        return records
+
+
 def _final_sort_field(sort_by, order):
     allowed_sort_fields = {
         "f_AccessionNo",
@@ -633,6 +700,86 @@ def _final_sort_field(sort_by, order):
     if order not in ["asc", "desc"]:
         order = "desc"
     return sort_by, order, f"-{sort_by}" if order == "desc" else sort_by
+
+
+def _attach_final_verification_comment_flags(records):
+    record_list = list(records)
+    record_ids = [record.id for record in record_list]
+    if not record_ids:
+        return record_list
+
+    comment_counts = defaultdict(int)
+    comment_previews = {}
+    try:
+        VerificationComment = django_apps.get_model("verification", "VerificationComment")
+        VerificationCase = django_apps.get_model("verification", "VerificationCase")
+        returned_statuses = [
+            VerificationCase.STATUS_RETURNED_TO_ENCODER,
+            VerificationCase.STATUS_RETURNED_TO_CHECKER,
+        ]
+        comments = (
+            VerificationComment.objects
+            .filter(
+                final_accession_ref_sequence_id__in=record_ids,
+                is_resolved=False,
+            )
+            .filter(
+                Q(decision__in=[
+                    VerificationComment.DECISION_NEEDS_CORRECTION,
+                    VerificationComment.DECISION_RETURNED,
+                ])
+                | Q(verification_case__status__in=returned_statuses)
+            )
+            .exclude(
+                resolution_status__in=[
+                    VerificationComment.RESOLUTION_HANDLED,
+                    VerificationComment.RESOLUTION_RESOLVED,
+                    VerificationComment.RESOLUTION_REJECTED,
+                ]
+            )
+            .exclude(field_name__startswith="case-note:")
+            .select_related("created_by", "verification_case")
+            .order_by("-created_at")
+        )
+        for comment in comments:
+            comment_counts[comment.final_accession_ref_sequence_id] += 1
+            if comment.final_accession_ref_sequence_id not in comment_previews:
+                preview_parts = [
+                    part for part in [
+                        comment.field_label or comment.field_name or "General",
+                        comment.comment,
+                    ]
+                    if part
+                ]
+                comment_previews[comment.final_accession_ref_sequence_id] = " | ".join(preview_parts)
+    except (LookupError, ProgrammingError, OperationalError):
+        pass
+
+    for record in record_list:
+        record.verification_pending_comment_count = comment_counts.get(record.id, 0)
+        record.verification_pending_comment_preview = comment_previews.get(record.id, "")
+        record.verification_pdf_blocked = False
+        record.verification_pdf_block_reason = ""
+
+    batch_ids = [record.f_Batch_id_id for record in record_list if record.f_Batch_id_id]
+    if batch_ids:
+        try:
+            VerificationCase = django_apps.get_model("verification", "VerificationCase")
+            cases_by_batch_id = {
+                case.final_batch_id: case
+                for case in VerificationCase.objects.filter(
+                    final_batch_id__in=batch_ids,
+                    final_accession__isnull=True,
+                ).exclude(status=VerificationCase.STATUS_WITHDRAWN)
+            }
+            for record in record_list:
+                case = cases_by_batch_id.get(record.f_Batch_id_id)
+                if verification_case_blocks_operational_outputs(case):
+                    record.verification_pdf_blocked = True
+                    record.verification_pdf_block_reason = "Printing disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+        except (LookupError, ProgrammingError, OperationalError):
+            pass
+    return record_list
 
 
 def _tat_pressure_for_days(days, target_days=None):
@@ -657,12 +804,14 @@ def show_final_table(request):
 
     query = request.GET.get("q", "").strip()
     year = request.GET.get("year")
+    verification_status = request.GET.get("verification_status", "")
 
     sort_by = request.GET.get("sort", "f_Date_Modified")
     order = request.GET.get("order", "desc")
 
     sort_by, order, sort_field = _final_sort_field(sort_by, order)
     records = _apply_final_table_filters(_final_records_base_queryset(request), query, year)
+    records = _filter_final_by_verification_status(records, verification_status)
 
     total_records = records.count()
 
@@ -720,12 +869,77 @@ def show_final_table(request):
         if tat.tat_Batch_Code
     }
 
+    VerificationCase = django_apps.get_model("verification", "VerificationCase")
+    closed_verification_statuses = {
+        VerificationCase.STATUS_WITHDRAWN,
+    }
+    page_case_map = {
+        case.final_batch_id: case
+        for case in VerificationCase.objects.filter(
+            final_batch_id__in=page_batch_ids,
+            final_accession__isnull=True,
+        ).exclude(status__in=closed_verification_statuses)
+    }
+    page_case_ids = [case.id for case in page_case_map.values()]
+    pending_comment_counts = defaultdict(int)
+    pending_comment_previews = {}
+    if page_case_ids:
+        VerificationComment = django_apps.get_model("verification", "VerificationComment")
+        returned_statuses = [
+            VerificationCase.STATUS_RETURNED_TO_ENCODER,
+            VerificationCase.STATUS_RETURNED_TO_CHECKER,
+        ]
+        for comment in (
+            VerificationComment.objects
+            .filter(
+                verification_case_id__in=page_case_ids,
+                is_resolved=False,
+            )
+            .filter(
+                Q(decision__in=[
+                    VerificationComment.DECISION_NEEDS_CORRECTION,
+                    VerificationComment.DECISION_RETURNED,
+                ])
+                | Q(verification_case__status__in=returned_statuses)
+            )
+            .exclude(
+                resolution_status__in=[
+                    VerificationComment.RESOLUTION_HANDLED,
+                    VerificationComment.RESOLUTION_RESOLVED,
+                    VerificationComment.RESOLUTION_REJECTED,
+                ]
+            )
+            .exclude(field_name__startswith="case-note:")
+            .select_related("final_accession_ref_sequence", "created_by")
+            .order_by("-created_at")
+        ):
+            pending_comment_counts[comment.verification_case_id] += 1
+            if comment.verification_case_id not in pending_comment_previews:
+                accession_no = ""
+                if comment.final_accession_ref_sequence_id:
+                    accession_no = comment.final_accession_ref_sequence.f_AccessionNo or ""
+                preview_parts = [
+                    part for part in [
+                        accession_no,
+                        comment.field_label or comment.field_name or "General",
+                        comment.comment,
+                    ]
+                    if part
+                ]
+                pending_comment_previews[comment.verification_case_id] = " | ".join(preview_parts)
+
     page_groups = []
     for batch_summary in page_obj.object_list:
         raw_batch_code = batch_summary.get("batch_code") or batch_summary.get("fallback_batch_code") or ""
         batch_code = raw_batch_code.strip() or "Unbatched"
         batch_id = batch_summary.get("f_Batch_id") or ""
         tat_summary = tat_by_batch_id.get(batch_id, tat_by_batch_code.get(batch_code, {}))
+        verification_case = page_case_map.get(batch_id)
+        verification_status_label = ""
+        if verification_case:
+            verification_status_label = verification_case.get_status_display()
+            if verification_case.status == VerificationCase.STATUS_SIGNED_BY_HEAD:
+                verification_status_label = "Ready for Release"
         page_groups.append({
             "batch_id": batch_id,
             "code": batch_code,
@@ -734,6 +948,24 @@ def show_final_table(request):
             "site_code": batch_summary.get("site_code") or "",
             "tat_days": tat_summary.get("days"),
             "tat_pressure": tat_summary.get("pressure", "none"),
+            "verification_case_id": verification_case.id if verification_case else "",
+            "verification_status": verification_status_label,
+            "verification_status_code": verification_case.status if verification_case else "",
+            "verification_pdf_blocked": verification_case_blocks_operational_outputs(verification_case),
+            "verification_pdf_block_reason": (
+                "Printing disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+                if verification_case_blocks_operational_outputs(verification_case)
+                else ""
+            ),
+            "verification_pending_comment_count": pending_comment_counts.get(verification_case.id, 0) if verification_case else 0,
+            "verification_pending_comment_preview": pending_comment_previews.get(verification_case.id, "") if verification_case else "",
+            "verification_can_withdraw": bool(
+                verification_case
+                and verification_case.status not in {
+                    VerificationCase.STATUS_SIGNED_BY_HEAD,
+                    VerificationCase.STATUS_RELEASED,
+                }
+            ),
         })
 
     # Available years
@@ -750,6 +982,24 @@ def show_final_table(request):
     params.pop("sort", None)
     params.pop("order", None)
     preserved_params = params.urlencode()
+    existing_case_batch_ids = VerificationCase.objects.filter(
+        final_batch__isnull=False,
+        final_accession__isnull=True,
+    ).exclude(status__in=closed_verification_statuses).values_list("final_batch_id", flat=True)
+    verification_open_batches = (
+        Batch_Table.objects
+        .filter(final_isolates__isnull=False)
+        .exclude(id__in=existing_case_batch_ids)
+        .annotate(final_count=Count("final_isolates", distinct=True))
+        .order_by("-bat_Referral_Date", "-id")[:40]
+    )
+    verification_verifier_staff = (
+        arsStaff_Details.objects
+        .filter(staff_role_q(ROLE_VERIFIER, ROLE_ADMIN), User_Account__isnull=False)
+        .select_related("User_Account")
+        .distinct()
+        .order_by("Staff_Name", "User_Account__username")
+    )
 
     return render(
         request,
@@ -762,8 +1012,12 @@ def show_final_table(request):
             "current_order": order,
             "query": query,
             "year": year,
+            "verification_status": verification_status,
+            "verification_status_choices": _verification_status_choices(),
             "available_years": available_years,
             "preserved_params": preserved_params,
+            "verification_open_batches": verification_open_batches,
+            "verification_verifier_staff": verification_verifier_staff,
         }
     )
 
@@ -775,11 +1029,13 @@ def final_batch_rows(request):
     batch_dom_id = request.GET.get("target", "")
     query = request.GET.get("q", "").strip()
     year = request.GET.get("year")
+    verification_status = request.GET.get("verification_status", "")
     sort_by = request.GET.get("sort", "f_Date_Modified")
     order = request.GET.get("order", "desc")
     _, _, sort_field = _final_sort_field(sort_by, order)
 
     records = _apply_final_table_filters(_final_records_base_queryset(request), query, year)
+    records = _filter_final_by_verification_status(records, verification_status)
     if batch_id:
         records = records.filter(f_Batch_id_id=batch_id)
     else:
@@ -790,6 +1046,7 @@ def final_batch_rows(request):
         .prefetch_related("final_entries")
         .order_by("f_bat_seq", "f_AccessionNo", "id")
     )
+    records = _attach_final_verification_comment_flags(records)
     html = render_to_string(
         "home_final/partials/final_batch_rows.html",
         {
@@ -1054,13 +1311,133 @@ def _final_batch_navigation(isolate):
     }
 
 
+def _final_verification_comment_context(isolate):
+    comment_map = {}
+    antibiotic_site_comments = []
+    antibiotic_retest_comments = []
+    general_comments = []
+
+    try:
+        VerificationComment = django_apps.get_model("verification", "VerificationComment")
+        comments = (
+            VerificationComment.objects
+            .filter(final_accession_ref_sequence=isolate, is_resolved=False)
+            .select_related("created_by", "verification_case")
+            .order_by("-created_at")
+        )
+        for comment in comments:
+            field_name = (comment.field_name or "").strip()
+            payload = {
+                "id": comment.id,
+                "field_label": comment.field_label or field_name or "General",
+                "comment": comment.comment or "",
+                "decision": comment.get_decision_display(),
+                "resolution_status": comment.get_resolution_status_display(),
+                "field_value_snapshot": comment.field_value_snapshot or "",
+                "created_by": str(comment.created_by or "Unknown"),
+                "created_at": timezone.localtime(comment.created_at).strftime("%b %d, %Y %I:%M %p") if comment.created_at else "",
+                "case_id": comment.verification_case_id,
+                "action_url": reverse("final_comment_action", args=[isolate.id, comment.id]),
+            }
+            if field_name:
+                if field_name.startswith("abx:"):
+                    if field_name.endswith(":arsrl"):
+                        antibiotic_retest_comments.append(payload)
+                    else:
+                        antibiotic_site_comments.append(payload)
+                else:
+                    comment_map.setdefault(field_name, payload)
+            else:
+                general_comments.append(payload)
+    except (LookupError, ProgrammingError, OperationalError):
+        pass
+
+    return {
+        "verification_comment_map": comment_map,
+        "verification_antibiotic_site_comments": antibiotic_site_comments,
+        "verification_antibiotic_retest_comments": antibiotic_retest_comments,
+        "verification_general_comments": general_comments,
+        "verification_comment_count": (
+            len(comment_map)
+            + len(antibiotic_site_comments)
+            + len(antibiotic_retest_comments)
+            + len(general_comments)
+        ),
+    }
+
+
+def _handle_saved_final_comment_action(request, isolate):
+    action = (request.POST.get("verification_comment_action") or "").strip()
+    comment_id = (request.POST.get("verification_comment_id") or "").strip()
+    if action not in {"mark_handled", "reject_all"} or not comment_id:
+        return
+
+    try:
+        VerificationCase = django_apps.get_model("verification", "VerificationCase")
+        VerificationComment = django_apps.get_model("verification", "VerificationComment")
+    except LookupError:
+        return
+
+    comment = (
+        VerificationComment.objects
+        .select_related("verification_case")
+        .filter(
+            pk=comment_id,
+            final_accession_ref_sequence=isolate,
+            is_resolved=False,
+        )
+        .first()
+    )
+    if not comment:
+        return
+
+    if action == "mark_handled":
+        comment.resolution_status = VerificationComment.RESOLUTION_HANDLED
+        status_message = "marked as applied"
+    else:
+        comment.resolution_status = VerificationComment.RESOLUTION_REJECTED
+        status_message = "rejected"
+
+    comment.is_resolved = True
+    comment.resolved_at = timezone.now()
+    comment.resolved_by = request.user
+    comment.save(update_fields=[
+        "is_resolved",
+        "resolution_status",
+        "resolved_at",
+        "resolved_by",
+    ])
+
+    case = comment.verification_case
+    if (
+        action == "mark_handled"
+        and case
+        and case.status in {
+            VerificationCase.STATUS_RETURNED_TO_ENCODER,
+            VerificationCase.STATUS_RETURNED_TO_CHECKER,
+        }
+    ):
+        case.status = VerificationCase.STATUS_FOR_VERIFICATION
+        case.sent_to_verifier_at = timezone.now()
+        case.sent_by_checker = request.user
+        case.save(update_fields=[
+            "status",
+            "sent_to_verifier_at",
+            "sent_by_checker",
+            "updated_at",
+        ])
+
+    label = comment.field_label or comment.field_name or "comment"
+    messages.success(request, f"{label} comment {status_message}.")
+
+
 @login_required(login_url="login")
 @role_required(ROLE_ADMIN, ROLE_CHECKER, ROLE_ENCODER)
 @transaction.atomic
 def edit_final_data(request, id):
 
     isolate = get_object_or_404(Final_Data, pk=id)
-    if not can_manage_batch(request.user, isolate.f_Batch_id):
+    if isolate.f_Batch_id and not can_manage_batch(request.user, isolate.f_Batch_id):
         messages.error(request, "You can only update final records from batches that you created.")
         return redirect("show_final_table")
 
@@ -1109,7 +1486,7 @@ def edit_final_data(request, id):
             ab_Retest_Abx_code__isnull=True
         )
 
-        return render(request, "home_final/edit_final.html", {
+        context = {
             "form": form,
             "isolates": isolate,
             "batch_nav": _final_batch_navigation(isolate),
@@ -1120,7 +1497,9 @@ def edit_final_data(request, id):
             "classification": classification,
             "edit_mode": True,
             "antibiotic_view": antibiotic_view,
-        })
+        }
+        context.update(_final_verification_comment_context(isolate))
+        return render(request, "home_final/edit_final.html", context)
 
     # =========================
     # POST
@@ -1520,6 +1899,8 @@ def edit_final_data(request, id):
 
         entry.save()
 
+    _handle_saved_final_comment_action(request, isolate)
+
     messages.success(request, "Final data saved successfully.")
     next_after_save = (request.POST.get("next_after_save") or "").strip()
     if next_after_save and url_has_allowed_host_and_scheme(
@@ -1640,11 +2021,23 @@ def _chunk_pdf_isolates_for_print(isolates, recommendation_attr, max_per_page=2)
 
 
 def _pdf_has_long_recommendation(value):
-    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    text = str(value or "").strip()
     if not text:
         return False
-    numbered_items = len(re.findall(r"(?:^|\s)\d+\.", text))
-    return numbered_items >= 4 or len(text) >= 330
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    parts = re.split(r"(?=\b\d+[\.\)]\s*)", text)
+    recommendation_items = [
+        re.sub(r"^\d+[\.\)]\s*", "", part.strip()).strip()
+        for part in parts
+        if part.strip()
+    ]
+    if len(recommendation_items) <= 1:
+        recommendation_items = [
+            part.strip()
+            for part in re.split(r"[\r\n]+", text)
+            if part.strip()
+        ]
+    return len(recommendation_items) > 3
 
 
 
@@ -1900,195 +2293,226 @@ def generate_final_batch_pdf_panel_old(request, id):
 
 @transaction.atomic
 def generate_final_batch_pdf(request, id):
-    return generate_final_batch_pdf_panel_old(request, id)
+    roles = get_user_roles(request.user)
+    user_access = role_flags(request.user)
+    verification_case = None
+    try:
+        VerificationCase = django_apps.get_model("verification", "VerificationCase")
+        verification_case = VerificationCase.objects.filter(
+            final_batch_id=id,
+            final_accession__isnull=True,
+        ).exclude(status=VerificationCase.STATUS_WITHDRAWN).first()
+    except (LookupError, ProgrammingError, OperationalError):
+        pass
 
-    batch = get_object_or_404(Batch_Table, pk=id)
-    isolates = (
-        Final_Data.objects
-        .filter(f_Batch_id=batch)
-        .order_by("f_bat_seq")
+    is_assigned_head = bool(
+        verification_case
+        and verification_case.assigned_head_id
+        and verification_case.assigned_head_id == request.user.id
     )
-
-    def chunked(qs, size):
-        for i in range(0, qs.count(), size):
-            yield qs[i:i + size]
-
-    def chunk_list(items, size):
-        for i in range(0, len(items), size):
-            yield items[i:i + size]
-
-    def fixed_rows(grouped_antibiotics, max_cols=MAX_COLS):
-        if not grouped_antibiotics:
-            return [
-                [("", {"disk": None, "mic": None}) for _ in range(max_cols)]
-                for _ in range(MAX_ROWS)
-            ]
-        rows = list(chunk_list(list(grouped_antibiotics.items()), max_cols))[:MAX_ROWS]
-        while len(rows) < MAX_ROWS:
-            rows.append([])
-        return rows
-
-    MAX_COLS = 29
-    MAX_ROWS = 2
-    isolate_pages = _chunk_pdf_isolates_for_print(list(isolates), "f_ars_reco", max_per_page=2)
-    pages_data = []
-
-    AntibioticList = HomeAntibioticList()
-    antibiotic_order = list(
-        AntibioticList.objects
-        .exclude(Abx_code__exact="")
-        .values("Whonet_Abx", "Abx_code")
-        .order_by("id")
-    )
-    abx_map = {
-        (row["Whonet_Abx"] or "").strip().upper(): (row["Abx_code"] or "").strip()
-        for row in antibiotic_order
-        if (row["Whonet_Abx"] or "").strip() and (row["Abx_code"] or "").strip()
-    }
-    show_value_by_whonet = {
-        (row["Whonet_Abx"] or "").strip().upper(): row["Show_Value"]
-        for row in Antibiotic_List.objects
-        .exclude(Whonet_Abx__exact="")
-        .values("Whonet_Abx", "Show_Value")
-    }
-    site_print_order = antibiotic_print_order(show_site=True)
-    ars_print_order = antibiotic_print_order(show_ars=True)
-    site_printable = set(site_print_order)
-    ars_printable = set(ars_print_order)
-
-    for page_isolates in isolate_pages:
-        page_entries = []
-        compact_page = any(
-            _pdf_has_long_recommendation(getattr(isolate, "f_ars_reco", ""))
-            for isolate in page_isolates
+    high_review_roles = {ROLE_ADMIN, ROLE_VERIFIER, ROLE_LAB_MANAGER}
+    if not roles.intersection(high_review_roles | {ROLE_CHECKER, ROLE_ENCODER}) and not is_assigned_head:
+        return HttpResponse("Final PDF printing is not available for encoder-only accounts.", status=403)
+    if (
+        (user_access["is_checker"] or user_access["is_dmu_encoder"])
+        and verification_case_blocks_operational_outputs(verification_case)
+    ):
+        return HttpResponse(
+            "Final PDF printing is disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release.",
+            status=403,
         )
 
-        for isolate in page_isolates:
-            _blank_no_organism_report_fields(isolate)
-            entries = list(Final_AntibioticEntry.objects.filter(
-                ab_idNum_f_referred=isolate
-            ))
+    return generate_final_batch_pdf_panel_old(request, id)
 
-            site_org = (isolate.f_Site_Org or "").strip()
-            ars_org = (isolate.f_ars_OrgCode or "").strip() or site_org
-            specimen_year = isolate.f_Spec_Date.year if isolate.f_Spec_Date else None
 
-            site_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, site_org)
-            ars_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, ars_org)
-            encoded_site_abx = {
-                abx_map.get((entry.ab_Abx_code or "").strip().upper())
-                for entry in entries
-                if entry.ab_Abx_code
-            } - {None, ""}
-            encoded_ars_abx = {
-                abx_map.get((entry.ab_Retest_Abx_code or "").strip().upper())
-                for entry in entries
-                if entry.ab_Retest_Abx_code
-            } - {None, ""}
-            encoded_print_abx = encoded_site_abx | encoded_ars_abx
+# this part of the code is commented out because it is not currently used, but it may be useful for future reference or debugging.
+    # batch = get_object_or_404(Batch_Table, pk=id)
+    # isolates = (
+    #     Final_Data.objects
+    #     .filter(f_Batch_id=batch)
+    #     .order_by("f_bat_seq")
+    # )
 
-            site_candidates = (set(site_panel_abx) | encoded_print_abx) & site_printable
-            ars_candidates = (set(ars_panel_abx) | encoded_print_abx) & ars_printable
+    # def chunked(qs, size):
+    #     for i in range(0, qs.count(), size):
+    #         yield qs[i:i + size]
 
-            site_abx_codes = [abx for abx in site_print_order if abx in site_candidates]
-            site_abx_codes.extend(
-                sort_abx_codes_by_antibiotic(
-                    abx for abx in site_candidates if abx not in site_abx_codes
-                )
-            )
-            ars_abx_codes = [abx for abx in ars_print_order if abx in ars_candidates]
-            ars_abx_codes.extend(
-                sort_abx_codes_by_antibiotic(
-                    abx for abx in ars_candidates if abx not in ars_abx_codes
-                )
-            )
-            if _is_no_organism(isolate.f_Site_Org):
-                site_abx_codes = []
-            if _is_no_organism(isolate.f_ars_OrgCode):
-                ars_abx_codes = []
+    # def chunk_list(items, size):
+    #     for i in range(0, len(items), size):
+    #         yield items[i:i + size]
 
-            aligned_abx_codes = _aligned_pdf_abx_codes(
-                site_abx_codes,
-                ars_abx_codes,
-                site_print_order,
-                ars_print_order,
-            )
-            site_abx_codes = aligned_abx_codes
-            ars_abx_codes = aligned_abx_codes
+    # def fixed_rows(grouped_antibiotics, max_cols=MAX_COLS):
+    #     if not grouped_antibiotics:
+    #         return [
+    #             [("", {"disk": None, "mic": None}) for _ in range(max_cols)]
+    #             for _ in range(MAX_ROWS)
+    #         ]
+    #     rows = list(chunk_list(list(grouped_antibiotics.items()), max_cols))[:MAX_ROWS]
+    #     while len(rows) < MAX_ROWS:
+    #         rows.append([])
+    #     return rows
 
-            grouped_site = {
-                abx: {"disk": None, "mic": None, "disk_show_value": True, "mic_show_value": True}
-                for abx in site_abx_codes
-            }
-            grouped_ars = {
-                abx: {"disk": None, "mic": None, "disk_show_value": True, "mic_show_value": True}
-                for abx in ars_abx_codes
-            }
+    # MAX_COLS = 29
+    # MAX_ROWS = 2
+    # isolate_pages = _chunk_pdf_isolates_for_print(list(isolates), "f_ars_reco", max_per_page=2)
+    # pages_data = []
 
-            for e in entries:
-                site_whonet = (e.ab_Abx_code or "").strip().upper()
-                site_abx = abx_map.get(site_whonet)
-                if site_abx in grouped_site:
-                    if e.ab_Disk_value is not None:
-                        grouped_site[site_abx]["disk"] = e
-                        grouped_site[site_abx]["disk_show_value"] = show_value_by_whonet.get(site_whonet, True)
-                    if e.ab_MIC_value is not None:
-                        grouped_site[site_abx]["mic"] = e
-                        grouped_site[site_abx]["mic_show_value"] = show_value_by_whonet.get(site_whonet, True)
+    # AntibioticList = HomeAntibioticList()
+    # antibiotic_order = list(
+    #     AntibioticList.objects
+    #     .exclude(Abx_code__exact="")
+    #     .values("Whonet_Abx", "Abx_code")
+    #     .order_by("id")
+    # )
+    # abx_map = {
+    #     (row["Whonet_Abx"] or "").strip().upper(): (row["Abx_code"] or "").strip()
+    #     for row in antibiotic_order
+    #     if (row["Whonet_Abx"] or "").strip() and (row["Abx_code"] or "").strip()
+    # }
+    # show_value_by_whonet = {
+    #     (row["Whonet_Abx"] or "").strip().upper(): row["Show_Value"]
+    #     for row in Antibiotic_List.objects
+    #     .exclude(Whonet_Abx__exact="")
+    #     .values("Whonet_Abx", "Show_Value")
+    # }
+    # site_print_order = antibiotic_print_order(show_site=True)
+    # ars_print_order = antibiotic_print_order(show_ars=True)
+    # site_printable = set(site_print_order)
+    # ars_printable = set(ars_print_order)
 
-                ars_whonet = (e.ab_Retest_Abx_code or "").strip().upper()
-                ars_abx = abx_map.get(ars_whonet)
-                if ars_abx in grouped_ars:
-                    if e.ab_Retest_DiskValue is not None:
-                        grouped_ars[ars_abx]["disk"] = e
-                        grouped_ars[ars_abx]["disk_show_value"] = show_value_by_whonet.get(ars_whonet, True)
-                    if e.ab_Retest_MICValue is not None:
-                        grouped_ars[ars_abx]["mic"] = e
-                        grouped_ars[ars_abx]["mic_show_value"] = show_value_by_whonet.get(ars_whonet, True)
+    # for page_isolates in isolate_pages:
+    #     page_entries = []
+    #     compact_page = any(
+    #         _pdf_has_long_recommendation(getattr(isolate, "f_ars_reco", ""))
+    #         for isolate in page_isolates
+    #     )
 
-            site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.f_Site_OrgName)
-            ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.f_ars_OrgName)
-            site_max_cols = 32 if site_uses_plus_layout else MAX_COLS
-            ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
-            grouped_rows = fixed_rows(grouped_site, site_max_cols)
-            grouped_ars_rows = fixed_rows(grouped_ars, ars_max_cols)
-            site_group_count = len(grouped_rows)
-            ars_group_count = len(grouped_ars_rows)
+    #     for isolate in page_isolates:
+    #         _blank_no_organism_report_fields(isolate)
+    #         entries = list(Final_AntibioticEntry.objects.filter(
+    #             ab_idNum_f_referred=isolate
+    #         ))
 
-            page_entries.append({
-                "isolate": isolate,
-                "grouped_rows": grouped_rows,
-                "grouped_ars_rows": grouped_ars_rows,
-                "site_uses_plus_layout": site_uses_plus_layout,
-                "ars_uses_plus_layout": ars_uses_plus_layout,
-                "patient_rowspan": (site_group_count + ars_group_count) * 5,
-                "site_detail_rowspan": (site_group_count * 5) - 1,
-                "ars_detail_rowspan": (ars_group_count * 5) - 1,
-                "compact_page": compact_page,
-            })
+    #         site_org = (isolate.f_Site_Org or "").strip()
+    #         ars_org = (isolate.f_ars_OrgCode or "").strip() or site_org
+    #         specimen_year = isolate.f_Spec_Date.year if isolate.f_Spec_Date else None
 
-        pages_data.append(page_entries)
+    #         site_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, site_org)
+    #         ars_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, ars_org)
+    #         encoded_site_abx = {
+    #             abx_map.get((entry.ab_Abx_code or "").strip().upper())
+    #             for entry in entries
+    #             if entry.ab_Abx_code
+    #         } - {None, ""}
+    #         encoded_ars_abx = {
+    #             abx_map.get((entry.ab_Retest_Abx_code or "").strip().upper())
+    #             for entry in entries
+    #             if entry.ab_Retest_Abx_code
+    #         } - {None, ""}
+    #         encoded_print_abx = encoded_site_abx | encoded_ars_abx
 
-    context = {
-        "batch": batch,
-        "pages": pages_data,
-        "now": timezone.now(),
-        "logo_path": static("assets/img/brand/arsplogo.jpg"),
-    }
+    #         site_candidates = (set(site_panel_abx) | encoded_print_abx) & site_printable
+    #         ars_candidates = (set(ars_panel_abx) | encoded_print_abx) & ars_printable
 
-    response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = 'filename="Batch_Panel_Report.pdf"'
+    #         site_abx_codes = [abx for abx in site_print_order if abx in site_candidates]
+    #         site_abx_codes.extend(
+    #             sort_abx_codes_by_antibiotic(
+    #                 abx for abx in site_candidates if abx not in site_abx_codes
+    #             )
+    #         )
+    #         ars_abx_codes = [abx for abx in ars_print_order if abx in ars_candidates]
+    #         ars_abx_codes.extend(
+    #             sort_abx_codes_by_antibiotic(
+    #                 abx for abx in ars_candidates if abx not in ars_abx_codes
+    #             )
+    #         )
+    #         if _is_no_organism(isolate.f_Site_Org):
+    #             site_abx_codes = []
+    #         if _is_no_organism(isolate.f_ars_OrgCode):
+    #             ars_abx_codes = []
 
-    template = get_template("home_final/Lab_result_final.html")
-    html = template.render(context)
+    #         aligned_abx_codes = _aligned_pdf_abx_codes(
+    #             site_abx_codes,
+    #             ars_abx_codes,
+    #             site_print_order,
+    #             ars_print_order,
+    #         )
+    #         site_abx_codes = aligned_abx_codes
+    #         ars_abx_codes = aligned_abx_codes
 
-    pisa.CreatePDF(
-        html,
-        dest=response,
-        link_callback=link_callback
-    )
+    #         grouped_site = {
+    #             abx: {"disk": None, "mic": None, "disk_show_value": True, "mic_show_value": True}
+    #             for abx in site_abx_codes
+    #         }
+    #         grouped_ars = {
+    #             abx: {"disk": None, "mic": None, "disk_show_value": True, "mic_show_value": True}
+    #             for abx in ars_abx_codes
+    #         }
 
-    return response
+    #         for e in entries:
+    #             site_whonet = (e.ab_Abx_code or "").strip().upper()
+    #             site_abx = abx_map.get(site_whonet)
+    #             if site_abx in grouped_site:
+    #                 if e.ab_Disk_value is not None:
+    #                     grouped_site[site_abx]["disk"] = e
+    #                     grouped_site[site_abx]["disk_show_value"] = show_value_by_whonet.get(site_whonet, True)
+    #                 if e.ab_MIC_value is not None:
+    #                     grouped_site[site_abx]["mic"] = e
+    #                     grouped_site[site_abx]["mic_show_value"] = show_value_by_whonet.get(site_whonet, True)
+
+    #             ars_whonet = (e.ab_Retest_Abx_code or "").strip().upper()
+    #             ars_abx = abx_map.get(ars_whonet)
+    #             if ars_abx in grouped_ars:
+    #                 if e.ab_Retest_DiskValue is not None:
+    #                     grouped_ars[ars_abx]["disk"] = e
+    #                     grouped_ars[ars_abx]["disk_show_value"] = show_value_by_whonet.get(ars_whonet, True)
+    #                 if e.ab_Retest_MICValue is not None:
+    #                     grouped_ars[ars_abx]["mic"] = e
+    #                     grouped_ars[ars_abx]["mic_show_value"] = show_value_by_whonet.get(ars_whonet, True)
+
+    #         site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.f_Site_OrgName)
+    #         ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.f_ars_OrgName)
+    #         site_max_cols = 32 if site_uses_plus_layout else MAX_COLS
+    #         ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
+    #         grouped_rows = fixed_rows(grouped_site, site_max_cols)
+    #         grouped_ars_rows = fixed_rows(grouped_ars, ars_max_cols)
+    #         site_group_count = len(grouped_rows)
+    #         ars_group_count = len(grouped_ars_rows)
+
+    #         page_entries.append({
+    #             "isolate": isolate,
+    #             "grouped_rows": grouped_rows,
+    #             "grouped_ars_rows": grouped_ars_rows,
+    #             "site_uses_plus_layout": site_uses_plus_layout,
+    #             "ars_uses_plus_layout": ars_uses_plus_layout,
+    #             "patient_rowspan": (site_group_count + ars_group_count) * 5,
+    #             "site_detail_rowspan": (site_group_count * 5) - 1,
+    #             "ars_detail_rowspan": (ars_group_count * 5) - 1,
+    #             "compact_page": compact_page,
+    #         })
+
+    #     pages_data.append(page_entries)
+
+    # context = {
+    #     "batch": batch,
+    #     "pages": pages_data,
+    #     "now": timezone.now(),
+    #     "logo_path": static("assets/img/brand/arsplogo.jpg"),
+    # }
+
+    # response = HttpResponse(content_type="application/pdf")
+    # response["Content-Disposition"] = 'filename="Batch_Panel_Report.pdf"'
+
+    # template = get_template("home_final/Lab_result_final.html")
+    # html = template.render(context)
+
+    # pisa.CreatePDF(
+    #     html,
+    #     dest=response,
+    #     link_callback=link_callback
+    # )
+
+    # return response
 
 
 # @login_required(login_url="login")
@@ -2639,19 +3063,10 @@ def download_combined_final_table(request):
         .prefetch_related("final_entries")
         .all()
     )
-    if date_from or date_to:
-        entry_filter = Q()
-        fallback_filter = Q(f_Date_of_Entry__isnull=True)
-
-        if date_from:
-            entry_filter &= Q(f_Date_of_Entry__date__gte=date_from)
-            fallback_filter &= Q(f_Spec_Date__gte=date_from)
-
-        if date_to:
-            entry_filter &= Q(f_Date_of_Entry__date__lte=date_to)
-            fallback_filter &= Q(f_Spec_Date__lte=date_to)
-
-        final_data_entries = final_data_entries.filter(entry_filter | fallback_filter)
+    if date_from:
+        final_data_entries = final_data_entries.filter(f_Referral_Date__gte=date_from)
+    if date_to:
+        final_data_entries = final_data_entries.filter(f_Referral_Date__lte=date_to)
 
     classification_fields = [
         "Class_AccessionNo",
@@ -2845,36 +3260,34 @@ def download_combined_final_table(request):
                 code = entry.ab_Abx_code.upper()
                 abx_data.setdefault(code, {})
 
-                if entry.ab_Disk_value is not None or entry.ab_MIC_value is not None:
-                    val = (
-                        entry.ab_Disk_value
-                        if entry.ab_Disk_value is not None
-                        else f"{entry.ab_MIC_operand or ''}{entry.ab_MIC_value}"
-                    )
-                    ris = entry.ab_Disk_enRIS or entry.ab_MIC_enRIS
+                val = ""
+                if entry.ab_Disk_value is not None:
+                    val = entry.ab_Disk_value
+                elif entry.ab_MIC_value is not None:
+                    val = f"{entry.ab_MIC_operand or ''}{entry.ab_MIC_value}"
+                ris = entry.ab_Disk_enRIS or entry.ab_MIC_enRIS
 
-                    abx_data[code].update({
-                        "VAL": val,
-                        "RIS": ris,
-                    })
+                abx_data[code].update({
+                    "VAL": val,
+                    "RIS": ris,
+                })
 
             # RETEST RESULT
             if entry.ab_Retest_Abx_code:
                 code = entry.ab_Retest_Abx_code.upper()
                 abx_data.setdefault(code, {})
 
-                if entry.ab_Retest_DiskValue is not None or entry.ab_Retest_MICValue is not None:
-                    rt_val = (
-                        entry.ab_Retest_DiskValue
-                        if entry.ab_Retest_DiskValue is not None
-                        else f"{entry.ab_Retest_MIC_operand or ''}{entry.ab_Retest_MICValue}"
-                    )
-                    rt_ris = entry.ab_Retest_Disk_enRIS or entry.ab_Retest_MIC_enRIS
+                rt_val = ""
+                if entry.ab_Retest_DiskValue is not None:
+                    rt_val = entry.ab_Retest_DiskValue
+                elif entry.ab_Retest_MICValue is not None:
+                    rt_val = f"{entry.ab_Retest_MIC_operand or ''}{entry.ab_Retest_MICValue}"
+                rt_ris = entry.ab_Retest_Disk_enRIS or entry.ab_Retest_MIC_enRIS
 
-                    abx_data[code].update({
-                        "RT_VAL": rt_val,
-                        "RT_RIS": rt_ris,
-                    })
+                abx_data[code].update({
+                    "RT_VAL": rt_val,
+                    "RT_RIS": rt_ris,
+                })
 
         # Expand antibiotic columns
         for abx in sorted_antibiotics:
@@ -3589,13 +4002,23 @@ def _add_site_concordance_context(context, year, site_filter="", metric="ast_rat
     if year not in (None, "", "all"):
         report_qs = report_qs.filter(final_data__f_Referral_Date__year=year)
 
+    isolates = Final_Data.objects.prefetch_related("final_entries")
+    if year not in (None, "", "all"):
+        isolates = isolates.filter(f_Referral_Date__year=year)
+
     site_choices = sorted({
         str(report.final_data.f_SiteCode or "").strip()
         for report in report_qs
         if report.final_data and str(report.final_data.f_SiteCode or "").strip()
     })
     if site_filter:
+        isolates = isolates.filter(f_SiteCode=site_filter)
         report_qs = report_qs.filter(final_data__f_SiteCode=site_filter)
+
+    totals, _ = concordance_service.summarize_isolates(
+        isolates,
+        concordance_service.get_global_concordance_options_data(),
+    )
 
     site_buckets = {}
     for report in report_qs:
@@ -3650,6 +4073,24 @@ def _add_site_concordance_context(context, year, site_filter="", metric="ast_rat
         row["bar_pct"] = round((row["metric_value"] / max_metric_value) * 100, 1) if max_metric_value else 0
 
     context.update({
+        "total_isolates": totals["total_isolates"],
+        "concordant_species": totals["species_match"],
+        "species_rate": _concordance_pct(totals["species_match"], totals["viable_pure"]),
+        "concordant_genus": totals["genus_match"],
+        "genus_rate": _concordance_pct(totals["genus_match"], totals["viable_pure"]),
+        "different_org": totals["different_org"],
+        "mixed_count": totals["mixed_count"],
+        "not_viable_count": totals["nonviable_count"],
+        "total_pairs": totals["total_pairs"],
+        "concordant_pairs": totals["concordant_pairs"],
+        "ast_concordance_rate": _concordance_pct(totals["concordant_pairs"], totals["total_pairs"]),
+        "vmd": totals["vmd"],
+        "vmd_rate": _concordance_pct(totals["vmd"], totals["total_pairs"]),
+        "md": totals["md"],
+        "md_rate": _concordance_pct(totals["md"], totals["total_pairs"]),
+        "minor": totals["minor"],
+        "minor_rate": _concordance_pct(totals["minor"], totals["total_pairs"]),
+        "isolates": isolates,
         "site_filter": site_filter,
         "site_metric": metric,
         "site_sort_order": sort_order,
@@ -4136,6 +4577,24 @@ def delete_concordance_setting(request, pk):
 def concordance_generate_batch(request):
 
     batch_id = request.POST.get("batch_id")
+    user_access = role_flags(request.user)
+    if user_access["is_checker"] or user_access["is_dmu_encoder"]:
+        try:
+            VerificationCase = django_apps.get_model("verification", "VerificationCase")
+            verification_case = (
+                VerificationCase.objects
+                .filter(final_batch_id=batch_id, final_accession__isnull=True)
+                .exclude(status=VerificationCase.STATUS_WITHDRAWN)
+                .first()
+            )
+        except (LookupError, ProgrammingError, OperationalError):
+            verification_case = None
+        if verification_case_blocks_operational_outputs(verification_case):
+            return HttpResponse(
+                "Concordance generation is disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release.",
+                status=403,
+            )
+
     report = concordance_service.generate_concordance_for_batch(
         batch_id,
         request.user,
@@ -4746,6 +5205,30 @@ def _format_refno_range(isolates, batch=None):
     return ", ".join(refnos)
 
 
+def _numeric_sort_value(value):
+    text = str(value or "").strip()
+    if not text:
+        return (1, 0, "")
+
+    match = re.search(r"\d+", text)
+    if match:
+        return (0, int(match.group()), text)
+
+    return (1, 0, text.lower())
+
+
+def _accession_sort_value(value):
+    text = str(value or "").strip()
+    if not text:
+        return (1, 0, "")
+
+    match = re.search(r"(\d+)(?!.*\d)", text)
+    if match:
+        return (0, int(match.group()), text)
+
+    return (1, 0, text.lower())
+
+
 def _resolve_site_contact(batch, first_isolate=None):
     site_code = (
         getattr(batch, "bat_SiteCode", "")
@@ -4817,14 +5300,16 @@ def _build_batch_concordance_context(report):
         isolate.id: isolate.f_RefNo
         for isolate in isolates
     }
+    # Build a mapping of isolate IDs to their f_bat_seq values, defaulting to an empty string if f_bat_seq is None
     isolate_bat_seq_map = {
         isolate.id: isolate.f_bat_seq if isolate.f_bat_seq is not None else ""
         for isolate in isolates
     }
+    # Build a list of discordant details for the report, filtering out those with a deviation code of "S"
     discordant_details = [
         {
             "refno": isolate_ref_map.get(detail.isolate_id, ""),
-            "bat_seq": isolate_bat_seq_map.get(detail.isolate_id, ""),
+            "bat_seq": isolate_bat_seq_map.get(detail.isolate_id, ""), # Use the isolate_bat_seq_map to get the bat_seq value
             "accession_no": detail.accession_no,
             "organism": detail.organism,
             "antibiotic": detail.antibiotic,
@@ -4835,6 +5320,65 @@ def _build_batch_concordance_context(report):
         for detail in details
         if detail.deviation_code != "S"
     ]
+
+    discordant_details.sort(
+        key=lambda row: (
+            _numeric_sort_value(row.get("bat_seq")),
+            str(row.get("antibiotic") or "").lower(),
+            str(row.get("accession_no") or "").lower(),
+        )
+    )
+
+
+    # Sort primarily by batch sequence
+    discordant_details.sort(
+        key=lambda row: (
+            _numeric_sort_value(row.get("bat_seq")),
+            str(row.get("antibiotic") or "").lower(),
+            str(row.get("accession_no") or "").lower(),
+        )
+    )
+
+
+
+    # another approach to sorting discordant details by batch sequence, antibiotic, and accession number
+    
+    # discordant_details = []
+
+    # for detail in details:
+    #     if detail.deviation_code == "S":
+    #         continue
+
+    #     raw_bat_seq = isolate_bat_seq_map.get(detail.isolate_id, "")
+
+    #     try:
+    #         bat_seq_sort = int(raw_bat_seq)
+    #     except (TypeError, ValueError):
+    #         bat_seq_sort = 999999999
+
+    #     discordant_details.append({
+    #         "refno": isolate_ref_map.get(detail.isolate_id, ""),
+    #         "bat_seq": raw_bat_seq,
+
+    #         # Dedicated numeric value used ONLY for sorting
+    #         "_bat_seq_sort": bat_seq_sort,
+
+    #         "accession_no": detail.accession_no,
+    #         "organism": detail.organism,
+    #         "antibiotic": detail.antibiotic,
+    #         "site_ris": detail.site_ris,
+    #         "ars_ris": detail.ars_ris,
+    #         "deviation_code": detail.deviation_code,
+    #     })
+
+
+    # discordant_details.sort(
+    #     key=lambda row: (
+    #         row["_bat_seq_sort"],
+    #         str(row["antibiotic"] or "").lower(),
+    #     )
+    # )
+
 
     context = {
         "report": report,
@@ -4854,7 +5398,15 @@ def _build_batch_concordance_context(report):
         "different_org_rate": different_org_rate,
         "genus_rate": id_stats["genus_rate"],
         "species_rate": id_stats["species_rate"],
-        "discordant_rows": id_stats["discordant_rows"],
+        "discordant_rows": sorted(
+            id_stats["discordant_rows"],
+            key=lambda row: (
+                _numeric_sort_value(row.get("refno") or row.get("bat_seq")),
+                _numeric_sort_value(row.get("bat_seq")),
+                str(row.get("site_org") or ""),
+                str(row.get("ars_org") or ""),
+            ),
+        ),
         "total_pairs": total_pairs,
         "total_pairs_rate": total_pairs_rate,
         "concordant": report.concordant_pairs or 0,
@@ -4974,7 +5526,7 @@ def export_concordance_batch_excel(request, report_id):
                     isolate.f_RefNo,
                     isolate.f_Site_OrgName,
                     isolate.f_ars_OrgName
-                ])
+                ]).order_by("isolate.f_RefNo", "isolate.f_AccessionNo")
 
     viable_pure = total_isolates - mixed_count - nonviable_count
 
@@ -4997,6 +5549,7 @@ def export_concordance_batch_excel(request, report_id):
         [row["refno"], row["site_org"], row["ars_org"]]
         for row in id_stats["discordant_rows"]
     ]
+
 
     # =====================================================
     # AST CALCULATIONS (FROM SNAPSHOT)
@@ -5239,6 +5792,10 @@ def export_concordance_batch_excel(request, report_id):
                 item["ars_ris"],
                 item["deviation_code"],
             ]
+
+
+    
+
             for col_num, value in enumerate(row_values, 1):
                 cell = ws.cell(row=row_num, column=col_num, value=value)
                 cell.border = thin

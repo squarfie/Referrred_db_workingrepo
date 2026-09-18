@@ -6,6 +6,7 @@ from io import TextIOWrapper
 import io
 import re
 from django.db import models, transaction
+from django.db.utils import OperationalError, ProgrammingError
 import csv
 from django.db.models import Q, F, Func
 from django.http import FileResponse, HttpResponse, JsonResponse
@@ -22,6 +23,7 @@ from apps.home.permissions import (
     can_manage_batch,
     role_flags,
     role_required,
+    verification_case_blocks_operational_outputs,
 )
 
 from .forms import *
@@ -795,6 +797,134 @@ def save_or_update_wgs_module_record(existing_record, defaults, overwrite=True):
     return record, "created"
 
 
+def bulk_save_wgs_module_records(
+    model,
+    rows,
+    *,
+    accession_field,
+    project_field,
+    project_accession_field,
+    summary_field,
+    key_fields,
+    value_fields,
+    overwrite=True,
+    batch_size=1000,
+):
+    cleaned_rows = []
+    for row in rows:
+        cleaned = {}
+        for field, value in row.items():
+            if field in {project_field, "matched_final_data"}:
+                cleaned[field] = value
+            elif field.endswith("_id"):
+                cleaned[field] = value
+            elif isinstance(value, (int, float, Decimal, date, datetime)):
+                try:
+                    cleaned[field] = None if pd.isna(value) else value
+                except (TypeError, ValueError):
+                    cleaned[field] = value
+            else:
+                cleaned[field] = upload_text_or_none(value)
+        cleaned_rows.append(cleaned)
+
+    deduped_rows = {}
+    duplicate_count = 0
+    for row in cleaned_rows:
+        key = tuple(str(row.get(field) or "").strip() for field in key_fields)
+        if not any(key):
+            continue
+        if key in deduped_rows:
+            duplicate_count += 1
+        deduped_rows[key] = row
+    rows = list(deduped_rows.values())
+
+    accessions = {
+        (row.get(accession_field) or "").strip()
+        for row in rows
+        if (row.get(accession_field) or "").strip()
+    }
+    final_by_accession = {
+        item.f_AccessionNo: item
+        for item in Final_Data.objects.filter(f_AccessionNo__in=accessions)
+    }
+
+    existing_filter = Q()
+    for key_field in key_fields:
+        key_values = [
+            str(row.get(key_field) or "").strip()
+            for row in rows
+            if str(row.get(key_field) or "").strip()
+        ]
+        if key_values:
+            existing_filter |= Q(**{f"{key_field}__in": key_values})
+    existing_records = []
+    if existing_filter:
+        existing_records = list(model.objects.filter(existing_filter).select_related(project_field))
+
+    existing_by_key = {}
+    for record in existing_records:
+        key = tuple(str(getattr(record, field, "") or "").strip() for field in key_fields)
+        existing_by_key.setdefault(key, record)
+
+    project_by_accession = {}
+    for row in rows:
+        accession = (row.get(accession_field) or "").strip()
+        if not accession:
+            row[project_field] = None
+            continue
+        key = tuple(str(row.get(field) or "").strip() for field in key_fields)
+        existing_record = existing_by_key.get(key)
+        if existing_record and getattr(existing_record, f"{project_field}_id"):
+            project = getattr(existing_record, project_field)
+        else:
+            project = project_by_accession.get(accession)
+            if not project:
+                project = get_or_create_wgs_project_for_upload(
+                    accession,
+                    final_by_accession.get(accession),
+                    project_accession_field,
+                    summary_field,
+                )
+                project_by_accession[accession] = project
+        row[project_field] = project
+
+    create_objects = []
+    update_objects = []
+    skipped_count = 0
+    update_fields = list(dict.fromkeys([
+        accession_field,
+        project_field,
+        *value_fields,
+    ]))
+
+    for row in rows:
+        key = tuple(str(row.get(field) or "").strip() for field in key_fields)
+        existing_record = existing_by_key.get(key)
+        if existing_record:
+            if not overwrite:
+                skipped_count += 1
+                continue
+            for field in update_fields:
+                setattr(existing_record, field, row.get(field))
+            update_objects.append(existing_record)
+        else:
+            create_objects.append(model(**{field: row.get(field) for field in update_fields}))
+
+    with transaction.atomic():
+        if create_objects:
+            model.objects.bulk_create(create_objects, batch_size=batch_size)
+        if update_objects:
+            model.objects.bulk_update(update_objects, update_fields, batch_size=batch_size)
+
+    return {
+        "created": len(create_objects),
+        "updated": len(update_objects),
+        "skipped": skipped_count,
+        "duplicates": duplicate_count,
+        "processed": len(cleaned_rows),
+    }
+
+
 def relink_all_wgs_records_from_sampleinfo():
     linked_count = 0
     for sampleinfo in SampleInformation.objects.exclude(sample_name__isnull=True).exclude(sample_name=""):
@@ -1447,6 +1577,7 @@ def custom_pipeline_upload(request, slug):
             unmatched_count = 0
             warnings = []
             replaced_accessions = set()
+            records_to_create = []
 
             with transaction.atomic():
                 batch = CustomWGSPipelineUploadBatch.objects.create(
@@ -1514,19 +1645,24 @@ def custom_pipeline_upload(request, slug):
                                 pipeline=pipeline,
                             ).delete()
 
-                    CustomWGSPipelineRecord.objects.create(
-                        pipeline=pipeline,
-                        upload_batch=batch,
-                        accession=stored_accession,
-                        sample_name=sample_name,
-                        matched_final_data=final_match,
-                        match_status=match_status,
-                        match_source=match_source,
-                        values_json=values,
-                        raw_row_json={str(key): json_safe_value(value) for key, value in row.items()},
-                        uploaded_by=request.user,
+                    records_to_create.append(
+                        CustomWGSPipelineRecord(
+                            pipeline=pipeline,
+                            upload_batch=batch,
+                            accession=stored_accession,
+                            sample_name=sample_name,
+                            matched_final_data=final_match,
+                            match_status=match_status,
+                            match_source=match_source,
+                            values_json=values,
+                            raw_row_json={str(key): json_safe_value(value) for key, value in row.items()},
+                            uploaded_by=request.user,
+                        )
                     )
                     created_count += 1
+
+                if records_to_create:
+                    CustomWGSPipelineRecord.objects.bulk_create(records_to_create, batch_size=1000)
 
                 batch.created_count = created_count
                 batch.skipped_count = skipped_count
@@ -1835,10 +1971,9 @@ def upload_gambit(request):
                 return f"{prefix}_{valid_code}{digits}" if digits else ""
 
 
-            created_count = 0
-            updated_count = 0
+            rows = []
             skipped_count = 0
-            for _, row in df.iterrows():
+            for row in df.to_dict("records"):
                 sample_name = (
                     upload_text_or_none(row.get("sample"))
                     or upload_text_or_none(row.get("query"))
@@ -1850,38 +1985,9 @@ def upload_gambit(request):
                     skipped_count += 1
                     continue
 
-                existing_gambit = find_existing_wgs_module_record(
-                    Gambit,
-                    "Gambit_Accession",
-                    gambit_accession,
-                    "sample",
-                    sample_name,
-                )
-                if existing_gambit and not overwrite:
-                    skipped_count += 1
-                    continue
-
-                # try to find Referred_Data with this accession
-                referred_obj = Final_Data.objects.filter(
-                    f_AccessionNo=gambit_accession
-                ).first()
-
-                connect_project = None
-                if gambit_accession:
-                    connect_project = get_or_create_wgs_project_for_upload(
-                        gambit_accession,
-                        referred_obj,
-                        "WGS_Gambit_Acc",
-                        "WGS_GambitSummary",
-                        existing_project=existing_gambit.gambit_project if existing_gambit else None,
-                    )
-                record, status = save_or_update_wgs_module_record(
-                    existing_gambit,
-                    {
-                        "_model": Gambit,
-                        "Gambit_Accession": gambit_accession,
-                        "gambit_project": connect_project,
+                rows.append({
                         "sample": sample_name,
+                        "Gambit_Accession": gambit_accession,
                         "predicted_name": upload_text_or_none(row.get("predicted_name")),
                         "predicted_rank": upload_text_or_none(row.get("predicted_rank")),
                         "predicted_ncbi_id": upload_text_or_none(row.get("predicted_ncbi_id")),
@@ -1892,15 +1998,22 @@ def upload_gambit(request):
                         "next_rank": upload_text_or_none(row.get("next_rank")),
                         "next_ncbi_id": upload_text_or_none(row.get("next_ncbi_id")),
                         "next_threshold": upload_text_or_none(row.get("next_threshold")),
-                    },
-                    overwrite=overwrite,
-                )
-                if status == "created":
-                    created_count += 1
-                elif status == "updated":
-                    updated_count += 1
-                else:
-                    skipped_count += 1
+                })
+
+            result = bulk_save_wgs_module_records(
+                Gambit,
+                rows,
+                accession_field="Gambit_Accession",
+                project_field="gambit_project",
+                project_accession_field="WGS_Gambit_Acc",
+                summary_field="WGS_GambitSummary",
+                key_fields=("Gambit_Accession", "sample"),
+                value_fields=Gambit.UPLOAD_FIELDS,
+                overwrite=overwrite,
+            )
+            created_count = result["created"]
+            updated_count = result["updated"]
+            skipped_count += result["skipped"]
 
             if created_count or updated_count:
                 messages.success(
@@ -2146,56 +2259,43 @@ def upload_mlst(request):
 
         print("✅ Total rows in DataFrame:", len(df))
 
-        # === Loop through rows ===
-        for _, row in df.iterrows():
+        rows = []
+        skipped_count = 0
+        for row in df.to_dict("records"):
             full_path = str(row.get("FILE", "")).strip()
+            if not full_path:
+                skipped_count += 1
+                continue
             mlst_accession = resolve_wgs_accession_from_sample_name(full_path, site_codes)
             scheme = row.get("SCHEME", "")
 
-            existing_mlst = find_existing_wgs_module_record_by_fields(
-                Mlst,
-                {
+            rows.append({
                     "Mlst_Accession": mlst_accession,
-                    "file": full_path,
-                    "scheme": scheme,
-                },
-            )
-            if existing_mlst and not overwrite:
-                continue
-
-            # Find Referred_Data (optional)
-            referred_obj = (
-                Final_Data.objects.filter(f_AccessionNo=mlst_accession).first()
-                if mlst_accession else None
-            )
-
-            connect_project = None
-            if mlst_accession:
-                connect_project = get_or_create_wgs_project_for_upload(
-                    mlst_accession,
-                    referred_obj,
-                    "WGS_Mlst_Acc",
-                    "WGS_MlstSummary",
-                    existing_project=existing_mlst.mlst_project if existing_mlst else None,
-                )
-
-            save_or_update_wgs_module_record(
-                existing_mlst,
-                {
-                    "_model": Mlst,
-                    "Mlst_Accession": mlst_accession,
-                    "mlst_project": connect_project,
                     "file": full_path,
                     "scheme": scheme,
                     "st": row.get("ST", ""),
                     "status": row.get("STATUS", ""),
                     "score": row.get("SCORE", ""),
                     "alleles": row.get("ALLELES", ""),
-                },
-                overwrite=overwrite,
-            )
+            })
 
-        messages.success(request, "MLST records updated successfully.")
+        result = bulk_save_wgs_module_records(
+            Mlst,
+            rows,
+            accession_field="Mlst_Accession",
+            project_field="mlst_project",
+            project_accession_field="WGS_Mlst_Acc",
+            summary_field="WGS_MlstSummary",
+            key_fields=("Mlst_Accession", "file", "scheme"),
+            value_fields=Mlst.UPLOAD_FIELDS,
+            overwrite=overwrite,
+        )
+
+        messages.success(
+            request,
+            f"MLST upload complete: {result['created']} created, "
+            f"{result['updated']} updated, {result['skipped'] + skipped_count} skipped.",
+        )
         return redirect("show_mlst")
 
     # === GET request fallback ===
@@ -2425,54 +2525,42 @@ def upload_checkm2(request):
 
         print("Total rows in dataframe:", len(df))
 
-        for _, row in df.iterrows():
+        rows = []
+        skipped_count = 0
+        for row in df.to_dict("records"):
             sample_name = str(row.get("Name", "")).strip().replace(".fna", "")
+            if not sample_name:
+                skipped_count += 1
+                continue
             checkm2_accession = resolve_wgs_accession_from_sample_name(sample_name, site_codes)
 
-            existing_checkm2 = find_existing_wgs_module_record(
-                Checkm2,
-                "Checkm2_Accession",
-                checkm2_accession,
-                "Name",
-                sample_name,
-            )
-            if existing_checkm2 and not overwrite:
-                continue
-
-            # Step 1: Try to find Referred_Data with this accession (only if non-blank)
-            referred_obj = (
-                Final_Data.objects.filter(f_AccessionNo=checkm2_accession).first()
-                if checkm2_accession else None
-            )
-
-            connect_project = None
-            if checkm2_accession:
-                connect_project = get_or_create_wgs_project_for_upload(
-                    checkm2_accession,
-                    referred_obj,
-                    "WGS_Checkm2_Acc",
-                    "WGS_Checkm2Summary",
-                    existing_project=existing_checkm2.checkm2_project if existing_checkm2 else None,
-                )
-
             checkm2_values = {
-                "_model": Checkm2,
                 "Checkm2_Accession": checkm2_accession,
                 "Name": sample_name,
-                "checkm2_project": connect_project,
             }
             for field in Checkm2.UPLOAD_FIELDS:
                 if field == "Name":
                     continue
                 checkm2_values[field] = row.get(field, "")
+            rows.append(checkm2_values)
 
-            save_or_update_wgs_module_record(
-                existing_checkm2,
-                checkm2_values,
-                overwrite=overwrite,
-            )
+        result = bulk_save_wgs_module_records(
+            Checkm2,
+            rows,
+            accession_field="Checkm2_Accession",
+            project_field="checkm2_project",
+            project_accession_field="WGS_Checkm2_Acc",
+            summary_field="WGS_Checkm2Summary",
+            key_fields=("Checkm2_Accession", "Name"),
+            value_fields=Checkm2.UPLOAD_FIELDS,
+            overwrite=overwrite,
+        )
 
-        messages.success(request, "Checkm2 records uploaded successfully.")
+        messages.success(
+            request,
+            f"CheckM2 upload complete: {result['created']} created, "
+            f"{result['updated']} updated, {result['skipped'] + skipped_count} skipped.",
+        )
         return redirect("show_checkm2")
 
     return render(request, "wgs_app/Add_wgs.html", {
@@ -2701,71 +2789,63 @@ def upload_assembly(request):
 
             return ""
 
-        for _, row in df.iterrows():
+        assembly_fields = (
+            "total_contig",
+            "total_contig_length",
+            "max_contig_length",
+            "mean_contig_length",
+            "median_contig_length",
+            "min_contig_length",
+            "n50_contig_length",
+            "l50_contig_count",
+            "num_contig_non_acgtn",
+            "contig_percent_a",
+            "contig_percent_c",
+            "contig_percent_g",
+            "contig_percent_t",
+            "contig_percent_n",
+            "contig_non_acgtn",
+            "contigs_greater_1m",
+            "contigs_greater_100k",
+            "contigs_greater_10k",
+            "contigs_greater_1k",
+            "percent_contigs_greater_1m",
+            "percent_contigs_greater_100k",
+            "percent_contigs_greater_10k",
+            "percent_contigs_greater_1k",
+        )
+        rows = []
+        skipped_count = 0
+        for row in df.to_dict("records"):
             sample_name = str(row.get("sample", "")).strip()
+            if not sample_name:
+                skipped_count += 1
+                continue
             assembly_accession = resolve_wgs_accession_from_sample_name(sample_name, site_codes)
 
-            existing_assembly = find_existing_wgs_module_record(
-                AssemblyScan,
-                "Assembly_Accession",
-                assembly_accession,
-                "sample",
-                sample_name,
-            )
-            if existing_assembly and not overwrite:
-                continue
+            rows.append({
+                "Assembly_Accession": assembly_accession,
+                "sample": sample_name,
+                **{field: row.get(field, "") for field in assembly_fields},
+            })
 
-            # Step 1: Try to find Referred_Data with this accession (only if non-blank)
-            referred_obj = (
-                Final_Data.objects.filter(f_AccessionNo=assembly_accession).first()
-                if assembly_accession else None
-            )
+        result = bulk_save_wgs_module_records(
+            AssemblyScan,
+            rows,
+            accession_field="Assembly_Accession",
+            project_field="assembly_project",
+            project_accession_field="WGS_Assembly_Acc",
+            summary_field="WGS_AssemblySummary",
+            key_fields=("Assembly_Accession", "sample"),
+            value_fields=("sample", *assembly_fields),
+            overwrite=overwrite,
+        )
 
-            connect_project = None
-            if assembly_accession:
-                connect_project = get_or_create_wgs_project_for_upload(
-                    assembly_accession,
-                    referred_obj,
-                    "WGS_Assembly_Acc",
-                    "WGS_AssemblySummary",
-                    existing_project=existing_assembly.assembly_project if existing_assembly else None,
-                )
-
-            save_or_update_wgs_module_record(
-                existing_assembly,
-                {
-                    "_model": AssemblyScan,
-                    "Assembly_Accession": assembly_accession,
-                    "sample": sample_name,
-                    "assembly_project": connect_project,
-                    "total_contig": row.get("total_contig", ""),
-                    "total_contig_length": row.get("total_contig_length", ""),
-                    "max_contig_length": row.get("max_contig_length", ""),
-                    "mean_contig_length": row.get("mean_contig_length", ""),
-                    "median_contig_length": row.get("median_contig_length", ""),
-                    "min_contig_length": row.get("min_contig_length", ""),
-                    "n50_contig_length": row.get("n50_contig_length", ""),
-                    "l50_contig_count": row.get("l50_contig_count", ""),
-                    "num_contig_non_acgtn": row.get("num_contig_non_acgtn", ""),
-                    "contig_percent_a": row.get("contig_percent_a", ""),
-                    "contig_percent_c": row.get("contig_percent_c", ""),
-                    "contig_percent_g": row.get("contig_percent_g", ""),
-                    "contig_percent_t": row.get("contig_percent_t", ""),
-                    "contig_percent_n": row.get("contig_percent_n", ""),
-                    "contig_non_acgtn": row.get("contig_non_acgtn", ""),
-                    "contigs_greater_1m": row.get("contigs_greater_1m", ""),
-                    "contigs_greater_100k": row.get("contigs_greater_100k", ""),
-                    "contigs_greater_10k": row.get("contigs_greater_10k", ""),
-                    "contigs_greater_1k": row.get("contigs_greater_1k", ""),
-                    "percent_contigs_greater_1m": row.get("percent_contigs_greater_1m", ""),
-                    "percent_contigs_greater_100k": row.get("percent_contigs_greater_100k", ""),
-                    "percent_contigs_greater_10k": row.get("percent_contigs_greater_10k", ""),
-                    "percent_contigs_greater_1k": row.get("percent_contigs_greater_1k", ""),
-                },
-                overwrite=overwrite,
-            )
-
-        messages.success(request, "AssemblyScan records uploaded successfully.")
+        messages.success(
+            request,
+            f"AssemblyScan upload complete: {result['created']} created, "
+            f"{result['updated']} updated, {result['skipped'] + skipped_count} skipped.",
+        )
         return redirect("show_assembly")
 
     return render(request, "wgs_app/Add_wgs.html", {
@@ -2943,124 +3023,205 @@ def upload_amrfinder(request):
         # Preload all valid site codes from SiteData (uppercase)
         site_codes = set(SiteData.objects.values_list("SiteCode", flat=True))
 
-        # Helper to build accession
-        def format_amrfinder_accession(raw_name: str) -> str:
-            if not raw_name:
-                return ""
-            base_noext = os.path.splitext(os.path.basename(raw_name))[0].strip()
+        rows = []
+        sample_names = set()
+        fallback_sample_variants = set()
 
-            # Must contain ARS to be eligible
-            if "ARS" not in base_noext:
-                return ""
-
-            parts = re.split(r"[-_]", base_noext)
-            if not parts:
-                return ""
-
-            prefix = parts[0]  # e.g., "24ARS"
-
-            # 1) Look for LETTERS + DIGITS where LETTERS is a valid site code
-            for part in parts[1:]:
-                m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
-                if m:
-                    letters = m.group(1).upper()
-                    digits = m.group(2)
-                    if letters in site_codes:
-                        return f"{prefix}_{letters}{digits}"
-
-            # 2) Check if sitecode is a separate part followed by digits
-            for i in range(1, len(parts)):
-                part = parts[i]
-                if part.upper() in site_codes:
-                    letters = part.upper()
-                    digits = ""
-                    if i + 1 < len(parts):
-                        next_part = parts[i + 1]
-                        m2 = re.match(r"^([A-Za-z]{2,6})(\d+)$", next_part)
-                        if m2:
-                            digits = m2.group(2)
-                        else:
-                            dmatch = re.search(r"(\d+)", next_part)
-                            if dmatch:
-                                digits = dmatch.group(1)
-                    if not digits:
-                        dmatch2 = re.search(r"(\d+)", part)
-                        if dmatch2:
-                            digits = dmatch2.group(1)
-                    return f"{prefix}_{letters}{digits}" if digits else f"{prefix}_{letters}"
-
-            # 3) As a fallback, match any valid sitecode prefix
-            for part in parts[1:]:
-                m = re.match(r"^([A-Za-z]{2,6})(\d+)$", part)
-                if m and m.group(1).upper() in site_codes:
-                    return f"{prefix}_{m.group(1).upper()}{m.group(2)}"
-
-            return ""
-
-        print("Total rows in dataframe:", len(df))
-
-        for _, row in df.iterrows():
+        for row in df.to_dict("records"):
             sample_name = upload_text_or_none(row.get("Name", "")) or ""
-            amrfinder_accession = resolve_wgs_accession_from_sample_name(sample_name, site_codes)
+            if sample_name:
+                sample_names.add(sample_name)
+            direct_accession = format_wgs_accession_from_sample_name(sample_name, site_codes)
+            if not direct_accession and re.search(r"\d{2,4}ARS", normalize_wgs_sample_identity(sample_name).upper()):
+                fallback_sample_variants.update(build_wgs_sample_identity_variants(sample_name))
+
             amrfinder_values = {
                 field: upload_text_or_none(row.get(label, "")) or ""
                 for label, field in amrfinder_source_columns.items()
             }
-            protein_id = amrfinder_values.get("protein_id", "")
-            contig_id = amrfinder_values.get("contig_id", "")
-            start = amrfinder_values.get("start", "")
-            stop = amrfinder_values.get("stop", "")
-            element_symbol = amrfinder_values.get("element_symbol", "")
-
-            existing_amrfinder = find_existing_wgs_module_record_by_fields(
-                Amrfinderplus,
-                {
-                    "Amrfinder_Accession": amrfinder_accession,
-                    "name": sample_name,
-                    "protein_id": protein_id,
-                    "contig_id": contig_id,
-                    "start": start,
-                    "stop": stop,
-                    "element_symbol": element_symbol,
-                    "amrfinder_id": amrfinder_values.get("amrfinder_id", ""),
-                },
-            )
-            if existing_amrfinder and not overwrite:
-                continue
-
-            # Step 1: Try to find Referred_Data with this accession (only if non-blank)
-            referred_obj = (
-                Final_Data.objects.filter(f_AccessionNo=amrfinder_accession).first()
-                if amrfinder_accession else None
-            )
-
-            connect_project = None
-            if amrfinder_accession:
-                connect_project = get_or_create_wgs_project_for_upload(
-                    amrfinder_accession,
-                    referred_obj,
-                    "WGS_Amrfinder_Acc",
-                    "WGS_AmrfinderSummary",
-                    existing_project=(
-                        existing_amrfinder.amrfinder_project
-                        if existing_amrfinder else None
-                    ),
-                )
-
-            amrfinder_values.update({
-                "_model": Amrfinderplus,
-                "Amrfinder_Accession": amrfinder_accession,
-                "name": sample_name,
-                "amrfinder_project": connect_project,
+            rows.append({
+                "sample_name": sample_name,
+                "direct_accession": direct_accession,
+                "values": amrfinder_values,
             })
 
-            save_or_update_wgs_module_record(
-                existing_amrfinder,
-                amrfinder_values,
-                overwrite=overwrite,
+        sampleinfo_accessions = {}
+        if fallback_sample_variants:
+            sampleinfo_matches = (
+                SampleInformation.objects
+                .filter(sample_name__in=fallback_sample_variants)
+                .exclude(sample_accession__isnull=True)
+                .exclude(sample_accession="")
+                .order_by("-Date_uploaded_si", "-pk")
+            )
+            for sampleinfo in sampleinfo_matches:
+                for variant in build_wgs_sample_identity_variants(sampleinfo.sample_name):
+                    sampleinfo_accessions.setdefault(
+                        variant,
+                        (sampleinfo.sample_accession or "").strip(),
+                    )
+
+        def resolve_amrfinder_accession(row_data):
+            if row_data["direct_accession"]:
+                return row_data["direct_accession"]
+            for variant in build_wgs_sample_identity_variants(row_data["sample_name"]):
+                accession = sampleinfo_accessions.get(variant)
+                if accession:
+                    return accession
+            return ""
+
+        def amrfinder_row_key(accession, sample_name, values):
+            return (
+                accession or "",
+                sample_name or "",
+                values.get("protein_id", "") or "",
+                values.get("contig_id", "") or "",
+                values.get("start", "") or "",
+                values.get("stop", "") or "",
+                values.get("element_symbol", "") or "",
             )
 
-        messages.success(request, "Amrfinder records uploaded successfully.")
+        prepared_rows = {}
+        duplicate_rows = 0
+        accessions = set()
+        for row_data in rows:
+            accession = resolve_amrfinder_accession(row_data)
+            row_data["accession"] = accession
+            row_key = amrfinder_row_key(accession, row_data["sample_name"], row_data["values"])
+            if row_key in prepared_rows:
+                duplicate_rows += 1
+            prepared_rows[row_key] = row_data
+            if accession:
+                accessions.add(accession)
+
+        final_data_by_accession = {
+            item.f_AccessionNo: item
+            for item in Final_Data.objects.filter(f_AccessionNo__in=accessions)
+        }
+
+        project_filter = Q(pk__isnull=True)
+        if accessions:
+            project_filter = Q(WGS_Amrfinder_Acc__in=accessions) | Q(Ref_Accession_id__in=accessions)
+        project_by_accession = {}
+        for project in WGS_Project.objects.filter(project_filter).select_related("Ref_Accession").order_by("id"):
+            for accession in (project.WGS_Amrfinder_Acc, project.Ref_Accession_id):
+                accession = (accession or "").strip()
+                if accession:
+                    project_by_accession.setdefault(accession, project)
+
+        for accession in accessions:
+            if accession not in project_by_accession:
+                project_by_accession[accession] = get_or_create_wgs_project_for_upload(
+                    accession,
+                    final_data_by_accession.get(accession),
+                    "WGS_Amrfinder_Acc",
+                    "WGS_AmrfinderSummary",
+                )
+
+        project_updates = {}
+        for accession, project in project_by_accession.items():
+            final_data = final_data_by_accession.get(accession)
+            desired_summary = (
+                bool(accession)
+                and bool(final_data)
+                and accession == getattr(final_data, "f_AccessionNo", None)
+            )
+            changed = False
+            if final_data and project.Ref_Accession_id != final_data.f_AccessionNo:
+                project.Ref_Accession = final_data
+                changed = True
+            if (project.WGS_Amrfinder_Acc or "") != accession:
+                project.WGS_Amrfinder_Acc = accession
+                changed = True
+            if project.WGS_AmrfinderSummary != desired_summary:
+                project.WGS_AmrfinderSummary = desired_summary
+                changed = True
+            if changed:
+                project_updates[project.pk] = project
+
+        existing_filter = Q(pk__isnull=True)
+        if accessions:
+            existing_filter |= Q(Amrfinder_Accession__in=accessions)
+        if sample_names:
+            existing_filter |= Q(name__in=sample_names)
+
+        existing_by_key = {}
+        existing_records = (
+            Amrfinderplus.objects
+            .filter(existing_filter)
+            .select_related("amrfinder_project")
+            .order_by("-id")
+        )
+        for existing in existing_records:
+            existing_key = amrfinder_row_key(
+                existing.Amrfinder_Accession or "",
+                existing.name or "",
+                {
+                    "protein_id": existing.protein_id or "",
+                    "contig_id": existing.contig_id or "",
+                    "start": existing.start or "",
+                    "stop": existing.stop or "",
+                    "element_symbol": existing.element_symbol or "",
+                },
+            )
+            existing_by_key.setdefault(existing_key, existing)
+
+        create_records = []
+        update_records = []
+        skipped_count = 0
+        update_fields = list(Amrfinderplus.UPLOAD_FIELDS) + [
+            "Amrfinder_Accession",
+            "amrfinder_project",
+        ]
+
+        for row_key, row_data in prepared_rows.items():
+            accession = row_data["accession"]
+            values = row_data["values"]
+            project = project_by_accession.get(accession) if accession else None
+            existing = existing_by_key.get(row_key)
+
+            if existing:
+                if not overwrite:
+                    skipped_count += 1
+                    continue
+                for field, value in values.items():
+                    setattr(existing, field, value)
+                existing.Amrfinder_Accession = accession
+                existing.name = row_data["sample_name"]
+                existing.amrfinder_project = project or existing.amrfinder_project
+                update_records.append(existing)
+            else:
+                create_values = values.copy()
+                create_values.update({
+                    "Amrfinder_Accession": accession,
+                    "name": row_data["sample_name"],
+                    "amrfinder_project": project,
+                })
+                create_records.append(Amrfinderplus(**create_values))
+
+        with transaction.atomic():
+            if project_updates:
+                WGS_Project.objects.bulk_update(
+                    list(project_updates.values()),
+                    ["Ref_Accession", "WGS_Amrfinder_Acc", "WGS_AmrfinderSummary"],
+                    batch_size=500,
+                )
+            if create_records:
+                Amrfinderplus.objects.bulk_create(create_records, batch_size=1000)
+            if update_records:
+                Amrfinderplus.objects.bulk_update(update_records, update_fields, batch_size=500)
+
+        messages.success(
+            request,
+            (
+                "AMRFinderPlus uploaded: "
+                f"{len(rows)} row(s) processed, "
+                f"{len(create_records)} created, "
+                f"{len(update_records)} updated, "
+                f"{skipped_count} skipped"
+                + (f", {duplicate_rows} duplicate row(s) collapsed." if duplicate_rows else ".")
+            ),
+        )
         return redirect("show_amrfinder")
 
     return render(request, "wgs_app/Add_wgs.html", {
@@ -3671,44 +3832,19 @@ def upload_bactscout(request):
 
             return ""
 
-        for _, row in df.iterrows():
+        rows = []
+        skipped_count = 0
+        for row in df.to_dict("records"):
 
             sample_id = upload_text_or_none(row.get("sample_id"))
             sample_id = str(sample_id or "").strip()
+            if not sample_id:
+                skipped_count += 1
+                continue
 
             bactscout_accession = resolve_wgs_accession_from_sample_name(sample_id, site_codes)
 
-            existing_bactscout = (
-                BactScout.objects
-                .filter(BactScout_Accession=bactscout_accession, sample_id=sample_id)
-                .select_related("bactscout_project")
-                .order_by("-id")
-                .first()
-                if sample_id else None
-            )
-            if existing_bactscout and not overwrite:
-                continue
-
-            referred_obj = (
-                Final_Data.objects.filter(f_AccessionNo=bactscout_accession).first()
-                if bactscout_accession else None
-            )
-
-            connect_project = None
-            if bactscout_accession:
-                connect_project = get_or_create_wgs_project_for_upload(
-                    bactscout_accession,
-                    referred_obj,
-                    "WGS_BactScout_Acc",
-                    "WGS_BactScoutSummary",
-                    existing_project=(
-                        existing_bactscout.bactscout_project
-                        if existing_bactscout else None
-                    ),
-                )
-
             bactscout_defaults = {
-                "bactscout_project": connect_project,
                 "BactScout_Accession": bactscout_accession,
                 "sample_id": sample_id,
 
@@ -3768,14 +3904,25 @@ def upload_bactscout(request):
                 "ref_genome": upload_text_or_none(row.get("ref_genome")),
                 "genome_size_expected": upload_number_or_none(row.get("genome_size_expected"), integer=True),
             }
+            rows.append(bactscout_defaults)
 
-            save_or_update_wgs_module_record(
-                existing_bactscout,
-                {"_model": BactScout, **bactscout_defaults},
-                overwrite=overwrite,
-            )
+        result = bulk_save_wgs_module_records(
+            BactScout,
+            rows,
+            accession_field="BactScout_Accession",
+            project_field="bactscout_project",
+            project_accession_field="WGS_BactScout_Acc",
+            summary_field="WGS_BactScoutSummary",
+            key_fields=("BactScout_Accession", "sample_id"),
+            value_fields=BactScout.UPLOAD_FIELDS,
+            overwrite=overwrite,
+        )
 
-        messages.success(request, "BactScout records uploaded successfully.")
+        messages.success(
+            request,
+            f"BactScout upload complete: {result['created']} created, "
+            f"{result['updated']} updated, {result['skipped'] + skipped_count} skipped.",
+        )
 
         return redirect("show_bactscout")
 
@@ -3993,68 +4140,61 @@ def upload_gtdbtk(request):
 
             return ""
 
-        for _, row in df.iterrows():
+        gtdbtk_fields = (
+            "classification",
+            "closest_genome_reference",
+            "closest_genome_reference_radius",
+            "closest_genome_taxonomy",
+            "closest_genome_ani",
+            "closest_genome_af",
+            "closest_placement_reference",
+            "closest_placement_radius",
+            "closest_placement_taxonomy",
+            "closest_placement_ani",
+            "closest_placement_af",
+            "pplacer_taxonomy",
+            "classification_method",
+            "note",
+            "other_related_references",
+            "msa_percent",
+            "translation_table",
+            "red_value",
+            "warnings",
+        )
+        rows = []
+        skipped_count = 0
+        for row in df.to_dict("records"):
 
             user_genome = str(row.get("user_genome", "")).strip()
+            if not user_genome:
+                skipped_count += 1
+                continue
 
             gtdbtk_accession = resolve_wgs_accession_from_sample_name(user_genome, site_codes)
 
-            existing_gtdbtk = find_existing_wgs_module_record(
-                GtdbTk,
-                "GtdbTk_Accession",
-                gtdbtk_accession,
-                "user_genome",
-                user_genome,
-            )
-            if existing_gtdbtk and not overwrite:
-                continue
-
-            referred_obj = (
-                Final_Data.objects.filter(f_AccessionNo=gtdbtk_accession).first()
-                if gtdbtk_accession else None
-            )
-
-            connect_project = None
-            if gtdbtk_accession:
-                connect_project = get_or_create_wgs_project_for_upload(
-                    gtdbtk_accession,
-                    referred_obj,
-                    "WGS_GtdbTk_Acc",
-                    "WGS_GtdbTkSummary",
-                    existing_project=existing_gtdbtk.gtdbtk_project if existing_gtdbtk else None,
-                )
-
-            save_or_update_wgs_module_record(
-                existing_gtdbtk,
-                {
-                    "_model": GtdbTk,
-                    "gtdbtk_project": connect_project,
+            rows.append({
                     "GtdbTk_Accession": gtdbtk_accession,
                     "user_genome": user_genome,
-                    "classification": row.get("classification"),
-                    "closest_genome_reference": row.get("closest_genome_reference"),
-                    "closest_genome_reference_radius": row.get("closest_genome_reference_radius"),
-                    "closest_genome_taxonomy": row.get("closest_genome_taxonomy"),
-                    "closest_genome_ani": row.get("closest_genome_ani"),
-                    "closest_genome_af": row.get("closest_genome_af"),
-                    "closest_placement_reference": row.get("closest_placement_reference"),
-                    "closest_placement_radius": row.get("closest_placement_radius"),
-                    "closest_placement_taxonomy": row.get("closest_placement_taxonomy"),
-                    "closest_placement_ani": row.get("closest_placement_ani"),
-                    "closest_placement_af": row.get("closest_placement_af"),
-                    "pplacer_taxonomy": row.get("pplacer_taxonomy"),
-                    "classification_method": row.get("classification_method"),
-                    "note": row.get("note"),
-                    "other_related_references": row.get("other_related_references"),
-                    "msa_percent": row.get("msa_percent"),
-                    "translation_table": row.get("translation_table"),
-                    "red_value": row.get("red_value"),
-                    "warnings": row.get("warnings"),
-                },
-                overwrite=overwrite,
-            )
+                    **{field: row.get(field) for field in gtdbtk_fields},
+            })
 
-        messages.success(request, "GTDB-Tk records uploaded successfully.")
+        result = bulk_save_wgs_module_records(
+            GtdbTk,
+            rows,
+            accession_field="GtdbTk_Accession",
+            project_field="gtdbtk_project",
+            project_accession_field="WGS_GtdbTk_Acc",
+            summary_field="WGS_GtdbTkSummary",
+            key_fields=("GtdbTk_Accession", "user_genome"),
+            value_fields=("user_genome", *gtdbtk_fields),
+            overwrite=overwrite,
+        )
+
+        messages.success(
+            request,
+            f"GTDB-Tk upload complete: {result['created']} created, "
+            f"{result['updated']} updated, {result['skipped'] + skipped_count} skipped.",
+        )
 
         return redirect("show_gtdbtk")
 
@@ -4683,21 +4823,21 @@ def download_matched_wgs_data(request):
     def normalize_accession(value):
         return str(value or "").strip().upper()
 
-    def accession_year(value):
-        text = normalize_accession(value)
-        match = re.match(r"^(\d{2})ARS", text)
-        if match:
-            return str(2000 + int(match.group(1)))
-        match = re.match(r"^(\d{4})ARS", text)
-        if match:
-            return match.group(1)
-        return ""
+    final_filter = (
+        Final_Data.objects
+        .exclude(f_AccessionNo__isnull=True)
+        .exclude(f_AccessionNo="")
+    )
+    if selected_year:
+        final_filter = final_filter.filter(f_Referral_Date__year=selected_year)
+    if date_from:
+        final_filter = final_filter.filter(f_Referral_Date__gte=date_from)
+    if date_to:
+        final_filter = final_filter.filter(f_Referral_Date__lte=date_to)
 
     final_acc_map = {
         normalize_accession(acc): acc
-        for acc in Final_Data.objects.exclude(f_AccessionNo__isnull=True)
-        .exclude(f_AccessionNo="")
-        .values_list("f_AccessionNo", flat=True)
+        for acc in final_filter.values_list("f_AccessionNo", flat=True)
         if normalize_accession(acc)
     }
 
@@ -4716,15 +4856,10 @@ def download_matched_wgs_data(request):
         if key in visible_builtin_overview_keys
     ]
 
-    def wgs_accession_set(model, accession_field, date_field, apply_date_filter=True):
+    def wgs_accession_set(model, accession_field):
         qs = model.objects.exclude(**{f"{accession_field}__isnull": True}).exclude(
             **{accession_field: ""}
         )
-        if apply_date_filter and (date_from or date_to):
-            if date_from:
-                qs = qs.filter(**{f"{date_field}__gte": date_from})
-            if date_to:
-                qs = qs.filter(**{f"{date_field}__lte": date_to})
         return {
             normalized
             for acc in qs.values_list(accession_field, flat=True).distinct()
@@ -4732,23 +4867,18 @@ def download_matched_wgs_data(request):
             if normalized in final_acc_map
         }
 
-    def collect_wgs_sets(apply_date_filter=True):
+    def collect_wgs_sets():
         return [
-            wgs_accession_set(model, accession_field, date_field, apply_date_filter)
-            for model, accession_field, date_field in wgs_sources
+            wgs_accession_set(model, accession_field)
+            for model, accession_field, _date_field in wgs_sources
         ]
 
-    def custom_download_accession_set(apply_date_filter=True):
+    def custom_download_accession_set():
         custom_filter = CustomWGSPipelineRecord.objects.filter(
             pipeline__is_active=True,
             pipeline__show_in_overview=True,
             match_status="matched",
         )
-        if apply_date_filter and (date_from or date_to):
-            if date_from:
-                custom_filter = custom_filter.filter(uploaded_at__date__gte=date_from)
-            if date_to:
-                custom_filter = custom_filter.filter(uploaded_at__date__lte=date_to)
 
         accessions = set()
         for row in custom_filter.values("accession", "matched_final_data_id").distinct():
@@ -4759,8 +4889,8 @@ def download_matched_wgs_data(request):
         return accessions
 
     # ---- Step 1-2: Collect matching Final_Data/WGS accessions ----
-    wgs_sets = collect_wgs_sets(apply_date_filter=True)
-    custom_wgs_set = custom_download_accession_set(apply_date_filter=True)
+    wgs_sets = collect_wgs_sets()
+    custom_wgs_set = custom_download_accession_set()
     if custom_wgs_set and mode != "all":
         wgs_sets.append(custom_wgs_set)
 
@@ -4774,33 +4904,38 @@ def download_matched_wgs_data(request):
 
     date_filter_was_used = bool(date_from or date_to)
     if not matched_accessions and date_filter_was_used:
-        wgs_sets = collect_wgs_sets(apply_date_filter=False)
-        custom_wgs_set = custom_download_accession_set(apply_date_filter=False)
+        fallback_final_filter = (
+            Final_Data.objects
+            .exclude(f_AccessionNo__isnull=True)
+            .exclude(f_AccessionNo="")
+        )
+        if selected_year:
+            fallback_final_filter = fallback_final_filter.filter(
+                f_Referral_Date__year=selected_year
+            )
+
+        final_acc_map = {
+            normalize_accession(acc): acc
+            for acc in fallback_final_filter.values_list("f_AccessionNo", flat=True)
+            if normalize_accession(acc)
+        }
+
+        wgs_sets = collect_wgs_sets()
+        custom_wgs_set = custom_download_accession_set()
         if custom_wgs_set and mode != "all":
             wgs_sets.append(custom_wgs_set)
         if mode == "all":
             matched_accessions = set.intersection(*wgs_sets) if wgs_sets else set()
         else:
             matched_accessions = set().union(*wgs_sets) if wgs_sets else set()
+        final_filter = fallback_final_filter
         filename_suffix = f"{filename_suffix}_AllDates"
 
     if not matched_accessions:
         return HttpResponse(
-            "No matching WGS accessions found in Final Referred_Data.",
+            "No matching WGS accessions found in Final_Data for the selected referral date filter.",
             content_type="text/plain"
         )
-
-    if selected_year:
-        matched_accessions = {
-            accession
-            for accession in matched_accessions
-            if accession_year(accession) == selected_year
-        }
-        if not matched_accessions:
-            return HttpResponse(
-                f"No matching WGS accessions found for {selected_year}.",
-                content_type="text/plain"
-            )
 
     matched_accessions = {
         final_acc_map[normalized]
@@ -4809,7 +4944,7 @@ def download_matched_wgs_data(request):
     }
 
     # ---- Step 4: Query datasets ----
-    final_qs = Final_Data.objects.filter(f_AccessionNo__in=matched_accessions)
+    final_qs = final_filter.filter(f_AccessionNo__in=matched_accessions)
     abx_qs = Final_AntibioticEntry.objects.filter(
         ab_idNum_f_referred__f_AccessionNo__in=matched_accessions
     )
@@ -5190,6 +5325,7 @@ def projects_page(request):
 
 
 ##############################  New Upload Final View HELPERS
+
 
 
 
@@ -6434,11 +6570,9 @@ def reapply_raw_breakpoints_for_batches(batch_ids):
             (isolate.ars_OrgCode or "").strip()
             or site_org
         )
-        breakpoint_ids = []
+        breakpoint_ids = list(entry.ab_breakpoints_id.values_list("id", flat=True))
 
         if entry.ab_Abx_code:
-            _clear_bp_fields(entry)
-
             disk_bp = None
             mic_bp = None
 
@@ -6460,17 +6594,36 @@ def reapply_raw_breakpoints_for_batches(batch_ids):
 
             bp = mic_bp or disk_bp
             if bp:
+                _clear_bp_fields(entry)
+                flag_bp = None
                 if mic_bp:
+                    flag_bp = resolve_breakpoint(
+                        entry.ab_Abx_code,
+                        isolate.Spec_Date,
+                        "MIC",
+                        site_org,
+                        require_emerging_flag=True,
+                    )
                     _apply_bp_to_entry(
-                        entry, bp, False, alert_mic=True, set_relation=False
+                        entry, bp, False, alert_mic=True,
+                        set_relation=False, flag_bp=flag_bp
                     )
                 else:
-                    _apply_bp_to_entry(entry, bp, True, set_relation=False)
+                    flag_bp = resolve_breakpoint(
+                        entry.ab_Abx_code,
+                        isolate.Spec_Date,
+                        "DISK",
+                        site_org,
+                        require_emerging_flag=True,
+                    )
+                    _apply_bp_to_entry(
+                        entry, bp, True, set_relation=False, flag_bp=flag_bp
+                    )
                 breakpoint_ids.append(bp.id)
+                if flag_bp and flag_bp.id != bp.id:
+                    breakpoint_ids.append(flag_bp.id)
 
         if entry.ab_Retest_Abx_code:
-            _clear_retest_bp_fields(entry)
-
             retest_disk_bp = None
             retest_mic_bp = None
 
@@ -6492,15 +6645,34 @@ def reapply_raw_breakpoints_for_batches(batch_ids):
 
             bp = retest_mic_bp or retest_disk_bp
             if bp:
+                _clear_retest_bp_fields(entry)
+                flag_bp = None
                 if retest_mic_bp:
+                    flag_bp = resolve_breakpoint(
+                        entry.ab_Retest_Abx_code,
+                        isolate.Spec_Date,
+                        "MIC",
+                        ars_org,
+                        require_emerging_flag=True,
+                    )
                     _apply_bp_to_retest_entry(
-                        entry, bp, False, alert_mic=True, set_relation=False
+                        entry, bp, False, alert_mic=True,
+                        set_relation=False, flag_bp=flag_bp
                     )
                 else:
+                    flag_bp = resolve_breakpoint(
+                        entry.ab_Retest_Abx_code,
+                        isolate.Spec_Date,
+                        "DISK",
+                        ars_org,
+                        require_emerging_flag=True,
+                    )
                     _apply_bp_to_retest_entry(
-                        entry, bp, True, set_relation=False
+                        entry, bp, True, set_relation=False, flag_bp=flag_bp
                     )
                 breakpoint_ids.append(bp.id)
+                if flag_bp and flag_bp.id != bp.id:
+                    breakpoint_ids.append(flag_bp.id)
 
         _recalculate_antibiotic_ris(entry, determine_ris)
         changed_entries.append(entry)
@@ -6555,12 +6727,10 @@ def reapply_final_breakpoints_for_batches(batch_ids, debug=False):
             (isolate.f_ars_OrgCode or "").strip()
             or site_org
         )
-        breakpoint_ids = []
+        breakpoint_ids = list(entry.ab_breakpoints_id.values_list("id", flat=True))
         applied_notes = []
 
         if entry.ab_Abx_code:
-            _clear_bp_fields(entry)
-
             disk_bp = None
             mic_bp = None
 
@@ -6582,25 +6752,44 @@ def reapply_final_breakpoints_for_batches(batch_ids, debug=False):
 
             bp = mic_bp or disk_bp
             if bp:
+                _clear_bp_fields(entry)
+                flag_bp = None
                 if mic_bp:
+                    flag_bp = resolve_breakpoint(
+                        entry.ab_Abx_code,
+                        isolate.f_Spec_Date,
+                        "MIC",
+                        site_org,
+                        require_emerging_flag=True,
+                    )
                     _apply_bp_to_entry(
-                        entry, bp, False, alert_mic=True, set_relation=False
+                        entry, bp, False, alert_mic=True,
+                        set_relation=False, flag_bp=flag_bp
                     )
                     applied_notes.append(
                         f"main MIC {entry.ab_Abx_code} -> BP#{bp.id} {bp.Org or 'generic'}"
                     )
                 else:
-                    _apply_bp_to_entry(entry, bp, True, set_relation=False)
+                    flag_bp = resolve_breakpoint(
+                        entry.ab_Abx_code,
+                        isolate.f_Spec_Date,
+                        "DISK",
+                        site_org,
+                        require_emerging_flag=True,
+                    )
+                    _apply_bp_to_entry(
+                        entry, bp, True, set_relation=False, flag_bp=flag_bp
+                    )
                     applied_notes.append(
                         f"main DISK {entry.ab_Abx_code} -> BP#{bp.id} {bp.Org or 'generic'}"
                     )
                 breakpoint_ids.append(bp.id)
+                if flag_bp and flag_bp.id != bp.id:
+                    breakpoint_ids.append(flag_bp.id)
             else:
                 applied_notes.append(f"main {entry.ab_Abx_code} -> no breakpoint")
 
         if entry.ab_Retest_Abx_code:
-            _clear_retest_bp_fields(entry)
-
             retest_disk_bp = None
             retest_mic_bp = None
 
@@ -6622,21 +6811,40 @@ def reapply_final_breakpoints_for_batches(batch_ids, debug=False):
 
             bp = retest_mic_bp or retest_disk_bp
             if bp:
+                _clear_retest_bp_fields(entry)
+                flag_bp = None
                 if retest_mic_bp:
+                    flag_bp = resolve_breakpoint(
+                        entry.ab_Retest_Abx_code,
+                        isolate.f_Spec_Date,
+                        "MIC",
+                        ars_org,
+                        require_emerging_flag=True,
+                    )
                     _apply_bp_to_retest_entry(
-                        entry, bp, False, alert_mic=True, set_relation=False
+                        entry, bp, False, alert_mic=True,
+                        set_relation=False, flag_bp=flag_bp
                     )
                     applied_notes.append(
                         f"retest MIC {entry.ab_Retest_Abx_code} -> BP#{bp.id} {bp.Org or 'generic'}"
                     )
                 else:
+                    flag_bp = resolve_breakpoint(
+                        entry.ab_Retest_Abx_code,
+                        isolate.f_Spec_Date,
+                        "DISK",
+                        ars_org,
+                        require_emerging_flag=True,
+                    )
                     _apply_bp_to_retest_entry(
-                        entry, bp, True, set_relation=False
+                        entry, bp, True, set_relation=False, flag_bp=flag_bp
                     )
                     applied_notes.append(
                         f"retest DISK {entry.ab_Retest_Abx_code} -> BP#{bp.id} {bp.Org or 'generic'}"
                     )
                 breakpoint_ids.append(bp.id)
+                if flag_bp and flag_bp.id != bp.id:
+                    breakpoint_ids.append(flag_bp.id)
             else:
                 applied_notes.append(f"retest {entry.ab_Retest_Abx_code} -> no breakpoint")
 
@@ -7420,9 +7628,26 @@ def show_referred_data(request):
 def delete_final_data(request, pk):
 
     final_item = get_object_or_404(Final_Data, pk=pk)
-    if not can_manage_batch(request.user, final_item.f_Batch_id):
+    if final_item.f_Batch_id and not can_manage_batch(request.user, final_item.f_Batch_id):
         messages.error(request, "You can only delete final records from batches that you created.")
         return redirect('show_final_data')
+    if final_item.f_Batch_id_id:
+        try:
+            from apps.verification.models import VerificationCase
+            verification_case = (
+                VerificationCase.objects
+                .filter(final_batch_id=final_item.f_Batch_id_id, final_accession__isnull=True)
+                .exclude(status=VerificationCase.STATUS_WITHDRAWN)
+                .first()
+            )
+        except (LookupError, ProgrammingError, OperationalError):
+            verification_case = None
+        if verification_case_blocks_operational_outputs(verification_case):
+            messages.error(
+                request,
+                "Accession deletion is disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+            )
+            return redirect('show_final_data')
 
     if request.method == "POST":
         accession = final_item.f_AccessionNo
@@ -7447,7 +7672,7 @@ def delete_final_data(request, pk):
 def delete_referred_data(request, pk):
 
     referred_item = get_object_or_404(Referred_Data, pk=pk)
-    if not can_manage_batch(request.user, referred_item.Batch_id):
+    if referred_item.Batch_id and not can_manage_batch(request.user, referred_item.Batch_id):
         messages.error(request, "You can only delete referred records from batches that you created.")
         return redirect('show_referred_data')
 
@@ -7604,6 +7829,15 @@ def _clean(val, default=""):
         pass
     s = str(val).strip()
     return s if s.lower() not in ("none", "nan", "nat", "null", "") else default
+
+
+def _clean_ris(val):
+    ris = _clean(val).upper()
+    if not ris:
+        return "", False
+    if len(ris) > 4 or "," in ris:
+        return "", True
+    return ris, False
 
 
 def _date(val):
@@ -7844,6 +8078,72 @@ def _year_as_int(value):
         return None
 
 
+def _breakpoint_has_emerging_flag(bp):
+    return (
+        bool(bp.Emerging_Org_Flag)
+        or bool(bp.Emerging_Abx_Flag)
+        or bool((bp.Emerging_Pheno_Flag or "").strip())
+    )
+
+
+def _nearest_breakpoint_year(years, target_year):
+    years = list(years)
+    if not years:
+        return None
+    if target_year is None:
+        return max(years)
+    return sorted(
+        years,
+        key=lambda candidate_year: (
+            abs(candidate_year - target_year),
+            0 if candidate_year <= target_year else 1,
+            -candidate_year,
+        ),
+    )[0]
+
+
+def _select_breakpoint_candidate(candidates, target_year, org_code, require_emerging_flag=False):
+    wanted_org = (org_code or "").strip().lower()
+
+    if require_emerging_flag:
+        candidates = [
+            bp for bp in candidates
+            if _breakpoint_has_emerging_flag(bp)
+        ]
+
+    pools = []
+    if wanted_org:
+        pools.append([
+            bp for bp in candidates
+            if (bp.Org or "").strip().lower() == wanted_org
+        ])
+    pools.append([
+        bp for bp in candidates
+        if not (bp.Org or "").strip()
+    ])
+
+    for pool in pools:
+        by_year = {}
+        for bp in pool:
+            bp_year = _year_as_int(bp.Year)
+            if bp_year is not None:
+                by_year.setdefault(bp_year, []).append(bp)
+
+        selected_year = _nearest_breakpoint_year(by_year.keys(), target_year)
+        if selected_year is None:
+            continue
+
+        return sorted(
+            by_year[selected_year],
+            key=lambda bp: (
+                0 if not (bp.Spec_code or "").strip() else 1,
+                bp.pk or 0,
+            ),
+        )[0]
+
+    return None
+
+
 def _find_best_breakpoint(abx_code, year, method, org_code):
     if not abx_code or not method:
         return None
@@ -7868,30 +8168,39 @@ def _find_best_breakpoint(abx_code, year, method, org_code):
     if not candidates:
         return None
 
-    by_year = {}
-    for bp in candidates:
-        bp_year = _year_as_int(bp.Year)
-        if bp_year is not None:
-            by_year.setdefault(bp_year, []).append(bp)
+    return _select_breakpoint_candidate(candidates, target_year, org_code)
 
-    if not by_year:
+
+def _find_best_emerging_breakpoint(abx_code, year, method, org_code):
+    if not abx_code or not method:
         return None
 
-    if target_year is None:
-        selected_year = max(by_year)
-    elif target_year in by_year:
-        selected_year = target_year
-    else:
-        previous_years = [candidate_year for candidate_year in by_year if candidate_year <= target_year]
-        selected_year = max(previous_years) if previous_years else min(by_year)
+    abx_code = str(abx_code).strip().upper()
+    org_code = (org_code or "").strip()
+    target_year = _year_as_int(year)
 
-    return sorted(
-        by_year[selected_year],
-        key=lambda bp: (
-            0 if (bp.Org or "").strip().lower() == org_code.lower() else 1,
-            0 if not (bp.Spec_code or "").strip() else 1,
-        ),
-    )[0]
+    candidates = list(
+        BreakpointsTable.objects
+        .filter(
+            Q(Antibiotic_list_id=abx_code) | Q(Whonet_Abx__iexact=abx_code),
+            Test_Method__iexact=method,
+        )
+        .filter(
+            Q(Org__iexact=org_code) |
+            Q(Org__isnull=True) |
+            Q(Org="")
+        )
+    )
+
+    if not candidates:
+        return None
+
+    return _select_breakpoint_candidate(
+        candidates,
+        target_year,
+        org_code,
+        require_emerging_flag=True,
+    )
 
 
 def _build_breakpoint_resolver():
@@ -7920,38 +8229,23 @@ def _build_breakpoint_resolver():
         eligible = [year for year in years if year <= spec_date.year]
         return max(eligible) if eligible else years[0]
 
-    def resolve(abx_code, spec_date, method, org_code):
+    def resolve(abx_code, spec_date, method, org_code, require_emerging_flag=False):
         code = (abx_code or "").strip().upper()
         method = (method or "").strip().upper()
         org_code = (org_code or "").strip()
-        target_year = effective_year(spec_date)
+        target_year = spec_date.year if spec_date else effective_year(spec_date)
         candidates = [
             bp
             for bp in by_code_method.get((code, method), [])
             if not (bp.Org or "").strip()
             or (bp.Org or "").strip().lower() == org_code.lower()
         ]
-        by_year = {}
-        for bp in candidates:
-            bp_year = _year_as_int(bp.Year)
-            if bp_year is not None:
-                by_year.setdefault(bp_year, []).append(bp)
-        if not by_year:
-            return None
-        if target_year in by_year:
-            selected_year = target_year
-        else:
-            previous = [year for year in by_year if year <= target_year]
-            selected_year = max(previous) if previous else min(by_year)
-        return sorted(
-            by_year[selected_year],
-            key=lambda bp: (
-                0
-                if (bp.Org or "").strip().lower() == org_code.lower()
-                else 1,
-                0 if not (bp.Spec_code or "").strip() else 1,
-            ),
-        )[0]
+        return _select_breakpoint_candidate(
+            candidates,
+            target_year,
+            org_code,
+            require_emerging_flag=require_emerging_flag,
+        )
 
     return effective_year, resolve
 
@@ -7962,15 +8256,20 @@ def _build_breakpoint_resolver():
 # BREAKPOINT HELPERS
 ############################
 
-def _apply_bp_to_entry(entry, bp, is_disk, alert_mic=False, set_relation=True):
+def _apply_bp_to_entry(entry, bp, is_disk, alert_mic=False, set_relation=True, flag_bp=None):
 
     if set_relation:
-        entry.ab_breakpoints_id.set([bp])
+        linked_breakpoints = [bp]
+        if flag_bp and flag_bp.pk != bp.pk:
+            linked_breakpoints.append(flag_bp)
+        entry.ab_breakpoints_id.set(linked_breakpoints)
+
+    flag_source = flag_bp or bp
 
     entry.ab_Site_Org = bp.Org
-    entry.ab_Org_Flag = bool(bp.Emerging_Org_Flag)
-    entry.ab_Abx_Flag = bool(bp.Emerging_Abx_Flag)
-    entry.ab_Abx_Phenotype = bp.Emerging_Pheno_Flag or ""
+    entry.ab_Org_Flag = bool(flag_source.Emerging_Org_Flag)
+    entry.ab_Abx_Flag = bool(flag_source.Emerging_Abx_Flag)
+    entry.ab_Abx_Phenotype = flag_source.Emerging_Pheno_Flag or ""
 
     entry.ab_R_breakpoint   = bp.R_val
     entry.ab_I_breakpoint   = bp.I_val
@@ -7981,15 +8280,20 @@ def _apply_bp_to_entry(entry, bp, is_disk, alert_mic=False, set_relation=True):
         entry.ab_Alert_val = bp.Alert_val if alert_mic else ""
 
 
-def _apply_bp_to_retest_entry(entry, bp, is_disk, alert_mic=False, set_relation=True):
+def _apply_bp_to_retest_entry(entry, bp, is_disk, alert_mic=False, set_relation=True, flag_bp=None):
 
     if set_relation:
-        entry.ab_breakpoints_id.set([bp])
+        linked_breakpoints = [bp]
+        if flag_bp and flag_bp.pk != bp.pk:
+            linked_breakpoints.append(flag_bp)
+        entry.ab_breakpoints_id.set(linked_breakpoints)
+
+    flag_source = flag_bp or bp
 
     entry.ab_Ret_Org = bp.Org
-    entry.ab_Org_Flag = bool(bp.Emerging_Org_Flag)
-    entry.ab_Abx_Flag = bool(bp.Emerging_Abx_Flag)
-    entry.ab_Abx_Phenotype = bp.Emerging_Pheno_Flag or ""
+    entry.ab_Org_Flag = bool(flag_source.Emerging_Org_Flag)
+    entry.ab_Abx_Flag = bool(flag_source.Emerging_Abx_Flag)
+    entry.ab_Abx_Phenotype = flag_source.Emerging_Pheno_Flag or ""
 
     entry.ab_Ret_R_breakpoint   = bp.R_val
     entry.ab_Ret_I_breakpoint   = bp.I_val
@@ -8228,7 +8532,10 @@ def _save_site_entry(
         bp = _find_best_breakpoint(abx_code, effective_year, "DISK", resolved_org)
 
         if bp:
-            _apply_bp_to_entry(entry, bp, True)
+            flag_bp = _find_best_emerging_breakpoint(
+                abx_code, effective_year, "DISK", resolved_org
+            )
+            _apply_bp_to_entry(entry, bp, True, flag_bp=flag_bp)
             bp_applied = True
 
     if mic_value is not None:
@@ -8236,7 +8543,10 @@ def _save_site_entry(
         bp = _find_best_breakpoint(abx_code, effective_year, "MIC", resolved_org)
 
         if bp:
-            _apply_bp_to_entry(entry, bp, False)
+            flag_bp = _find_best_emerging_breakpoint(
+                abx_code, effective_year, "MIC", resolved_org
+            )
+            _apply_bp_to_entry(entry, bp, False, flag_bp=flag_bp)
             bp_applied = True
 
     if not bp_applied:
@@ -8291,7 +8601,10 @@ def _save_final_site_entry(
         bp = _find_best_breakpoint(abx_code, effective_year, "DISK", resolved_org)
 
         if bp:
-            _apply_bp_to_entry(entry, bp, True)
+            flag_bp = _find_best_emerging_breakpoint(
+                abx_code, effective_year, "DISK", resolved_org
+            )
+            _apply_bp_to_entry(entry, bp, True, flag_bp=flag_bp)
             bp_applied = True
 
     if mic_value is not None:
@@ -8299,7 +8612,10 @@ def _save_final_site_entry(
         bp = _find_best_breakpoint(abx_code, effective_year, "MIC", resolved_org)
 
         if bp:
-            _apply_bp_to_entry(entry, bp, False, alert_mic=True)
+            flag_bp = _find_best_emerging_breakpoint(
+                abx_code, effective_year, "MIC", resolved_org
+            )
+            _apply_bp_to_entry(entry, bp, False, alert_mic=True, flag_bp=flag_bp)
             bp_applied = True
 
     if not bp_applied:
@@ -8387,7 +8703,10 @@ def _save_retest_entry(
         bp = _find_best_breakpoint(abx_code, effective_year, "DISK", resolved_ars_org)
 
         if bp:
-            _apply_bp_to_retest_entry(entry, bp, True)
+            flag_bp = _find_best_emerging_breakpoint(
+                abx_code, effective_year, "DISK", resolved_ars_org
+            )
+            _apply_bp_to_retest_entry(entry, bp, True, flag_bp=flag_bp)
             bp_applied = True
 
     # --------------------------------
@@ -8398,7 +8717,10 @@ def _save_retest_entry(
         bp = _find_best_breakpoint(abx_code, effective_year, "MIC", resolved_ars_org)
 
         if bp:
-            _apply_bp_to_retest_entry(entry, bp, False, alert_mic=True)
+            flag_bp = _find_best_emerging_breakpoint(
+                abx_code, effective_year, "MIC", resolved_ars_org
+            )
+            _apply_bp_to_retest_entry(entry, bp, False, alert_mic=True, flag_bp=flag_bp)
             bp_applied = True
 
     # --------------------------------
@@ -8708,6 +9030,7 @@ def upload_final_antibiotics(request):
     created = 0
     updated = 0
     skipped = 0
+    invalid_ris_values = 0
     affected_batch_ids = set()
     pending_entries = {}
 
@@ -8817,10 +9140,19 @@ def upload_final_antibiotics(request):
                 # ----------------------------
 
                 disk_raw = row[grp["disk_col"]] if grp["disk_col"] is not None else None
-                disk_ris = _clean(row[grp["disk_ris_col"]]) if grp["disk_ris_col"] is not None else ""
+                disk_ris, invalid_disk_ris = (
+                    _clean_ris(row[grp["disk_ris_col"]])
+                    if grp["disk_ris_col"] is not None
+                    else ("", False)
+                )
 
                 mic_raw = row[grp["mic_col"]] if grp["mic_col"] is not None else None
-                mic_ris = _clean(row[grp["mic_ris_col"]]) if grp["mic_ris_col"] is not None else ""
+                mic_ris, invalid_mic_ris = (
+                    _clean_ris(row[grp["mic_ris_col"]])
+                    if grp["mic_ris_col"] is not None
+                    else ("", False)
+                )
+                invalid_ris_values += int(invalid_disk_ris) + int(invalid_mic_ris)
 
                 mic_operand = ""
                 if grp["mic_op_col"] is not None:
@@ -8951,6 +9283,7 @@ def upload_final_antibiotics(request):
     print(
         "[FINAL ABX DEBUG] Upload complete: "
         f"created={created}, updated={updated}, skipped={skipped}, "
+        f"invalid_ris_values={invalid_ris_values}, "
         f"matched_accessions={matched_accessions}, "
         f"affected_batches={len(affected_batch_ids)}, "
         f"breakpoints={refreshed_breakpoints}, emerging={refreshed_emerging}, "
@@ -8994,6 +9327,7 @@ def upload_final_antibiotics(request):
         request,
         f"{created} antibiotics uploaded successfully. "
         f"{updated} updated, {skipped} skipped. "
+        f"{invalid_ris_values} invalid RIS value(s) ignored. "
         f"{refreshed_breakpoints} final breakpoint record(s) refreshed. "
         f"{refreshed_emerging} emerging record(s) refreshed. "
         f"{regenerated_concordance} concordance batch report(s) refreshed. "
@@ -9301,6 +9635,7 @@ def upload_raw_antibiotics(request):
     created = 0
     updated = 0
     skipped = 0
+    invalid_ris_values = 0
     affected_batch_ids = set()
     pending_entries = {}
 
@@ -9392,10 +9727,19 @@ def upload_raw_antibiotics(request):
                 # ----------------------------
 
                 disk_raw = row[grp["disk_col"]] if grp["disk_col"] is not None else None
-                disk_ris = _clean(row[grp["disk_ris_col"]]) if grp["disk_ris_col"] is not None else ""
+                disk_ris, invalid_disk_ris = (
+                    _clean_ris(row[grp["disk_ris_col"]])
+                    if grp["disk_ris_col"] is not None
+                    else ("", False)
+                )
 
                 mic_raw = row[grp["mic_col"]] if grp["mic_col"] is not None else None
-                mic_ris = _clean(row[grp["mic_ris_col"]]) if grp["mic_ris_col"] is not None else ""
+                mic_ris, invalid_mic_ris = (
+                    _clean_ris(row[grp["mic_ris_col"]])
+                    if grp["mic_ris_col"] is not None
+                    else ("", False)
+                )
+                invalid_ris_values += int(invalid_disk_ris) + int(invalid_mic_ris)
 
                 mic_operand = ""
                 if grp["mic_op_col"] is not None:
@@ -9496,6 +9840,7 @@ def upload_raw_antibiotics(request):
         request,
         f"{created} antibiotics uploaded successfully. "
         f"{updated} updated, {skipped} skipped. "
+        f"{invalid_ris_values} invalid RIS value(s) ignored. "
         f"{refreshed_breakpoints} raw breakpoint record(s) refreshed. "
         "Final antibiotic data was not changed."
     )

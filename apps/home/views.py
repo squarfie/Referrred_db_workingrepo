@@ -8,6 +8,7 @@ import io
 import json
 import os
 import re
+from types import SimpleNamespace
 from django.conf import settings
 from django.forms import inlineformset_factory
 from django.templatetags.static import static
@@ -221,6 +222,8 @@ import csv
 from django.utils.dateparse import parse_date
 from datetime import datetime
 from django.db import IntegrityError
+from django.db.utils import ProgrammingError, OperationalError
+from django.apps import apps as django_apps
 from collections import OrderedDict, defaultdict
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
@@ -241,6 +244,7 @@ from apps.home.permissions import (
     get_user_roles,
     role_flags,
     role_required,
+    verification_case_blocks_operational_outputs,
 
 )
 from apps.authentication.models import UserApproval
@@ -620,21 +624,27 @@ def approve_account(request, approval_id):
         pk=approval_id,
         status=UserApproval.STATUS_PENDING,
     )
+    user = approval.user
     staff_id = request.POST.get("staff_id")
-    if not staff_id:
-        messages.error(request, "Select an unlinked ARSP staff record before approving the account.")
-        return redirect("/settings/?tab=accounts_tab")
 
     try:
         with transaction.atomic():
-            staff = arsStaff_Details.objects.select_for_update().get(pk=staff_id)
-            if staff.User_Account_id is not None:
-                messages.error(request, "That ARSP staff record is already linked to another account.")
-                return redirect("/settings/?tab=accounts_tab")
-
-            user = approval.user
-            staff.User_Account = user
-            staff.save(update_fields=["User_Account"])
+            staff = (
+                arsStaff_Details.objects
+                .select_for_update()
+                .filter(User_Account=user)
+                .first()
+            )
+            if not staff:
+                if not staff_id:
+                    messages.error(request, "Link this account to ARSP staff before approving it.")
+                    return redirect("/settings/?tab=accounts_tab")
+                staff = arsStaff_Details.objects.select_for_update().get(pk=staff_id)
+                if staff.User_Account_id is not None:
+                    messages.error(request, "That ARSP staff record is already linked to another account.")
+                    return redirect("/settings/?tab=accounts_tab")
+                staff.User_Account = user
+                staff.save(update_fields=["User_Account"])
 
             user.is_active = True
             user.save(update_fields=["is_active"])
@@ -647,7 +657,7 @@ def approve_account(request, approval_id):
         messages.error(request, "Selected ARSP staff record was not found.")
         return redirect("/settings/?tab=accounts_tab")
 
-    messages.success(request, f"{approval.user.username} was approved and linked to {staff.display_name}.")
+    messages.success(request, f"{approval.user.username} was approved for {staff.display_name}.")
     return redirect("/settings/?tab=accounts_tab")
 
 
@@ -696,29 +706,31 @@ def delete_account_registration(request, approval_id):
 @require_POST
 def link_account_staff(request, user_id):
     user = get_object_or_404(User, pk=user_id)
+    next_tab = request.POST.get("next_tab") or "accounts_tab"
+    redirect_url = f"/settings/?tab={next_tab}"
     staff_id = request.POST.get("staff_id")
     if not staff_id:
         messages.error(request, "Select an unlinked ARSP staff record before linking the account.")
-        return redirect("/settings/?tab=accounts_tab")
+        return redirect(redirect_url)
 
     if arsStaff_Details.objects.filter(User_Account=user).exists():
         messages.error(request, "That account is already linked to an ARSP staff record.")
-        return redirect("/settings/?tab=accounts_tab")
+        return redirect(redirect_url)
 
     try:
         with transaction.atomic():
             staff = arsStaff_Details.objects.select_for_update().get(pk=staff_id)
             if staff.User_Account_id is not None:
                 messages.error(request, "That ARSP staff record is already linked to another account.")
-                return redirect("/settings/?tab=accounts_tab")
+                return redirect(redirect_url)
             staff.User_Account = user
             staff.save(update_fields=["User_Account"])
     except arsStaff_Details.DoesNotExist:
         messages.error(request, "Selected ARSP staff record was not found.")
-        return redirect("/settings/?tab=accounts_tab")
+        return redirect(redirect_url)
 
     messages.success(request, f"{user.username} was linked to {staff.display_name}.")
-    return redirect("/settings/?tab=accounts_tab")
+    return redirect(redirect_url)
 
 
 @login_required
@@ -1064,6 +1076,9 @@ def index(request):
         {
             "year": row["month"].year,
             "month": row["month"].strftime("%b %Y"),
+            "month_key": row["month"].strftime("%Y-%m"),
+            "site_code": "",
+            "site_name": "All sites",
             "referrals": row["referrals"] or 0,
             "sites": row["sites"] or 0,
         }
@@ -1076,16 +1091,40 @@ def index(request):
         )
         .order_by("month")
     ]
+    monthly_site_referral_rows = [
+        {
+            "year": row["month"].year,
+            "month": row["month"].strftime("%b %Y"),
+            "month_key": row["month"].strftime("%Y-%m"),
+            "site_code": row["SiteCode"] or "N/A",
+            "site_name": row["Site_Name"] or "",
+            "referrals": row["referrals"] or 0,
+            "sites": 1,
+        }
+        for row in records_for_stats.exclude(Referral_Date__isnull=True)
+        .annotate(month=TruncMonth("Referral_Date"))
+        .values("month", "SiteCode", "Site_Name")
+        .annotate(referrals=Count("AccessionNo", distinct=True))
+        .order_by("month", "SiteCode")
+    ]
+    monthly_referral_site_choices = sorted(
+        {
+            (
+                (row["site_code"] or "N/A").strip(),
+                (row["site_name"] or "").strip(),
+            )
+            for row in monthly_site_referral_rows
+            if (row["site_code"] or "").strip()
+        },
+        key=lambda item: item[0],
+    )
 
-    # WGS_Project is the central connector across WGS uploads/pipelines.
-    # A final accession can have more than one connector row, so keep row
-    # volume and unique linked accessions as separate dashboard metrics.
-    linked_wgs_projects = WGS_Project.objects.filter(Ref_Accession__isnull=False)
-    if tat_year and tat_year != "all":
-        linked_wgs_projects = linked_wgs_projects.filter(Ref_Accession__f_Referral_Date__year=tat_year)
-    wgs_project_count = linked_wgs_projects.count()
-    wgs_matched_count = linked_wgs_projects.values("Ref_Accession").distinct().count()
-    wgs_unmatched_count = WGS_Project.objects.filter(Ref_Accession__isnull=True).count()
+    # Match the WGS Overview definition: distinct accessions from visible
+    # pipeline tables, then compare those accessions against Final Data.
+    wgs_accession_stats = _dashboard_wgs_accession_stats(tat_year)
+    wgs_project_count = wgs_accession_stats["total"]
+    wgs_matched_count = wgs_accession_stats["matched"]
+    wgs_unmatched_count = wgs_accession_stats["unmatched"]
     default_builtin_overview_pipeline_keys = {
         "bactscout",
         "gambit",
@@ -1097,7 +1136,10 @@ def index(request):
     builtin_active_pipeline_count = BuiltinWGSPipelineSetting.objects.filter(show_in_overview=True).count()
     if not BuiltinWGSPipelineSetting.objects.exists():
         builtin_active_pipeline_count = len(default_builtin_overview_pipeline_keys)
-    custom_active_pipeline_count = CustomWGSPipeline.objects.filter(is_active=True).count()
+    custom_active_pipeline_count = CustomWGSPipeline.objects.filter(
+        is_active=True,
+        show_in_overview=True,
+    ).count()
     wgs_active_pipeline_count = builtin_active_pipeline_count + custom_active_pipeline_count
     emerging_records = Emerging_Table.fully_emerging()
     final_emerging_records = Final_Data.objects.filter(
@@ -1122,20 +1164,25 @@ def index(request):
     }
     surveillance_snapshot_year_rows = []
     if tat_year == "all":
-        linked_wgs_years = {
-            row["year"]: row
+        all_wgs_accession_stats = _dashboard_wgs_accession_stats("all")
+        linked_wgs_years = defaultdict(lambda: {"wgs_projects": 0, "wgs_matched": 0})
+        final_year_by_accession = {
+            _normalize_dashboard_accession(row["f_AccessionNo"]): row["year"]
             for row in (
-                linked_wgs_projects
-                .exclude(Ref_Accession__f_Referral_Date__isnull=True)
-                .annotate(year=ExtractYear("Ref_Accession__f_Referral_Date"))
-                .values("year")
-                .annotate(
-                    wgs_projects=Count("id"),
-                    wgs_matched=Count("Ref_Accession", distinct=True),
-                )
-                .order_by("year")
+                Final_Data.objects
+                .exclude(f_AccessionNo__isnull=True)
+                .exclude(f_AccessionNo="")
+                .exclude(f_Referral_Date__isnull=True)
+                .annotate(year=ExtractYear("f_Referral_Date"))
+                .values("f_AccessionNo", "year")
             )
+            if row["year"]
         }
+        for accession in all_wgs_accession_stats["matched_accessions"]:
+            year_value = final_year_by_accession.get(accession)
+            if year_value:
+                linked_wgs_years[year_value]["wgs_projects"] += 1
+                linked_wgs_years[year_value]["wgs_matched"] += 1
         emerging_years = {
             row["year"]: row["count"] or 0
             for row in (
@@ -1179,7 +1226,7 @@ def index(request):
         } | referral_years
         for year_value in sorted(
             available_dashboard_years
-            | set(linked_wgs_years)
+            | set(linked_wgs_years.keys())
             | set(emerging_years)
             | set(final_emerging_years)
             | set(concordance_years)
@@ -1241,6 +1288,8 @@ def index(request):
         'site_concordance_year_rows_json': json.dumps(site_concordance_year_rows),
         'monthly_referral_rows': monthly_referral_rows,
         'monthly_referral_rows_json': json.dumps(monthly_referral_rows),
+        'monthly_site_referral_rows_json': json.dumps(monthly_site_referral_rows),
+        'monthly_referral_site_choices': monthly_referral_site_choices,
         'surveillance_snapshot': surveillance_snapshot,
         'surveillance_snapshot_json': json.dumps([surveillance_snapshot]),
         'surveillance_snapshot_year_rows_json': json.dumps(surveillance_snapshot_year_rows),
@@ -1472,7 +1521,49 @@ def batch_create_view(request):
         else:
             messages.error(request, "Batch creation failed.")
     else:
-        form = BatchTable_form()
+        initial = {}
+        source = request.GET.get("source", "").strip().lower()
+        accession = request.GET.get("accession", "").strip()
+        if accession:
+            raw_item = None
+            final_item = None
+            if source != "final":
+                raw_item = Referred_Data.objects.filter(
+                    AccessionNo__iexact=accession
+                ).first()
+            if source != "raw":
+                final_item = Final_Data.objects.filter(
+                    f_AccessionNo__iexact=accession
+                ).first()
+
+            item = raw_item or final_item
+            if item:
+                is_final_item = final_item is item
+                ref_no = accession_ref_sequence(accession)
+                initial = {
+                    "bat_SiteCode": (
+                        item.f_SiteCode if is_final_item else item.SiteCode
+                    ),
+                    "bat_Referral_Date": (
+                        item.f_Referral_Date if is_final_item else item.Referral_Date
+                    ),
+                    "bat_BatchNo": (
+                        item.f_BatchNo if is_final_item else item.BatchNo
+                    ) or "1",
+                    "bat_Total_batch": (
+                        item.f_Total_batch if is_final_item else item.Total_batch
+                    ) or "1",
+                    "bat_RefNo": str(ref_no).zfill(4) if ref_no is not None else "",
+                    "bat_Site_NameGen": (
+                        item.f_Site_Name if is_final_item else item.Site_Name
+                    ),
+                }
+                messages.info(
+                    request,
+                    f"Creating a batch for unbatched accession {accession}."
+                )
+
+        form = BatchTable_form(initial=initial)
 
     return render(request, "home/Batchname_form.html", {
     "form": form,
@@ -1690,13 +1781,34 @@ def batch_edit_view(request, pk):
         messages.error(request, "You can only update batches that you created.")
         return redirect("show_data")
 
+    verification_case = _raw_verification_case_map([batch.pk]).get(batch.pk)
+    lock_workflow_signatories = bool(verification_case)
+    locked_signatory_values = {
+        field: getattr(batch, field)
+        for field in (
+            "bat_Verifier",
+            "bat_Ver_Lic",
+            "bat_LabManager",
+            "bat_Lab_Lic",
+            "bat_Head",
+            "bat_Head_Lic",
+        )
+    }
+
     if request.method == "POST":
         prior_ref_no = _batch_ref_no(batch)
-        form = BatchEditForm(request.POST, instance=batch)
+        form = BatchEditForm(
+            request.POST,
+            instance=batch,
+            lock_workflow_signatories=lock_workflow_signatories,
+        )
 
         if form.is_valid():
             batch = form.save(commit=False)
             _apply_signature_defaults_to_batch(batch)
+            if lock_workflow_signatories:
+                for field, value in locked_signatory_values.items():
+                    setattr(batch, field, value)
 
             site_code = str(batch.bat_SiteCode or "").strip()
             referral_date = batch.bat_Referral_Date
@@ -1784,7 +1896,10 @@ def batch_edit_view(request, pk):
             return redirect("show_data")
 
     else:
-        form = BatchEditForm(instance=batch)
+        form = BatchEditForm(
+            instance=batch,
+            lock_workflow_signatories=lock_workflow_signatories,
+        )
 
     return render(
         request,
@@ -1793,6 +1908,7 @@ def batch_edit_view(request, pk):
             "form": form,
             "editing": True,
             "batch": batch,
+            "lock_workflow_signatories": lock_workflow_signatories,
         }
     )
 
@@ -1828,11 +1944,20 @@ def show_batches(request):
         page_groups[batch_code]["records"].append(isolate)
 
     batch = Batch_Table.objects.filter(bat_Batch_Code=batch_code).first()
+    verification_case = _raw_verification_case_map([batch.pk]).get(batch.pk) if batch else None
+    verification_deletion_blocked = verification_case_blocks_operational_outputs(verification_case)
+    verification_deletion_block_reason = (
+        "Deletion is disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+        if verification_deletion_blocked
+        else ""
+    )
 
     return render(request, "home/Batch_isolates.html", {
         "page_obj": page_obj,
         "batch_code": batch_code,
         "batch": batch,
+        "verification_deletion_blocked": verification_deletion_blocked,
+        "verification_deletion_block_reason": verification_deletion_block_reason,
     })
 # @login_required(login_url="login")
 # def review_batches(request):
@@ -1931,13 +2056,13 @@ def review_batches(request):
             bat_Batch_Code__icontains=q
         )
 
-    batches = batches.prefetch_related(
+    batches = list(batches.prefetch_related(
         Prefetch(
             "Batch_isolates",
             queryset=isolate_qs,
             to_attr="prefetched_isolates",
         )
-    )
+    ))
 
     total_accessions_all = 0
 
@@ -1952,12 +2077,73 @@ def review_batches(request):
         total_accessions_all += len(isolates)
         batch.is_copied_to_final = batch.id in final_batch_ids
 
+    raw_unbatched = (
+        isolate_qs
+        .filter(Batch_id__isnull=True)
+        .order_by("AccessionNo")
+    )
+    if q:
+        raw_unbatched = raw_unbatched.filter(
+            Q(AccessionNo__icontains=q) |
+            Q(SiteCode__icontains=q)
+        )
+    raw_unbatched_items = [
+        SimpleNamespace(AccessionNo=isolate.AccessionNo)
+        for isolate in raw_unbatched
+        if isolate.AccessionNo
+    ]
+    if raw_unbatched_items:
+        batches.insert(0, SimpleNamespace(
+            id=None,
+            bat_Batch_Name="Unbatched Raw Records",
+            bat_Referral_Date=None,
+            bat_Site_Name="Raw data without batch",
+            display_isolates=raw_unbatched_items,
+            total_isolates=len(raw_unbatched_items),
+            is_copied_to_final=False,
+            is_unbatched_raw=True,
+            is_unbatched_final=False,
+        ))
+        total_accessions_all += len(raw_unbatched_items)
+
+    final_unbatched = (
+        Final_Data.objects
+        .filter(f_Batch_id__isnull=True)
+        .exclude(f_AccessionNo__isnull=True)
+        .exclude(f_AccessionNo="")
+        .order_by("f_AccessionNo")
+    )
+    if q:
+        final_unbatched = final_unbatched.filter(
+            Q(f_AccessionNo__icontains=q) |
+            Q(f_SiteCode__icontains=q) |
+            Q(f_Batch_Code__icontains=q)
+        )
+    final_unbatched_items = [
+        SimpleNamespace(AccessionNo=isolate.f_AccessionNo)
+        for isolate in final_unbatched
+        if isolate.f_AccessionNo
+    ]
+    if final_unbatched_items:
+        batches.insert(0, SimpleNamespace(
+            id=None,
+            bat_Batch_Name="Unbatched Final Records",
+            bat_Referral_Date=None,
+            bat_Site_Name="Final data without batch",
+            display_isolates=final_unbatched_items,
+            total_isolates=len(final_unbatched_items),
+            is_copied_to_final=True,
+            is_unbatched_raw=False,
+            is_unbatched_final=True,
+        ))
+        total_accessions_all += len(final_unbatched_items)
+
     return render(
         request,
         "home/review_batches.html",
         {
             "batches": batches,
-            "total_batches": batches.count(),
+            "total_batches": len(batches),
             "total_accessions_all": total_accessions_all,
             "q": q,
         },
@@ -1999,6 +2185,13 @@ def delete_batch(request, batch_id):
     batch = get_object_or_404(Batch_Table, pk=batch_id)
     if not can_manage_batch(request.user, batch):
         messages.error(request, "You can only delete batches that you created.")
+        return redirect("show_data")
+    verification_case = _raw_verification_case_map([batch.pk]).get(batch.pk)
+    if verification_case_blocks_operational_outputs(verification_case):
+        messages.error(
+            request,
+            "Batch deletion is disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+        )
         return redirect("show_data")
 
     Referred_Data.objects.filter(
@@ -2109,9 +2302,17 @@ def delete_blank_batches(request):
 def delete_record_in_batch(request, id):
 
     isolate = get_object_or_404(Referred_Data, pk=id)
-    if not can_manage_batch(request.user, isolate.Batch_id):
+    if isolate.Batch_id and not can_manage_batch(request.user, isolate.Batch_id):
         messages.error(request, "You can only delete records from batches that you created.")
         return redirect("show_data")
+    if isolate.Batch_id_id:
+        verification_case = _raw_verification_case_map([isolate.Batch_id_id]).get(isolate.Batch_id_id)
+        if verification_case_blocks_operational_outputs(verification_case):
+            messages.error(
+                request,
+                "Accession deletion is disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+            )
+            return redirect("show_data")
 
     accession_no = isolate.AccessionNo
 
@@ -2176,6 +2377,22 @@ def get_antibiotic_details(request):
         })
     
     return JsonResponse({"error": "Not found"}, status=404)
+
+
+@require_GET
+def get_breakpoint_details(request):
+    whonet_abx = (request.GET.get("whonet_abx") or "").strip().upper()
+    abx = Antibiotic_List.objects.filter(Whonet_Abx__iexact=whonet_abx).first()
+
+    if not abx:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+    return JsonResponse({
+        "antibiotic": getattr(abx, "Antibiotic", "") or "",
+        "abx_code": getattr(abx, "Abx_code", "") or "",
+        "tier": getattr(abx, "Tier", "") or "",
+        "potency": getattr(abx, "Potency", "") or "",
+    })
 
 
 @login_required
@@ -2771,6 +2988,69 @@ def _apply_raw_table_filters(records, query="", year=None):
     return records
 
 
+def _verification_status_choices():
+    try:
+        VerificationCase = django_apps.get_model("verification", "VerificationCase")
+        return [
+            ("", "All status"),
+            ("none", "Pending submission"),
+            ("needs_correction", "Needs correction"),
+            *VerificationCase.WORKFLOW_FILTER_CHOICES,
+        ]
+    except (LookupError, ProgrammingError, OperationalError):
+        return [("", "All status"), ("none", "Pending submission"), ("needs_correction", "Needs correction")]
+
+
+def _filter_raw_by_verification_status(records, status):
+    status = (status or "").strip()
+    if not status:
+        return records
+    try:
+        VerificationCase = django_apps.get_model("verification", "VerificationCase")
+        active_cases = VerificationCase.objects.filter(
+            final_batch__isnull=False,
+            final_accession__isnull=True,
+        ).exclude(status=VerificationCase.STATUS_WITHDRAWN)
+        if status == "none":
+            active_batch_ids = active_cases.values_list("final_batch_id", flat=True)
+            return records.filter(Q(Batch_id__isnull=True) | ~Q(Batch_id_id__in=active_batch_ids))
+        if status == "needs_correction":
+            VerificationComment = django_apps.get_model("verification", "VerificationComment")
+            returned_statuses = [
+                VerificationCase.STATUS_RETURNED_TO_ENCODER,
+                VerificationCase.STATUS_RETURNED_TO_CHECKER,
+            ]
+            correction_batch_ids = (
+                VerificationComment.objects
+                .filter(
+                    verification_case__final_batch__isnull=False,
+                    verification_case__final_accession__isnull=True,
+                    is_resolved=False,
+                )
+                .filter(
+                    Q(decision__in=[
+                        VerificationComment.DECISION_NEEDS_CORRECTION,
+                        VerificationComment.DECISION_RETURNED,
+                    ])
+                    | Q(verification_case__status__in=returned_statuses)
+                )
+                .exclude(
+                    resolution_status__in=[
+                        VerificationComment.RESOLUTION_HANDLED,
+                        VerificationComment.RESOLUTION_RESOLVED,
+                        VerificationComment.RESOLUTION_REJECTED,
+                    ]
+                )
+                .exclude(field_name__startswith="case-note:")
+                .values_list("verification_case__final_batch_id", flat=True)
+                .distinct()
+            )
+            return records.filter(Batch_id_id__in=correction_batch_ids)
+        return records.filter(Batch_id_id__in=active_cases.filter(status=status).values_list("final_batch_id", flat=True))
+    except (LookupError, ProgrammingError, OperationalError):
+        return records
+
+
 def _raw_sort_field(sort_by, order):
     allowed_sort_fields = [
         "Referral_Date",
@@ -2797,18 +3077,52 @@ def _raw_sort_field(sort_by, order):
     return sort_by, order, f"-{sort_by}" if order == "desc" else sort_by
 
 
+def _raw_verification_case_map(batch_ids):
+    if not batch_ids:
+        return {}
+    try:
+        VerificationCase = django_apps.get_model("verification", "VerificationCase")
+        return {
+            case.final_batch_id: case
+            for case in VerificationCase.objects.filter(
+                final_batch_id__in=batch_ids,
+                final_accession__isnull=True,
+            ).exclude(status=VerificationCase.STATUS_WITHDRAWN)
+        }
+    except (LookupError, ProgrammingError, OperationalError):
+        return {}
+
+
+def _attach_raw_verification_flags(records):
+    record_list = list(records)
+    case_map = _raw_verification_case_map([
+        record.Batch_id_id for record in record_list if record.Batch_id_id
+    ])
+    for record in record_list:
+        verification_case = case_map.get(record.Batch_id_id)
+        record.verification_pdf_blocked = verification_case_blocks_operational_outputs(verification_case)
+        record.verification_pdf_block_reason = (
+            "Printing disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+            if record.verification_pdf_blocked
+            else ""
+        )
+    return record_list
+
+
 # with year filters
 @login_required(login_url="login")
 def show_data(request):
 
     query = request.GET.get("q", "")
     year = request.GET.get("year", None)
+    verification_status = request.GET.get("verification_status", "")
 
     sort_by = request.GET.get("sort", "Date_Modified")
     order = request.GET.get("order", "desc")
 
     sort_by, order, sort_field = _raw_sort_field(sort_by, order)
     isolates = _apply_raw_table_filters(_raw_records_base_queryset(request), query, year)
+    isolates = _filter_raw_by_verification_status(isolates, verification_status)
 
     total_records = isolates.count()
 
@@ -2869,6 +3183,7 @@ def show_data(request):
         for tat in TATform.objects.filter(tat_Batch_Code__in=page_batch_codes)
         if tat.tat_Batch_Code
     }
+    page_case_map = _raw_verification_case_map(page_batch_ids)
 
     page_groups = []
     for batch_summary in page_obj.object_list:
@@ -2876,6 +3191,12 @@ def show_data(request):
         batch_code = raw_batch_code.strip() or "Unbatched"
         batch_id = batch_summary.get("Batch_id") or ""
         tat_summary = tat_by_batch_id.get(batch_id, tat_by_batch_code.get(batch_code, {}))
+        verification_case = page_case_map.get(batch_id)
+        verification_status_label = ""
+        if verification_case:
+            verification_status_label = verification_case.get_status_display()
+            if verification_case.status == verification_case.STATUS_SIGNED_BY_HEAD:
+                verification_status_label = "Ready for Release"
         page_groups.append({
             "batch_id": batch_id,
             "code": batch_code,
@@ -2884,6 +3205,14 @@ def show_data(request):
             "site_code": batch_summary.get("site_code") or "",
             "tat_days": tat_summary.get("days"),
             "tat_pressure": tat_summary.get("pressure", "none"),
+            "verification_status": verification_status_label,
+            "verification_status_code": verification_case.status if verification_case else "",
+            "verification_pdf_blocked": verification_case_blocks_operational_outputs(verification_case),
+            "verification_pdf_block_reason": (
+                "Printing disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+                if verification_case_blocks_operational_outputs(verification_case)
+                else ""
+            ),
         })
 
     # Get available years
@@ -2903,6 +3232,8 @@ def show_data(request):
         "current_order": order,
         "query": query,
         "year": year,
+        "verification_status": verification_status,
+        "verification_status_choices": _verification_status_choices(),
         "available_years": available_years,
     }
 
@@ -2916,11 +3247,13 @@ def raw_batch_rows(request):
     batch_dom_id = request.GET.get("target", "")
     query = request.GET.get("q", "")
     year = request.GET.get("year")
+    verification_status = request.GET.get("verification_status", "")
     sort_by = request.GET.get("sort", "Date_Modified")
     order = request.GET.get("order", "desc")
     _, _, sort_field = _raw_sort_field(sort_by, order)
 
     records = _apply_raw_table_filters(_raw_records_base_queryset(request), query, year)
+    records = _filter_raw_by_verification_status(records, verification_status)
     if batch_id:
         records = records.filter(Batch_id_id=batch_id)
     else:
@@ -2936,6 +3269,7 @@ def raw_batch_rows(request):
         .filter(f_AccessionNo__in=records.values_list("AccessionNo", flat=True))
         .values_list("f_AccessionNo", flat=True)
     )
+    records = _attach_raw_verification_flags(records)
     html = render_to_string(
         "home/partials/raw_batch_rows.html",
         {
@@ -3392,9 +3726,9 @@ def _raw_batch_navigation(isolate):
 @transaction.atomic
 def edit_data(request, id):
 
-   # fetch the isolate
+    # fetch the isolate
     isolates = get_object_or_404(Referred_Data, pk=id)
-    if not can_manage_batch(request.user, isolates.Batch_id):
+    if isolates.Batch_id and not can_manage_batch(request.user, isolates.Batch_id):
         messages.error(request, "You can only update records from batches that you created.")
         return redirect("show_data")
     antibiotic_view = _antibiotic_view_mode(request)
@@ -3890,9 +4224,17 @@ def edit_data(request, id):
 def delete_data(request, id):
 
     isolate = get_object_or_404(Referred_Data, pk=id)
-    if not can_manage_batch(request.user, isolate.Batch_id):
+    if isolate.Batch_id and not can_manage_batch(request.user, isolate.Batch_id):
         messages.error(request, "You can only delete records from batches that you created.")
         return redirect("show_data")
+    if isolate.Batch_id_id:
+        verification_case = _raw_verification_case_map([isolate.Batch_id_id]).get(isolate.Batch_id_id)
+        if verification_case_blocks_operational_outputs(verification_case):
+            messages.error(
+                request,
+                "Accession deletion is disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+            )
+            return redirect("show_data")
     accession = isolate.AccessionNo
 
     if request.method == "POST":
@@ -4041,11 +4383,23 @@ def _chunk_pdf_isolates_for_print(isolates, recommendation_attr, max_per_page=2)
 
 
 def _pdf_has_long_recommendation(value):
-    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    text = str(value or "").strip()
     if not text:
         return False
-    numbered_items = len(re.findall(r"(?:^|\s)\d+\.", text))
-    return numbered_items >= 4 or len(text) >= 330
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    parts = re.split(r"(?=\b\d+[\.\)]\s*)", text)
+    recommendation_items = [
+        re.sub(r"^\d+[\.\)]\s*", "", part.strip()).strip()
+        for part in parts
+        if part.strip()
+    ]
+    if len(recommendation_items) <= 1:
+        recommendation_items = [
+            part.strip()
+            for part in re.split(r"[\r\n]+", text)
+            if part.strip()
+        ]
+    return len(recommendation_items) > 3
 
 
 
@@ -5131,171 +5485,227 @@ def generate_batch_pdf_panel_gram_pos(request, id):
 
 
 
+# @transaction.atomic
+# def generate_batch_pdf(request, id):
+#     roles = get_user_roles(request.user)
+#     verification_case = _raw_verification_case_map([id]).get(id)
+#     is_assigned_head = bool(
+#         verification_case
+#         and verification_case.assigned_head_id
+#         and verification_case.assigned_head_id == request.user.id
+#     )
+#     high_review_roles = {ROLE_ADMIN, ROLE_VERIFIER, ROLE_LAB_MANAGER}
+#     if not roles.intersection(high_review_roles | {ROLE_CHECKER}) and not is_assigned_head:
+#         return HttpResponse("Raw PDF printing is not available for encoder-only accounts.", status=403)
+#     if (
+#         verification_case
+#         and verification_case.status == verification_case.STATUS_DISAPPROVED_BY_HEAD
+#         and ROLE_CHECKER in roles
+#         and not roles.intersection(high_review_roles)
+#         and not is_assigned_head
+#     ):
+#         return HttpResponse("Raw PDF printing is disabled for checkers because this case was disapproved by the ARSRL Head.", status=403)
+
+#     return generate_batch_pdf_panel_old(request, id)
+
+
+
+
 @transaction.atomic
 def generate_batch_pdf(request, id):
-    return generate_batch_pdf_panel_old(request, id)
+    user_access = role_flags(request.user)
 
-    batch = get_object_or_404(Batch_Table, pk=id)
-    isolates = (
-        Referred_Data.objects
-        .filter(Batch_id=batch)
-        .order_by("bat_seq")
-    )
-
-    def chunked(qs, size):
-        for i in range(0, qs.count(), size):
-            yield qs[i:i + size]
-
-    def chunk_list(items, size):
-        for i in range(0, len(items), size):
-            yield items[i:i + size]
-
-    def fixed_rows(grouped_antibiotics, max_cols=MAX_COLS):
-        if not grouped_antibiotics:
-            return [
-                [("", {"disk": None, "mic": None}) for _ in range(max_cols)]
-                for _ in range(MAX_ROWS)
-            ]
-        rows = list(chunk_list(list(grouped_antibiotics.items()), max_cols))[:MAX_ROWS]
-        while len(rows) < MAX_ROWS:
-            rows.append([])
-        return rows
-
-    MAX_COLS = 29
-    MAX_ROWS = 2
-    isolate_pages = _chunk_pdf_isolates_for_print(list(isolates), "ars_reco", max_per_page=2)
-    pages_data = []
-
-    antibiotic_order = list(
-        Antibiotic_List.objects
-        .exclude(Abx_code__exact="")
-        .values("Whonet_Abx", "Abx_code")
-        .order_by("id")
-    )
-    abx_map = {
-        (row["Whonet_Abx"] or "").strip().upper(): (row["Abx_code"] or "").strip()
-        for row in antibiotic_order
-        if (row["Whonet_Abx"] or "").strip() and (row["Abx_code"] or "").strip()
-    }
-    site_print_order = antibiotic_print_order(show_site=True)
-    ars_print_order = antibiotic_print_order(show_ars=True)
-    site_printable = set(site_print_order)
-    ars_printable = set(ars_print_order)
-
-    for page_isolates in isolate_pages:
-        page_entries = []
-        compact_page = any(
-            _pdf_has_long_recommendation(getattr(isolate, "ars_reco", ""))
-            for isolate in page_isolates
+    # 1. Check whether this role is allowed to print RAW PDFs
+    if not user_access["can_print_raw_pdf"]:
+        return HttpResponse(
+            "Raw PDF printing is not available for this account role.",
+            status=403
         )
 
-        for isolate in page_isolates:
-            _blank_no_organism_report_fields(isolate)
-            entries = list(AntibioticEntry.objects.filter(
-                ab_idNum_referred=isolate
-            ))
+    # 2. Checker and DMU Encoder cannot print while the verification case is still in review.
+    verification_case = _raw_verification_case_map([id]).get(id)
 
-            site_org = (isolate.Site_Org or "").strip()
-            ars_org = (isolate.ars_OrgCode or "").strip() or site_org
-            specimen_year = isolate.Spec_Date.year if isolate.Spec_Date else None
+    if (
+        (user_access["is_checker"] or user_access["is_dmu_encoder"])
+        and verification_case_blocks_operational_outputs(verification_case)
+    ):
+        return HttpResponse(
+            "Raw PDF printing is disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release.",
+            status=403
+        )
 
-            site_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, site_org)
-            ars_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, ars_org)
-            encoded_site_abx = {
-                abx_map.get((entry.ab_Abx_code or "").strip().upper())
-                for entry in entries
-                if entry.ab_Abx_code
-            } - {None, ""}
-            encoded_ars_abx = {
-                abx_map.get((entry.ab_Retest_Abx_code or "").strip().upper())
-                for entry in entries
-                if entry.ab_Retest_Abx_code
-            } - {None, ""}
-            encoded_print_abx = encoded_site_abx | encoded_ars_abx
+    # 3. Generate PDF
+    return generate_batch_pdf_panel_old(request, id)
 
-            site_candidates = (set(site_panel_abx) | encoded_print_abx) & site_printable
-            ars_candidates = (set(ars_panel_abx) | encoded_print_abx) & ars_printable
 
-            site_abx_codes = [abx for abx in site_print_order if abx in site_candidates]
-            site_abx_codes.extend(
-                sort_abx_codes_by_antibiotic(
-                    abx for abx in site_candidates if abx not in site_abx_codes
-                )
-            )
-            ars_abx_codes = [abx for abx in ars_print_order if abx in ars_candidates]
-            ars_abx_codes.extend(
-                sort_abx_codes_by_antibiotic(
-                    abx for abx in ars_candidates if abx not in ars_abx_codes
-                )
-            )
-            if _is_no_organism(isolate.Site_Org):
-                site_abx_codes = []
-            if _is_no_organism(isolate.ars_OrgCode):
-                ars_abx_codes = []
 
-            aligned_abx_codes = _aligned_pdf_abx_codes(
-                site_abx_codes,
-                ars_abx_codes,
-                site_print_order,
-                ars_print_order,
-            )
-            site_abx_codes = aligned_abx_codes
-            ars_abx_codes = aligned_abx_codes
 
-            grouped_site = {abx: {"disk": None, "mic": None} for abx in site_abx_codes}
-            grouped_ars = {abx: {"disk": None, "mic": None} for abx in ars_abx_codes}
 
-            for e in entries:
-                site_abx = abx_map.get((e.ab_Abx_code or "").strip().upper())
-                if site_abx in grouped_site:
-                    if e.ab_Disk_value is not None:
-                        grouped_site[site_abx]["disk"] = e
-                    if e.ab_MIC_value is not None:
-                        grouped_site[site_abx]["mic"] = e
+# does not work because the isolates are not sorted by accession number, but by bat_seq. This is a problem because some accession numbers are not numeric, 
+# so we need to sort by the numeric part of the accession number if possible,
+# otherwise fallback to bat_seq. This ensures a more logical order for printing.
 
-                ars_abx = abx_map.get((e.ab_Retest_Abx_code or "").strip().upper())
-                if ars_abx in grouped_ars:
-                    if e.ab_Retest_DiskValue is not None:
-                        grouped_ars[ars_abx]["disk"] = e
-                    if e.ab_Retest_MICValue is not None:
-                        grouped_ars[ars_abx]["mic"] = e
+    # batch = get_object_or_404(Batch_Table, pk=id)
+    # isolates = (
+    #     Referred_Data.objects
+    #     .filter(Batch_id=batch)
+    #     .order_by("bat_seq")
+    # )
 
-            site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.Site_OrgName)
-            ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.ars_OrgName)
-            site_max_cols = 32 if site_uses_plus_layout else MAX_COLS
-            ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
+    # def chunked(qs, size):
+    #     for i in range(0, qs.count(), size):
+    #         yield qs[i:i + size]
 
-            page_entries.append({
-                "isolate": isolate,
-                "grouped_rows": fixed_rows(grouped_site, site_max_cols),
-                "grouped_ars_rows": fixed_rows(grouped_ars, ars_max_cols),
-                "site_uses_plus_layout": site_uses_plus_layout,
-                "ars_uses_plus_layout": ars_uses_plus_layout,
-                "compact_page": compact_page,
-            })
+    # def chunk_list(items, size):
+    #     for i in range(0, len(items), size):
+    #         yield items[i:i + size]
 
-        pages_data.append(page_entries)
+    # def fixed_rows(grouped_antibiotics, max_cols=MAX_COLS):
+    #     if not grouped_antibiotics:
+    #         return [
+    #             [("", {"disk": None, "mic": None}) for _ in range(max_cols)]
+    #             for _ in range(MAX_ROWS)
+    #         ]
+    #     rows = list(chunk_list(list(grouped_antibiotics.items()), max_cols))[:MAX_ROWS]
+    #     while len(rows) < MAX_ROWS:
+    #         rows.append([])
+    #     return rows
 
-    context = {
-        "batch": batch,
-        "pages": pages_data,
-        "now": timezone.now(),
-        "logo_path": static("assets/img/brand/arsplogo.jpg"),
-    }
+    # MAX_COLS = 29
+    # MAX_ROWS = 2
+    # isolate_pages = _chunk_pdf_isolates_for_print(list(isolates), "ars_reco", max_per_page=2)
+    # pages_data = []
 
-    response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = 'filename="Batch_Panel_Report.pdf"'
+    # antibiotic_order = list(
+    #     Antibiotic_List.objects
+    #     .exclude(Abx_code__exact="")
+    #     .values("Whonet_Abx", "Abx_code")
+    #     .order_by("id")
+    # )
+    # abx_map = {
+    #     (row["Whonet_Abx"] or "").strip().upper(): (row["Abx_code"] or "").strip()
+    #     for row in antibiotic_order
+    #     if (row["Whonet_Abx"] or "").strip() and (row["Abx_code"] or "").strip()
+    # }
+    # site_print_order = antibiotic_print_order(show_site=True)
+    # ars_print_order = antibiotic_print_order(show_ars=True)
+    # site_printable = set(site_print_order)
+    # ars_printable = set(ars_print_order)
 
-    template = get_template("home/Lab_result_panel.html")
-    html = template.render(context)
+    # for page_isolates in isolate_pages:
+    #     page_entries = []
+    #     compact_page = any(
+    #         _pdf_has_long_recommendation(getattr(isolate, "ars_reco", ""))
+    #         for isolate in page_isolates
+    #     )
 
-    pisa.CreatePDF(
-        html,
-        dest=response,
-        link_callback=link_callback
-    )
+    #     for isolate in page_isolates:
+    #         _blank_no_organism_report_fields(isolate)
+    #         entries = list(AntibioticEntry.objects.filter(
+    #             ab_idNum_referred=isolate
+    #         ))
 
-    return response
+    #         site_org = (isolate.Site_Org or "").strip()
+    #         ars_org = (isolate.ars_OrgCode or "").strip() or site_org
+    #         specimen_year = isolate.Spec_Date.year if isolate.Spec_Date else None
+
+    #         site_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, site_org)
+    #         ars_panel_abx = get_breakpoint_panel_abx_codes(specimen_year, ars_org)
+    #         encoded_site_abx = {
+    #             abx_map.get((entry.ab_Abx_code or "").strip().upper())
+    #             for entry in entries
+    #             if entry.ab_Abx_code
+    #         } - {None, ""}
+    #         encoded_ars_abx = {
+    #             abx_map.get((entry.ab_Retest_Abx_code or "").strip().upper())
+    #             for entry in entries
+    #             if entry.ab_Retest_Abx_code
+    #         } - {None, ""}
+    #         encoded_print_abx = encoded_site_abx | encoded_ars_abx
+
+    #         site_candidates = (set(site_panel_abx) | encoded_print_abx) & site_printable
+    #         ars_candidates = (set(ars_panel_abx) | encoded_print_abx) & ars_printable
+
+    #         site_abx_codes = [abx for abx in site_print_order if abx in site_candidates]
+    #         site_abx_codes.extend(
+    #             sort_abx_codes_by_antibiotic(
+    #                 abx for abx in site_candidates if abx not in site_abx_codes
+    #             )
+    #         )
+    #         ars_abx_codes = [abx for abx in ars_print_order if abx in ars_candidates]
+    #         ars_abx_codes.extend(
+    #             sort_abx_codes_by_antibiotic(
+    #                 abx for abx in ars_candidates if abx not in ars_abx_codes
+    #             )
+    #         )
+    #         if _is_no_organism(isolate.Site_Org):
+    #             site_abx_codes = []
+    #         if _is_no_organism(isolate.ars_OrgCode):
+    #             ars_abx_codes = []
+
+    #         aligned_abx_codes = _aligned_pdf_abx_codes(
+    #             site_abx_codes,
+    #             ars_abx_codes,
+    #             site_print_order,
+    #             ars_print_order,
+    #         )
+    #         site_abx_codes = aligned_abx_codes
+    #         ars_abx_codes = aligned_abx_codes
+
+    #         grouped_site = {abx: {"disk": None, "mic": None} for abx in site_abx_codes}
+    #         grouped_ars = {abx: {"disk": None, "mic": None} for abx in ars_abx_codes}
+
+    #         for e in entries:
+    #             site_abx = abx_map.get((e.ab_Abx_code or "").strip().upper())
+    #             if site_abx in grouped_site:
+    #                 if e.ab_Disk_value is not None:
+    #                     grouped_site[site_abx]["disk"] = e
+    #                 if e.ab_MIC_value is not None:
+    #                     grouped_site[site_abx]["mic"] = e
+
+    #             ars_abx = abx_map.get((e.ab_Retest_Abx_code or "").strip().upper())
+    #             if ars_abx in grouped_ars:
+    #                 if e.ab_Retest_DiskValue is not None:
+    #                     grouped_ars[ars_abx]["disk"] = e
+    #                 if e.ab_Retest_MICValue is not None:
+    #                     grouped_ars[ars_abx]["mic"] = e
+
+    #         site_uses_plus_layout = _organism_type_is_plus(site_org, isolate.Site_OrgName)
+    #         ars_uses_plus_layout = _organism_type_is_plus(ars_org, isolate.ars_OrgName)
+    #         site_max_cols = 32 if site_uses_plus_layout else MAX_COLS
+    #         ars_max_cols = 32 if ars_uses_plus_layout else MAX_COLS
+
+    #         page_entries.append({
+    #             "isolate": isolate,
+    #             "grouped_rows": fixed_rows(grouped_site, site_max_cols),
+    #             "grouped_ars_rows": fixed_rows(grouped_ars, ars_max_cols),
+    #             "site_uses_plus_layout": site_uses_plus_layout,
+    #             "ars_uses_plus_layout": ars_uses_plus_layout,
+    #             "compact_page": compact_page,
+    #         })
+
+    #     pages_data.append(page_entries)
+
+    # context = {
+    #     "batch": batch,
+    #     "pages": pages_data,
+    #     "now": timezone.now(),
+    #     "logo_path": static("assets/img/brand/arsplogo.jpg"),
+    # }
+
+    # response = HttpResponse(content_type="application/pdf")
+    # response["Content-Disposition"] = 'filename="Batch_Panel_Report.pdf"'
+
+    # template = get_template("home/Lab_result_panel.html")
+    # html = template.render(context)
+
+    # pisa.CreatePDF(
+    #     html,
+    #     dest=response,
+    #     link_callback=link_callback
+    # )
+
+    # return response
 
 
 
@@ -5733,12 +6143,14 @@ def edit_breakpoints(request, pk):
             except IntegrityError:
                 messages.error(request, "Required breakpoint fields are missing. Please complete the highlighted fields.")
 
-        form_errors = form.non_field_errors() or [
-            error
-            for field_errors in form.errors.values()
-            for error in field_errors
-        ]
-        messages.error(request, form_errors[0] if form_errors else "Please correct the errors below.")
+        if form.non_field_errors():
+            messages.error(request, form.non_field_errors()[0])
+        elif form.errors:
+            field_name, field_errors = next(iter(form.errors.items()))
+            field_label = form.fields.get(field_name).label or field_name
+            messages.error(request, f"{field_label}: {field_errors[0]}")
+        else:
+            messages.error(request, "Please correct the errors below.")
     else:
         form = BreakpointsForm(instance=breakpoint)
 
@@ -5754,6 +6166,15 @@ def edit_breakpoints(request, pk):
     )
 
 
+def _blank_breakpoint_values_filter():
+    return (
+        (Q(R_val__isnull=True) | Q(R_val__exact="")) &
+        (Q(I_val__isnull=True) | Q(I_val__exact="")) &
+        (Q(SDD_val__isnull=True) | Q(SDD_val__exact="")) &
+        (Q(S_val__isnull=True) | Q(S_val__exact=""))
+    )
+
+
 
 
 @login_required(login_url="login")
@@ -5765,6 +6186,9 @@ def breakpoints_view(request):
     resistance_phenotype = request.GET.get("resistance_phenotype", "").strip()
 
     total_breakpoints = BreakpointsTable.objects.count()
+    blank_breakpoint_count = BreakpointsTable.objects.filter(
+        _blank_breakpoint_values_filter()
+    ).count()
     breakpoints = BreakpointsTable.objects.all().order_by('-Date_Modified')
 
     if q:
@@ -5854,6 +6278,7 @@ def breakpoints_view(request):
             "whonet_abx": whonet_abx,
             "resistance_phenotype": resistance_phenotype,
             "total_breakpoints": total_breakpoints,
+            "blank_breakpoint_count": blank_breakpoint_count,
             "filtered_count": filtered_count,
             "filter_options": filter_options,
             "preserved_params": preserved_params,
@@ -5867,6 +6292,30 @@ def breakpoints_view(request):
 def breakpoints_del(request, id):
     breakpoints = get_object_or_404(BreakpointsTable, pk=id)
     breakpoints.delete()
+    return redirect('breakpoints_view')
+
+
+@login_required(login_url="login")
+def delete_blank_breakpoint_values(request):
+    if request.method != "POST":
+        messages.error(request, "Invalid request method.")
+        return redirect('breakpoints_view')
+
+    selected_id = request.POST.get("selected_breakpoint_id")
+    deleted_selected = 0
+    if selected_id:
+        deleted_selected, _ = BreakpointsTable.objects.filter(pk=selected_id).delete()
+
+    deleted_blank, _ = (
+        BreakpointsTable.objects
+        .filter(_blank_breakpoint_values_filter())
+        .delete()
+    )
+    messages.success(
+        request,
+        f"Deleted {deleted_blank} record(s) with no R, I, SDD, or S breakpoint values"
+        f"{' plus the selected breakpoint record' if deleted_selected else ''}."
+    )
     return redirect('breakpoints_view')
 
 
@@ -6290,47 +6739,101 @@ def upload_breakpoints(request):
         # other years, organisms, methods, or specimen expressions may be
         # valid separate breakpoint definitions.
         skipped = 0
-        duplicate_skipped = 0
+        unchanged = 0
         linked = 0
         updated = 0
         deduped = 0
         auto_created_antibiotics = 0
+        antibiotic_cache = {}
+        existing_by_identity = {}
+        duplicate_ids = []
+        new_breakpoints = []
+        changed_breakpoints = []
+        touched_whonet_abx = set(df["Whonet_Abx"].dropna().astype(str))
+        touched_years = set(df["Year"].dropna().astype(str))
+        touched_orgs = set(df["Org"].dropna().astype(str))
+        touched_test_methods = set(df["Test_Method"].dropna().astype(str))
+        touched_spec_codes = set(df["Spec_code"].dropna().astype(str))
+
+        if touched_whonet_abx:
+            antibiotic_cache = {
+                antibiotic.Whonet_Abx: antibiotic
+                for antibiotic in Antibiotic_List.objects.filter(
+                    Whonet_Abx__in=touched_whonet_abx
+                )
+            }
+
+        missing_antibiotic_rows = {}
+        for _, row in df.iterrows():
+            whonet_code = row["Whonet_Abx"]
+            if whonet_code and whonet_code not in antibiotic_cache:
+                missing_antibiotic_rows.setdefault(whonet_code, row)
+
+        if missing_antibiotic_rows:
+            Antibiotic_List.objects.bulk_create(
+                [
+                    Antibiotic_List(
+                        Show=True,
+                        Retest=True,
+                        Show_Site=True,
+                        Show_Ars=True,
+                        Show_Value=True,
+                        Disk_Abx=excel_bool(row.get("Disk_Abx", False))
+                        or normalize_cell(row.get("Test_Method", ""), upper=True) == "DISK",
+                        Test_Method=normalize_cell(row.get("Test_Method", ""), upper=True),
+                        Tier=row.get("Tier", ""),
+                        Abx_code=normalize_cell(row.get("Abx_code", ""), upper=True),
+                        Whonet_Abx=whonet_code,
+                        Antibiotic=row.get("Antibiotic", ""),
+                        Guidelines=row.get("Guidelines", "CLSI") or "CLSI",
+                        Potency=row.get("Potency", ""),
+                        Class=row.get("Class", ""),
+                        Subclass=row.get("Subclass", ""),
+                    )
+                    for whonet_code, row in missing_antibiotic_rows.items()
+                ],
+                batch_size=1000,
+            )
+            auto_created_antibiotics = len(missing_antibiotic_rows)
+            antibiotic_cache = {
+                antibiotic.Whonet_Abx: antibiotic
+                for antibiotic in Antibiotic_List.objects.filter(
+                    Whonet_Abx__in=touched_whonet_abx
+                )
+            }
+
+        if touched_whonet_abx and touched_years and touched_orgs and touched_test_methods:
+            for breakpoint in (
+                BreakpointsTable.objects
+                .filter(
+                    Whonet_Abx__in=touched_whonet_abx,
+                    Year__in=touched_years,
+                    Org__in=touched_orgs,
+                    Test_Method__in=touched_test_methods,
+                    Spec_code__in=touched_spec_codes,
+                )
+                .select_related("Antibiotic_list")
+                .order_by("id")
+            ):
+                key = breakpoint_identity(breakpoint)
+                if key in existing_by_identity:
+                    duplicate_ids.append(breakpoint.pk)
+                else:
+                    existing_by_identity[key] = breakpoint
+
+        if duplicate_ids:
+            BreakpointsTable.objects.filter(pk__in=duplicate_ids).delete()
+            deduped += len(duplicate_ids)
 
         for _, row in df.iterrows():
             whonet_code = row["Whonet_Abx"]
             if not whonet_code:
                 continue
 
-            antibiotic_ref = (
-                Antibiotic_List.objects
-                .filter(Whonet_Abx=whonet_code)
-                .first()
-            )
-
+            antibiotic_ref = antibiotic_cache.get(whonet_code)
             if not antibiotic_ref:
-                antibiotic_ref = Antibiotic_List.objects.create(
-                    Show=True,
-                    Retest=True,
-                    Show_Site=True,
-                    Show_Ars=True,
-                    Show_Value=True,
-                    Disk_Abx=excel_bool(row.get("Disk_Abx", False))
-                    or normalize_cell(row.get("Test_Method", ""), upper=True) == "DISK",
-                    Test_Method=normalize_cell(row.get("Test_Method", ""), upper=True),
-                    Tier=row.get("Tier", ""),
-                    Abx_code=normalize_cell(row.get("Abx_code", ""), upper=True),
-                    Whonet_Abx=whonet_code,
-                    Antibiotic=row.get("Antibiotic", ""),
-                    Guidelines=row.get("Guidelines", "CLSI") or "CLSI",
-                    Potency=row.get("Potency", ""),
-                    Class=row.get("Class", ""),
-                    Subclass=row.get("Subclass", ""),
-                )
-                auto_created_antibiotics += 1
-                print(
-                    f"Created Antibiotic_List entry for {whonet_code} "
-                    f"from breakpoint upload."
-                )
+                skipped += 1
+                continue
 
             date_modified = pd.to_datetime(
                 row.get("Date_Modified", ""),
@@ -6338,11 +6841,6 @@ def upload_breakpoints(request):
             )
             if pd.isna(date_modified):
                 date_modified = None
-
-            print(
-                f"✔ Linking breakpoint → "
-                f"{whonet_code} → Antibiotic_List.id={antibiotic_ref.id}"
-            )
 
             year = normalize_cell(row.get("Year", ""))
             org = normalize_cell(row.get("Org", ""))
@@ -6384,41 +6882,32 @@ def upload_breakpoints(request):
             if date_modified:
                 breakpoint_defaults["Date_Modified"] = date_modified
 
-            candidate_breakpoints = BreakpointsTable.objects.filter(
-                Whonet_Abx=whonet_code,
-                Year=year,
-                Org=org,
-                Test_Method=test_method,
-                Spec_code=spec_code,
-            ).order_by("id")
-            matching_breakpoint_ids = [
-                breakpoint.pk
-                for breakpoint in candidate_breakpoints
-                if (
-                    normalize_breakpoint_value(breakpoint.R_val) == r_val
-                    and normalize_breakpoint_value(breakpoint.I_val) == i_val
-                    and normalize_breakpoint_value(breakpoint.SDD_val) == sdd_val
-                    and normalize_breakpoint_value(breakpoint.S_val) == s_val
-                )
-            ]
-            matching_breakpoints = BreakpointsTable.objects.filter(
-                pk__in=matching_breakpoint_ids
-            ).order_by("id")
-
-            breakpoint_obj = matching_breakpoints.first()
+            identity = (
+                whonet_code,
+                year,
+                org,
+                test_method,
+                spec_code,
+                r_val,
+                i_val,
+                sdd_val,
+                s_val,
+            )
+            breakpoint_obj = existing_by_identity.get(identity)
             if breakpoint_obj:
-                duplicate_ids = list(
-                    matching_breakpoints
-                    .exclude(pk=breakpoint_obj.pk)
-                    .values_list("pk", flat=True)
-                )
-                if duplicate_ids:
-                    BreakpointsTable.objects.filter(pk__in=duplicate_ids).delete()
-                    deduped += len(duplicate_ids)
-                duplicate_skipped += 1
-                continue
+                changed_fields = []
+                for field_name, value in breakpoint_defaults.items():
+                    if getattr(breakpoint_obj, field_name) != value:
+                        setattr(breakpoint_obj, field_name, value)
+                        changed_fields.append(field_name)
+                if changed_fields:
+                    if breakpoint_obj.pk:
+                        changed_breakpoints.append(breakpoint_obj)
+                    updated += 1
+                else:
+                    unchanged += 1
             else:
-                BreakpointsTable.objects.create(
+                breakpoint_obj = BreakpointsTable(
                     Whonet_Abx=whonet_code,
                     Year=year,
                     Org=org,
@@ -6426,9 +6915,50 @@ def upload_breakpoints(request):
                     Spec_code=spec_code,
                     **breakpoint_defaults,
                 )
+                existing_by_identity[identity] = breakpoint_obj
+                new_breakpoints.append(breakpoint_obj)
                 linked += 1
 
-        deduped += delete_duplicate_breakpoints(BreakpointsTable.objects.all())
+        if new_breakpoints:
+            BreakpointsTable.objects.bulk_create(new_breakpoints, batch_size=1000)
+        if changed_breakpoints:
+            changed_breakpoints = list({
+                breakpoint.pk: breakpoint
+                for breakpoint in changed_breakpoints
+            }.values())
+            BreakpointsTable.objects.bulk_update(
+                changed_breakpoints,
+                [
+                    "Antibiotic_list",
+                    "Antibiotic",
+                    "Abx_code",
+                    "Guidelines",
+                    "Tier",
+                    "Potency",
+                    "Disk_Abx",
+                    "Emerging_specimen",
+                    "Emerging_Org_Flag",
+                    "Emerging_Abx_Flag",
+                    "Emerging_Pheno_Flag",
+                    "Emerging_Pheno_Flag_Other",
+                    "R_val",
+                    "I_val",
+                    "SDD_val",
+                    "S_val",
+                    "Alert_val",
+                    "Date_Modified",
+                ],
+                batch_size=1000,
+            )
+
+        touched_breakpoints = BreakpointsTable.objects.filter(
+            Whonet_Abx__in=touched_whonet_abx,
+            Year__in=touched_years,
+            Org__in=touched_orgs,
+            Test_Method__in=touched_test_methods,
+            Spec_code__in=touched_spec_codes,
+        )
+        deduped += delete_duplicate_breakpoints(touched_breakpoints)
 
         from apps.wgs_app.views import (
             reapply_final_breakpoints_for_batches,
@@ -6438,9 +6968,46 @@ def upload_breakpoints(request):
             regenerate_batch_concordance,
         )
 
-        batch_ids = list(
-            Batch_Table.objects.values_list("id", flat=True)
+        touched_year_ints = sorted(
+            year_int
+            for year_int in (_year_as_int(year) for year in touched_years)
+            if year_int is not None
         )
+        min_touched_year = touched_year_ints[0] if touched_year_ints else None
+
+        raw_batch_filter = Q(Batch_id__isnull=False)
+        final_batch_filter = Q(f_Batch_id__isnull=False)
+        if touched_orgs:
+            raw_batch_filter &= Q(Site_Org__in=touched_orgs) | Q(ars_OrgCode__in=touched_orgs)
+            final_batch_filter &= Q(f_Site_Org__in=touched_orgs) | Q(f_ars_OrgCode__in=touched_orgs)
+        if min_touched_year:
+            raw_batch_filter &= Q(Spec_Date__year__gte=min_touched_year)
+            final_batch_filter &= Q(f_Spec_Date__year__gte=min_touched_year)
+        if touched_whonet_abx:
+            raw_batch_filter &= (
+                Q(antibiotic_entries__ab_Abx_code__in=touched_whonet_abx)
+                | Q(antibiotic_entries__ab_Retest_Abx_code__in=touched_whonet_abx)
+                | Q(antibiotic_entries__ab_Abx__in=touched_whonet_abx)
+                | Q(antibiotic_entries__ab_Retest_Abx__in=touched_whonet_abx)
+            )
+            final_batch_filter &= (
+                Q(final_entries__ab_Abx_code__in=touched_whonet_abx)
+                | Q(final_entries__ab_Retest_Abx_code__in=touched_whonet_abx)
+                | Q(final_entries__ab_Abx__in=touched_whonet_abx)
+                | Q(final_entries__ab_Retest_Abx__in=touched_whonet_abx)
+            )
+
+        batch_ids = sorted(set(
+            Referred_Data.objects
+            .filter(raw_batch_filter)
+            .values_list("Batch_id_id", flat=True)
+            .distinct()
+        ) | set(
+            Final_Data.objects
+            .filter(final_batch_filter)
+            .values_list("f_Batch_id_id", flat=True)
+            .distinct()
+        ))
         refreshed_raw = reapply_raw_breakpoints_for_batches(batch_ids)
         refreshed_final = reapply_final_breakpoints_for_batches(batch_ids)
         refreshed_emerging = refresh_emerging_for_batches(batch_ids)
@@ -6453,10 +7020,12 @@ def upload_breakpoints(request):
         messages.success(
             request,
             f"✅ Uploaded successfully: {linked} created, "
-            f"{duplicate_skipped} skipped (already exists), "
+            f"{updated} updated, "
+            f"{unchanged} unchanged, "
             f"{auto_created_antibiotics} antibiotic master record(s) auto-created, "
             f"{skipped} skipped, "
-            f"{deduped} duplicate breakpoint record(s) removed."
+            f"{deduped} duplicate breakpoint record(s) removed. "
+            f"Refreshed {len(batch_ids)} affected batch(es)."
         )
         return redirect("breakpoints_view")
 
@@ -7130,13 +7699,128 @@ def _apply_referral_date_range(queryset, date_from=None, date_to=None):
     return queryset
 
 
+def _apply_field_date_range(queryset, field_name, date_from=None, date_to=None):
+    if date_from:
+        queryset = queryset.filter(**{f"{field_name}__gte": date_from})
+    if date_to:
+        queryset = queryset.filter(**{f"{field_name}__lte": date_to})
+    return queryset
+
+
+def _normalize_dashboard_accession(value):
+    return str(value or "").strip().replace(" ", "").upper()
+
+
+def _dashboard_wgs_visible_builtin_keys():
+    default_overview_keys = {
+        "bactscout",
+        "gambit",
+        "mlst",
+        "checkm2",
+        "assembly",
+        "amrfinder",
+    }
+    if not BuiltinWGSPipelineSetting.objects.exists():
+        return default_overview_keys
+    return set(
+        BuiltinWGSPipelineSetting.objects
+        .filter(show_in_overview=True)
+        .values_list("pipeline_key", flat=True)
+    )
+
+
+def _dashboard_wgs_accession_stats(year=None):
+    source_map = {
+        "bactscout": (BactScout, "BactScout_Accession"),
+        "gambit": (Gambit, "Gambit_Accession"),
+        "mlst": (Mlst, "Mlst_Accession"),
+        "checkm2": (Checkm2, "Checkm2_Accession"),
+        "assembly": (AssemblyScan, "Assembly_Accession"),
+        "amrfinder": (Amrfinderplus, "Amrfinder_Accession"),
+    }
+    visible_keys = _dashboard_wgs_visible_builtin_keys()
+    wgs_accessions = set()
+    for key, (model, accession_field) in source_map.items():
+        if key not in visible_keys:
+            continue
+        values = (
+            model.objects
+            .exclude(**{f"{accession_field}__isnull": True})
+            .exclude(**{accession_field: ""})
+            .values_list(accession_field, flat=True)
+            .distinct()
+        )
+        wgs_accessions.update(
+            normalized for value in values
+            for normalized in [_normalize_dashboard_accession(value)]
+            if normalized
+        )
+
+    custom_rows = (
+        CustomWGSPipelineRecord.objects
+        .filter(
+            pipeline__is_active=True,
+            pipeline__show_in_overview=True,
+            match_status="matched",
+        )
+        .values("accession", "matched_final_data_id")
+        .distinct()
+    )
+    for row in custom_rows:
+        for value in (row.get("accession"), row.get("matched_final_data_id")):
+            normalized = _normalize_dashboard_accession(value)
+            if normalized:
+                wgs_accessions.add(normalized)
+
+    final_qs = Final_Data.objects.exclude(f_AccessionNo__isnull=True).exclude(f_AccessionNo="")
+    if year and year != "all":
+        final_qs = final_qs.filter(f_Referral_Date__year=year)
+    final_accessions = {
+        normalized
+        for value in final_qs.values_list("f_AccessionNo", flat=True).distinct()
+        for normalized in [_normalize_dashboard_accession(value)]
+        if normalized
+    }
+
+    if year and year != "all":
+        try:
+            final_year = int(year)
+        except (TypeError, ValueError):
+            final_year = None
+        matched_accessions = wgs_accessions & final_accessions
+        unmatched_accessions = {
+            accession for accession in wgs_accessions - final_accessions
+            if final_year is None or _dashboard_accession_year(accession) == final_year
+        }
+    else:
+        matched_accessions = wgs_accessions & final_accessions
+        unmatched_accessions = wgs_accessions - final_accessions
+
+    return {
+        "total": len(matched_accessions | unmatched_accessions),
+        "matched": len(matched_accessions),
+        "unmatched": len(unmatched_accessions),
+        "matched_accessions": matched_accessions,
+        "unmatched_accessions": unmatched_accessions,
+    }
+
+
+def _dashboard_accession_year(value):
+    match = re.match(r"^(\d{2})ARS", str(value or "").strip().upper())
+    if match:
+        return 2000 + int(match.group(1))
+    match = re.match(r"^(\d{4})ARS", str(value or "").strip().upper())
+    if match:
+        return int(match.group(1))
+    return None
+
+
 @login_required(login_url="login")
 def download_combined_table(request):
     date_from, date_to = _get_export_date_range(request)
-    referred_data_entries = _apply_entry_date_range(
-        Referred_Data.objects.all(),
-        "Date_of_Entry",
-        "Spec_Date",
+    referred_data_entries = _apply_field_date_range(
+        Referred_Data.objects.prefetch_related("antibiotic_entries"),
+        "Referral_Date",
         date_from,
         date_to,
     )
@@ -7150,17 +7834,11 @@ def download_combined_table(request):
         .distinct()
     ):
         if abx_code:
-            unique_abx_codes.add(abx_code)
+            unique_abx_codes.add(abx_code.upper())
         if rt_code:
-            unique_abx_codes.add(rt_code)
+            unique_abx_codes.add(rt_code.upper())
 
     sorted_antibiotics = sorted(unique_abx_codes)
-
-    # Pre-check which antibiotics are disk types
-    disk_abx_lookup = {
-        abx: BreakpointsTable.objects.filter(Whonet_Abx=abx, Disk_Abx=True).exists()
-        for abx in sorted_antibiotics
-    }
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="combined_raw_data.csv"'
@@ -7293,35 +7971,40 @@ def download_combined_table(request):
 
     for referred in referred_data_entries:
         row = [getattr(referred, field, '') for field in static_fields]
-        abx_entries = AntibioticEntry.objects.filter(ab_idNum_referred=referred)
         abx_data = {}
 
-        for ab in abx_entries:
+        for ab in referred.antibiotic_entries.all():
             # Initial result
             if ab.ab_Abx_code:
-                code = ab.ab_Abx_code
+                code = ab.ab_Abx_code.upper()
                 if code not in abx_data:
                     abx_data[code] = {}
-                if not is_blank(ab.ab_MIC_value) or not is_blank(ab.ab_Disk_value):
-                    val = ab.ab_Disk_value if not is_blank(ab.ab_Disk_value) else f"{ab.ab_MIC_operand or ''}{ab.ab_MIC_value}"
-                    ris = ab.ab_Disk_enRIS or ab.ab_MIC_enRIS
-                    abx_data[code].update({
-                        '_Val': val,
-                        '_RIS': ris,
-                    })
+                val = ""
+                if not is_blank(ab.ab_Disk_value):
+                    val = ab.ab_Disk_value
+                elif not is_blank(ab.ab_MIC_value):
+                    val = f"{ab.ab_MIC_operand or ''}{ab.ab_MIC_value}"
+                ris = ab.ab_Disk_enRIS or ab.ab_MIC_enRIS
+                abx_data[code].update({
+                    '_Val': val,
+                    '_RIS': ris,
+                })
 
             # Retest result
             if ab.ab_Retest_Abx_code:
-                code = ab.ab_Retest_Abx_code
+                code = ab.ab_Retest_Abx_code.upper()
                 if code not in abx_data:
                     abx_data[code] = {}
-                if not is_blank(ab.ab_Retest_MICValue) or not is_blank(ab.ab_Retest_DiskValue):
-                    rt_val = ab.ab_Retest_DiskValue if not is_blank(ab.ab_Retest_DiskValue) else f"{ab.ab_Retest_MIC_operand or ''}{ab.ab_Retest_MICValue}"
-                    rt_ris = ab.ab_Retest_Disk_enRIS or ab.ab_Retest_MIC_enRIS
-                    abx_data[code].update({
-                        'RT_Val': rt_val,
-                        'RT_RIS': rt_ris,
-                    })
+                rt_val = ""
+                if not is_blank(ab.ab_Retest_DiskValue):
+                    rt_val = ab.ab_Retest_DiskValue
+                elif not is_blank(ab.ab_Retest_MICValue):
+                    rt_val = f"{ab.ab_Retest_MIC_operand or ''}{ab.ab_Retest_MICValue}"
+                rt_ris = ab.ab_Retest_Disk_enRIS or ab.ab_Retest_MIC_enRIS
+                abx_data[code].update({
+                    'RT_Val': rt_val,
+                    'RT_RIS': rt_ris,
+                })
 
         # Populate row with antibiotic data
         for abx in sorted_antibiotics:
@@ -10876,6 +11559,65 @@ def _tat_pressure_for_days(days, target_days=None):
     return "safe"
 
 
+def _is_tat_head_user(user):
+    if not user or not user.is_authenticated:
+        return False
+    try:
+        return bool(user.arsp_staff_profile.Is_Default_Head)
+    except Exception:
+        return False
+
+
+def _tat_edit_permissions(user):
+    roles = get_user_roles(user)
+    is_admin = ROLE_ADMIN in roles
+    is_verifier = ROLE_VERIFIER in roles
+    is_lab_manager = ROLE_LAB_MANAGER in roles
+    is_head = _is_tat_head_user(user)
+    is_review_user = bool(is_verifier or is_lab_manager or is_head)
+
+    return {
+        "can_edit_scanning": bool(is_admin or not is_review_user),
+        "can_edit_location": bool(is_admin or ROLE_CHECKER in roles or is_verifier),
+        "can_edit_tat_header": bool(is_admin or not is_review_user),
+        "is_tat_review_user": is_review_user,
+        "is_tat_head": is_head,
+    }
+
+
+def _apply_tat_form_permissions(form, permissions):
+    locked_fields = []
+    if not permissions.get("can_edit_tat_header"):
+        locked_fields.extend([
+            "tat_SiteCode",
+            "tat_Batch_Code",
+            "tat_Referral_Date",
+            "tat_Num_Isolate",
+            "tat_Date_Released",
+            "tat_Remarks",
+        ])
+    if not permissions.get("can_edit_location"):
+        locked_fields.append("tat_Batch_Location")
+    if not permissions.get("can_edit_scanning"):
+        locked_fields.extend([
+            "tat_Scanning_raw",
+            "tat_Scanning_ws",
+            "tat_Scanning_final",
+        ])
+
+    for field_name in locked_fields:
+        field = form.fields.get(field_name)
+        if not field:
+            continue
+        field.disabled = True
+        existing_class = field.widget.attrs.get("class", "")
+        field.widget.attrs["class"] = f"{existing_class} bg-light".strip()
+        field.widget.attrs["title"] = "Locked for this account role; process logging remains editable."
+        field.widget.attrs["style"] = (
+            f"{field.widget.attrs.get('style', '')}; cursor: not-allowed;"
+        ).strip("; ")
+
+
 def _build_tat_running_rows(tat_records, configs):
     rows = []
     default_display_target_days = 40
@@ -11366,6 +12108,7 @@ def tat_monitoring_view(request, batch_id):
 
 
     batch = get_object_or_404(Batch_Table, id=batch_id)
+    from apps.verification.models import VerificationCase
 
 
     tat_obj, created = TATform.objects.get_or_create(
@@ -11401,6 +12144,23 @@ def tat_monitoring_view(request, batch_id):
             "tat_Date_Last_Update",
         ])
 
+    verification_case = (
+        VerificationCase.objects
+        .filter(
+            final_batch=batch,
+            final_accession__isnull=True,
+        )
+        .exclude(status=VerificationCase.STATUS_WITHDRAWN)
+        .order_by("-updated_at", "-created_at")
+        .first()
+    )
+    roles = get_user_roles(request.user)
+    tat_edit_permissions = _tat_edit_permissions(request.user)
+    can_auto_release_from_tat = bool(
+        verification_case
+        and verification_case.status == VerificationCase.STATUS_SIGNED_BY_HEAD
+        and roles.intersection({ROLE_ADMIN, ROLE_CHECKER})
+    )
 
     if request.method == "POST":
 
@@ -11408,6 +12168,7 @@ def tat_monitoring_view(request, batch_id):
             request.POST,
             instance=tat_obj
         )
+        _apply_tat_form_permissions(form, tat_edit_permissions)
 
         formset = TATStepFormSet(
             request.POST,
@@ -11453,6 +12214,26 @@ def tat_monitoring_view(request, batch_id):
                         + ", ".join(ante_dated_steps[:5])
                     )
 
+                if (
+                    tat_instance.tat_Date_Released
+                    and verification_case
+                    and verification_case.status == VerificationCase.STATUS_SIGNED_BY_HEAD
+                    and roles.intersection({ROLE_ADMIN, ROLE_CHECKER})
+                ):
+                    verification_case.status = VerificationCase.STATUS_RELEASED
+                    verification_case.released_at = timezone.now()
+                    verification_case.mark_qr_generated()
+                    verification_case.save(update_fields=[
+                        "status",
+                        "released_at",
+                        "qr_generated_at",
+                        "updated_at",
+                    ])
+                    messages.success(
+                        request,
+                        "Ready-for-release verification case was marked Released from the TAT release date."
+                    )
+
             messages.success(
                 request,
                 "TAT Monitoring updated successfully."
@@ -11467,6 +12248,7 @@ def tat_monitoring_view(request, batch_id):
             messages.error(request, "Please correct the errors below.")
     else:
         form = TATMonitoringForm(instance=tat_obj)
+        _apply_tat_form_permissions(form, tat_edit_permissions)
 
         formset = TATStepFormSet(
             instance=tat_obj,
@@ -11488,6 +12270,9 @@ def tat_monitoring_view(request, batch_id):
                 .values_list("date_received", flat=True)
                 .first()
             ),
+            "verification_case": verification_case,
+            "can_auto_release_from_tat": can_auto_release_from_tat,
+            **tat_edit_permissions,
         }
     )
 
@@ -12783,6 +13568,7 @@ def tat_running_list(request):
             "years": years,
             "status_choices": ["Ongoing", "Released", "Overdue"],
             "tat_location_choices": tat_location_choices,
+            **_tat_edit_permissions(request.user),
             "sort_links": sort_context["sort_links"],
             "current_sort": sort_context["current_sort"],
             "current_order": sort_context["current_order"],
@@ -12846,6 +13632,7 @@ def tat_running_process_list(request):
             "year": year,
             "years": years,
             "status_choices": ["Ongoing", "Released", "Overdue"],
+            **_tat_edit_permissions(request.user),
             "sort_links": sort_context["sort_links"],
             "current_sort": sort_context["current_sort"],
             "current_order": sort_context["current_order"],
@@ -12857,6 +13644,12 @@ def tat_running_process_list(request):
 @login_required(login_url="login")
 @require_POST
 def update_tat_scanning_flags(request, pk):
+    if not _tat_edit_permissions(request.user)["can_edit_scanning"]:
+        return JsonResponse({
+            "ok": False,
+            "error": "Scanning checkboxes are locked for verifier, lab manager, and head accounts."
+        }, status=403)
+
     tat = get_object_or_404(TATform, pk=pk)
     allowed_fields = {
         "tat_Scanning_raw",
@@ -12887,6 +13680,12 @@ def update_tat_scanning_flags(request, pk):
 @login_required(login_url="login")
 @require_POST
 def update_tat_location(request, pk):
+    if not _tat_edit_permissions(request.user)["can_edit_location"]:
+        return JsonResponse({
+            "ok": False,
+            "error": "TAT location editing is available only to checker/admin or verifier accounts."
+        }, status=403)
+
     tat = get_object_or_404(TATform, pk=pk)
     location = (request.POST.get("location") or "").strip() or "n/a"
     is_valid_location = (

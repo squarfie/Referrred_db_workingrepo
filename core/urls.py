@@ -11,6 +11,7 @@ urlpatterns = [
     path("", include("apps.authentication.urls")), # Auth routes - login / register
     path("wgs/", include("apps.wgs_app.urls")),
     path("final/", include("apps.home_final.urls")),
+    path("verification/", include("apps.verification.urls")),
     path("", include("apps.home.urls")),             # UI Kits Html files
   
 ]

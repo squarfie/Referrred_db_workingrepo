@@ -39,6 +39,20 @@ def default_signature_staff(default_field):
     return arsStaff_Details.objects.filter(**{default_field: True}).order_by("Staff_Name").first()
 
 
+def org_code_label(obj):
+    return str(getattr(obj, "Whonet_Org_Code", "") or "").lower()
+
+
+def use_lowercase_org_code_widget(field):
+    css_classes = field.widget.attrs.get("class", "")
+    if "text-lowercase" not in css_classes.split():
+        field.widget.attrs["class"] = f"{css_classes} text-lowercase".strip()
+    style = field.widget.attrs.get("style", "")
+    if "text-transform" not in style:
+        separator = "" if not style or style.strip().endswith(";") else "; "
+        field.widget.attrs["style"] = f"{style}{separator}text-transform: lowercase;"
+
+
 def resolve_organism_choice(value, organism_name=""):
     candidates = [
         str(value or "").strip(),
@@ -279,10 +293,12 @@ class Referred_Form(forms.ModelForm):
             self.fields['Age_Display'].widget.attrs['tabindex'] = '-1'
             # Dynamic queryset loading
             self.fields['Site_Org'].queryset = Organism_List.objects.all() # Always load the latest Site Code
-            self.fields['Site_Org'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
+            self.fields['Site_Org'].label_from_instance = org_code_label # Specify the field to display
+            use_lowercase_org_code_widget(self.fields['Site_Org'])
             self.fields['Site_OrgName'].label_from_instance = lambda obj: obj.Organism 
             self.fields['ars_OrgCode'].queryset = Organism_List.objects.all() # Always load the latest Organism_List
-            self.fields['ars_OrgCode'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
+            self.fields['ars_OrgCode'].label_from_instance = org_code_label # Specify the field to display
+            use_lowercase_org_code_widget(self.fields['ars_OrgCode'])
             self.fields['ars_OrgName'].label_from_instance = lambda obj: obj.Organism 
             if not self.is_bound and getattr(self.instance, "pk", None):
                 site_org = (getattr(self.instance, "Site_Org", "") or "").strip()
@@ -535,6 +551,7 @@ class BatchEditForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+                lock_workflow_signatories = kwargs.pop("lock_workflow_signatories", False)
                 super(BatchEditForm, self).__init__(*args, **kwargs)
                 self.fields['bat_SiteCode'].queryset = SiteData.objects.all()
                 self.fields['bat_Encoder'].queryset = staff_with_role(ROLE_ENCODER, ROLE_ADMIN)
@@ -564,6 +581,20 @@ class BatchEditForm(forms.ModelForm):
                     if default_head and not (getattr(self.instance, "bat_Head", "") or "").strip():
                         self.initial["bat_Head"] = default_head.Staff_Name
                         self.initial["bat_Head_Lic"] = default_head.Staff_License or ""
+
+                if lock_workflow_signatories:
+                    for field_name in (
+                        "bat_Verifier",
+                        "bat_Ver_Lic",
+                        "bat_LabManager",
+                        "bat_Lab_Lic",
+                        "bat_Head",
+                        "bat_Head_Lic",
+                    ):
+                        self.fields[field_name].disabled = True
+                        self.fields[field_name].widget.attrs["title"] = (
+                            "This signatory is controlled by the verification workflow."
+                        )
 
 
 # --- Custom cleaning methods to save Staff_Name as string ---
@@ -667,22 +698,17 @@ class BreakpointsForm(RequiredAttrsModelForm):
         ("SDD", "SDD - Susceptible dose-dependent"),
     ]
 
-    Org = forms.ModelChoiceField(
-        queryset=Organism_List.objects.all(),
-        to_field_name='Whonet_Org_Code',
+    Org = forms.ChoiceField(
+        choices=[],
         widget=forms.Select(attrs={'class': "form-select fw-bold", "required": "required"}),
-        empty_label="Select Organism",
         required=True,
     )
 
-    Whonet_Abx = forms.ModelChoiceField(
-            queryset=Antibiotic_List.objects.all(),
-            to_field_name='Whonet_Abx',  # Specify the field you want as the value
-            widget=forms.Select(attrs={'class': "form-select fw-bold", 'style': 'max-width: auto;', "required": "required"}),
-            empty_label="Select Antibiotic Code",
-            required=True,
-            
-        )
+    Whonet_Abx = forms.ChoiceField(
+        choices=[],
+        widget=forms.Select(attrs={'class': "form-select fw-bold", "required": "required"}),
+        required=True,
+    )
 
     Antibiotic = forms.CharField(
         required=False,
@@ -705,6 +731,7 @@ class BreakpointsForm(RequiredAttrsModelForm):
             attrs={
                 "class": "form-select fw-bold specimen-group-select",
                 "size": 8,
+                "data-skip-auto-clear": "true",
             }
         ),
         required=False,
@@ -716,6 +743,7 @@ class BreakpointsForm(RequiredAttrsModelForm):
             attrs={
                 "class": "form-select fw-bold",
                 "size": 5,
+                "data-skip-auto-clear": "true",
             }
         ),
         required=False,
@@ -727,10 +755,27 @@ class BreakpointsForm(RequiredAttrsModelForm):
             attrs={
                 "class": "form-select fw-bold",
                 "size": 5,
+                "data-skip-auto-clear": "true",
             }
         ),
         required=False,
     )
+
+    @classmethod
+    def _normal_interpretation_code(cls, value):
+        text = str(value or "").strip().upper()
+        if not text:
+            return ""
+        text = text.split(" - ", 1)[0].strip()
+        aliases = {
+            "RESISTANT": "R",
+            "INTERMEDIATE": "I",
+            "SUSCEPTIBLE": "S",
+            "NONSUSCEPTIBLE": "NS",
+            "NON-SUSCEPTIBLE": "NS",
+            "SUSCEPTIBLE DOSE-DEPENDENT": "SDD",
+        }
+        return aliases.get(text, text)
 
 
     class Meta:
@@ -739,6 +784,38 @@ class BreakpointsForm(RequiredAttrsModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        org_choices = [("", "Select Organism")]
+        org_choices.extend(
+            (code, f"{code} - {name}" if name else code)
+            for code, name in (
+                Organism_List.objects
+                .exclude(Whonet_Org_Code__isnull=True)
+                .exclude(Whonet_Org_Code__exact="")
+                .order_by("Whonet_Org_Code")
+                .values_list("Whonet_Org_Code", "Organism")
+            )
+        )
+        current_org = (getattr(self.instance, "Org", "") or "").strip()
+        if current_org and current_org not in {value for value, _ in org_choices}:
+            org_choices.append((current_org, current_org))
+        self.fields["Org"].choices = org_choices
+
+        whonet_choices = [("", "Select WHONET Code")]
+        whonet_choices.extend(
+            (code, f"{code} - {name}" if name else code)
+            for code, name in (
+                Antibiotic_List.objects
+                .exclude(Whonet_Abx__isnull=True)
+                .exclude(Whonet_Abx__exact="")
+                .order_by("Whonet_Abx")
+                .values_list("Whonet_Abx", "Antibiotic")
+            )
+        )
+        current_whonet = (getattr(self.instance, "Whonet_Abx", "") or "").strip()
+        if current_whonet and current_whonet not in {value for value, _ in whonet_choices}:
+            whonet_choices.append((current_whonet, current_whonet))
+        self.fields["Whonet_Abx"].choices = whonet_choices
 
         group_ids = (
             SpecimenTypeModel.objects
@@ -784,11 +861,24 @@ class BreakpointsForm(RequiredAttrsModelForm):
             "Emerging_Pheno_Flag_Other",
         ):
             expression = getattr(self.instance, field_name, "") or ""
-            self.initial[field_name] = [
-                value.strip().upper()
+            selected_values = [
+                self._normal_interpretation_code(value)
                 for value in expression.split("|")
-                if value.strip()
+                if self._normal_interpretation_code(value)
             ]
+            self.initial[field_name] = selected_values
+            posted_values = self.data.getlist(field_name) if self.is_bound else []
+            valid_values = {value for value, _ in self.fields[field_name].choices}
+            for value in selected_values + [
+                self._normal_interpretation_code(value)
+                for value in posted_values
+            ]:
+                if value and value not in valid_values:
+                    self.fields[field_name].choices = [
+                        *self.fields[field_name].choices,
+                        (value, value),
+                    ]
+                    valid_values.add(value)
 
     def clean_Spec_code(self):
         selected_codes = self.cleaned_data.get("Spec_code") or []
@@ -839,6 +929,13 @@ class BreakpointsForm(RequiredAttrsModelForm):
         org = self._normal_text(cleaned_data.get("Org"))
         test_method = self._normal_text(cleaned_data.get("Test_Method"), upper=True)
         spec_code = self._normal_text(cleaned_data.get("Spec_code"))
+        disk_abx = bool(cleaned_data.get("Disk_Abx"))
+
+        if test_method == "DISK":
+            cleaned_data["Disk_Abx"] = True
+        elif disk_abx:
+            test_method = "DISK"
+            cleaned_data["Test_Method"] = "DISK"
 
         if not (whonet_abx and year and org and test_method):
             return cleaned_data
@@ -885,6 +982,12 @@ class BreakpointsForm(RequiredAttrsModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+        instance.Whonet_Abx = self._normal_text(instance.Whonet_Abx, upper=True)
+        instance.Org = self._normal_text(instance.Org)
+        instance.Test_Method = self._normal_text(instance.Test_Method, upper=True)
+        if instance.Test_Method == "DISK" or instance.Disk_Abx:
+            instance.Test_Method = "DISK"
+            instance.Disk_Abx = True
 
         for field_name in (
             "Emerging_Pheno_Flag",
@@ -895,21 +998,22 @@ class BreakpointsForm(RequiredAttrsModelForm):
                 instance,
                 field_name,
                 "|".join(dict.fromkeys(
-                    value.strip().upper()
+                    self._normal_interpretation_code(value)
                     for value in values
-                    if value.strip()
+                    if self._normal_interpretation_code(value)
                 )),
             )
 
         if instance.Whonet_Abx:
             try:
                 abx = Antibiotic_List.objects.get(
-                    Antibiotic=instance.Whonet_Abx
+                    Whonet_Abx=instance.Whonet_Abx
                 )
 
                 instance.Antibiotic = abx.Antibiotic
                 instance.Abx_code = abx.Abx_code
                 instance.Tier = abx.Tier
+                instance.Antibiotic_list = abx
 
             except Antibiotic_List.DoesNotExist:
                 pass
@@ -1085,17 +1189,20 @@ class AntibioticsForm(RequiredAttrsModelForm):
         test_method = (instance.Test_Method or "").strip().upper()
         instance.Test_Method = test_method
         instance.Disk_Abx = test_method == "DISK"
+        model_field_names = {field.name for field in instance._meta.fields}
 
         if self.instance and self.instance.pk:
             for hidden_flag in ("Show_All", "Show_Panel", "Method_specific"):
+                if hidden_flag not in model_field_names:
+                    continue
                 if hidden_flag not in self.data:
                     setattr(instance, hidden_flag, getattr(self.instance, hidden_flag))
         else:
-            if "Show_All" not in self.data:
+            if "Show_All" in model_field_names and "Show_All" not in self.data:
                 instance.Show_All = True
-            if "Show_Panel" not in self.data:
+            if "Show_Panel" in model_field_names and "Show_Panel" not in self.data:
                 instance.Show_Panel = False
-            if "Method_specific" not in self.data:
+            if "Method_specific" in model_field_names and "Method_specific" not in self.data:
                 instance.Method_specific = False
         
         # Replace None with an empty string or another default value

@@ -7,17 +7,93 @@
 {% block stylesheets %}
 <link rel="stylesheet" href="{% static 'assets/css/settings.css' %}">
 <link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<style>
+    .staff-edit-header-row {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start !important;
+        gap: 1rem;
+        width: 100%;
+        min-height: 42px;
+        text-align: left;
+    }
+
+    .staff-edit-page-header > .container-fluid,
+    .staff-edit-page-header .header-body {
+        width: 100% !important;
+        max-width: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        text-align: left !important;
+    }
+
+    .staff-edit-title-group {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 1rem;
+        min-width: 0;
+        margin-left: 0 !important;
+        text-align: left;
+    }
+
+    .staff-edit-title-group nav {
+        margin-left: 0 !important;
+    }
+
+    .staff-edit-title-group .breadcrumb {
+        margin: 0;
+        justify-content: flex-start;
+    }
+
+    .staff-edit-actions {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        flex: 0 0 auto;
+        margin-left: auto;
+        text-align: right;
+    }
+
+    @media (max-width: 767.98px) {
+        .staff-edit-header-row {
+            align-items: flex-start;
+            flex-direction: column;
+            min-height: auto;
+        }
+
+        .staff-edit-title-group {
+            position: static;
+            transform: none;
+            align-items: flex-start;
+            flex-direction: column;
+            gap: .5rem;
+        }
+
+        .staff-edit-actions {
+            position: static;
+            transform: none;
+            text-align: left;
+        }
+    }
+</style>
 {% endblock stylesheets %}
 
 {% block content %}
-<div class="header bg-primary pb-6 settings-edit-header" style="background-size: cover; background-image: url(/static/assets/img/theme/micros_2.png); background-position: center bottom;">
+<div class="header bg-primary pb-6 settings-edit-header staff-edit-page-header" style="background-size: cover; background-image: url(/static/assets/img/theme/micros_2.png); background-position: center bottom;">
     <span class="mask bg-gradient-default opacity-3"></span>
     <div class="container-fluid">
         <div class="header-body">
-            <div class="row align-items-center py-4">
-                <div class="col-lg-7 col-7">
-                    <h6 class="h2 text-white d-inline-block mb-0">Edit ARSP Staff</h6>
-                    <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+            <div class="py-4 staff-edit-header-row">
+                <div class="staff-edit-title-group">
+                    <h6 class="h2 text-white d-inline-block mb-0" >Edit ARSP Staff</h6>
+                    <nav aria-label="breadcrumb" class="d-none d-md-inline-block">
                         <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
                             <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
                             <li class="breadcrumb-item"><a href="{% url 'contact_view' %}">ARSP Staff</a></li>
@@ -25,7 +101,7 @@
                         </ol>
                     </nav>
                 </div>
-                <div class="col-lg-5 col-5 text-right">
+                <div class="staff-edit-actions">
                     <a class="btn btn-sm btn-secondary" href="{% url 'contact_view' %}">
                         <i class="fas fa-arrow-left mr-1"></i>Back
                     </a>

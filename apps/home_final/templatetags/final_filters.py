@@ -320,11 +320,38 @@ def getattr(obj, attr_name):
 
 
 # updated auto scientific format but when n/a value put an empty string
+# @register.filter
+# def scientific_name(value):
+#     """
+#     Format organism names for result printouts:
+#     Genus capitalized, species/subsequent words lowercase.
+
+#     If value is N/A, NA, None, null, or nan, return blank.
+#     """
+
+#     text = re.sub(r"\s+", " ", str(value or "").strip())
+
+#     if not text:
+#         return ""
+
+#     if text.lower() in ["n/a", "na", "n.a.", "none", "null", "nan"]:
+#         return ""
+
+#     words = text.split(" ")
+#     formatted = [words[0][:1].upper() + words[0][1:].lower()]
+#     formatted.extend(word.lower() for word in words[1:])
+
+#     return " ".join(formatted)
+
+
+# updated auto scientific format but when n/a value put an empty string and keep Typhi capitalized
 @register.filter
 def scientific_name(value):
     """
     Format organism names for result printouts:
     Genus capitalized, species/subsequent words lowercase.
+
+    The word "Typhi" retains its proper capitalization.
 
     If value is N/A, NA, None, null, or nan, return blank.
     """
@@ -338,10 +365,21 @@ def scientific_name(value):
         return ""
 
     words = text.split(" ")
-    formatted = [words[0][:1].upper() + words[0][1:].lower()]
-    formatted.extend(word.lower() for word in words[1:])
+
+    formatted = [
+        words[0][:1].upper() + words[0][1:].lower()
+    ]
+
+    formatted.extend(
+        "Typhi" if word.lower() == "typhi" else word.lower()
+        for word in words[1:]
+    )
 
     return " ".join(formatted)
+
+
+
+
 
 
 @register.filter
@@ -593,49 +631,144 @@ def mic_format(value):
         return value
 
 
+# def _recommendation_items(value):
+#     if value is None or str(value).strip() == "":
+#         return []
+
+#     text = str(value).strip()
+
+#     # Convert HTML line breaks to normal newlines
+#     text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+
+#     # Split text when it sees existing numbering like:
+#     # 1. text
+#     # 2. text
+#     # 1) text
+#     # 2) text
+#     parts = re.split(r'(?=\b\d+[\.\)]\s*)', text)
+
+#     cleaned_items = []
+
+#     for part in parts:
+#         part = part.strip()
+
+#         if not part:
+#             continue
+
+#         # Remove old numbering
+#         part = re.sub(r'^\d+[\.\)]\s*', '', part).strip()
+
+#         if part:
+#             cleaned_items.append(part)
+
+#     return cleaned_items
+
+
+# # to format numbering list in recommnedation field
+
+# @register.filter
+# def number_recommendations(value):
+#     """
+#     Forces recommendation text into a numbered list.
+
+#     Example output:
+#     1. First recommendation
+#     2. Second recommendation
+#     """
+
+#     cleaned_items = _recommendation_items(value)
+
+#     if not cleaned_items:
+#         return mark_safe("&nbsp;")
+
+#     numbered_lines = []
+
+#     for index, item in enumerate(cleaned_items, start=1):
+#         numbered_lines.append(
+#             f'<strong>{index}.</strong> {escape(item)}'
+#         )
+
+#     return mark_safe("<br/>".join(numbered_lines))
+
+
+
+
+
 def _recommendation_items(value):
     if value is None or str(value).strip() == "":
         return []
 
-    text = str(value).strip()
+    text = str(value)
 
-    # Convert HTML line breaks to normal newlines
-    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+    # Convert HTML <br> tags into actual newlines
+    text = re.sub(
+        r'<br\s*/?>',
+        '\n',
+        text,
+        flags=re.IGNORECASE
+    )
 
-    # Split text when it sees existing numbering like:
-    # 1. text
-    # 2. text
-    # 1) text
-    # 2) text
-    parts = re.split(r'(?=\b\d+[\.\)]\s*)', text)
+    # Normalize line endings
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+
+    lines = text.split('\n')
 
     cleaned_items = []
+    current_item = None
 
-    for part in parts:
-        part = part.strip()
+    for line in lines:
 
-        if not part:
+        # Skip completely empty lines
+        if not line.strip():
             continue
 
-        # Remove old numbering
-        part = re.sub(r'^\d+[\.\)]\s*', '', part).strip()
+        # Check if the line was originally indented
+        is_indented = bool(re.match(r'^[ \t]+', line))
 
-        if part:
-            cleaned_items.append(part)
+        stripped_line = line.strip()
+
+        # Check for existing numbering:
+        #
+        # 1. Recommendation
+        # 2) Recommendation
+        numbered_match = re.match(
+            r'^\d+\s*[\.\)]\s*(.*)$',
+            stripped_line
+        )
+
+        if numbered_match:
+            # Save previous recommendation first
+            if current_item is not None:
+                cleaned_items.append(current_item)
+
+            # Start new recommendation without old numbering
+            current_item = numbered_match.group(1).strip()
+
+        elif is_indented and current_item is not None:
+            # Indented line = continuation/sub-item of current recommendation
+            current_item += '\n' + line
+
+        else:
+            # Unnumbered, non-indented line = new recommendation
+            if current_item is not None:
+                cleaned_items.append(current_item)
+
+            current_item = stripped_line
+
+    # Add final item
+    if current_item is not None:
+        cleaned_items.append(current_item)
 
     return cleaned_items
 
 
-# to format numbering list in recommnedation field
-
 @register.filter
 def number_recommendations(value):
     """
-    Forces recommendation text into a numbered list.
+    Formats recommendation text as a numbered list.
 
-    Example output:
-    1. First recommendation
-    2. Second recommendation
+    Indented lines remain under the preceding recommendation
+    without receiving their own number.
     """
 
     cleaned_items = _recommendation_items(value)
@@ -646,11 +779,50 @@ def number_recommendations(value):
     numbered_lines = []
 
     for index, item in enumerate(cleaned_items, start=1):
+
+        # Separate main recommendation from continuation lines
+        item_lines = item.split('\n')
+
+        formatted_lines = []
+
+        for line_number, line in enumerate(item_lines):
+
+            if line_number == 0:
+                # Main recommendation
+                formatted_lines.append(
+                    f'<strong>{index}.</strong> {escape(line.strip())}'
+                )
+
+            else:
+                # Preserve indentation of continuation line
+                expanded_line = line.expandtabs(4)
+
+                leading_spaces = len(expanded_line) - len(
+                    expanded_line.lstrip(' ')
+                )
+
+                continuation_text = expanded_line.strip()
+
+                # Convert original indentation to HTML spaces
+                indentation = '&nbsp;' * leading_spaces
+
+                formatted_lines.append(
+                    f'{indentation}{escape(continuation_text)}'
+                )
+
         numbered_lines.append(
-            f'<strong>{index}.</strong> {escape(item)}'
+            '<br/>'.join(formatted_lines)
         )
 
-    return mark_safe("<br/>".join(numbered_lines))
+    return mark_safe(
+        '<br/>'.join(numbered_lines)
+    )
+
+
+
+
+
+
 
 
 # do not put number list if only one recommendation is encoded

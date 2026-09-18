@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'phonenumbers',
     'apps.wgs_app.apps.WgsAppConfig', 
     'apps.home_final.apps.HomeFinalConfig',
+    'apps.verification.apps.VerificationConfig',
+
     # "apps.wgs_app",
 ]
 

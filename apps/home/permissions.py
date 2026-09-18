@@ -17,6 +17,8 @@ LEGACY_ROLE_LAB_MANAGER = "Lab Manager"
 WRITE_ROLES = {ROLE_ADMIN, ROLE_CHECKER, ROLE_ENCODER}
 WGS_WRITE_ROLES = {ROLE_ADMIN, ROLE_CHECKER, ROLE_LAB_ENCODER}
 SETTINGS_ROLES = {ROLE_ADMIN, ROLE_CHECKER}
+VERIFICATION_OUTPUT_READY_STATUSES = {"signed_by_head", "released"}
+VERIFICATION_OUTPUT_INACTIVE_STATUSES = {"withdrawn_by_checker"}
 ROLE_BY_NAME = {
     ROLE_ADMIN.lower(): ROLE_ADMIN,
     ROLE_VERIFIER.lower(): ROLE_VERIFIER,
@@ -117,6 +119,9 @@ def get_user_role(user):
 def role_flags(user):
     roles = get_user_roles(user)
     role = get_user_role(user)
+    review_roles = {ROLE_VERIFIER, ROLE_LAB_MANAGER}
+    operational_roles = {ROLE_ADMIN, ROLE_CHECKER, ROLE_ENCODER, ROLE_LAB_ENCODER}
+    is_review_only = bool(roles & review_roles) and not bool(roles & operational_roles)
     return {
         "role": role or ROLE_CHECKER,
         "roles": sorted(roles),
@@ -127,6 +132,14 @@ def role_flags(user):
         "is_lab_encoder": ROLE_LAB_ENCODER in roles,
         "is_checker": ROLE_CHECKER in roles or not roles,
         "is_lab_manager": ROLE_LAB_MANAGER in roles,
+        "is_review_only": is_review_only,
+        "can_send_to_verification": bool(roles & {ROLE_ADMIN, ROLE_CHECKER}),
+        "can_view_correction_badges": ROLE_CHECKER in roles or not roles,
+        "can_print_final_pdf": bool(roles & {ROLE_ADMIN, ROLE_CHECKER, ROLE_ENCODER, ROLE_VERIFIER, ROLE_LAB_MANAGER}),
+        "can_print_raw_pdf": bool(roles & {ROLE_ADMIN, ROLE_CHECKER, ROLE_ENCODER, ROLE_VERIFIER, ROLE_LAB_MANAGER}),
+        "can_print_concordance": bool(roles & {ROLE_ADMIN, ROLE_CHECKER, ROLE_ENCODER, ROLE_VERIFIER, ROLE_LAB_MANAGER}),
+        "are_disabled": bool(roles & {ROLE_CHECKER, ROLE_ENCODER}),
+        "can_view_verification": bool(roles & {ROLE_ADMIN, ROLE_VERIFIER, ROLE_LAB_MANAGER}),
         "can_read": bool(roles) or (user and user.is_authenticated),
         "can_create": bool(roles & WRITE_ROLES),
         "can_update": bool(roles & WRITE_ROLES),
@@ -141,6 +154,18 @@ def role_flags(user):
         "can_view_all": bool(roles & {ROLE_ADMIN, ROLE_CHECKER, ROLE_VERIFIER, ROLE_LAB_MANAGER}),
         "can_view_wgs": bool(roles & {ROLE_ADMIN, ROLE_CHECKER, ROLE_VERIFIER, ROLE_LAB_MANAGER, ROLE_LAB_ENCODER}) or bool(user and user.is_authenticated),
     }
+
+
+def verification_case_blocks_operational_outputs(case):
+    return bool(
+        case
+        and case.status not in VERIFICATION_OUTPUT_READY_STATUSES
+        and case.status not in VERIFICATION_OUTPUT_INACTIVE_STATUSES
+    )
+
+
+def verification_case_blocks_dmu_outputs(case):
+    return verification_case_blocks_operational_outputs(case)
 
 
 def can_manage_batch(user, batch):

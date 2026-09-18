@@ -426,6 +426,25 @@
             <i class="fa fa-trash text-danger" style="font-size: 3rem;"></i>
             <h4 class="mt-3">Are you sure?</h4>
             <p class="text-muted">This action cannot be undone. The breakpoint record will be permanently deleted.</p>
+            <div class="text-left mt-3 p-3"
+                 style="background:#fff8e6; border:1px solid #f3d37a; border-radius:0.5rem;">
+              <label for="deleteBlankBreakpoints"
+                     class="mb-0 d-flex align-items-start"
+                     style="gap:0.65rem; cursor:pointer;">
+                <input type="checkbox"
+                       id="deleteBlankBreakpoints"
+                       style="width:16px; height:16px; margin-top:0.15rem; flex:0 0 auto;">
+                <span>
+                  <span class="d-block" style="color:#344767; font-weight:600;">
+                    Also delete blank breakpoint rows
+                  </span>
+                  <span class="d-block small text-muted mt-1">
+                    Removes records where R, I, SDD, and S values are all empty.
+                    Current matching records: {{ blank_breakpoint_count }}
+                  </span>
+                </span>
+              </label>
+              </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -436,6 +455,13 @@
             <i class="fa fa-trash mr-1"></i>Delete Record
           </button>
         </div>
+      </form>
+      <form method="POST"
+            id="deleteBlankValuesForm"
+            action="{% url 'delete_blank_breakpoint_values' %}"
+            class="d-none">
+        {% csrf_token %}
+        <input type="hidden" name="selected_breakpoint_id" id="selectedBreakpointId">
       </form>
       <form method="POST"
             action="{% url 'delete_all_breakpoints' %}"
@@ -473,11 +499,22 @@
 <script>
 $(document).ready(function(){
   var deleteUrl; 
+  var selectedBreakpointId;
   $('.delete-btn').on('click', function(){
     deleteUrl = $(this).data('url');
+    selectedBreakpointId = deleteUrl.split('/').filter(Boolean).pop();
+    $('#selectedBreakpointId').val(selectedBreakpointId);
+    $('#deleteBlankBreakpoints').prop('checked', false);
   });
 
   $('#confirmDelete').on('click', function(){
+    if ($('#deleteBlankBreakpoints').is(':checked')) {
+      if (!confirm('This will delete the selected record and every breakpoint record with no R, I, SDD, or S values. Continue?')) {
+        return;
+      }
+      $('#deleteBlankValuesForm').submit();
+      return;
+    }
     window.location.href = deleteUrl;
   });
 });

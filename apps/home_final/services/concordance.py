@@ -900,10 +900,6 @@ def collect_concordance_dashboard(
     isolates = Final_Data.objects.prefetch_related("final_entries")
     if year not in (None, "", "all"):
         isolates = isolates.filter(f_Referral_Date__year=year)
-    totals, _ = summarize_isolates(
-        isolates,
-        get_global_concordance_options_data(),
-    )
 
     report_qs = ConcordanceReport.objects.select_related("final_data", "batch")
     if year not in (None, "", "all"):
@@ -915,7 +911,13 @@ def collect_concordance_dashboard(
         if report.final_data and clean_str(report.final_data.f_SiteCode)
     })
     if site_filter:
+        isolates = isolates.filter(f_SiteCode=site_filter)
         report_qs = report_qs.filter(final_data__f_SiteCode=site_filter)
+
+    totals, _ = summarize_isolates(
+        isolates,
+        get_global_concordance_options_data(),
+    )
 
     site_buckets = {}
     for report in report_qs:

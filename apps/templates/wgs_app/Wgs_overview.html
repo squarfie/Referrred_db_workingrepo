@@ -513,6 +513,9 @@
         <div class="col-lg-6 col-5 text-right">
           <a class="btn btn-sm btn-neutral" href="{% url 'batch_create_view' %}">New Batch</a>
           <a class="btn btn-sm btn-neutral" href="{% url 'upload_wgs_view' %}">Upload Data</a>
+          <a class="btn btn-sm btn-warning" href="{% url 'emerging_list_view' %}" title="View emerging resistance list">
+            <i class="fa fa-exclamation-circle mr-1"></i>View Emerging
+          </a>
           <button class="btn btn-sm btn-neutral" onclick="history.back()">Back</button>
         </div>
       </div>
@@ -896,10 +899,11 @@
                   <input id="download-date-to" type="date" name="date_to" form="wgs-download-form" class="form-control">
                 </div>
               </div>
-              <p class="wgs-download-filter-note">Download date filter uses WGS upload date.</p>
+              <p class="wgs-download-filter-note">Download date filter uses referral date.</p>
             </div>
             <div class="modal-footer justify-content-between">
               <form id="wgs-download-form" method="get" action="{% url 'download_matched_wgs_data' %}" class="d-flex justify-content-between w-100 mb-0">
+                <input type="hidden" name="year" value="{{ selected_year }}">
                 <button type="submit" name="mode" value="all" class="btn btn-primary wgs-download-link">
                   <i class="ni ni-check-bold"></i> Complete Sets
                 </button>

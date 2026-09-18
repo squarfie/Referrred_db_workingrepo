@@ -254,20 +254,20 @@ td[colspan="4"] div {
 
 .recommendation-label {
     margin: 0 !important;
-    padding: 1px 0 0 2px !important;
-    line-height: 1 !important;
-    font-size: 9px !important;
+    padding: 1.5px 0 0.5px 2px !important;
+    line-height: 1.08 !important;
+    font-size: 10.2px !important;
     font-weight: bold !important;
 }
 
 .recommendation-text {
     margin: 0 !important;
-    padding: 1px 2px 1px 2px !important;
+    padding: 1.5px 2px 1.5px 2px !important;
     text-indent: 0 !important;
     min-height: 0 !important;
     height: auto !important;
-    line-height: 1 !important;
-    font-size: 8.8px !important;
+    line-height: 1.08 !important;
+    font-size: 10px !important;
     white-space: normal !important;
     overflow-wrap: break-word;
     word-wrap: break-word;
@@ -279,6 +279,16 @@ td[colspan="4"] div {
     height: 0.2px;
     line-height: 0.2px;
 }
+
+
+/* General height of signature rows */
+.signature-row td {
+    height: 12px !important;
+    line-height: 12px !important;
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+}
+
 
 .signature-gap td {
     height: 6px !important;
@@ -305,8 +315,8 @@ td[colspan="4"] div {
 
 .result-cell,
 .result-cell.mic {
-    font-size: 9px !important;
-    line-height: 1.1 !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
     padding: 1px 1px 0 0 !important;
     text-align: center !important;
     vertical-align: middle !important;
@@ -314,14 +324,14 @@ td[colspan="4"] div {
 }
 .result-cell strong,
 .result-cell span {
-    font-size: 10px !important;
+    font-size: 10.9px !important;
     font-weight: bold !important;
 }
 
 .enris-cell,
 .enris-cell.mic {
-    font-size: 9.4px !important;
-    line-height: 1 !important;
+    font-size: 10.3px !important;
+    line-height: 1.06 !important;
     font-weight: bold !important;
     text-align: center !important;
     vertical-align: middle !important;
@@ -383,6 +393,7 @@ td[colspan="4"] div {
 .compact-pdf-page .signature-row,
 .compact-pdf-page .recommendation-row {
     page-break-inside: avoid;
+    padding-top: 3px !important;
 }
 
 .compact-pdf-page th,
@@ -432,17 +443,32 @@ td[colspan="4"] div {
 }
 
 .compact-pdf-page .recommendation-text {
-    line-height: 0.88 !important;
+    font-size: 8.7px !important;
+    line-height: 0.9 !important;
+    padding: 0.2px 1px !important;
+    margin: 0 !important;
+}
+
+.compact-pdf-page .recommendation-label {
+    font-size: 8.7px !important;
+    line-height: 0.9 !important;
+    padding: 0.2px 1px 0 1px !important;
+}
+
+.compact-pdf-page .recommendation-row td,
+.compact-pdf-page .recommendation-cell {
+    padding: 0 1px !important;
+    line-height: 0.9 !important;
 }
 
 .compact-pdf-page .signature-gap td {
-    height: 6px !important;
-    line-height: 6px !important;
+    height: 3px !important;
+    line-height: 3px !important;
 }
 
 .compact-pdf-page .signature-bottom-spacer td {
-    height: 16px !important;
-    line-height: 16px !important;
+    height: 8px !important;
+    line-height: 8px !important;
 }
 
 .compact-pdf-page .single-isolate-signature-spacer td {
@@ -452,15 +478,15 @@ td[colspan="4"] div {
 
 .compact-pdf-page .result-cell,
 .compact-pdf-page .result-cell.mic {
-    font-size: 9.8px !important;
-    line-height: 1 !important;
+    font-size: 8.8px !important;
+    line-height: 0.9 !important;
     padding: 0 !important;
     vertical-align: middle !important;
 }
 
 table.report-table td.result-cell,
 table.report-table td.result-cell.mic {
-    font-size: 9.5px !important;
+    font-size: 9.6px !important;
     line-height: 13px !important;
     padding: 0 !important;
     text-align: center !important;
@@ -1258,49 +1284,59 @@ table.report-table td.patient-cell .lab-box span {
                     </td>
                 </tr>
                 <tr class="signature-row" style="height:8px; text-align:center; line-height:1;">
-                    <td colspan="2" style="border:none;"></td>
-                    <td colspan="4" style="border:none;"></td>
+                        <td colspan="2" style="border:none;"></td>
+                        <td colspan="4" style="border:none;"></td>
 
-                    <td colspan="2" style="border:none;"></td>
-                    <td colspan="6" style="border:none; font-size:8.5px;">
+                    <td colspan="8" style="border:none; font-size:8.5px;">
                         {% clean_firstof batch.bat_Enc_Lic isolate.f_arsp_Enc_Lic encoder_name|staff_license as enc_lic %}
-                        {{ enc_lic|default:"&nbsp;" }}
+                        {% if enc_lic %}
+                           License No.: {{ enc_lic|default:"&nbsp;" }}
+                        {% else %}
+                           &nbsp;
+                        {% endif %}
                     </td>
 
-                    <td colspan="2" style="border:none;"></td>
-                    <td colspan="6" style="border:none; font-size:8.5px;">
+                    <td colspan="8" style="border:none; font-size:8.5px;">
                         {% clean_firstof isolate.f_arsp_Chec_Lic batch.bat_Chec_Lic checker_name|staff_license as chec_lic %}
-                        {{ chec_lic|default:"&nbsp;" }}
+                            {% if chec_lic %}
+                               License No.: {{ chec_lic|default:"&nbsp;" }}
+                            {% else %}
+                              &nbsp;
+                            {% endif %}
+
                     </td>
 
-                    <td colspan="2" style="border:none;"></td>
-                    <td colspan="9" style="border:none; font-size:8.5px;">
+
+                    <td colspan="11" style="border:none; font-size:8.5px;">
                         {% clean_firstof isolate.f_arsp_Ver_Lic batch.bat_Ver_Lic verifier_name|staff_license as ver_lic %}
                         {% clean_firstof isolate.f_arsp_Lab_Lic batch.bat_Lab_Lic lab_manager_name|staff_license as lab_lic %}
 
                         {% if ver_lic and lab_lic %}
-                            License No.: &nbsp;  {{ ver_lic }} / {{ lab_lic }}
+                            License No.: {{ ver_lic }} / {{ lab_lic }}
                         {% elif ver_lic %}
-                            License No.: &nbsp;  {{ ver_lic }}
+                            License No.: {{ ver_lic }}
                         {% elif lab_lic %}
-                            License No.: &nbsp;  {{ lab_lic }}
+                            License No.: {{ lab_lic }}
                         {% else %}
                             &nbsp;
                         {% endif %}
                     </td>
 
-                    <td colspan="2" style="border:none;"></td>
+                    <td colspan="2" style="border:none; font-size:8.5px;"></td>
                     <td colspan="7" style="border:none; font-size:8.5px;">
                         {% clean_firstof batch.bat_Head_Lic isolate.f_arsp_Head_Lic head_name|staff_license as head_lic %}
                         {% if head_lic %}
-                           License No.: &nbsp;  {{ head_lic|default:"&nbsp;" }}
+                           License No.: {{ head_lic|default:"&nbsp;" }}
                            {% else %}
                            &nbsp;
                         {% endif %}
                     </td>
                 </tr>
+                <tr class="signature-label-gap">
+                    <td colspan="42" style="border:none; height:3px; line-height:3px; padding:0;"></td>
+                </tr>
             <tr>
-                  <th colspan="42" style="font-size: 10px; border: 1px solid black;"><strong>THIS CONFIFMATORY TEST RESULTS ARE FOR THE LABORATORY WHOSE NAME
+                  <th colspan="42" style="font-size: 9px; border: 1px solid black; padding-top: 1px;"><strong>THIS CONFIFMATORY TEST RESULTS ARE FOR THE LABORATORY WHOSE NAME
                     IS INDICATED AT THE TOP OF THIS PAGE. IF THESE RESULTS DO NOT BEAR THE NAME OF YOUR LABORATORY, KINDLY DISREGARD AND RETURN TO ARSRL
                   </strong></th>
             </tr>

@@ -173,10 +173,12 @@ class FinalReferred_Form(forms.ModelForm):
             self.fields['f_Age_Display'].widget.attrs['class'] = 'form-control'
             self.fields['f_Age_Display'].widget.attrs['tabindex'] = '-1'
             self.fields['f_Site_Org'].queryset = Organism_List.objects.all() # Always load the latest Site Code
-            self.fields['f_Site_Org'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
+            self.fields['f_Site_Org'].label_from_instance = org_code_label # Specify the field to display
+            use_lowercase_org_code_widget(self.fields['f_Site_Org'])
             self.fields['f_Site_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
             self.fields['f_ars_OrgCode'].queryset = Organism_List.objects.all() # Always load the latest Site Code
-            self.fields['f_ars_OrgCode'].label_from_instance = lambda obj: obj.Whonet_Org_Code # Specify the field to display
+            self.fields['f_ars_OrgCode'].label_from_instance = org_code_label # Specify the field to display
+            use_lowercase_org_code_widget(self.fields['f_ars_OrgCode'])
             self.fields['f_ars_OrgName'].label_from_instance = lambda obj: obj.Organism # Specify the field to display
             if not self.is_bound and getattr(self.instance, "pk", None):
                 site_org = (getattr(self.instance, "f_Site_Org", "") or "").strip()

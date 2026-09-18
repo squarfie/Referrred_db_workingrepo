@@ -57,8 +57,10 @@ urlpatterns = [
     path('breakpoints-edit/<int:pk>/', settings_write_required(views.edit_breakpoints), name='edit_breakpoints'),  
     path('breakpoints-upload/', settings_write_required(views.upload_breakpoints), name='upload_breakpoints'),
     path('breakpoints-delete-all/', settings_write_required(views.delete_all_breakpoints), name='delete_all_breakpoints'),
+    path('breakpoints-delete-blank-values/', settings_write_required(views.delete_blank_breakpoint_values), name='delete_blank_breakpoint_values'),
     path('breakpoints-export/', settings_write_required(views.export_breakpoints), name='export_breakpoints'),
     path('ajax/get-antibiotic-details/', views.get_antibiotic_details, name='get_antibiotic_details'),
+    path('ajax/get-breakpoint-details/', views.get_breakpoint_details, name='get_breakpoint_details'),
 
 
 
@@ -186,7 +188,7 @@ urlpatterns = [
     path("tat/running/", views.tat_running_list, name="tat_running_list"),
     path("tat/running/processes/", views.tat_running_process_list, name="tat_running_process_list"),
     path("tat/running/upload/", settings_write_required(views.upload_running_tat), name="upload_running_tat"),
-    path("tat/location/update/<int:pk>/", settings_write_required(views.update_tat_location), name="update_tat_location"),
+    path("tat/location/update/<int:pk>/", views.update_tat_location, name="update_tat_location"),
     path("tat/scanning/<int:pk>/", views.update_tat_scanning_flags, name="update_tat_scanning_flags"),
     path("tat/analysis/", views.tat_analysis, name="tat_analysis"),
     path("settings/non-working/add/", settings_write_required(views.add_non_working_day), name="add_non_working_day"),

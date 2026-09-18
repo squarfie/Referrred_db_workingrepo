@@ -20,6 +20,55 @@ th.sortable.sorted::after {
   content: " ⬍";
   opacity: 1;
 }
+.batch-review-header {
+  min-height: 118px;
+  padding: 0 30px;
+}
+
+.batch-review-header .header-content {
+  margin-top: 12px;
+}
+
+.batch-review-header .header-body {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.batch-review-header h1 {
+  font-size: 1.55rem;
+  margin-bottom: 4px;
+}
+
+.batch-review-header p {
+  margin-bottom: 0;
+}
+
+.batch-review-content {
+  padding-top: 0 !important;
+  margin-top: -16px;
+  position: relative;
+  z-index: 6;
+}
+
+.batch-review-card .form-card > div:first-child {
+  padding: 8px 10px 6px !important;
+}
+
+.batch-review-card .card-header {
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .batch-review-header {
+    min-height: 104px;
+    padding: 0 18px;
+  }
+
+  .batch-review-content {
+    margin-top: -10px;
+  }
+}
 </style>
 
 
@@ -27,7 +76,7 @@ th.sortable.sorted::after {
 {% block content %}
 
 <!-- Header Section -->
-<div class="header-container">
+<div class="header-container batch-review-header">
      <div class="background-animation-wrapper" aria-hidden="true">
         <!-- Background animations -->
   <div class="grid-bg"></div>
@@ -75,10 +124,10 @@ th.sortable.sorted::after {
 </div>
 
 <!-- Content Section -->
-<div class="container-fluid" style="padding-top: 20px;">
+<div class="container-fluid batch-review-content">
     <div class="row justify-content-center">
         <div class="col-lg-12">
-            <div class="card shadow border-0">
+            <div class="card shadow border-0 batch-review-card">
 
                 <!-- Card Header -->
                  <div class="form-card">
@@ -183,6 +232,9 @@ th.sortable.sorted::after {
                                     </td>
                                             <td>
                                             {% if batch.is_copied_to_final %}
+                                               {% if batch.is_unbatched_final %}
+                                               <span class="text-muted"><em>Final unbatched</em></span>
+                                               {% else %}
                                                <span class="text-muted" ><em>Copied to final</em></span> 
                                                <br>
                                                 <button
@@ -200,13 +252,30 @@ th.sortable.sorted::after {
                                                 >
                                                 <i class="fas fa-undo"></i> Undo Final
                                                 </button>
+                                               {% endif %}
+                                            {% elif batch.is_unbatched_raw %}
+                                                <span class="text-muted"><em>Raw unbatched</em></span>
                                             {% else %}
                                                 <span class="text-muted">Not copied</span>
                                             {% endif %}
                                             </td>
 
                                    
-                                     {% if batch.total_isolates > 0 %}
+                                     {% if batch.is_unbatched_raw %}
+                                    <td>
+                                        <a href="{% url 'show_data' %}"
+                                           class="btn btn-info btn-sm shadow-sm">
+                                            <i class="fa fa-list"></i> Raw
+                                        </a>
+                                    </td>
+                                     {% elif batch.is_unbatched_final %}
+                                    <td>
+                                        <a href="{% url 'show_final_table' %}"
+                                           class="btn btn-info btn-sm shadow-sm">
+                                            <i class="fa fa-list"></i> Final
+                                        </a>
+                                    </td>
+                                     {% elif batch.total_isolates > 0 %}
                                     <td>
                                         <a href="{% url 'clean_batch' batch.id %}"
                                            class="btn btn-info btn-sm shadow-sm" 

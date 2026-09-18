@@ -3,6 +3,14 @@
 
 {% block settings_content %}
 
+<style>
+    #breakpointsform #id_Spec_code + .arsp-multi-select-actions,
+    #breakpointsform #id_Emerging_Pheno_Flag + .arsp-multi-select-actions,
+    #breakpointsform #id_Emerging_Pheno_Flag_Other + .arsp-multi-select-actions {
+        display: none !important;
+    }
+</style>
+
 <!--
   IMPORTANT RULES FOLLOWED:
   - No page-level wrapper
@@ -113,9 +121,10 @@
                         </div>
                     </div>
                     
-                <div class="col-md-6 mb-3">
-                    <label>Organism Code</label>
-                    {{ breakpoint_form.Org|append_attr:"class: form-control"|attr:"required:required" }}
+                    <div class="col-md-6 mb-3">
+                        <label>Organism Code</label>
+                        {{ breakpoint_form.Org|append_attr:"class: form-control"|attr:"required:required" }}
+                        <div class="small text-info mt-2" id="organismFlagSummary"></div>
                 </div>
                     </div>
 
@@ -129,6 +138,7 @@
                     <br>
                     <label>Specimen Code</label>
                     {{ breakpoint_form.Spec_code|append_attr:"class: form-control" }}
+                    <div class="small text-info mt-2" id="specimenFlagSummary"></div>
       
                 </div>
 
@@ -160,6 +170,7 @@
                                 <small class="text-muted">
                                     &nbsp;&nbsp;&nbsp;&nbsp;  <i class="fas fa-info-circle mr-1"></i>Monitor this antibiotic for emerging resistance
                                 </small>
+                                <div class="small text-info mt-2" id="antibioticFlagSummary"></div>
                                 </div>
                             </div>
 
@@ -176,6 +187,7 @@
                             </label>
 
                             {{ breakpoint_form.Emerging_Pheno_Flag|add_class:"form-control" }}
+                            <div class="small text-info mt-2" id="phenotypeFlagSummary"></div>
                             <small class="form-text text-muted">
                                 Hold Ctrl/Command to select multiple interpretations. Saved as OR, for example <code>R|I</code>.
                             </small>
@@ -192,6 +204,7 @@
                             </label>
 
                             {{ breakpoint_form.Emerging_Pheno_Flag_Other|add_class:"form-control" }}
+                            <div class="small text-info mt-2" id="otherPhenotypeFlagSummary"></div>
 
                             <small class="helper-text mt-1 d-block">
                             <i class="fas fa-info-circle mr-1"></i>
@@ -212,7 +225,7 @@
   
                 <div class="col-md-3 mb-3">
                     <label>Potency</label>
-                    {{ breakpoint_form.Potency|append_attr:"class: form-control"|attr:"placeholder:e.g. 30" }}
+                    {{ breakpoint_form.Potency|append_attr:"class: form-control"|attr:"readonly:readonly"|attr:"placeholder:e.g. 30" }}
                 </div>
 
                 <div class="col-md-3 mb-3">
@@ -344,42 +357,155 @@ function confirmOverwrite() {
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const whonetSelect = document.getElementById("id_Whonet_Abx");
+    const organismSelect = document.getElementById("id_Org");
+    const yearInput = document.getElementById("id_Year");
+    const methodSelect = document.getElementById("id_Test_Method");
+    const diskCheckbox = document.querySelector('[name="Disk_Abx"]');
+    const specSelect = document.getElementById("id_Spec_code");
+    const emergingOrgInput = document.getElementById("id_Emerging_Org_Flag");
+    const emergingSpecimenInput = document.getElementById("id_Emerging_specimen");
+    const emergingAbxInput = document.getElementById("id_Emerging_Abx_Flag");
+    const phenotypeSelect = document.getElementById("id_Emerging_Pheno_Flag");
+    const otherPhenotypeSelect = document.getElementById("id_Emerging_Pheno_Flag_Other");
     const antibioticInput = document.getElementById("id_Antibiotic");
     const abxCodeInput = document.getElementById("id_Abx_code");
     const tierInput = document.getElementById("id_Tier");
+    const potencyInput = document.getElementById("id_Potency");
 
     if (!whonetSelect) {
         console.error("Field 'id_Whonet_Abx' not found.");
         return;
     }
 
-    whonetSelect.addEventListener("change", function () {
-        // Get the text (e.g., 'AMC_ND20') instead of the value (e.g., '1')
-        const selectedText = this.options[this.selectedIndex].text.trim();
-        
-        // Handle the empty/default choice
-        if (!this.value || selectedText === "---------") {
-            if (antibioticInput) antibioticInput.value = "";
-            if (abxCodeInput) abxCodeInput.value = "";
-            if (tierInput) tierInput.value = "";
+    function hasMethodOption(value) {
+        if (!methodSelect) return false;
+        return !!methodSelect.querySelector(`option[value="${value}"]`);
+    }
+
+    function syncDiskFromMethod() {
+        if (!methodSelect || !diskCheckbox) return;
+        diskCheckbox.checked = (methodSelect.value || "").toUpperCase() === "DISK";
+    }
+
+    function syncMethodFromDisk() {
+        if (!methodSelect || !diskCheckbox) return;
+        if (diskCheckbox.checked) {
+            methodSelect.value = "DISK";
+        } else if ((methodSelect.value || "").toUpperCase() === "DISK") {
+            methodSelect.value = hasMethodOption("MIC") ? "MIC" : "";
+        }
+        methodSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    if (methodSelect && diskCheckbox) {
+        syncDiskFromMethod();
+        methodSelect.addEventListener("change", syncDiskFromMethod);
+        diskCheckbox.addEventListener("change", syncMethodFromDisk);
+    }
+
+    function selectedValues(select) {
+        if (!select) return [];
+        return Array.prototype.filter.call(select.options, option => option.selected && option.value)
+            .map(option => option.value.trim())
+            .filter(Boolean);
+    }
+
+    function selectedLabels(select) {
+        if (!select) return [];
+        return Array.prototype.filter.call(select.options, option => option.selected && option.value)
+            .map(option => option.text.trim())
+            .filter(Boolean);
+    }
+
+    function setMultiSelect(select, expression) {
+        if (!select) return;
+        const values = String(expression || "")
+            .split("|")
+            .map(value => value.trim().toUpperCase())
+            .filter(Boolean);
+        Array.prototype.forEach.call(select.options, option => {
+            option.selected = values.includes(option.value.trim().toUpperCase());
+        });
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    function setSummary(id, label, values) {
+        const node = document.getElementById(id);
+        if (!node) return;
+        node.innerHTML = `<strong>${label}:</strong> ${values && values.length ? values.join(", ") : "No current selection"}`;
+    }
+
+    function updateFlagSummaries() {
+        setSummary("organismFlagSummary", "Selected flag", [
+            emergingOrgInput && emergingOrgInput.checked ? "Emerging organism" : "Organism flag not selected",
+        ]);
+        setSummary("specimenFlagSummary", "Selected specimen", [
+            emergingSpecimenInput && emergingSpecimenInput.checked ? "Emerging specimen" : "Specimen flag not selected",
+            ...selectedLabels(specSelect),
+        ]);
+        setSummary("antibioticFlagSummary", "Selected flag", [
+            emergingAbxInput && emergingAbxInput.checked ? "Emerging antibiotic" : "Antibiotic flag not selected",
+        ]);
+        setSummary("phenotypeFlagSummary", "Selected phenotype", selectedLabels(phenotypeSelect));
+        setSummary("otherPhenotypeFlagSummary", "Selected phenotype", selectedLabels(otherPhenotypeSelect));
+    }
+
+    function fillAntibioticMasterFields(data) {
+        if (antibioticInput) antibioticInput.value = data.antibiotic || "";
+        if (abxCodeInput) abxCodeInput.value = data.abx_code || "";
+        if (tierInput) tierInput.value = data.tier || "";
+        if (potencyInput && data.potency !== undefined) potencyInput.value = data.potency || "";
+    }
+
+    function lookupBreakpointDetails() {
+        const whonetCode = whonetSelect.value || "";
+        if (!whonetCode) {
+            fillAntibioticMasterFields({});
+            updateFlagSummaries();
             return;
         }
 
-        console.log("Searching for WHONET code string:", selectedText);
+        const params = new URLSearchParams({
+            whonet_abx: whonetCode,
+            org: organismSelect ? organismSelect.value || "" : "",
+            year: yearInput ? yearInput.value || "" : "",
+            test_method: methodSelect ? methodSelect.value || "" : "",
+            spec_code: selectedValues(specSelect).join("|"),
+        });
 
-        fetch(`/ajax/get-antibiotic-details/?whonet_abx=${encodeURIComponent(selectedText)}`)
+        fetch(`/ajax/get-breakpoint-details/?${params.toString()}`)
             .then(res => res.json())
             .then(data => {
-                if (data.antibiotic || data.abx_code || data.tier) {
-                    if (antibioticInput) antibioticInput.value = data.antibiotic || "";
-                    if (abxCodeInput) abxCodeInput.value = data.abx_code || "";
-                    if (tierInput) tierInput.value = data.tier || "";
-                } else {
-                    console.warn("No match found in Antibiotic_List for:", selectedText);
-                }
+                fillAntibioticMasterFields(data);
             })
             .catch(err => console.error("AJAX Error:", err));
+    }
+
+    [
+        whonetSelect,
+        organismSelect,
+        yearInput,
+        methodSelect,
+        specSelect,
+    ].forEach(field => {
+        if (!field) return;
+        field.addEventListener("change", lookupBreakpointDetails);
+        field.addEventListener("input", lookupBreakpointDetails);
     });
+
+    [
+        emergingOrgInput,
+        emergingSpecimenInput,
+        emergingAbxInput,
+        specSelect,
+        phenotypeSelect,
+        otherPhenotypeSelect,
+    ].forEach(field => {
+        if (!field) return;
+        field.addEventListener("change", updateFlagSummaries);
+    });
+
+    updateFlagSummaries();
 });
 </script>
 

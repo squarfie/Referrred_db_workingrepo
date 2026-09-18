@@ -19,7 +19,11 @@
   }
 
   function enhanceSelect(select) {
-    if (!select || select.dataset.multiClearEnhanced === "true") {
+    if (
+      !select ||
+      select.dataset.multiClearEnhanced === "true" ||
+      select.dataset.skipAutoClear === "true"
+    ) {
       return;
     }
 

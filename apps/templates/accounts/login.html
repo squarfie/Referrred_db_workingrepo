@@ -19,6 +19,10 @@
     cursor: pointer;
   }
 
+  .login-brand-logo:focus {
+    outline: none;
+  }
+
   .login-card-wrap {
     margin-top: -1rem;
   }
@@ -50,13 +54,41 @@
   }
 
   .logo-explanation-modal .modal-header {
+    align-items: center;
     background: linear-gradient(135deg, var(--primary-dark) 0%, var(--arsp-teal) 100%);
     border: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 220px;
+    padding: 2rem 3rem 1.6rem;
+    position: relative;
+    text-align: center;
   }
 
   .logo-explanation-modal .modal-title,
   .logo-explanation-modal .close {
     color: #fff;
+  }
+
+  .logo-explanation-modal .modal-title {
+    font-size: 1rem;
+    font-weight: 800;
+    margin-top: 0.9rem;
+  }
+
+  .logo-explanation-modal .close {
+    position: absolute;
+    right: 1.2rem;
+    top: 1rem;
+  }
+
+  .logo-preview-image {
+    display: block;
+    width: min(180px, 48vw);
+    height: auto;
+    margin: 0 auto;
+    object-fit: contain;
   }
 
   .logo-explanation-modal .modal-body {
@@ -117,7 +149,7 @@
         <div class="col-lg-5 col-md-7 login-card-wrap">
           <div class="card bg-secondary shadow border-0">
             <div class="card-header bg-transparent pb-4 login-card-header">
-              <img src="/static/assets/img/theme/arsp_logo_v2026.1.png" class="login-brand-logo" alt="ARSP" role="button" tabindex="0" data-toggle="modal" data-target="#logoExplanationModal">
+              <img src="/static/assets/img/theme/arsp_logo_v2026.1.png" class="login-brand-logo" alt="ARSP logo. Open larger view" role="button" tabindex="0" data-toggle="modal" data-target="#logoExplanationModal">
               <div class="text-muted text-center mt-2 mb-3">
                 Sign IN
               </div>
@@ -195,10 +227,11 @@
       <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="logoExplanationModalLabel" > <span style="color: #fff;"> About the ARSP Logo:</span> </h5>
             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
+            <img src="/static/assets/img/theme/arsp_logo_v2026.png" class="logo-preview-image" alt="ARSP logo enlarged preview">
+            <h5 class="modal-title" id="logoExplanationModalLabel">About the ARSP Logo</h5>
           </div>
           <div class="modal-body" style="text-align: center;">
             The ARSP logo represents the intersection of scientific expertise, technological innovation, and collaborative action in the fight against antimicrobial resistance. Each element - the microscope for research, the computer for surveillance, and the pills and flasks for intervention - symbolizes a core objective of the program. Together, they reflect ARSP's commitment to protecting public health through a multi-faceted approach to monitoring, understanding, and addressing the spread of resistant pathogens.

@@ -153,7 +153,11 @@
   font-weight: 700;
 }
 
-.tat-location-select:disabled,
+.tat-location-select:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
 .tat-location-select.is-saving {
   opacity: 0.65;
   cursor: wait;
@@ -561,7 +565,11 @@
     box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
 }
 
-.tat-location-select:disabled,
+.tat-location-select:disabled {
+    opacity: 0.65;
+    cursor: default;
+}
+
 .tat-location-select.is-saving {
     opacity: 0.65;
     cursor: wait;
@@ -1036,7 +1044,8 @@
               <td>
                 <select class="tat-location-select"
                         data-url="{% url 'update_tat_location' row.tat.id %}"
-                        title="Update TAT Location">
+                        title="{% if can_edit_location %}Update TAT Location{% else %}TAT location editing is locked for this account role.{% endif %}"
+                        {% if not can_edit_location %}disabled{% endif %}>
                   {% for location in tat_location_choices %}
                     <option value="{{ location }}" {% if row.location == location %}selected{% endif %}>{{ location }}</option>
                   {% endfor %}
@@ -1059,7 +1068,8 @@
                        data-url="{% url 'update_tat_scanning_flags' row.tat.id %}"
                        data-field="tat_Scanning_raw"
                        {% if row.tat.tat_Scanning_raw %}checked{% endif %}
-                       title="Scanning Raw">
+                       title="{% if can_edit_scanning %}Scanning Raw{% else %}Scanning checkboxes are locked for verifier, lab manager, and head accounts.{% endif %}"
+                       {% if not can_edit_scanning %}disabled{% endif %}>
               </td>
               <td class="scan-check-cell">
                 <input type="checkbox"
@@ -1067,7 +1077,8 @@
                        data-url="{% url 'update_tat_scanning_flags' row.tat.id %}"
                        data-field="tat_Scanning_ws"
                        {% if row.tat.tat_Scanning_ws %}checked{% endif %}
-                       title="Scanning Worksheet">
+                       title="{% if can_edit_scanning %}Scanning Worksheet{% else %}Scanning checkboxes are locked for verifier, lab manager, and head accounts.{% endif %}"
+                       {% if not can_edit_scanning %}disabled{% endif %}>
               </td>
               <td class="scan-check-cell">
                 <input type="checkbox"
@@ -1075,7 +1086,8 @@
                        data-url="{% url 'update_tat_scanning_flags' row.tat.id %}"
                        data-field="tat_Scanning_final"
                        {% if row.tat.tat_Scanning_final %}checked{% endif %}
-                       title="Scanning Final">
+                       title="{% if can_edit_scanning %}Scanning Final{% else %}Scanning checkboxes are locked for verifier, lab manager, and head accounts.{% endif %}"
+                       {% if not can_edit_scanning %}disabled{% endif %}>
               </td>
               <td>{{ row.action_taken|default:"-" }}</td>
               <td>{{ row.assigned_to|default:"-" }}</td>

@@ -69,9 +69,73 @@
     .toolbar-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: nowrap; width: 100%; }
     .toolbar-search-form { display: flex; align-items: center; gap: 0.5rem; flex: 1 1 auto; min-width: 0; }
     .toolbar-search-form > div:not(.search-input-wrap), .toolbar-search-form select { flex-shrink: 0; }
-    .toolbar-download-form { display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem; flex: 0 0 auto; flex-wrap: wrap; margin-left: auto; }
-    .toolbar-download-form input { width: 135px; }
-    .toolbar-download-form small { display: block; flex-basis: 100%; color: #6c757d; font-size: 0.7rem; line-height: 1.2; text-align: right; margin: 0.15rem 0 0 0; white-space: nowrap; order: 4; }
+.toolbar-download-form {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.85rem;
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+.toolbar-date-section {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid #d6e6f5;
+    border-radius: 8px;
+    background: #f8fbff;
+}
+
+.toolbar-group-label {
+    color: #1e5a96;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.toolbar-date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.toolbar-date-inputs input {
+    width: 135px;
+    min-width: 135px;
+    height: 32px;
+}
+
+.toolbar-date-note {
+    display: block;
+    color: #6c757d;
+    font-size: 0.65rem;
+    line-height: 1.2;
+    text-align: right;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-left: 0.85rem;
+    border-left: 2px solid #00bcd4;
+}
+
+.toolbar-actions .btn {
+    white-space: nowrap;
+    margin: 0;
+}
+
+.toolbar-date-inputs .btn {
+    white-space: nowrap;
+    margin: 0;
+}
 
     .search-input-wrap { position: relative; flex: 1; min-width: 220px; }
     .search-input-wrap .search-icon {
@@ -215,8 +279,17 @@
       border: 1px solid transparent;
       font-size: 0.72rem;
       font-weight: 900;
-      margin-left: auto;
       white-space: nowrap;
+    }
+    .batch-status-pack {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      white-space: nowrap;
+    }
+    .batch-status-pack a:hover {
+      text-decoration: none;
     }
     .batch-tat-safe {
       background: #d8f3c8;
@@ -237,6 +310,134 @@
       background: #e67f68;
       border-color: #d85d45;
       color: #4f120b;
+    }
+    .batch-workflow-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.28rem;
+      height: 24px;
+      padding: 0 0.55rem;
+      border-radius: 7px;
+      border: 1px solid rgba(0, 188, 212, 0.42);
+      background: #ffffff;
+      color: #07889a;
+      font-size: 0.7rem;
+      font-weight: 900;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(15, 58, 95, 0.08);
+    }
+    .batch-workflow-btn:hover {
+      background: #00bcd4;
+      color: #ffffff;
+      border-color: #00bcd4;
+      text-decoration: none;
+    }
+    .batch-comment-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      height: 22px;
+      padding: 0 0.55rem;
+      border-radius: 7px;
+      font-size: 0.68rem;
+      font-weight: 900;
+      white-space: nowrap;
+      border: 1px solid rgba(245, 126, 74, 0.35);
+      background: #fff7f2;
+      color: #d95227;
+    }
+    .batch-comment-alert {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: 1px solid rgba(245, 126, 74, 0.45);
+      background: #fff7f2;
+      color: #d95227;
+      font-size: 0.72rem;
+      font-weight: 900;
+      box-shadow: 0 1px 4px rgba(15, 58, 95, 0.08);
+    }
+    .isolate-comment-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.24rem;
+      margin-top: 0.35rem;
+      min-height: 22px;
+      padding: 0.18rem 0.48rem;
+      border-radius: 7px;
+      border: 1px solid rgba(245, 126, 74, 0.38);
+      background: #fff7f2;
+      color: #d95227;
+      font-size: 0.66rem;
+      font-weight: 900;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    .batch-verification-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      height: 22px;
+      padding: 0 0.55rem;
+      border-radius: 7px;
+      border: 1px solid rgba(0, 188, 212, 0.35);
+      background: #e9fbff;
+      color: #087f95;
+      font-size: 0.68rem;
+      font-weight: 900;
+      white-space: nowrap;
+      box-shadow: 0 1px 4px rgba(15, 58, 95, 0.06);
+    }
+    .batch-verification-pill:hover {
+      background: #00bcd4;
+      border-color: #00bcd4;
+      color: #ffffff;
+    }
+    .batch-verification-returned_to_encoder,
+    .batch-verification-returned_to_checker,
+    .batch-verification-returned_to_verifier {
+      border-color: rgba(245, 126, 74, 0.42);
+      background: #fff7f2;
+      color: #d95227;
+    }
+    .batch-verification-for_lab_manager,
+    .batch-verification-approved_by_verifier {
+      border-color: rgba(33, 93, 151, 0.32);
+      background: #eef7ff;
+      color: #19558c;
+    }
+    .batch-verification-for_head,
+    .batch-verification-approved_by_lab_manager,
+    .batch-verification-signed_by_head,
+    .batch-verification-released {
+      border-color: rgba(30, 154, 113, 0.32);
+      background: #eafbf4;
+      color: #13785d;
+    }
+    .batch-workflow-form {
+      display: inline-flex;
+      margin: 0;
+    }
+    .batch-workflow-undo {
+      height: 24px;
+      padding: 0 0.48rem;
+      border-radius: 7px;
+      border: 1px solid rgba(245, 126, 74, 0.45);
+      background: #fff7f2;
+      color: #d95227;
+      font-size: 0.68rem;
+      font-weight: 900;
+      box-shadow: 0 2px 6px rgba(15, 58, 95, 0.08);
+    }
+    .batch-workflow-undo:hover {
+      background: #f57e4a;
+      border-color: #f57e4a;
+      color: #ffffff;
     }
     .batch-accordion-inner {
       display: flex;
@@ -338,10 +539,36 @@
       color: #e74c3c; border-color: rgba(231,76,60,0.4); background: rgba(231,76,60,0.07);
     }
     .action-btn-icon.del:hover { background: #e74c3c; color: white; border-color: #e74c3c; transform: translateY(-1px); }
+    .action-btn-icon.del.disabled,
+    .action-btn-icon.del:disabled,
+    .action-btn-icon.delete.disabled,
+    .action-btn-icon.delete:disabled {
+      color: #9fb0c4 !important;
+      border-color: #d6e1eb;
+      background: #f5f8fb;
+      cursor: not-allowed;
+      transform: none;
+      opacity: .75;
+    }
+    .action-btn-icon.del.disabled i,
+    .action-btn-icon.del:disabled i,
+    .action-btn-icon.delete.disabled i,
+    .action-btn-icon.delete:disabled i {
+      color: inherit !important;
+    }
     .action-btn-icon.pdf {
       color: #00bcd4; border-color: rgba(0,188,212,0.4); background: rgba(0,188,212,0.07);
     }
     .action-btn-icon.pdf:hover { background: #00bcd4; color: white; border-color: #00bcd4; transform: translateY(-1px); }
+    .action-btn-icon.pdf.disabled,
+    .action-btn-icon.pdf:disabled {
+      color: #9fb0c4;
+      border-color: #d6e1eb;
+      background: #f5f8fb;
+      cursor: not-allowed;
+      transform: none;
+      opacity: .75;
+    }
 
     .action-row { display: flex; gap: 4px; }
 
@@ -381,6 +608,55 @@
       background: linear-gradient(135deg, #e74c3c, #c0392b);
       border-bottom: none; padding: 1rem 1.5rem;
     }
+    .modal-header-workflow {
+      background: #123f4e;
+      border-bottom: none;
+      padding: 1rem 1.5rem;
+    }
+    .modal-header-workflow .modal-title {
+      color: #ffffff !important;
+      font-weight: 800 !important;
+    }
+    .workflow-batch-card {
+      border: 1px solid rgba(15, 89, 116, 0.14);
+      border-radius: 8px;
+      padding: 0.9rem;
+      margin-bottom: 0.75rem;
+      background: #ffffff;
+    }
+    .workflow-batch-title {
+      font-weight: 800;
+      color: #152d4f;
+      margin-bottom: 0.15rem;
+    }
+    .workflow-batch-meta {
+      color: #71819b;
+      font-size: 0.78rem;
+    }
+    .workflow-count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 0.25rem 0.6rem;
+      background: #e8f9fc;
+      color: #07889a;
+      font-size: 0.72rem;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .workflow-send-form {
+      display: grid;
+      grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) auto;
+      gap: 0.5rem;
+      align-items: center;
+      margin-top: 0.75rem;
+    }
+    @media (max-width: 768px) {
+      .workflow-send-form {
+        grid-template-columns: 1fr;
+      }
+    }
     .modal-header-danger .modal-title { color: white !important; font-weight: 700 !important; }
     .modal-header-danger .close span { color: rgba(255,255,255,0.8); }
     .modal-body { padding: 2rem; text-align: center; }
@@ -397,15 +673,60 @@
     .empty-state { text-align: center; padding: 4rem 2rem; color: #9aa4b8; }
     .empty-state i { font-size: 3rem; margin-bottom: 1rem; color: #c0cfe0; }
 
-    @media (max-width: 768px) {
-      .batch-header { padding: 1.25rem; }
-      .content-area { padding: 1rem; }
-      .batch-header-actions { justify-content: flex-start; margin-left: 0; }
-      .toolbar-controls { flex-wrap: wrap; }
-      .toolbar-download-form { flex: 1 1 100%; width: 100%; margin-left: 0; justify-content: flex-start; flex-wrap: wrap; }
-      .toolbar-download-form input { flex: 1 1 130px; width: auto; }
-      .toolbar-download-form small { text-align: left; white-space: normal; }
+@media (max-width: 768px) {
+    .batch-header {
+        padding: 1.25rem;
     }
+
+    .content-area {
+        padding: 1rem;
+    }
+
+    .batch-header-actions {
+        justify-content: flex-start;
+        margin-left: 0;
+    }
+
+    .toolbar-controls {
+        flex-wrap: wrap;
+    }
+
+    .toolbar-download-form {
+        flex: 1 1 100%;
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .toolbar-date-section {
+        flex: 1 1 100%;
+    }
+
+    .toolbar-date-inputs {
+        width: 100%;
+    }
+
+    .toolbar-date-inputs input {
+        flex: 1 1 130px;
+        width: auto;
+        min-width: 0;
+    }
+
+    .toolbar-date-note {
+        text-align: left;
+        white-space: normal;
+    }
+
+    .toolbar-actions {
+        width: 100%;
+        justify-content: flex-start;
+        padding-left: 0;
+        padding-top: 0.65rem;
+        border-left: 0;
+        border-top: 2px solid #00bcd4;
+    }
+}
         /* ── Row number badge ── */
     .row-num {
       display: inline-flex;
@@ -506,15 +827,56 @@
             {% endfor %}
 
         </select>
+          <select name="verification_status"
+                  class="form-control"
+                  style="max-width:190px;"
+                  onchange="this.form.submit()">
+            {% for value,label in verification_status_choices %}
+              <option value="{{ value }}" {% if value == verification_status %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
         </form>
-        <form method="get" action="{% url 'download_combined_final_table' %}" class="toolbar-download-form">
-          <input type="date" name="date_from" class="form-control form-control-sm" title="Date of Entry from">
-          <input type="date" name="date_to" class="form-control form-control-sm" title="Date of Entry to">
-          <button class="btn btn-sm btn-success" type="submit">
-            <i class="ni ni-cloud-download-95 mr-1"></i>Download Final
-          </button>
-          <small>Filtered by: Date of Entry; falls back to Specimen Date when Date of Entry is blank.</small>
-        </form>
+            <form method="get"
+                  action="{% url 'download_combined_final_table' %}"
+                  class="toolbar-download-form">
+
+                <div class="toolbar-date-section">
+                    <span class="toolbar-group-label">FILTER AND DOWNLOAD:</span>
+                    <div class="toolbar-date-inputs">
+                        <input type="date"
+                              name="date_from"
+                              class="form-control form-control-sm"
+                              title="Referral Date from">
+
+                        <input type="date"
+                              name="date_to"
+                              class="form-control form-control-sm"
+                              title="Referral Date to">
+
+                        <button class="btn btn-sm btn-success"
+                                type="submit">
+                            <i class="ni ni-cloud-download-95 mr-1"></i>Download Final
+                        </button>
+                    </div>
+
+                    <small class="toolbar-date-note">
+                        Download filter: Referral Date.
+                    </small>
+
+                </div>
+
+                <div class="toolbar-actions">
+
+                    <a href="{% url 'verification_dashboard' %}"
+                      class="btn btn-sm btn-info">
+                        <i class="fas fa-user-check mr-1"></i>Workflow
+                    </a>
+
+                </div>
+
+            </form>
+
+        
         </div>
         {% if query %}
         <div class="search-result-info">
@@ -599,11 +961,65 @@
                     {% endif %}
                     <span class="batch-count-badge">{{ batch_group.count }}</span>
                   </span>
-                {% if batch_group.tat_days is not None %}
-                  <span class="batch-tat-badge batch-tat-{{ batch_group.tat_pressure|default:'none' }}" title="Running TAT">
-                    <i class="fas fa-clock"></i>{{ batch_group.tat_days }} days
+                  {% if batch_group.batch_id %}
+                    {% if batch_group.verification_case_id %}
+                      {% if batch_group.verification_can_withdraw %}
+                      {% if user_access.can_send_to_verification %}
+                      <form method="post"
+                            action="{% url 'withdraw_verification_case' batch_group.verification_case_id %}"
+                            class="batch-workflow-form"
+                            onclick="event.stopPropagation();"
+                            onsubmit="event.stopPropagation(); return confirm('Undo sending {{ batch_group.code|escapejs }} to verification?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="batch-workflow-undo" title="Undo send to verifier">
+                          <i class="fas fa-undo"></i> Undo
+                        </button>
+                      </form>
+                      {% endif %}
+                      {% endif %}
+                    {% elif user_access.can_send_to_verification %}
+                      <button type="button"
+                              class="batch-workflow-btn send-verification-btn"
+                              data-action="{% url 'send_batch_to_verifier' batch_group.batch_id %}"
+                              data-batch="{{ batch_group.code }}"
+                              data-site="{{ batch_group.site_code|default:'No site' }}"
+                              data-count="{{ batch_group.count }}"
+                              title="Send this batch to verifier">
+                        <i class="fas fa-paper-plane"></i>Send
+                      </button>
+                    {% endif %}
+                  {% endif %}
+                  <span class="batch-status-pack">
+                    {% if batch_group.verification_status and batch_group.batch_id %}
+                    {% if batch_group.verification_status_code == "signed_by_head" %}
+                    <a href="{% url 'tat_monitoring_view' batch_group.batch_id %}"
+                       class="batch-verification-pill batch-verification-{{ batch_group.verification_status_code|default:'none' }}"
+                       title="Open Update Process to enter release date for {{ batch_group.code }}"
+                       onclick="event.stopPropagation();">
+                      <i class="fas fa-route"></i>{{ batch_group.verification_status }}
+                    </a>
+                    {% else %}
+                    <a href="{% url 'verification_dashboard' %}?q={{ batch_group.code|urlencode }}"
+                       class="batch-verification-pill batch-verification-{{ batch_group.verification_status_code|default:'none' }}"
+                       title="Open verification workflow for {{ batch_group.code }}"
+                       onclick="event.stopPropagation();">
+                      <i class="fas fa-route"></i>{{ batch_group.verification_status }}
+                    </a>
+                    {% endif %}
+                    {% endif %}
+                    {% if user_access.can_view_correction_badges and batch_group.verification_pending_comment_count %}
+                    <span class="batch-comment-alert"
+                          title="{{ batch_group.verification_pending_comment_count }} accession comment(s) need correction. {{ batch_group.verification_pending_comment_preview|default:'Open this batch to see the marked accession.' }}">
+                      <i class="fas fa-exclamation"></i>
+                    </span>
+                    {% endif %}
+                    {% if batch_group.tat_days is not None %}
+                    <span class="batch-tat-badge batch-tat-{{ batch_group.tat_pressure|default:'none' }}" title="Running TAT">
+                      <i class="fas fa-clock"></i>{{ batch_group.tat_days }} days
+                    </span>
+                    {% endif %}
                   </span>
-                {% endif %}
                 </div>
               </td>
             </tr>
@@ -620,20 +1036,37 @@
 
               <!-- Actions -->
               <td style="text-align:center;">
-                {% if user_access.can_update and user_access.can_view_all or user_access.can_update and isolate.f_Batch_id.created_by_id == request.user.id %}
+                {% if user_access.can_update and not isolate.f_Batch_id or user_access.can_update and user_access.can_view_all or user_access.can_update and isolate.f_Batch_id.created_by_id == request.user.id %}
                 <div class="action-row" style="justify-content:center;">
                   <a href="{% url 'edit_final_data' isolate.pk %}" class="action-btn-icon edit" title="Edit record">
                     <i class="fa fa-pencil-alt"></i>
                   </a>
+                  {% if isolate.verification_pdf_blocked %}
+                  <span title="Accession deletion is disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+                        style="display:inline-flex;">
+                    <button type="button"
+                            class="action-btn-icon del disabled"
+                            disabled>
+                      <i class="fa fa-trash"></i>
+                    </button>
+                  </span>
+                  {% else %}
                   <button type="button" class="action-btn-icon del delete-btn"
                           data-toggle="modal" data-target="#deleteModal"
                           data-url="{% url 'delete_final_data' isolate.pk %}"
                           title="Delete record">
                     <i class="fa fa-trash"></i>
                   </button>
+                  {% endif %}
                 </div>
                 {% else %}
                   <span style="color:#9fb0c4; font-size:0.72rem;">View only</span>
+                {% endif %}
+                {% if user_access.can_view_correction_badges and isolate.verification_pending_comment_count %}
+                <span class="isolate-comment-pill"
+                      title="{{ isolate.verification_pending_comment_preview|default:'Pending verifier comments' }}">
+                  <i class="fas fa-comment-dots"></i>Needs correction{% if isolate.verification_pending_comment_count > 1 %} ({{ isolate.verification_pending_comment_count }}){% endif %}
+                </span>
                 {% endif %}
               </td>
 
@@ -770,20 +1203,48 @@
               </td>
 
               <!-- PDF -->
-              <td style="text-align:center;">
-                {% if isolate.f_Batch_id %}
-                <a href="{% url 'generate_final_batch_pdf' isolate.f_Batch_id.id %}"
-                   class="action-btn-icon pdf" title="Generate Final PDF" target="_blank">
-                  <i class="fa fa-file-pdf"></i>
-                </a>
-                {% endif %}
-              </td>
-
+                  <td style="text-align:center;">
+                      {% if isolate.f_Batch_id %}
+                          {% if isolate.verification_pdf_blocked and user_access.are_disabled %}
+                              <button type="button"
+                                      class="action-btn-icon pdf disabled"
+                                      title="{% if isolate.verification_pdf_blocked %}
+                                                {{ isolate.verification_pdf_block_reason }}
+                                            {% else %}
+                                                Printing is not available for this account role.
+                                            {% endif %}"
+                                      disabled>
+                                  <i class="fa fa-file-pdf"></i>
+                              </button>
+                          {% else %}
+                              <a href="{% url 'generate_final_batch_pdf' isolate.f_Batch_id.id %}"
+                                class="action-btn-icon pdf"
+                                title="Generate Final PDF"
+                                target="_blank">
+                                  <i class="fa fa-file-pdf"></i>
+                              </a>
+                          {% endif %}
+                      {% endif %}
+                  </td>
               <!-- Edit Author -->
               <td style="text-align:center;">
-                {% if isolate.f_Batch_id and user_access.can_update and user_access.can_view_all or isolate.f_Batch_id and user_access.can_update and isolate.f_Batch_id.created_by_id == request.user.id %}
+                {% if isolate.f_Batch_id and isolate.verification_pdf_blocked %}
+                <span title="Batch signatory editing is disabled while this case is in verification. Withdraw it or wait until Head marks it Ready for Release."
+                      style="display:inline-flex;">
+                  <button type="button"
+                          class="action-btn-icon disabled"
+                          disabled>
+                    <i class="ni ni-single-02"></i>
+                  </button>
+                </span>
+                {% elif isolate.f_Batch_id and user_access.can_update and user_access.can_view_all or isolate.f_Batch_id and user_access.can_update and isolate.f_Batch_id.created_by_id == request.user.id %}
                 <a href="{% url 'batch_edit_view' isolate.f_Batch_id.id %}"
                    class="action-btn-icon edit" title="Edit Batch">
+                  <i class="ni ni-single-02"></i>
+                </a>
+                {% elif user_access.can_update and not isolate.f_Batch_id %}
+                <a href="{% url 'batch_create_view' %}?source=final&accession={{ isolate.f_AccessionNo|urlencode }}"
+                   class="action-btn-icon edit" title="Create batch for unbatched record">
                   <i class="ni ni-single-02"></i>
                 </a>
                 {% else %}
@@ -791,7 +1252,7 @@
                 {% endif %}
               </td>
 
-                  <td style="text-align:center;">
+                  <!-- <td style="text-align:center;">
                     {% if isolate.f_Batch_id %}
                     <form method="POST" action="{% url 'export_concordance_report_pdf' isolate.f_Batch_id.id %}">
                       {% csrf_token %}
@@ -803,7 +1264,37 @@
                       </button>
                     </form>
                     {% endif %}
-                  </td>
+                  </td> -->
+
+      <td style="text-align:center;">
+          {% if isolate.f_Batch_id %}
+              {% if isolate.verification_pdf_blocked and user_access.are_disabled %}
+                  <span title="{% if isolate.verification_pdf_blocked %}{{ isolate.verification_pdf_block_reason }}{% else %}Concordance is not available for this account role.{% endif %}"
+                        style="display:inline-flex;">
+                      <button type="button"
+                              class="action-btn-icon disabled"
+                              disabled>
+                          <i class="fas fa-chart-bar"></i>
+                      </button>
+                  </span>
+              {% else %}
+                  <form method="POST"
+                        action="{% url 'concordance_generate_batch' %}"
+                        style="margin:0;">
+                      {% csrf_token %}
+                      <input type="hidden"
+                            name="batch_id"
+                            value="{{ isolate.f_Batch_id.id }}">
+                      <button type="submit"
+                              class="btn-concordance"
+                              title="Generate Batch Concordance">
+                          <i class="fas fa-chart-bar"></i>
+                      </button>
+                  </form>
+              {% endif %}
+          {% endif %}
+      </td>
+
             </tr>
             {% endfor %}
             {% endif %}
@@ -960,6 +1451,54 @@
 </div><!-- /page-wrapper -->
 
 
+<!-- ── Send Final Batch to Verifier Modal ── -->
+<div class="modal fade" id="sendVerificationModal" tabindex="-1" role="dialog" aria-labelledby="sendVerificationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content" style="border-radius:12px; overflow:hidden; border:none;">
+      <div class="modal-header modal-header-workflow">
+        <h6 class="modal-title" id="sendVerificationModalLabel">
+          <i class="fas fa-paper-plane mr-2"></i>Send Final Batch
+        </h6>
+        <div class="d-flex align-items-center" style="gap:0.5rem;">
+          <a href="{% url 'verification_dashboard' %}" class="btn btn-sm btn-light">
+            <i class="fas fa-list mr-1"></i>Workflow
+          </a>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span>&times;</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body" style="text-align:left; background:#f8fbfd;">
+        <p class="text-muted small mb-3">Checker sends this final batch to the selected verifier.</p>
+        <div class="workflow-batch-card">
+          <div class="d-flex justify-content-between align-items-start" style="gap:0.75rem;">
+            <div>
+              <div class="workflow-batch-title" id="sendVerificationBatchName">Selected batch</div>
+              <div class="workflow-batch-meta" id="sendVerificationBatchMeta">Select a batch from the table.</div>
+            </div>
+            <span class="workflow-count-badge" id="sendVerificationBatchCount">0 final</span>
+          </div>
+          <form method="post" action="" class="workflow-send-form" id="sendVerificationForm">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <select name="verifier_staff" class="form-control form-control-md" required>
+              <option value="">Select verifier</option>
+              {% for staff in verification_verifier_staff %}
+                <option value="{{ staff.id }}">{{ staff.display_name }}</option>
+              {% endfor %}
+            </select>
+            <input type="text" name="note" class="form-control form-control-md" placeholder="Optional note">
+            <button type="submit" class="btn btn-sm btn-success">
+              <i class="fas fa-paper-plane mr-1"></i>Send
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <!-- ── Delete Confirmation Modal ── -->
 <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
@@ -997,6 +1536,23 @@
 {% block javascripts %}
 <script>
   document.addEventListener('click', function(event) {
+    const sendVerificationBtn = event.target.closest('.send-verification-btn');
+    if (sendVerificationBtn) {
+      event.stopPropagation();
+      const form = document.getElementById('sendVerificationForm');
+      const batchName = document.getElementById('sendVerificationBatchName');
+      const batchMeta = document.getElementById('sendVerificationBatchMeta');
+      const batchCount = document.getElementById('sendVerificationBatchCount');
+      if (form) form.setAttribute('action', sendVerificationBtn.getAttribute('data-action') || '');
+      if (batchName) batchName.textContent = sendVerificationBtn.getAttribute('data-batch') || 'Selected batch';
+      if (batchMeta) batchMeta.textContent = sendVerificationBtn.getAttribute('data-site') || 'No site';
+      if (batchCount) batchCount.textContent = `${sendVerificationBtn.getAttribute('data-count') || '0'} final`;
+      if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
+        window.jQuery('#sendVerificationModal').modal('show');
+      }
+      return;
+    }
+
     const deleteBtn = event.target.closest('.delete-btn');
     if (deleteBtn) {
       const url = deleteBtn.getAttribute('data-url');

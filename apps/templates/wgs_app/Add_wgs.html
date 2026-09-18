@@ -236,25 +236,6 @@
 .g-warn:hover    { background: linear-gradient(135deg,#e67e22,#ca6f1e); }
 
 
-.card-actions .relink-form {
-  flex: 0 0 58px;
-  min-width: 58px;
-}
-.card-actions .btn-relink {
-  width: 100%;
-  min-width: 0;
-  padding-left: 0.2rem;
-  padding-right: 0.2rem;
-  font-size: 0.68rem !important;
-  line-height: 1;
-}
-.card-actions .btn-relink i {
-  font-size: 0.68rem !important;
-}
-.card-actions .btn-relink span {
-  font-size: 0.68rem !important;
-  white-space: nowrap;
-}
 /* ── MODAL ── */
 .modal-bg {
   position: fixed; inset: 0; z-index: 1040;
@@ -546,13 +527,6 @@
         <button type="button" class="btn-up g-blue" onclick="openM('mSampleInfo')">
           <i class="ni ni-cloud-upload-96"></i> Upload
         </button>
-        <form method="POST" action="{% url 'relink_sample_information_matches' %}" class="relink-form">
-          {% csrf_token %}
-                <button type="submit" class="btn-up g-blue btn-relink">
-                    <i class="ni ni-refresh-02"></i>
-                    <span>Relink</span>
-                  </button>
-        </form>
         {% endif %}
         <a href="{% url 'show_sample_information' %}" class="btn-view">
           <i class="ni ni-folder-17"></i> View Data
@@ -975,6 +949,9 @@
 <!-- Sample Information -->
 {% if user_access.can_wgs_create %}
 <div class="modal-bg" id="mSampleInfo">
+  <form method="POST" action="{% url 'relink_sample_information_matches' %}" id="sampleInfoRelinkForm">
+    {% csrf_token %}
+  </form>
   <form method="POST" action="{% url 'upload_sample_information' %}" enctype="multipart/form-data" onsubmit="return confirmOverwrite();">
     {% csrf_token %}
     <div class="mbox">
@@ -1006,6 +983,9 @@
       <div class="mfoot">
         <button type="button" class="btn-mcancel" onclick="closeM('mSampleInfo')">
           Cancel
+        </button>
+        <button type="submit" form="sampleInfoRelinkForm" class="btn-mcancel">
+          <i class="ni ni-refresh-02"></i> Relink Existing
         </button>
         <button type="submit" class="btn-msubmit g-blue">
           <i class="ni ni-cloud-upload-96"></i> Upload

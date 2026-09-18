@@ -407,6 +407,17 @@
       transform: translateX(2px);
     }
 
+    .action-btn-delete.disabled,
+    .action-btn-delete:disabled,
+    .btn-delete-disabled {
+      background: #f5f8fb !important;
+      border: 1px solid #d6e1eb !important;
+      color: #9fb0c4 !important;
+      cursor: not-allowed;
+      opacity: .78;
+      transform: none !important;
+    }
+
     /* ── Edit author button ── */
     .btn-edit-author {
       display: inline-flex;
@@ -585,10 +596,18 @@
         <i class="fa fa-table mr-1"></i> View Records
       </a>
       {% if batch %}
+        {% if verification_deletion_blocked %}
+        <span title="{{ verification_deletion_block_reason }}" style="display:inline-flex;">
+          <button type="button" class="btn btn-sm btn-delete-disabled" disabled>
+            <i class="fa fa-trash mr-1"></i> Delete Batch
+          </button>
+        </span>
+        {% else %}
         <a class="btn btn-sm btn-danger" href="{% url 'delete_batch' batch.id %}"
           onclick="return confirm('Are you sure you want to delete the whole batch {{ batch.bat_Batch_Name }}?');">
           <i class="fa fa-trash mr-1"></i> Delete Batch
         </a>
+        {% endif %}
       {% endif %}
       <button type="button" class="btn btn-sm btn-neutral" onclick="history.back()">
         <i class="ni ni-bold-left mr-1"></i> Back
@@ -642,11 +661,19 @@
                   <i class="fa fa-pencil-alt"></i> Add Data
                 </a>
                 {% endif %}
-                <a href="#" class="action-btn action-btn-delete delete-btn"
-                   data-toggle="modal" data-target="#deleteModal"
-                   data-url="{% url 'delete_record_in_batch' isolate.id %}">
-                  <i class="fa fa-trash"></i> Delete
-                </a>
+                {% if verification_deletion_blocked %}
+                <span title="{{ verification_deletion_block_reason }}" style="display:block;">
+                  <button type="button" class="action-btn action-btn-delete disabled" disabled>
+                    <i class="fa fa-trash"></i> Delete
+                  </button>
+                </span>
+                {% else %}
+                  <a href="#" class="action-btn action-btn-delete delete-btn"
+                     data-toggle="modal" data-target="#deleteModal"
+                     data-url="{% url 'delete_record_in_batch' isolate.id %}">
+                    <i class="fa fa-trash"></i> Delete
+                  </a>
+                {% endif %}
               </td>
 
               <!-- Identification -->

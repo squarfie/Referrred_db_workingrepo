@@ -205,20 +205,20 @@ th, td {
 
 .recommendation-label {
     margin: 0 !important;
-    padding: 1.2px 0 0 3px !important;
-    line-height: 1 !important;
-    font-size: 9px !important;
+    padding: 1.5px 0 0.5px 3px !important;
+    line-height: 1.08 !important;
+    font-size: 10.2px !important;
     font-weight: bold !important;
 }
 
 .recommendation-text {
     margin: 0 !important;
-    padding: 1px 2px 1px 3px !important;
+    padding: 1.5px 2px 1.5px 3px !important;
     text-indent: 0 !important;
     min-height: 0 !important;
     height: auto !important;
-    line-height: 1 !important;
-    font-size: 8.8px !important;
+    line-height: 1.08 !important;
+    font-size: 10px !important;
     white-space: normal !important;
     overflow-wrap: break-word;
     word-wrap: break-word;
@@ -257,8 +257,8 @@ th, td {
 
 .result-cell,
 .result-cell.mic {
-    font-size: 9px !important;
-    line-height: 1.1 !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
     padding: 1px 1px 0 0 !important;
     text-align: center !important;
     vertical-align: middle !important;
@@ -266,15 +266,15 @@ th, td {
 }
 .result-cell strong,
 .result-cell span {
-    font-size: 9.5px !important;
+    font-size: 10.7px !important;
     font-weight: bold !important;
 }
 
 .enris-cell,
 .enris-cell.mic {
-    font-size: 9.4px !important;
+    font-size: 10.3px !important;
     font-weight: bold !important;
-    line-height: 1 !important;
+    line-height: 1.06 !important;
     font-weight: bold !important;
     text-align: center !important;
     vertical-align: middle !important;
@@ -338,13 +338,13 @@ th, td {
 }
 
 .compact-pdf-page .signature-gap td {
-    height: 6px !important;
-    line-height: 6px !important;
+    height: 3px !important;
+    line-height: 3px !important;
 }
 
 .compact-pdf-page .signature-bottom-spacer td {
-    height: 16px !important;
-    line-height: 16px !important;
+    height: 8px !important;
+    line-height: 8px !important;
 }
 
 .compact-pdf-page .single-isolate-signature-spacer td {
@@ -369,19 +369,28 @@ th, td {
 }
 
 .compact-pdf-page .recommendation-label {
-    padding: 0.5px 0 0 3px !important;
+    font-size: 8.4px !important;
+    padding: 0.2px 1px 0 1px !important;
     line-height: 0.9 !important;
 }
 
 .compact-pdf-page .recommendation-text {
-    padding: 0.5px 2px 0.5px 3px !important;
-    line-height: 0.88 !important;
+    font-size: 8.2px !important;
+    padding: 0.2px 1px !important;
+    margin: 0 !important;
+    line-height: 0.9 !important;
+}
+
+.compact-pdf-page .recommendation-row td,
+.compact-pdf-page .recommendation-cell {
+    padding: 0 1px !important;
+    line-height: 0.9 !important;
 }
 
 .compact-pdf-page .result-cell,
 .compact-pdf-page .result-cell.mic {
-    font-size: 9.8px !important;
-    line-height: 1 !important;
+    font-size: 8.8px !important;
+    line-height: 0.9 !important;
     padding: 0 !important;
     vertical-align: middle !important;
 }
@@ -1022,6 +1031,9 @@ table.report-table td.result-cell.mic .result-value {
                            &nbsp;
                             {% endif %}
                         </td>
+                    </tr>
+                    <tr class="signature-label-gap">
+                        <td colspan="42" style="border:none; height:3px; line-height:3px; padding:0;"></td>
                     </tr>
             <tr>
                   <th colspan="42" style="font-size: 10px; border: 1px solid black;"><strong>THIS CONFIFMATORY TEST RESULTS ARE FOR THE LABORATORY WHOSE NAME

@@ -1,0 +1,508 @@
+﻿{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %}Verification Case{% endblock title %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{% static 'assets/css/arsp.css' %}">
+<style>
+  :root {
+    --verify-navy: #12304b;
+    --verify-teal: #0fa4ad;
+    --verify-mint: #20a782;
+    --verify-line: rgba(20, 77, 105, 0.14);
+    --verify-soft: #f4fbfd;
+    --verify-text: #173f63;
+  }
+
+  .verification-page {
+    background:
+      linear-gradient(90deg, rgba(224,248,252,0.78) 0%, rgba(255,255,255,0.72) 48%, rgba(224,248,252,0.78) 100%),
+      url("{% static 'assets/img/theme/micros_2.png' %}") center 36% / cover fixed no-repeat;
+    min-height: 100vh;
+    font-size: 0.9rem;
+  }
+  .verification-hero {
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,.96) 0%, rgba(255,255,255,.90) 54%, rgba(225,249,252,.72) 100%),
+      url("{% static 'assets/img/theme/micros_2.png' %}") center 42% / cover no-repeat;
+    color: var(--verify-text);
+    margin: 1.25rem 1.5rem 0;
+    padding: 1.4rem 1.5rem;
+    border: 1px solid #dbe4f0;
+    border-radius: 8px;
+    box-shadow: 0 8px 28px rgba(15, 39, 68, .08);
+  }
+  .verification-hero:before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, #1e5a96, #00bcd4, #20a782); }
+  .verification-hero-content { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .verification-hero-icon { width: 46px; height: 46px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(135deg, #1e5a96, #0fa4ad); box-shadow: 0 8px 18px rgba(15, 127, 149, .22); flex: 0 0 auto; font-size: 1.2rem; }
+  .verification-title { margin: 0; color: var(--verify-text); font-size: 1.55rem; font-weight: 900; }
+  .verification-subtitle { color: #7b8ea5; margin: .35rem 0 0; font-size: 0.9rem; }
+  .verification-hero-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .hero-chip { display: inline-flex; align-items: center; gap: 5px; padding: .32rem .62rem; border-radius: 999px; background: rgba(232,251,255,.88); border: 1px solid rgba(0,188,212,.26); color: #087f95; font-size: .68rem; font-weight: 900; white-space: nowrap; }
+  .hero-chip.tat-safe { background: #d8f3c8; border-color: #9fd58a; color: #1f5d2b; }
+  .hero-chip.tat-watch { background: #fff1a8; border-color: #f0cf51; color: #755400; }
+  .hero-chip.tat-near { background: #ffc078; border-color: #f59d3d; color: #6b3400; }
+  .hero-chip.tat-overdue { background: #e67f68; border-color: #d85d45; color: #4f120b; }
+  .hero-back-btn { border: 1px solid #cfe3f1; background: #fff; color: #173f63; font-size: .72rem; font-weight: 900; border-radius: 6px; padding: .42rem .65rem; box-shadow: 0 5px 14px rgba(15,39,68,.10); }
+  .hero-back-btn:hover { color: #087f95; text-decoration: none; border-color: #9eddea; }
+  .verification-shell { position: relative; z-index: 5; padding: .55rem 1.15rem 1.5rem; }
+  .verification-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
+  .verify-card, .side-card { background: #fff; border: 1px solid #dbe4f0; border-radius: 8px; box-shadow: 0 8px 28px rgba(15, 39, 68, .08); overflow: hidden; }
+  .case-bar { background: #fff; color: var(--verify-text); padding: 9px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid #dbe4f0; border-top: 4px solid #1f6fb2; }
+  .case-title { color: var(--verify-text); font-weight: 900; font-size: 0.86rem; margin-bottom: 0; display: inline-flex; align-items: center; gap: 6px; }
+  .case-title::before { content: "ACTIVE CASE:"; color: #7c93ad; font-size: 0.68rem; font-weight: 900; }
+  .case-meta { color: #7289a4; font-size: 0.72rem; display: none; }
+  .status-pill { display: inline-flex; align-items: center; border-radius: 4px; padding: 0.18rem 0.45rem; background: #e8f9fc; color: #087f95; font-weight: 800; font-size: 0.62rem; white-space: nowrap; text-transform: uppercase; }
+  .workflow-panel { padding: 11px 12px; border-bottom: 1px solid #dbe4f0; background: linear-gradient(180deg, #f7fbfe 0%, #ffffff 100%); }
+  .workflow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px; }
+  .workflow-group { position: relative; border: 1px solid #dbe4f0; border-radius: 8px; background: linear-gradient(135deg, #ffffff 0%, #f3fbff 100%); padding: 10px 10px 11px; box-shadow: 0 8px 18px rgba(15, 39, 68, .055); overflow: hidden; }
+  .workflow-group:before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: linear-gradient(180deg, #1e5a96, #0ba9b7); }
+  .workflow-group:nth-child(2):before { background: linear-gradient(180deg, #0ba9b7, #20a782); }
+  .workflow-group:nth-child(3):before { background: linear-gradient(180deg, #7a64c8, #f0872b); }
+  .workflow-group summary { color: var(--verify-text); cursor: pointer; font-weight: 900; font-size: 0.78rem; list-style: none; margin-bottom: 9px; padding-left: 6px; }
+  .workflow-group summary i { width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(135deg, #14558c, #0ba9b7); box-shadow: 0 5px 12px rgba(15, 127, 149, .18); }
+  .workflow-group summary::-webkit-details-marker { display: none; }
+  .workflow-group summary:after { content: "\f078"; float: right; font-family: "Font Awesome 5 Free"; font-weight: 900; color: #7b8ea5; }
+  .workflow-group[open] summary:after { content: "\f077"; }
+  .action-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .action-row select, .action-row input { min-width: 0; }
+  .general-remarks-group:before { background: linear-gradient(180deg, #0ba9b7, #1e5a96); }
+  .general-remarks-form { display: grid; grid-template-columns: 150px minmax(220px, 1fr) 82px; gap: 6px; align-items: start; }
+  .general-remarks-form select { height: 31px; font-size: .72rem; font-weight: 800; }
+  .general-remarks-form textarea { min-height: 58px; resize: vertical; padding: .42rem .55rem; font-size: .74rem; line-height: 1.25; }
+  .general-notes-list { display: grid; gap: 6px; margin-top: 8px; }
+  .general-note-item { border: 1px solid rgba(20,77,105,.12); border-left: 3px solid #0ba9b7; border-radius: 7px; background: rgba(255,255,255,.86); padding: 7px 9px; color: var(--verify-text); font-size: .72rem; }
+  .general-note-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 3px; }
+  .general-note-title { color: #0a4264; font-weight: 900; }
+  .general-note-meta { color: #7b8ea5; font-size: .66rem; font-weight: 800; }
+  .general-note-delete { border: 0; background: transparent; color: #e55353; padding: 0; cursor: pointer; }
+  .btn-verify { border: 0; border-radius: 6px; color: #fff; font-size: 0.68rem; font-weight: 800; padding: 0.34rem 0.6rem; display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; min-height: 28px; }
+  .btn-verify.primary { background: #14558c; }
+  .btn-verify.success { background: #20a782; }
+  .btn-verify.info { background: #0ba9b7; }
+  .btn-verify.warning { background: #f0872b; }
+  .btn-verify.danger { background: #e55353; }
+  .btn-verify.muted { background: #65717d; }
+  .btn-verify.outline-danger { background: #fff; border: 1px solid #e55353; color: #e55353; }
+  .btn-verify.outline-muted { background: #fff; border: 1px solid #cbd8e4; color: #65717d; }
+  .section-card { border-top: 1px solid var(--verify-line); background: #fff; }
+  .section-card:first-child { border-top: 0; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; background: linear-gradient(90deg, #e8fbff 0%, #f7fbfe 100%); border-bottom: 1px solid #dbe4f0; }
+  .section-title { color: var(--verify-text); font-size: 0.82rem; font-weight: 900; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .accession-actions { justify-content: flex-end; }
+  .demographics-strip { display: grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); gap: 0; margin: 10px 12px 0; border: 1px solid rgba(20, 77, 105, 0.12); border-radius: 6px; overflow: hidden; background: rgba(248, 253, 255, .84); }
+  .demographics-item { padding: 8px 10px; border-right: 1px solid rgba(20, 77, 105, 0.10); border-bottom: 1px solid rgba(20, 77, 105, 0.08); min-width: 0; }
+  .demographics-item:nth-child(6n) { border-right: 0; }
+  .demographics-label { color: #7b8ea5; display: block; font-size: .70rem; font-weight: 900; text-transform: uppercase; }
+  .demographics-value { color: #173f63; display: block; font-size: .72rem; font-weight: 900; overflow-wrap: anywhere; }
+  .nav-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 46px; height: 27px; border-radius: 999px; background: #e8fbff; border: 1px solid #aee7ef; color: #087f95; font-size: 0.68rem; font-weight: 900; }
+  .nav-icon { width: 30px; height: 27px; padding: 0; border-radius: 5px; }
+  .field-grid { display: grid; grid-template-columns: 1fr; gap: 0; margin: 10px 12px 12px; border: 1px solid #dbe4f0; border-radius: 6px; overflow-x: auto; box-shadow: 0 4px 14px rgba(15, 39, 68, .04); }
+  .field-grid-head, .field-review { display: grid; grid-template-columns: 170px minmax(300px, 0.95fr) minmax(300px, 1.05fr) minmax(430px, 1.35fr); gap: 8px; align-items: center; min-width: 1220px; }
+  .field-grid-head { padding: 8px 9px; background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)); color: #fff; font-size: 0.64rem; font-weight: 900; text-transform: uppercase; }
+  .field-review { border: 0; border-top: 1px solid rgba(20, 77, 105, 0.10); border-radius: 0; background: #fff; padding: 5px 9px; transition: background .16s ease; min-height: 36px; }
+  .field-review:hover { background: rgba(232, 251, 255, .42); }
+  .field-label { color: #365a78; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0; }
+  .field-value { color: #102f4a; font-weight: 700; min-height: 26px; padding: 4px 0; background: transparent; border: 0; border-radius: 0; overflow-wrap: anywhere; }
+  .recommendation-value { font-weight: 800; line-height: 1.35; }
+  .recommendation-list { margin: 0; padding-left: 0; display: grid; gap: 3px; list-style: none; }
+  .recommendation-list li { position: relative; padding-left: 1.1rem; }
+  .recommendation-list li:before { content: "\f058"; position: absolute; left: 0; top: 0.16rem; font-family: "Font Awesome 5 Free"; font-weight: 900; color: var(--verify-teal); font-size: 0.62rem; }
+  .comment-tools { display: grid; grid-template-columns: 100px minmax(220px, 1fr) 72px; gap: 5px; margin-top: 0; align-items: center; }
+  .comment-tools select { height: 27px; padding-top: 0.15rem; padding-bottom: 0.15rem; font-size: 0.72rem; }
+  .comment-tools textarea { height: 27px; min-height: 27px; resize: vertical; padding: 0.25rem 0.45rem; font-size: 0.72rem; line-height: 1.2; }
+  .comment-locked { display: inline-flex; align-items: center; gap: 5px; color: #7b8ea5; background: #f7fbfe; border: 1px dashed #cfe3f1; border-radius: 6px; padding: .32rem .55rem; font-size: .7rem; font-weight: 800; }
+  .saved-comments { margin-top: 0; display: grid; gap: 5px; counter-reset: saved-comment; }
+  .saved-comment { position: relative; border-left: 3px solid var(--verify-teal); background: #fff; border-radius: 6px; padding: 5px 7px 5px 24px; font-size: 0.7rem; color: var(--verify-text); }
+  .saved-comment:before { counter-increment: saved-comment; content: counter(saved-comment); position: absolute; left: 7px; top: 7px; width: 13px; height: 13px; border-radius: 999px; background: #e8fbff; color: #087f95; display: inline-flex; align-items: center; justify-content: center; font-size: 0.56rem; font-weight: 900; }
+  .saved-comment-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .saved-comment-delete { border: 0; background: transparent; color: #e55353; padding: 0; line-height: 1; cursor: pointer; }
+  .empty-comment { color: #8ba0b6; font-size: 0.68rem; font-style: italic; }
+  .antibiogram-wrap { overflow-x: auto; padding: 0 12px 12px; }
+  .antibiogram-table { display: grid; min-width: 1600px; border: 1px solid #dbe4f0; border-radius: 6px; overflow: hidden; }
+  .antibiogram-row { display: grid; grid-template-columns: minmax(210px, 1.12fr) 88px 108px 118px 88px 108px 118px 104px minmax(170px, .62fr) minmax(290px, .98fr) 78px; gap: 6px; align-items: center; padding: 4px 9px; border-bottom: 1px solid rgba(20, 77, 105, 0.10); min-height: 36px; }
+  .antibiogram-head { color: #fff; font-size: 0.64rem; font-weight: 900; text-transform: uppercase; background: var(--arsp-table-head-bg, rgba(18, 63, 78, 0.92)); padding: 8px 9px; border-top: 0; }
+  .antibiotic-name, .antibiotic-code, .antibiotic-result { overflow-wrap: anywhere; }
+  .antibiotic-name { color: var(--verify-text); font-size: 0.68rem; font-weight: 800; text-transform: uppercase; line-height: 1.2; }
+  .antibiotic-code { color: #24466f; font-family: monospace; font-size: 0.7rem; font-weight: 700; }
+  .antibiotic-result { color: #102f4a; font-weight: 700; font-size: 0.74rem; }
+  .antibiogram-row select { height: 27px; padding-top: 0.15rem; padding-bottom: 0.15rem; font-size: 0.72rem; }
+  .antibiogram-row input { height: 27px; padding: 0.25rem 0.45rem; font-size: 0.72rem; line-height: 1.2; }
+  .antibiogram-row textarea { height: 27px; min-height: 27px; resize: vertical; padding: 0.25rem 0.45rem; font-size: 0.72rem; line-height: 1.2; }
+  .antibiogram-row .btn-verify { width: 100%; }
+  .add-antibiotic-row { background: linear-gradient(90deg, rgba(0, 172, 185, .08), rgba(255,255,255,.94)); border-top: 2px solid rgba(0, 172, 185, .28); }
+  .add-antibiotic-row .add-row-label { font-weight: 900; color: #0a4264; text-transform: uppercase; letter-spacing: .03em; font-size: .68rem; display: flex; align-items: center; gap: 6px; }
+  .extra-comment-title { font-weight: 900; color: #0a4264; }
+  .case-details-panel { background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%); border-bottom: 1px solid #dbe4f0; padding: 9px 12px 11px; }
+  .case-details-panel summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--verify-text); font-size: 0.78rem; font-weight: 900; }
+  .case-details-panel summary::-webkit-details-marker { display: none; }
+  .case-details-panel summary:after { content: "\f078"; font-family: "Font Awesome 5 Free"; font-weight: 900; color: #7b8ea5; }
+  .case-details-panel[open] summary:after { content: "\f077"; }
+  .summary-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; font-size: 0.72rem; }
+  .summary-chip { border: 1px solid #cfe5ef; border-radius: 999px; background: #fff; color: var(--verify-text); padding: 0.22rem 0.55rem; white-space: nowrap; box-shadow: 0 3px 9px rgba(15, 39, 68, .04); }
+  .side-stack { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 9px; }
+  .side-card { position: relative; padding: 12px 13px; box-shadow: 0 8px 20px rgba(15, 39, 68, .055); background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(238,250,253,.92)); }
+  .side-card:before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, #1e5a96, #0ba9b7); }
+  .side-card:nth-child(2):before { background: linear-gradient(90deg, #0ba9b7, #20a782); }
+  .side-card:nth-child(3):before { background: linear-gradient(90deg, #7a64c8, #f0872b); }
+  .side-card:nth-child(1) { background: linear-gradient(135deg, #ffffff 0%, #eef9ff 100%); }
+  .side-card:nth-child(2) { background: linear-gradient(135deg, #ffffff 0%, #effcf7 100%); }
+  .side-card:nth-child(3) { background: linear-gradient(135deg, #ffffff 0%, #fff7ef 100%); }
+  .side-title { color: var(--verify-text); font-size: 0.82rem; font-weight: 900; margin-bottom: 11px; display: flex; align-items: center; gap: 8px; }
+  .side-title i { width: 25px; height: 25px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(135deg, #1e5a96, #0ba9b7); box-shadow: 0 5px 12px rgba(15, 127, 149, .16); }
+  .side-card:nth-child(2) .side-title i { background: linear-gradient(135deg, #0b8793, #20a782); }
+  .side-card:nth-child(3) .side-title i { background: linear-gradient(135deg, #7a64c8, #f0872b); }
+  .info-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid rgba(20, 77, 105, 0.10); font-size: 0.78rem; align-items: center; }
+  .info-row:first-of-type { border-top: 0; }
+  .info-label { color: #7b8ea5; font-weight: 800; }
+  .info-value { color: var(--verify-text); font-weight: 900; text-align: right; overflow-wrap: anywhere; }
+  .side-card:nth-child(1) .info-row:first-of-type .info-value { color: #087f95; background: #e8fbff; border: 1px solid #b9ecf2; border-radius: 999px; padding: 2px 8px; font-size: .68rem; text-transform: uppercase; }
+  .side-card:nth-child(3) .text-muted { display: flex; align-items: center; gap: 8px; min-height: 62px; color: #8a6b42 !important; background: rgba(255, 247, 239, .75); border: 1px dashed rgba(240, 135, 43, .34); border-radius: 8px; padding: 10px; font-weight: 800; }
+  .side-card:nth-child(3) .text-muted:before { content: "\f3ff"; font-family: "Font Awesome 5 Free"; font-weight: 900; color: #f0872b; font-size: 1rem; }
+  @media (max-width: 1180px) { .side-stack { grid-template-columns: 1fr; } .demographics-strip { grid-template-columns: repeat(3, minmax(120px, 1fr)); } .demographics-item:nth-child(3n) { border-right: 0; } }
+  @media (max-width: 760px) { .verification-hero { margin: .85rem .85rem 0; padding: 1.1rem 1rem; } .verification-hero-content { align-items: flex-start; } .verification-hero-actions { justify-content: flex-start; margin-top: .8rem; } .verification-shell { padding: .75rem; } .case-details-panel summary { align-items: flex-start; flex-direction: column; } .summary-chips { justify-content: flex-start; } .demographics-strip { grid-template-columns: 1fr 1fr; } .field-grid { grid-template-columns: 1fr; } .comment-tools, .general-remarks-form { grid-template-columns: 1fr; } }
+
+  .general-note-audience {
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 2px 28px 2px 8px !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+}
+</style>
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="verification-page">
+  <div class="verification-hero">
+    <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap:0.75rem;">
+      <div class="verification-hero-content">
+        <div class="verification-hero-icon"><i class="fas fa-clipboard-check"></i></div>
+        <div>
+          <h1 class="verification-title">Record Verification</h1>
+          <p class="verification-subtitle">Review encoded final records, verifier comments, and approvals.</p>
+        </div>
+      </div>
+      <div class="verification-hero-actions">
+        <span class="hero-chip"><i class="fas fa-route"></i>{{ case.get_status_display }}</span>
+        {% if tat_summary and tat_summary.days is not None %}
+        <span class="hero-chip tat-{{ tat_summary.pressure|default:'none' }}" title="Target TAT: {{ tat_summary.target_days }} days">
+          <i class="fas fa-clock"></i>{{ tat_summary.label }}
+        </span>
+        {% endif %}
+        <span class="hero-chip"><i class="fas fa-comments"></i>{{ case.comment_count }} comment{% if case.comment_count != 1 %}s{% endif %}</span>
+        <a href="{% url 'verification_dashboard' %}" class="hero-back-btn"><i class="fas fa-arrow-left mr-1"></i>Back</a>
+      </div>
+    </div>
+  </div>
+
+<div class="container-fluid verification-shell">
+  <div class="verification-layout">
+    <main class="verify-card">
+      <div class="case-bar">
+        <div>
+          <div class="case-title">{% if case.final_batch %}{{ case.final_batch.bat_Batch_Code|default:case.final_batch.bat_Batch_Name }}{% elif case.final_accession %}{{ case.final_accession.f_AccessionNo }}{% else %}Untitled case{% endif %}</div>
+          <div class="case-meta">
+            Checker: {% if case.assigned_checker %}{{ case.assigned_checker.get_full_name|default:case.assigned_checker.username }}{% else %}Unassigned{% endif %}
+            |
+            Verifier: {% if case.assigned_verifier %}{{ case.assigned_verifier.get_full_name|default:case.assigned_verifier.username }}{% else %}Unassigned{% endif %}
+          </div>
+        </div>
+        <div class="action-row">
+          <span class="status-pill">{{ case.get_status_display }}</span>
+          {% if case.final_batch %}
+          <a href="{% url 'generate_final_batch_pdf' case.final_batch.id %}" class="btn-verify outline-muted" target="_blank"><i class="fas fa-print"></i>Print Result</a>
+          {% endif %}
+          {% if user_access.is_checker or user_access.is_admin %}{% if case.status != "signed_by_head" and case.status != "released" %}
+          <form method="post" action="{% url 'withdraw_verification_case' case.id %}">{% csrf_token %}<button type="submit" class="btn-verify warning"><i class="fas fa-undo"></i>Withdraw</button></form>
+          {% endif %}{% endif %}
+        </div>
+      </div>
+
+      <details class="case-details-panel">
+        <summary>
+          <span><i class="fas fa-info-circle mr-1"></i>Case details and signatories</span>
+          <span class="summary-chips">
+            <span class="summary-chip">{{ case.get_status_display }}</span>
+            <span class="summary-chip">{{ case.comment_count }} comment{% if case.comment_count != 1 %}s{% endif %}</span>
+            <span class="summary-chip">Updated {{ case.updated_at|date:"M d, Y" }}</span>
+            {% if case.qr_generated_at %}<span class="summary-chip">QR ready</span>{% endif %}
+          </span>
+        </summary>
+        <aside class="side-stack">
+        <div class="side-card"><div class="side-title"><i class="fas fa-info-circle"></i>Case Info</div><div class="info-row"><span class="info-label">Status</span><span class="info-value">{{ case.get_status_display }}</span></div><div class="info-row"><span class="info-label">Comments</span><span class="info-value">{{ case.comment_count }}</span></div><div class="info-row"><span class="info-label">Created</span><span class="info-value">{{ case.created_at|date:"M d, Y" }}</span></div><div class="info-row"><span class="info-label">Updated</span><span class="info-value">{{ case.updated_at|date:"M d, Y" }}</span></div></div>
+        <div class="side-card">
+          <div class="side-title"><i class="fas fa-user-shield"></i>Signatories</div>
+          <div class="info-row">
+            <span class="info-label">Checker</span>
+            <span class="info-value">{% if case.assigned_checker %}{{ case.assigned_checker.get_full_name|default:case.assigned_checker.username }}{% else %}-{% endif %}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Verifier</span>
+            <span class="info-value">{% if case.assigned_verifier %}{{ case.assigned_verifier.get_full_name|default:case.assigned_verifier.username }}{% else %}-{% endif %}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Lab Manager</span>
+            <span class="info-value">{% if case.assigned_lab_manager %}{{ case.assigned_lab_manager.get_full_name|default:case.assigned_lab_manager.username }}{% else %}-{% endif %}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Head</span>
+            <span class="info-value">{% if case.assigned_head %}{{ case.assigned_head.get_full_name|default:case.assigned_head.username }}{% else %}-{% endif %}</span>
+          </div>
+        </div>
+        <div class="side-card"><div class="side-title"><i class="fas fa-qrcode"></i>Release</div>{% if case.qr_generated_at %}<div class="info-row"><span class="info-label">QR Ready</span><span class="info-value">{{ case.qr_generated_at|date:"M d, Y" }}</span></div><div class="small text-muted mt-2">{{ case.qr_token }}</div>{% else %}<div class="text-muted small">QR token will be prepared after head approval.</div>{% endif %}</div>
+        </aside>
+      </details>
+
+      <div class="workflow-panel">
+        {% if case.note %}<div class="alert alert-info py-2 mb-2">{{ case.note }}</div>{% endif %}
+        <div class="workflow-grid">
+          {% if can_submit_verifier_actions %}
+          <details class="workflow-group" {% if not user_access.is_admin %}open{% endif %}>
+            <summary><i class="fas fa-user-check mr-1"></i>Verifier Actions</summary>
+            <form method="post" class="action-row mb-2">{% csrf_token %}<button type="submit" name="action" value="return_checker" class="btn-verify muted"><i class="fas fa-reply-all"></i>Return to Checker</button></form>
+            <form method="post" class="action-row">{% csrf_token %}<select name="lab_manager_staff" class="form-control form-control-md" required><option value="">Select lab manager</option>{% for staff in lab_manager_staff %}<option value="{{ staff.id }}">{{ staff.display_name }}</option>{% endfor %}</select><button type="submit" name="action" value="send_lab_manager" class="btn-verify primary"><i class="fas fa-share"></i>Send to Lab Manager</button></form>
+          </details>
+          {% endif %}
+          {% if can_undo_send_lab_manager %}
+          <details class="workflow-group" open>
+            <summary><i class="fas fa-user-check mr-1"></i>Verifier Follow-up</summary>
+            <form method="post" class="action-row">
+              {% csrf_token %}
+              <button type="submit" name="action" value="undo_send_lab_manager" class="btn-verify warning" onclick="return confirm('Undo sending this case to Lab Manager and return it to Verifier review?');"><i class="fas fa-undo"></i>Undo Send to Lab Manager</button>
+              <span class="comment-locked"><i class="fas fa-info-circle"></i>After undoing, verifier actions reopen.</span>
+            </form>
+          </details>
+          {% endif %}
+          {% if can_submit_lab_manager_actions %}
+          <details class="workflow-group" {% if not user_access.is_admin %}open{% endif %}>
+            <summary><i class="fas fa-flask mr-1"></i>Lab Manager Actions</summary>
+            <form method="post" class="action-row mb-2">{% csrf_token %}<button type="submit" name="action" value="lab_return_verifier" class="btn-verify muted"><i class="fas fa-reply"></i>Return to Verifier</button></form>
+            <form method="post" class="action-row">{% csrf_token %}<select name="head_staff" class="form-control form-control-md" required><option value="">Select ARSRL head</option>{% for staff in head_staff %}<option value="{{ staff.id }}">{{ staff.display_name }}</option>{% endfor %}</select><button type="submit" name="action" value="send_head" class="btn-verify primary"><i class="fas fa-share"></i>Send to Head</button></form>
+          </details>
+          {% endif %}
+          {% if can_withdraw_from_head %}
+          <details class="workflow-group" open>
+            <summary><i class="fas fa-flask mr-1"></i>Lab Manager Follow-up</summary>
+            <form method="post" class="action-row">
+              {% csrf_token %}
+              <button type="submit" name="action" value="withdraw_from_head" class="btn-verify warning" onclick="return confirm('Withdraw this case from Head review and return it to Lab Manager review?');"><i class="fas fa-undo"></i>Withdraw from Head</button>
+              <span class="comment-locked"><i class="fas fa-info-circle"></i>After withdrawing, field comments reopen for Lab Manager.</span>
+            </form>
+          </details>
+          {% endif %}
+          {% if can_submit_head_actions %}
+          <details class="workflow-group">
+            <summary><i class="fas fa-signature mr-1"></i>Head/Admin Actions</summary>
+            <form method="post" class="action-row">{% csrf_token %}<button type="submit" name="action" value="head_approve" class="btn-verify info"><i class="fas fa-signature"></i>Approve / QR Ready</button><button type="submit" name="action" value="head_disapprove" class="btn-verify warning"><i class="fas fa-ban"></i>Disapprove</button><button type="submit" name="action" value="head_return_lab" class="btn-verify muted"><i class="fas fa-reply"></i>Return to Lab Manager</button></form>
+          </details>
+          {% endif %}
+          {% if can_withdraw_from_ready %}
+          <details class="workflow-group" open>
+            <summary><i class="fas fa-signature mr-1"></i>Head/Admin Follow-up</summary>
+            <form method="post" class="action-row">
+              {% csrf_token %}
+              <button type="submit" name="action" value="withdraw_from_ready" class="btn-verify warning" onclick="return confirm('Withdraw this case from Ready for Release and return it to Head review?');"><i class="fas fa-undo"></i>Withdraw from Ready for Release</button>
+              <span class="comment-locked"><i class="fas fa-info-circle"></i>After withdrawing, Head field comments reopen.</span>
+            </form>
+          </details>
+          {% endif %}
+          {% if can_undo_head_disapprove %}
+          <details class="workflow-group" open>
+            <summary><i class="fas fa-signature mr-1"></i>Head/Admin Follow-up</summary>
+            <form method="post" class="action-row">
+              {% csrf_token %}
+              <button type="submit" name="action" value="undo_head_disapprove" class="btn-verify info" onclick="return confirm('Undo this head disapproval and return the case to Head review?');"><i class="fas fa-undo"></i>Undo Disapprove</button>
+              <span class="comment-locked"><i class="fas fa-info-circle"></i>This returns the case to Head review.</span>
+            </form>
+          </details>
+          {% endif %}
+          <details class="workflow-group general-remarks-group" open>
+            <summary><i class="fas fa-comment-dots mr-1"></i>General Remarks</summary>
+<form method="post" class="general-remarks-form">
+    {% csrf_token %}
+
+    <input type="hidden" name="action" value="general_note">
+
+    <select name="audience"
+            class="form-control general-note-audience"
+            aria-label="Addressed to">
+        {% for value, label in general_note_audience_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+    </select>
+
+    <textarea name="general_note"
+              class="form-control form-control-sm"
+              placeholder="Remark for this batch"></textarea>
+
+    <button type="submit" class="btn-verify info">
+        <i class="fas fa-comment"></i> Save
+    </button>
+</form>
+            <div class="general-notes-list">
+              {% for note in general_case_notes %}
+              <div class="general-note-item">
+                <div class="general-note-top">
+                  <span class="general-note-title">{{ note.field_label|default:"General remark" }}</span>
+                  <span class="d-inline-flex align-items-center" style="gap:6px;">
+                    <span class="general-note-meta">{{ note.created_by|default:"Unknown" }}{% if note.created_at %} | {{ note.created_at|date:"M d, Y h:i A" }}{% endif %}</span>
+                    {% if can_delete_case_comments %}
+                    <form method="post" action="{% url 'delete_verification_comment' case.id note.id %}" class="m-0">
+                      {% csrf_token %}
+                      <button type="submit" class="general-note-delete" title="Delete remark" onclick="return confirm('Delete this general remark?');"><i class="fas fa-trash"></i></button>
+                    </form>
+                    {% endif %}
+                  </span>
+                </div>
+                <div>{{ note.comment }}</div>
+              </div>
+              {% empty %}
+              <span class="empty-comment">No general remarks yet</span>
+              {% endfor %}
+            </div>
+          </details>
+        </div>
+        {% if case.qr_generated_at %}<div class="small text-muted mt-2">QR token ready: {{ case.qr_token }}</div>{% endif %}
+      </div>
+
+      {% for item in review_rows %}
+      <section class="section-card">
+        <div class="section-head">
+          <h2 class="section-title"><i class="fas fa-vial"></i>{{ item.accession.f_AccessionNo }} <span class="text-muted font-weight-normal">{{ item.accession.f_First_Name }} {{ item.accession.f_Last_Name }}</span></h2>
+          <div class="action-row accession-actions">
+            {% if case_accession_nav %}
+              {% if case_accession_nav.first_id and case_accession_nav.first_id != item.accession.id %}
+              <a href="{% url 'verification_case_detail' case.id %}?accession_id={{ case_accession_nav.first_id }}" class="btn-verify outline-muted nav-icon" title="First accession"><i class="fas fa-step-backward"></i></a>
+              {% else %}
+              <button type="button" class="btn-verify outline-muted nav-icon" title="First accession" disabled><i class="fas fa-step-backward"></i></button>
+              {% endif %}
+
+              {% if case_accession_nav.previous_id %}
+              <a href="{% url 'verification_case_detail' case.id %}?accession_id={{ case_accession_nav.previous_id }}" class="btn-verify outline-muted nav-icon" title="Previous accession"><i class="fas fa-caret-left"></i></a>
+              {% else %}
+              <button type="button" class="btn-verify outline-muted nav-icon" title="Previous accession" disabled><i class="fas fa-caret-left"></i></button>
+              {% endif %}
+
+              <span class="nav-chip">{{ case_accession_nav.position }} / {{ case_accession_nav.total }}</span>
+
+              {% if case_accession_nav.next_id %}
+              <a href="{% url 'verification_case_detail' case.id %}?accession_id={{ case_accession_nav.next_id }}" class="btn-verify outline-muted nav-icon" title="Next accession"><i class="fas fa-caret-right"></i></a>
+              {% else %}
+              <button type="button" class="btn-verify outline-muted nav-icon" title="Next accession" disabled><i class="fas fa-caret-right"></i></button>
+              {% endif %}
+
+              {% if case_accession_nav.last_id and case_accession_nav.last_id != item.accession.id %}
+              <a href="{% url 'verification_case_detail' case.id %}?accession_id={{ case_accession_nav.last_id }}" class="btn-verify outline-muted nav-icon" title="Last accession"><i class="fas fa-step-forward"></i></a>
+              {% else %}
+              <button type="button" class="btn-verify outline-muted nav-icon" title="Last accession" disabled><i class="fas fa-step-forward"></i></button>
+              {% endif %}
+            {% endif %}
+            <a href="{% url 'edit_final_data' item.accession.id %}" class="btn btn-sm btn-outline-info"><i class="fas fa-pencil-alt mr-1"></i>Edit Final</a>
+          </div>
+        </div>
+
+        <div class="demographics-strip">
+          <div class="demographics-item"><span class="demographics-label">Patient</span><span class="demographics-value">{{ item.accession.f_First_Name }} {{ item.accession.f_Last_Name }}</span></div>
+          <div class="demographics-item"><span class="demographics-label">Age / Sex</span><span class="demographics-value">{{ item.accession.f_Age_Display|default:item.accession.f_Age|default:"-" }} / {{ item.accession.f_Sex|default:"-" }}</span></div>
+          <div class="demographics-item"><span class="demographics-label">Site</span><span class="demographics-value">{{ item.accession.f_SiteCode|default:"-" }}</span></div>
+          <div class="demographics-item"><span class="demographics-label">Specimen</span><span class="demographics-value">{{ item.accession.f_Spec_Type|default:"-" }}</span></div>
+          <div class="demographics-item"><span class="demographics-label">Organism</span><span class="demographics-value">{{ item.accession.f_ars_OrgCode|default:item.accession.f_Site_Org|default:"-" }}</span></div>
+          <div class="demographics-item"><span class="demographics-label">Specimen Date</span><span class="demographics-value">{{ item.accession.f_Spec_Date|date:"M d, Y"|default:"-" }}</span></div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field-grid-head"><div>Field</div><div>Current Value</div><div>Saved Comments</div><div>Decision and New Comment</div></div>
+          {% for field in item.field_rows %}
+          <form method="post" class="field-review">
+            {% csrf_token %}<input type="hidden" name="action" value="comment"><input type="hidden" name="final_accession_id" value="{{ item.accession.id }}"><input type="hidden" name="field_name" value="{{ field.name }}"><input type="hidden" name="field_label" value="{{ field.label }}"><input type="hidden" name="field_value_snapshot" value="{{ field.value }}">
+            <div class="field-label">{{ field.label }}</div>
+            <div class="field-value{% if field.is_recommendation %} recommendation-value{% endif %}">
+              {% if field.recommendation_items %}
+              <ol class="recommendation-list">
+                {% for recommendation in field.recommendation_items %}
+                <li style="font-size: 11px;">{{ recommendation }}</li>
+                {% endfor %}
+              </ol>
+              {% else %}
+              {{ field.value|default:"-" }}
+              {% endif %}
+            </div>
+            <div class="saved-comments">{% for comment in field.comments %}<div class="saved-comment"><div class="saved-comment-top"><strong>{{ comment.get_decision_display }}</strong><span class="d-inline-flex align-items-center" style="gap:6px;"><span class="status-pill">{{ comment.get_resolution_status_display }}</span>{% if can_delete_case_comments and can_write_field_comments %}<button type="submit" class="saved-comment-delete" title="Delete saved comment" formaction="{% url 'delete_verification_comment' case.id comment.id %}" formmethod="post" onclick="return confirm('Delete this saved comment?');"><i class="fas fa-trash"></i></button>{% endif %}</span></div><div>{{ comment.comment }}</div><div class="text-muted">{{ comment.created_by|default:"Unknown" }}{% if comment.created_at %} | {{ comment.created_at|date:"M d, Y h:i A" }}{% endif %}</div></div>{% empty %}<span class="empty-comment">No saved comments</span>{% endfor %}</div>
+            <div>
+              {% if can_write_field_comments %}
+              <div class="comment-tools"><select name="decision" class="form-control form-control-sm">{% for value, label in comment_decisions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select><textarea name="comment" class="form-control form-control-sm" placeholder="Comment for this field"></textarea><button type="submit" class="btn-verify info"><i class="fas fa-comment"></i>Save</button></div>
+              {% else %}
+              <span class="comment-locked"><i class="fas fa-lock"></i>Field comments locked. Use General Remarks.</span>
+              {% endif %}
+            </div>
+          </form>
+          {% endfor %}
+        </div>
+
+        {% if item.antibiotic_rows %}
+        <div class="section-head"><h3 class="section-title"><i class="fas fa-capsules"></i>Antibiogram Results</h3></div>
+        <div class="antibiogram-wrap"><div class="antibiogram-table">
+          <div class="antibiogram-row antibiogram-head"><div>Antibiotic</div><div>Site Method</div><div>Site Code</div><div>Site Result</div><div>ARSRL Method</div><div>ARSRL Code</div><div>ARSRL Result</div><div>Decision</div><div>Saved Comments</div><div>New Comment</div><div>Action</div></div>
+          {% for field in item.antibiotic_rows %}
+          <form method="post" class="antibiogram-row">
+            {% csrf_token %}<input type="hidden" name="action" value="comment"><input type="hidden" name="final_accession_id" value="{{ item.accession.id }}"><input type="hidden" name="field_name" value="{{ field.name }}"><input type="hidden" name="field_label" value="{{ field.label }}"><input type="hidden" name="field_value_snapshot" value="{{ field.value }}">
+            <div class="antibiotic-name">{{ field.antibiotic_name|default:"-" }}</div><div class="field-value">{{ field.site_test_method|default:"-" }}</div><div class="antibiotic-code">{{ field.site_whonet_code|default:"-" }}</div><div class="antibiotic-result">{{ field.site_result|default:"-" }}</div><div class="field-value">{{ field.arsrl_test_method|default:"-" }}</div><div class="antibiotic-code">{{ field.arsrl_whonet_code|default:"-" }}</div><div class="antibiotic-result">{{ field.arsrl_result|default:"-" }}</div>
+            {% if can_write_field_comments %}
+            <select name="decision" class="form-control form-control-sm">{% for value, label in comment_decisions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+            <div class="saved-comments">{% for comment in field.comments %}<div class="saved-comment"><div class="saved-comment-top"><strong>{{ comment.get_decision_display }}</strong><span class="d-inline-flex align-items-center" style="gap:6px;"><span class="status-pill">{{ comment.get_resolution_status_display }}</span>{% if can_delete_case_comments and can_write_field_comments %}<button type="submit" class="saved-comment-delete" title="Delete saved comment" formaction="{% url 'delete_verification_comment' case.id comment.id %}" formmethod="post" onclick="return confirm('Delete this saved comment?');"><i class="fas fa-trash"></i></button>{% endif %}</span></div><div>{{ comment.comment }}</div><div class="text-muted">{{ comment.created_by|default:"Unknown" }}{% if comment.created_at %} | {{ comment.created_at|date:"M d, Y h:i A" }}{% endif %}</div></div>{% empty %}<span class="empty-comment">No saved comments</span>{% endfor %}</div>
+            <textarea name="comment" class="form-control form-control-sm" placeholder="Comment for this antibiotic"></textarea><button type="submit" class="btn-verify info"><i class="fas fa-comment"></i>Save</button>
+            {% else %}
+            <span class="comment-locked"><i class="fas fa-lock"></i>Locked</span>
+            <div class="saved-comments">{% for comment in field.comments %}<div class="saved-comment"><div class="saved-comment-top"><strong>{{ comment.get_decision_display }}</strong><span class="d-inline-flex align-items-center" style="gap:6px;"><span class="status-pill">{{ comment.get_resolution_status_display }}</span></span></div><div>{{ comment.comment }}</div><div class="text-muted">{{ comment.created_by|default:"Unknown" }}{% if comment.created_at %} | {{ comment.created_at|date:"M d, Y h:i A" }}{% endif %}</div></div>{% empty %}<span class="empty-comment">No saved comments</span>{% endfor %}</div>
+            <span class="comment-locked"><i class="fas fa-comment-dots"></i>Use General Remarks</span><span class="comment-locked"><i class="fas fa-lock"></i>Locked</span>
+            {% endif %}
+          </form>
+          {% endfor %}
+          <form method="post" class="antibiogram-row add-antibiotic-row">
+            {% csrf_token %}<input type="hidden" name="action" value="antibiotic_comment"><input type="hidden" name="final_accession_id" value="{{ item.accession.id }}">
+            {% if can_write_field_comments %}
+            <select name="antibiotic_code" class="form-control form-control-sm" aria-label="Antibiotic">
+              <option value="">Add antibiotic comment</option>
+              {% for antibiotic in antibiotic_comment_choices %}<option value="{{ antibiotic.code }}">{{ antibiotic.label }}</option>{% endfor %}
+            </select>
+            <select name="test_method" class="form-control form-control-sm" aria-label="Site test method">
+              <option value="">Site method</option><option value="Disk">Disk</option><option value="MIC">MIC</option>
+            </select>
+            <div class="add-row-label"><i class="fas fa-plus-circle"></i>Site code</div>
+            <input type="text" name="site_value_note" class="form-control form-control-sm" placeholder="Site result">
+            <select name="arsrl_test_method" class="form-control form-control-sm" aria-label="ARSRL test method">
+              <option value="">ARSRL method</option><option value="Disk">Disk</option><option value="MIC">MIC</option>
+            </select>
+            <div class="add-row-label"><i class="fas fa-plus-circle"></i>ARSRL code</div>
+            <input type="text" name="value_note" class="form-control form-control-sm" placeholder="ARSRL result">
+            <select name="decision" class="form-control form-control-sm">{% for value, label in comment_decisions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+            <div class="saved-comments">{% for comment in item.additional_antibiotic_comments %}<div class="saved-comment"><div class="saved-comment-top"><strong class="extra-comment-title">{{ comment.field_label }}</strong><span class="d-inline-flex align-items-center" style="gap:6px;"><span class="status-pill">{{ comment.get_resolution_status_display }}</span>{% if can_delete_case_comments and can_write_field_comments %}<button type="submit" class="saved-comment-delete" title="Delete saved comment" formaction="{% url 'delete_verification_comment' case.id comment.id %}" formmethod="post" onclick="return confirm('Delete this saved comment?');"><i class="fas fa-trash"></i></button>{% endif %}</span></div>{% if comment.field_value_snapshot %}<div class="text-muted">Value: {{ comment.field_value_snapshot }}</div>{% endif %}<div>{{ comment.comment }}</div><div class="text-muted">{{ comment.created_by|default:"Unknown" }}{% if comment.created_at %} | {{ comment.created_at|date:"M d, Y h:i A" }}{% endif %}</div></div>{% empty %}<span class="empty-comment">No added antibiotic comments</span>{% endfor %}</div>
+            <textarea name="comment" class="form-control form-control-sm" placeholder="Comment for missing or blank antibiotic"></textarea><button type="submit" class="btn-verify info"><i class="fas fa-comment"></i>Save</button>
+            {% else %}
+            <div class="add-row-label"><i class="fas fa-lock"></i>Additional antibiotic comments</div>
+            <span class="comment-locked"><i class="fas fa-lock"></i>Locked</span>
+            <span class="comment-locked"><i class="fas fa-comment-dots"></i>Use General Remarks</span>
+            <span class="comment-locked"><i class="fas fa-lock"></i>Locked</span>
+            <span class="comment-locked"><i class="fas fa-lock"></i>Locked</span>
+            <span class="comment-locked"><i class="fas fa-lock"></i>Locked</span>
+            <span class="comment-locked"><i class="fas fa-lock"></i>Locked</span>
+            <span class="comment-locked"><i class="fas fa-lock"></i>Locked</span>
+            <div class="saved-comments">{% for comment in item.additional_antibiotic_comments %}<div class="saved-comment"><div class="saved-comment-top"><strong class="extra-comment-title">{{ comment.field_label }}</strong><span class="d-inline-flex align-items-center" style="gap:6px;"><span class="status-pill">{{ comment.get_resolution_status_display }}</span></span></div>{% if comment.field_value_snapshot %}<div class="text-muted">Value: {{ comment.field_value_snapshot }}</div>{% endif %}<div>{{ comment.comment }}</div><div class="text-muted">{{ comment.created_by|default:"Unknown" }}{% if comment.created_at %} | {{ comment.created_at|date:"M d, Y h:i A" }}{% endif %}</div></div>{% empty %}<span class="empty-comment">No added antibiotic comments</span>{% endfor %}</div>
+            <span class="comment-locked"><i class="fas fa-lock"></i>No new antibiotic comment</span>
+            <span class="comment-locked"><i class="fas fa-lock"></i>Locked</span>
+            {% endif %}
+          </form>
+        </div></div>
+        {% endif %}
+      </section>
+      {% empty %}<div class="p-4 text-center text-muted">No final records found for this verification case.</div>{% endfor %}
+    </main>
+
+  </div>
+</div>
+</div>
+{% endblock content %}

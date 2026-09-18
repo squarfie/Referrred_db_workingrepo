@@ -1109,6 +1109,10 @@ body {
   padding: 7px 10px;
 }
 
+.chart-select-wide {
+  min-width: 150px;
+}
+
 .chart-download {
   cursor: pointer;
 }
@@ -1547,6 +1551,12 @@ body {
                 <option value="referrals">Referrals</option>
                 <option value="sites">Active sites</option>
               </select>
+              <select class="chart-select chart-select-wide" id="trendSiteSelect" aria-label="Monthly trend site">
+                <option value="">All sites</option>
+                {% for site_code, site_name in monthly_referral_site_choices %}
+                  <option value="{{ site_code }}" title="{{ site_name }}">{{ site_code }}{% if site_name %} - {{ site_name|truncatechars:28 }}{% endif %}</option>
+                {% endfor %}
+              </select>
               <button class="chart-download" type="button" data-download="trend">
                 <i class="fas fa-download mr-1"></i> CSV
               </button>
@@ -1614,7 +1624,7 @@ body {
           <div class="chart-card-header">
             <div>
               <h2 class="chart-title">TAT Status</h2>
-              <p class="chart-subtitle">Current filtered running status.</p>
+              <p class="chart-subtitle">Current filtered running TAT.</p>
             </div>
             <div class="chart-controls">
               <a class="chart-download" href="{% url 'tat_running_list' %}">
@@ -1637,7 +1647,7 @@ body {
           <div class="chart-card-header">
             <div>
               <h2 class="chart-title">Surveillance Snapshot</h2>
-              <p class="chart-subtitle">WGS, emerging, concordance, and TAT signals.</p>
+              <p class="chart-subtitle">WGS, emerging and concordance signals.</p>
             </div>
             <div class="chart-controls">
               <button class="chart-download" type="button" data-download="surveillance">
@@ -1647,7 +1657,7 @@ body {
           </div>
           <div class="chart-body">
             <div class="tat-kpi-grid">
-              <div class="tat-mini-card" tabindex="0" aria-label="WGS records linked to final accessions. One accession can have more than one WGS record."><span>Total WGS Projects</span><strong>{{ surveillance_snapshot.wgs_projects }}</strong></div>
+              <div class="tat-mini-card" tabindex="0" aria-label="Distinct WGS accessions found in overview-visible sequencing pipeline data."><span>Total WGS Accessions</span><strong>{{ surveillance_snapshot.wgs_projects }}</strong></div>
               <div class="tat-mini-card released" tabindex="0" aria-label="Distinct / Deduplicated final accessions matched to WGS_Project records"><span>Matched Accessions</span><strong>{{ surveillance_snapshot.wgs_matched }}</strong></div>
               <div class="tat-mini-card near" tabindex="0" aria-label="Count of Unmatched WGS Project records."><span>Unmatched Accessions</span><strong>{{ surveillance_snapshot.wgs_unmatched }}</strong></div>
               <div class="tat-mini-card" tabindex="0" aria-label="WGS pipelines currently marked active."><span>Active WGS Pipelines</span><strong>{{ surveillance_snapshot.wgs_active_pipelines }}</strong></div>
@@ -2142,6 +2152,7 @@ body {
   const siteConcordanceRows = {{ site_concordance_rows_json|safe }};
   const siteConcordanceYearRows = {{ site_concordance_year_rows_json|safe }};
   const monthlyReferralRows = {{ monthly_referral_rows_json|safe }};
+  const monthlySiteReferralRows = {{ monthly_site_referral_rows_json|safe }};
   const dashboardAllYears = {{ dashboard_all_years|yesno:"true,false" }};
 
   function metricLabel(metric) {
@@ -2161,6 +2172,15 @@ body {
       return String(numeric);
     }
     return `${numeric.toFixed(numeric % 1 === 0 ? 0 : 2)}%`;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   function renderSiteBars(metric) {
@@ -2187,22 +2207,29 @@ body {
     }).join('');
   }
 
-  function renderTrendBars(metric) {
+  function trendRowsForSite(siteCode) {
+    if (!siteCode) return monthlyReferralRows;
+    return monthlySiteReferralRows.filter(row => row.site_code === siteCode);
+  }
+
+  function renderTrendBars(metric, siteCode = '') {
     const mount = document.getElementById('monthlyTrendBars');
     if (!mount) return;
-    if (!monthlyReferralRows.length) {
+    const rows = trendRowsForSite(siteCode);
+    if (!rows.length) {
       mount.innerHTML = '<p class="text-muted mb-0">No monthly referral data available.</p>';
       return;
     }
-    const maxValue = Math.max(...monthlyReferralRows.map(row => Number(row[metric] || 0)), 1);
-    mount.innerHTML = monthlyReferralRows.map(row => {
+    const maxValue = Math.max(...rows.map(row => Number(row[metric] || 0)), 1);
+    mount.innerHTML = rows.map(row => {
       const value = Number(row[metric] || 0);
       const height = Math.max(10, Math.min(100, (value / maxValue) * 100));
+      const label = siteCode ? `${row.month} · ${row.site_code}` : row.month;
       return `
         <div class="trend-bar-wrap">
           <div class="trend-bar" style="height:${height}%;"></div>
           <div class="trend-value">${formatMetric(value, metric)}</div>
-          <div class="trend-label">${row.month}</div>
+          <div class="trend-label">${escapeHtml(label)}</div>
         </div>
       `;
     }).join('');
@@ -2232,14 +2259,27 @@ body {
   document.addEventListener('DOMContentLoaded', function () {
     const siteSelect = document.getElementById('siteMetricSelect');
     const trendSelect = document.getElementById('trendMetricSelect');
+    const trendSiteSelect = document.getElementById('trendSiteSelect');
     renderSiteBars(siteSelect ? siteSelect.value : 'genus_rate');
-    renderTrendBars(trendSelect ? trendSelect.value : 'genus_rate');
+    renderTrendBars(
+      trendSelect ? trendSelect.value : 'referrals',
+      trendSiteSelect ? trendSiteSelect.value : ''
+    );
 
     if (siteSelect) {
       siteSelect.addEventListener('change', () => renderSiteBars(siteSelect.value));
     }
     if (trendSelect) {
-      trendSelect.addEventListener('change', () => renderTrendBars(trendSelect.value));
+      trendSelect.addEventListener('change', () => renderTrendBars(
+        trendSelect.value,
+        trendSiteSelect ? trendSiteSelect.value : ''
+      ));
+    }
+    if (trendSiteSelect) {
+      trendSiteSelect.addEventListener('change', () => renderTrendBars(
+        trendSelect ? trendSelect.value : 'referrals',
+        trendSiteSelect.value
+      ));
     }
 
     document.querySelectorAll('[data-download]').forEach(button => {
@@ -2252,7 +2292,9 @@ body {
         }
         if (type === 'trend') {
           const scope = dashboardAllYears ? 'all_years' : '{{ dashboard_year_label|slugify }}';
-          downloadCsv(`monthly_referrals_${metricLabel(trendSelect.value).toLowerCase()}_${scope}.csv`, monthlyReferralRows);
+          const siteScope = trendSiteSelect && trendSiteSelect.value ? trendSiteSelect.value.toLowerCase() : 'all_sites';
+          const rows = trendRowsForSite(trendSiteSelect ? trendSiteSelect.value : '');
+          downloadCsv(`monthly_referrals_${metricLabel(trendSelect.value).toLowerCase()}_${siteScope}_${scope}.csv`, rows);
         }
         if (type === 'kpi') {
           const rows = dashboardAllYears && concordanceKpiYearRows.length ? concordanceKpiYearRows : concordanceKpis;

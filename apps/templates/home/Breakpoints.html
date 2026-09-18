@@ -45,6 +45,46 @@
     color: #fff;
     outline: none;
   }
+
+  .breakpoint-selection-status {
+    align-items: center;
+    background: #f8fcfd;
+    border: 1px solid #d1e8ed;
+    border-radius: .45rem;
+    color: #5a6c72;
+    display: flex;
+    font-size: .74rem;
+    gap: .45rem;
+    line-height: 1.35;
+    margin-top: .45rem;
+    min-height: 2rem;
+    padding: .4rem .55rem;
+  }
+
+  .breakpoint-selection-status.has-selection {
+    background: #e8f8fb;
+    border-color: rgba(0, 188, 212, .45);
+    color: #005f6c;
+    font-weight: 700;
+  }
+
+  .breakpoint-selection-status .selection-label {
+    color: #1a7a8e;
+    flex: 0 0 auto;
+    font-weight: 800;
+  }
+
+  .breakpoint-selection-status .selection-values {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #breakpointsform #id_Spec_code + .arsp-multi-select-actions,
+  #breakpointsform #id_Emerging_Pheno_Flag + .arsp-multi-select-actions,
+  #breakpointsform #id_Emerging_Pheno_Flag_Other + .arsp-multi-select-actions {
+    display: none !important;
+  }
 </style>
 {% endblock stylesheets %}
 {% block content %}
@@ -209,7 +249,7 @@
               <label class="form-control-label" for="Org">
                 <i class="fa fa-bug mr-2"></i>Organism Code
               </label>
-              <input id="Org" class="form-control" value="{{breakpoint.Org}}" type="text" name="Org" required data-required="true" />
+              {{ breakpoint_form.Org|append_attr:"class: form-control"|attr:"required:required" }}
             </div>
           </div>
         </div>
@@ -236,14 +276,20 @@
                 <label class="form-control-label mb-0" for="id_Spec_code">
                   <i class="fas fa-tag mr-1"></i>Specimen Group(s)
                 </label>
-                <!-- <button type="button"
+                <button type="button"
                         class="breakpoint-clear-select"
                         data-clear-multiselect="id_Spec_code"
                         title="Clear selected specimen groups">
                   <i class="fas fa-times mr-1"></i>Clear
-                </button> -->
+                </button>
               </div>
               {{ breakpoint_form.Spec_code|append_attr:"class: form-control" }}
+              <div class="breakpoint-selection-status"
+                   data-selection-status-for="id_Spec_code"
+                   data-fallback-expression="{{ breakpoint.Spec_code|default:'' }}">
+                <span class="selection-label">Current selection:</span>
+                <span class="selection-values">No selection</span>
+              </div>
               <small class="form-text text-muted">
                 Hold Ctrl (Windows/Linux) or Command (macOS) to select multiple groups.
                 Selections are saved as an OR expression, for example
@@ -275,14 +321,20 @@
                 <label class="form-control-label mb-0" for="id_Emerging_Pheno_Flag">
                   <i class="fas fa-filter mr-1"></i>Emerging Phenotype
                 </label>
-                <!-- <button type="button"
+                <button type="button"
                         class="breakpoint-clear-select"
                         data-clear-multiselect="id_Emerging_Pheno_Flag"
                         title="Clear selected emerging phenotypes">
                   <i class="fas fa-times mr-1"></i>Clear
-                </button> -->
+                </button>
               </div>
               {{ breakpoint_form.Emerging_Pheno_Flag|append_attr:"class: form-control" }}
+              <div class="breakpoint-selection-status"
+                   data-selection-status-for="id_Emerging_Pheno_Flag"
+                   data-fallback-expression="{{ breakpoint.Emerging_Pheno_Flag|default:'' }}">
+                <span class="selection-label">Current selection:</span>
+                <span class="selection-values">No selection</span>
+              </div>
               <small class="form-text text-muted">
                 Hold Ctrl/Command to select multiple interpretations. They are saved as OR, for example <code>R|I</code>.
               </small>
@@ -294,14 +346,20 @@
                 <label class="form-control-label mb-0" for="id_Emerging_Pheno_Flag_Other">
                   <i class="fas fa-filter mr-1"></i>Other Phenotype
                 </label>
-                <!-- <button type="button"
+                <button type="button"
                         class="breakpoint-clear-select"
                         data-clear-multiselect="id_Emerging_Pheno_Flag_Other"
                         title="Clear selected other phenotypes">
                   <i class="fas fa-times mr-1"></i>Clear
-                </button> -->
+                </button>
               </div>
               {{ breakpoint_form.Emerging_Pheno_Flag_Other|append_attr:"class: form-control" }}
+              <div class="breakpoint-selection-status"
+                   data-selection-status-for="id_Emerging_Pheno_Flag_Other"
+                   data-fallback-expression="{{ breakpoint.Emerging_Pheno_Flag_Other|default:'' }}">
+                <span class="selection-label">Current selection:</span>
+                <span class="selection-values">No selection</span>
+              </div>
             </div>
           </div>
         </div>
@@ -319,7 +377,7 @@
               <label class="form-control-label" for="Whonet_Abx">
                 <i class="fas fa-globe mr-1"></i>WHONET Code
               </label>
-              <input id="Whonet_Abx" class="form-control" value="{{breakpoint.Whonet_Abx}}" type="text" name="Whonet_Abx" placeholder="e.g. CFM_ND30" required data-required="true"/>
+              {{ breakpoint_form.Whonet_Abx|append_attr:"class: form-control"|attr:"required:required" }}
             </div>
           </div>
         </div>
@@ -348,7 +406,7 @@
               <label class="form-control-label" for="Potency">
                 <i class="fas fa-weight mr-1"></i>Potency
               </label>
-              <input id="Potency" class="form-control" value="{{breakpoint.Potency}}" type="text" name="Potency" placeholder="e.g. 30µg"/>
+              <input id="Potency" class="form-control" value="{{breakpoint.Potency}}" type="text" name="Potency" placeholder="e.g. 30µg" readonly/>
             </div>
           </div>
           <div class="col-md-4">
@@ -476,6 +534,84 @@ function confirmOverwrite() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+  var methodSelect = document.querySelector('[name="Test_Method"]');
+  var diskCheckbox = document.querySelector('[name="Disk_Abx"]');
+
+  function hasMethodOption(value) {
+    if (!methodSelect) {
+      return false;
+    }
+    return !!methodSelect.querySelector('option[value="' + value + '"]');
+  }
+
+  function syncDiskFromMethod() {
+    if (!methodSelect || !diskCheckbox) {
+      return;
+    }
+    diskCheckbox.checked = (methodSelect.value || '').toUpperCase() === 'DISK';
+  }
+
+  function syncMethodFromDisk() {
+    if (!methodSelect || !diskCheckbox) {
+      return;
+    }
+    if (diskCheckbox.checked) {
+      methodSelect.value = 'DISK';
+    } else if ((methodSelect.value || '').toUpperCase() === 'DISK') {
+      methodSelect.value = hasMethodOption('MIC') ? 'MIC' : '';
+    }
+    methodSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  if (methodSelect && diskCheckbox) {
+    syncDiskFromMethod();
+    methodSelect.addEventListener('change', syncDiskFromMethod);
+    diskCheckbox.addEventListener('change', syncMethodFromDisk);
+  }
+
+  function updateSelectionStatus(select) {
+    var status = document.querySelector('[data-selection-status-for="' + select.id + '"]');
+    if (!status) {
+      return;
+    }
+
+    var selected = Array.prototype.filter.call(select.options, function (option) {
+      return option.selected;
+    });
+    var values = selected.map(function (option) {
+      return option.text.trim();
+    });
+    var valuesNode = status.querySelector('.selection-values');
+
+    if (!values.length && status.dataset.fallbackExpression && status.dataset.userTouched !== '1') {
+      values = status.dataset.fallbackExpression.split('|').map(function (value) {
+        return value.trim();
+      }).filter(Boolean);
+    }
+
+    if (!values.length) {
+      status.classList.remove('has-selection');
+      valuesNode.textContent = 'No selection';
+      status.title = 'No current selection';
+      return;
+    }
+
+    status.classList.add('has-selection');
+    valuesNode.textContent = values.length + ' selected: ' + values.join(', ');
+    status.title = values.join('\n');
+  }
+
+  document.querySelectorAll('select[multiple]').forEach(function (select) {
+    updateSelectionStatus(select);
+    select.addEventListener('change', function () {
+      var status = document.querySelector('[data-selection-status-for="' + select.id + '"]');
+      if (status) {
+        status.dataset.userTouched = '1';
+      }
+      updateSelectionStatus(select);
+    });
+  });
+
   document.querySelectorAll('[data-clear-multiselect]').forEach(function (button) {
     button.addEventListener('click', function () {
       var select = document.getElementById(button.dataset.clearMultiselect);
@@ -486,6 +622,10 @@ document.addEventListener('DOMContentLoaded', function () {
       Array.prototype.forEach.call(select.options, function (option) {
         option.selected = false;
       });
+      var status = document.querySelector('[data-selection-status-for="' + select.id + '"]');
+      if (status) {
+        status.dataset.userTouched = '1';
+      }
       select.dispatchEvent(new Event('change', { bubbles: true }));
       select.focus();
     });

@@ -1,0 +1,70 @@
+<tr>
+  <td>
+    <div class="case-name">
+      {% if case.final_batch %}
+        {{ case.final_batch.bat_Batch_Code|default:case.final_batch.bat_Batch_Name }}
+      {% elif case.final_accession %}
+        {{ case.final_accession.f_AccessionNo }}
+      {% else %}
+        Untitled case
+      {% endif %}
+    </div>
+    <div class="case-sub">
+      {% if case.final_batch %}
+        {{ case.final_batch.bat_SiteCode|default:"-" }}{% if case.final_batch.bat_Referral_Date %} | {{ case.final_batch.bat_Referral_Date|date:"M d, Y" }}{% endif %}
+      {% elif case.final_accession %}
+        {{ case.final_accession.f_SiteCode|default:"-" }}{% if case.final_accession.f_Referral_Date %} | {{ case.final_accession.f_Referral_Date|date:"M d, Y" }}{% endif %}
+      {% endif %}
+    </div>
+  </td>
+  <td>
+    <span class="status-pill">{{ case.get_status_display }}</span>
+    {% if case.tat_summary and case.tat_summary.days is not None %}
+      <div>
+        <span class="case-tat-badge case-tat-{{ case.tat_summary.pressure|default:'none' }}" title="Target TAT: {{ case.tat_summary.target_days }} days">
+          <i class="fas fa-clock"></i>{{ case.tat_summary.label }}
+        </span>
+      </div>
+    {% endif %}
+  </td>
+  <td>
+    <span class="case-cell-label">Verifier</span>
+    <span class="case-cell-value">{% if case.assigned_verifier %}{{ case.assigned_verifier.get_full_name|default:case.assigned_verifier.username }}{% else %}-{% endif %}</span>
+    <span class="case-cell-label mt-1">Lab Manager</span>
+    <span class="case-cell-value">{% if case.assigned_lab_manager %}{{ case.assigned_lab_manager.get_full_name|default:case.assigned_lab_manager.username }}{% else %}-{% endif %}</span>
+    <span class="case-cell-label mt-1">Head</span>
+    <span class="case-cell-value">{% if case.assigned_head %}{{ case.assigned_head.get_full_name|default:case.assigned_head.username }}{% else %}-{% endif %}</span>
+  </td>
+  <td>
+    <span class="case-cell-value">{{ case.comment_count }}</span>
+    {% if case.handled_comment_count %}
+      <span class="case-update-pill" title="{{ case.handled_comment_count }} comment(s) were marked applied by checker/encoder.">
+        <i class="fas fa-check-circle"></i>Checker edited{% if case.handled_comment_count > 1 %} ({{ case.handled_comment_count }}){% endif %}
+      </span>
+    {% endif %}
+    {% if case.latest_general_note %}
+      <span class="case-note-pill" title="{{ case.latest_general_note.field_label }}">
+        <i class="fas fa-comment-dots"></i>Note{% if case.general_note_count > 1 %} ({{ case.general_note_count }}){% endif %}
+      </span>
+      <div class="case-note-preview">
+        {{ case.latest_general_note.comment|truncatechars:110 }}
+      </div>
+    {% endif %}
+  </td>
+  <td>
+    <span class="case-cell-value">{{ case.updated_at|date:"M d, Y" }}</span>
+    <span class="case-cell-label">{{ case.updated_at|date:"h:i A" }}</span>
+  </td>
+  <td>
+  <div class="case-actions">
+    <a href="{% url 'verification_case_detail' case.id %}" class="btn btn-sm btn-info btn-case">
+      <i class="fas fa-eye"></i>View
+    </a>
+    {% if case.final_batch %}
+      <a href="{% url 'generate_final_batch_pdf' case.final_batch.id %}" class="btn btn-sm btn-outline-primary btn-case" target="_blank">
+        <i class="fas fa-print"></i>Print
+      </a>
+    {% endif %}
+  </div>
+  </td>
+</tr>

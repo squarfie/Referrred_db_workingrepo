@@ -77,6 +77,63 @@
         <!-- Nav items -->
          {% with current_url=request.resolver_match.url_name %}
         <ul class="navbar-nav">
+          {% if user_access.is_review_only %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
+              <i class="ni ni-album-2 text-primary"></i>
+              <span class="nav-link-text">Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if current_url == 'verification_dashboard' or current_url == 'verification_case_detail' %}active{% endif %}"
+              href="{% url 'verification_dashboard' %}">
+              <i class="fas fa-clipboard-check text-primary"></i>
+              <span class="nav-link-text">Verification</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if current_url == 'view_wgs_overview' %}active{% endif %}"
+              href="{% url 'view_wgs_overview' %}">
+                <i class="ni ni-atom text-primary"></i>
+                <span class="nav-link-text">WGS Data</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if current_url == 'tat_running_list' %}active{% endif %}"
+              href="{% url 'tat_running_list' %}">
+                <i class="fas fa-chart-line text-primary"></i>
+                <span class="nav-link-text">Running TAT</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if current_url == 'concordance_history' %}active{% endif %}"
+              href="{% url 'concordance_history' %}">
+              <i class="fas fa-chart-bar text-primary"></i>
+              <span class="nav-link-text">Concordance</span>
+            </a>
+          </li>
+          <hr class="my-3">
+          <h6 class="navbar-heading p-0 text-muted">
+            <span class="docs-normal">Utilities</span>
+          </h6>
+          <li class="nav-item">
+            <a class="nav-link"
+              id="ageVerifierNav"
+              href="#"
+              data-toggle="modal"
+              data-target="#ageModal">
+                <i class="ni ni-calendar-grid-58 text-success"></i>
+                <span class="nav-link-text">Age verifier</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if current_url == 'field_mapper_tool' %}active{% endif %}"
+              href="{% url 'field_mapper_tool' %}">
+                <i class="ni ni-compass-04 text-success"></i>
+                <span class="nav-link-text">Field Mapping Tool</span>
+            </a>
+          </li>
+          {% else %}
           <li class="nav-item">
             <!-- <a class="nav-link {% if 'index' in segment %} active {% endif %}" href="/"> -->
               <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
@@ -184,8 +241,19 @@
               <span class="nav-link-text">Projects</span>
             </a>
           </li> -->
+          {% if user_access.can_view_verification %}
+          <li class="nav-item">
+            <a class="nav-link {% if current_url == 'verification_dashboard' or current_url == 'verification_case_detail' %}active{% endif %}"
+              href="{% url 'verification_dashboard' %}">
+              <i class="fas fa-clipboard-check text-primary"></i>
+              <span class="nav-link-text">Verification</span>
+            </a>
+          </li>
+          {% endif %}
              
+          {% endif %}
         </ul>
+        {% if not user_access.is_review_only %}
         <!-- Divider -->
         <hr class="my-3">
         <!-- Heading -->
@@ -264,6 +332,7 @@
                     </a>
                 </li> -->
             </ul>
+          {% endif %}
 {% endwith %}
       </div>
     </div>

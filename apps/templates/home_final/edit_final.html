@@ -167,6 +167,129 @@ label.form-control-label{
   padding: 2px 6px !important;
   font-size: 0.85rem;
 }
+
+.verification-comment-field > .form-control,
+.verification-comment-field .form-control,
+.verification-comment-field select,
+.verification-comment-field textarea,
+.verification-comment-field input:not([type="hidden"]) {
+  border-color: #f59e0b !important;
+  background: #fffaf0 !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.10) !important;
+}
+
+.verification-comment-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.verification-comment-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: #fff7cc;
+  color: #a15c00;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.verification-comment-note {
+  margin-top: 5px;
+  padding: 6px 8px;
+  border-left: 3px solid #f59e0b;
+  background: #fff8e6;
+  color: #5b3a00;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.verification-comment-note strong {
+  color: #8a4d00;
+}
+
+.verification-comment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.verification-comment-action {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.verification-comment-action.applied {
+  background: #0ea67a;
+  border-color: #0ea67a;
+  color: #ffffff;
+}
+
+.verification-comment-action.rejected {
+  background: #fff7f2;
+  border-color: rgba(226, 85, 56, 0.45);
+  color: #d94325;
+}
+
+.verification-abx-comments {
+  border: 1px solid rgba(245, 158, 11, 0.30);
+  border-left: 4px solid #f59e0b;
+  background: #fffaf0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+
+.verification-abx-comments-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8a4d00;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.verification-abx-comment-item {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.45fr) minmax(160px, 0.55fr) minmax(220px, 1fr);
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(245, 158, 11, 0.18);
+  color: #4a3610;
+  font-size: 0.75rem;
+}
+
+.verification-abx-comment-item:first-of-type {
+  border-top: 0;
+}
+
+.verification-abx-comment-field {
+  font-weight: 800;
+  color: #173f63;
+}
+
+.verification-abx-comment-meta {
+  color: #7c6b4f;
+}
+
+@media (max-width: 900px) {
+  .verification-abx-comment-item {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
 {% endblock stylesheets %}
 
@@ -216,6 +339,12 @@ label.form-control-label{
 
         {% csrf_token %}
         {% include "includes/form_errors.html" with form=form %}
+        {% if verification_comment_count %}
+        <div class="alert alert-warning py-2 mb-3" role="alert">
+          <i class="fas fa-comments mr-1"></i>
+          This record has {{ verification_comment_count }} unresolved verifier comment{% if verification_comment_count != 1 %}s{% endif %}. Fields with comments are highlighted; use each field's Applied or Reject button after checking the correction.
+        </div>
+        {% endif %}
 
       <div class="form-card" >
         <div class="card-header" id="mytop">
@@ -636,6 +765,25 @@ label.form-control-label{
         </div>
     </div>
     </div>
+    {% if verification_antibiotic_site_comments %}
+    <div class="verification-abx-comments">
+      <div class="verification-abx-comments-title">
+        <i class="fas fa-comments"></i>Verifier comments for site antibiotic entries
+      </div>
+      {% for comment in verification_antibiotic_site_comments %}
+      <div class="verification-abx-comment-item">
+        <div class="verification-abx-comment-field">
+          {{ comment.field_label }}
+          {% if comment.field_value_snapshot %}
+            <div class="verification-abx-comment-meta">{{ comment.field_value_snapshot }}</div>
+          {% endif %}
+        </div>
+        <div class="verification-abx-comment-meta">{{ comment.decision }} | {{ comment.resolution_status }} | {{ comment.created_by }}{% if comment.created_at %} | {{ comment.created_at }}{% endif %}</div>
+        <div>{{ comment.comment }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
     <div class="row">
 
       <!-- 🧫 DISK DIFFUSION -->
@@ -897,6 +1045,25 @@ label.form-control-label{
         </div>
     </div>
     </div>
+    {% if verification_antibiotic_retest_comments %}
+    <div class="verification-abx-comments">
+      <div class="verification-abx-comments-title">
+        <i class="fas fa-comments"></i>Verifier comments for ARSRL/retest antibiotic entries
+      </div>
+      {% for comment in verification_antibiotic_retest_comments %}
+      <div class="verification-abx-comment-item">
+        <div class="verification-abx-comment-field">
+          {{ comment.field_label }}
+          {% if comment.field_value_snapshot %}
+            <div class="verification-abx-comment-meta">{{ comment.field_value_snapshot }}</div>
+          {% endif %}
+        </div>
+        <div class="verification-abx-comment-meta">{{ comment.decision }} | {{ comment.resolution_status }} | {{ comment.created_by }}{% if comment.created_at %} | {{ comment.created_at }}{% endif %}</div>
+        <div>{{ comment.comment }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   <div class="row">
 
     <!-- 🧫 RETEST DISK DIFFUSION -->
@@ -2383,6 +2550,120 @@ window.resetOrganismSection = function (retest = false) {
             invalid.reportValidity();
         }
     }, true);
+})();
+</script>
+
+{{ verification_comment_map|json_script:"verification-comment-map" }}
+<script>
+(function () {
+    const dataNode = document.getElementById("verification-comment-map");
+    if (!dataNode) return;
+
+    let commentMap = {};
+    try {
+        commentMap = JSON.parse(dataNode.textContent || "{}");
+    } catch (error) {
+        commentMap = {};
+    }
+
+    function decorateField(fieldName, data) {
+        if (!fieldName || !data) return;
+        const fields = document.querySelectorAll(`[name="${CSS.escape(fieldName)}"]`);
+        fields.forEach(function (field) {
+            if (field.type === "hidden") return;
+            const group = field.closest(".form-group") || field.parentElement;
+            if (!group || group.dataset.verificationCommentApplied === "true") return;
+
+            group.dataset.verificationCommentApplied = "true";
+            group.classList.add("verification-comment-field");
+
+            const label = group.querySelector("label");
+            if (label) {
+                label.classList.add("verification-comment-label");
+                const badge = document.createElement("button");
+                badge.type = "button";
+                badge.className = "verification-comment-badge";
+                badge.title = data.comment || "Verifier comment";
+                badge.innerHTML = '<i class="fas fa-comment"></i>';
+                badge.addEventListener("click", function () {
+                    const note = group.querySelector(".verification-comment-note");
+                    if (note) note.scrollIntoView({ behavior: "smooth", block: "center" });
+                });
+                label.appendChild(badge);
+            }
+
+            const note = document.createElement("div");
+            note.className = "verification-comment-note";
+            const strong = document.createElement("strong");
+            strong.textContent = `${data.decision || "Comment"}:`;
+            note.appendChild(strong);
+            note.appendChild(document.createTextNode(` ${data.comment || ""}`));
+            const meta = document.createElement("div");
+            meta.className = "text-muted mt-1";
+            meta.textContent = `${data.resolution_status || "Open"} | ${data.created_by || "Unknown"}${data.created_at ? " | " + data.created_at : ""}`;
+            note.appendChild(meta);
+
+            if (data.action_url) {
+                const actionIdBase = `verificationCommentAction${data.id || fieldName.replace(/\W/g, "")}`;
+                const actions = document.createElement("div");
+                actions.className = "verification-comment-actions";
+
+                [
+                    { id: `${actionIdBase}Applied`, value: "mark_handled", text: "Applied", icon: "check", className: "applied" },
+                    { id: `${actionIdBase}Rejected`, value: "reject_all", text: "Reject", icon: "ban", className: "rejected" },
+                ].forEach(function (item) {
+                    if (item.value === "mark_handled") {
+                        const button = document.createElement("button");
+                        button.type = "submit";
+                        button.setAttribute("form", "myform");
+                        button.name = "verification_comment_action";
+                        button.value = item.value;
+                        button.className = `verification-comment-action ${item.className}`;
+                        button.innerHTML = `<i class="fas fa-${item.icon} mr-1"></i>${item.text}`;
+                        button.addEventListener("click", function () {
+                            const mainForm = document.getElementById("myform");
+                            if (!mainForm) return;
+                            mainForm.querySelectorAll('input[name="verification_comment_id"]').forEach(function (input) {
+                                input.remove();
+                            });
+                            const commentInput = document.createElement("input");
+                            commentInput.type = "hidden";
+                            commentInput.name = "verification_comment_id";
+                            commentInput.value = data.id || "";
+                            mainForm.appendChild(commentInput);
+                        });
+                        actions.appendChild(button);
+                        return;
+                    }
+
+                    const form = document.createElement("form");
+                    form.method = "post";
+                    form.action = data.action_url;
+                    form.id = item.id;
+                    form.style.display = "none";
+                    form.innerHTML = `
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''}">
+                        <input type="hidden" name="comment_action" value="${item.value}">
+                    `;
+                    document.body.appendChild(form);
+
+                    const button = document.createElement("button");
+                    button.type = "submit";
+                    button.setAttribute("form", item.id);
+                    button.className = `verification-comment-action ${item.className}`;
+                    button.innerHTML = `<i class="fas fa-${item.icon} mr-1"></i>${item.text}`;
+                    actions.appendChild(button);
+                });
+
+                note.appendChild(actions);
+            }
+            group.appendChild(note);
+        });
+    }
+
+    Object.entries(commentMap).forEach(function ([fieldName, data]) {
+        decorateField(fieldName, data);
+    });
 })();
 </script>
 
